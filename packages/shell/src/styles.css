@@ -13245,3 +13245,273 @@ button.k-metro-group-name {
   }
 }
 /* tokens-only: end — start screen */
+
+/* Moving to a new home (move-banner.tsx, move-page.tsx) ------------------------------------------
+   The banner is the one thing on an old site's home that matters more than the apps, so it reads as
+   an arrival card rather than a notice: an accent rail on the leading edge, an arrow mark that moves
+   while something is happening, and the action in thumb reach. The confirmation page is a single
+   card — what comes in, as a list you can read before saying yes. */
+/* tokens-only: start */
+.k-move {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border: 1px solid var(--accent-line, var(--line));
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(115deg, color-mix(in oklab, var(--accent) 14%, transparent) 0%, transparent 55%),
+    var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: var(--space-3);
+}
+.k-move::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--accent);
+}
+.k-move[data-state="done"] {
+  border-color: var(--ok-line);
+  background:
+    linear-gradient(115deg, var(--ok-tint) 0%, transparent 60%),
+    var(--surface);
+}
+.k-move[data-state="done"]::before {
+  background: var(--ok);
+}
+.k-move-mark {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--accent) 22%, var(--surface));
+  color: var(--ink);
+  font-size: 1.25rem;
+}
+.k-move[data-state="done"] .k-move-mark {
+  background: var(--ok-tint);
+  color: var(--ok);
+}
+.k-move[data-state="packing"] .k-move-mark span,
+.k-move[data-state="waiting"] .k-move-mark span,
+.k-move[data-state="sending"] .k-move-mark span {
+  animation: k-move-nudge 1.1s var(--ease) infinite;
+}
+@keyframes k-move-nudge {
+  0%,
+  100% {
+    transform: translateX(-2px);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateX(3px);
+    opacity: 1;
+  }
+}
+.k-move-body {
+  min-width: 0;
+}
+.k-move-eyebrow {
+  margin: 0 0 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.k-move h2,
+.k-move-title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1.15;
+}
+.k-move-title {
+  font-size: var(--text-hero);
+}
+.k-move p,
+.k-move-card p {
+  margin: 0 0 var(--space-2);
+  color: var(--ink-soft);
+  line-height: 1.45;
+  max-width: 42rem;
+}
+.k-move-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-3);
+}
+.k-move-actions a.k-add {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.k-move-quiet {
+  min-height: 2.75rem;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+.k-move-quiet:hover:not(:disabled) {
+  color: var(--ink);
+}
+.k-move-quiet:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.k-move-quiet:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.k-move-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink);
+  font-weight: 500;
+}
+.k-move-status[data-tone="warn"] {
+  color: var(--warn);
+}
+.k-move-status[data-tone="good"] {
+  color: var(--ok);
+}
+.k-move-spin {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  border: 2px solid color-mix(in oklab, var(--accent) 30%, transparent);
+  border-top-color: var(--accent);
+  animation: k-move-spin 0.8s linear infinite;
+}
+@keyframes k-move-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-move-spin,
+  .k-move .k-move-mark span {
+    animation: none;
+  }
+}
+
+.k-move-page {
+  min-height: 100dvh;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  padding: calc(var(--space-6) + var(--k-safe-top)) 1rem calc(var(--space-6) + var(--k-safe-bottom));
+  background:
+    radial-gradient(60rem 30rem at 10% -10%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 70%),
+    var(--paper);
+}
+.k-move-card {
+  width: 100%;
+  max-width: 38rem;
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.k-move-card[data-state="done"] {
+  border-color: var(--ok-line);
+}
+.k-move-card[data-state="failed"] {
+  border-color: var(--danger-line);
+}
+.k-move-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.k-move-card .k-move-totals span {
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.k-move-apps {
+  list-style: none;
+  margin: var(--space-3) 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  max-height: 50dvh;
+  overflow: auto;
+}
+.k-move-app {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem var(--space-2);
+  padding: 0.65rem 0.85rem;
+  border-top: 1px solid var(--line);
+}
+.k-move-app:first-child {
+  border-top: 0;
+}
+.k-move-app-name {
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.k-move-app-meta {
+  grid-column: 1;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.k-move-app-tags {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-content: center;
+  gap: 0.3rem;
+}
+.k-move-app-quiet {
+  grid-template-columns: 1fr;
+  background: var(--surface-sunken);
+}
+.k-move-notes {
+  display: grid;
+  gap: 0.1rem;
+}
+.k-move-notes[data-tone="warn"] p {
+  color: var(--warn);
+}
+@media (max-width: 30rem) {
+  .k-move {
+    grid-template-columns: 1fr;
+    padding: var(--space-3);
+  }
+  .k-move-mark {
+    display: none;
+  }
+  .k-move-app {
+    grid-template-columns: 1fr;
+  }
+  .k-move-app-tags {
+    grid-column: 1;
+    grid-row: auto;
+    justify-content: flex-start;
+  }
+}
+/* tokens-only: end */

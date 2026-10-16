@@ -11,7 +11,8 @@
 //   chat.json            optional: the Studio conversation that made it, when the author included it
 //
 // The manifest may also say who made it (`credit`, docs/24 §6): the app's name, its maker's name when
-// they chose to show it, and what it is a remix of — a short chain, read defensively.
+// they chose to show it, and what it is a remix of — a short chain, read defensively. And which app it
+// is across devices (`line`, docs/24 §11), so a link made on one device opens the copy on another.
 //
 // A zip, so one file carries all of it. A bare source is still a package — one with no files and no
 // seed — and an export bundle (`potyro-bundle/1`, which carries `app.ts` beside its data) is read as
@@ -61,6 +62,20 @@ export interface AppPackage {
   declared?: AppDeclaration;
   /** Who made it and what it is a remix of (docs/24 §6), when whoever packed it said. */
   credit?: AppCredit;
+  /**
+   * Which app this is, across devices (docs/24 §11): every copy of it carries the same line, so a link
+   * made on one device opens the copy on another. A matching hint, not a credential — any package can
+   * say any line, and a link only ever hands a page some text. Absent in an older package.
+   */
+  line?: string;
+}
+
+/** An app's line: short, and nothing a URL has to escape beyond `:`. */
+export const LINE_RE = /^[A-Za-z0-9._:-]{1,96}$/;
+
+/** A line as JSON says it, or undefined when it is not one. */
+export function parseLine(raw: unknown): string | undefined {
+  return typeof raw === "string" && LINE_RE.test(raw) ? raw : undefined;
 }
 
 /**
@@ -155,7 +170,7 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
   const prefix = roots.size === 1 && names.every((n) => n.includes("/")) ? `${[...roots][0]}/` : "";
   const at = (name: string): Uint8Array | undefined => entries[prefix + name];
 
-  let manifest: { format?: string; source?: string; app?: unknown; credit?: unknown } = {};
+  let manifest: { format?: string; source?: string; app?: unknown; credit?: unknown; line?: unknown } = {};
   const rawManifest = at(MANIFEST);
   if (rawManifest) {
     try {
@@ -173,6 +188,7 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
   const isBundle = isBundleFormat(manifest.format);
   const declared = parseDeclaration(manifest.app);
   const credit = parseCredit(manifest.credit);
+  const line = parseLine(manifest.line);
   const under = (folder: string): PackagedFile[] =>
     names
       .filter((n) => n.startsWith(prefix + folder))
@@ -200,12 +216,13 @@ export function readAppPackage(bytes: Uint8Array): AppPackage {
     // A declaration that is not one is ignored, not fatal: the card then reads the app itself.
     ...(declared ? { declared } : {}),
     ...(credit ? { credit } : {}),
+    ...(line ? { line } : {}),
   };
 }
 
 /** Make a package zip. The inverse of `readAppPackage` for a `potyro-app/1` package. */
 export function packAppPackage(
-  pkg: Pick<AppPackage, "source" | "sourceName" | "files" | "seed" | "chat"> & Partial<Pick<AppPackage, "modules" | "lock" | "declared" | "credit">>,
+  pkg: Pick<AppPackage, "source" | "sourceName" | "files" | "seed" | "chat"> & Partial<Pick<AppPackage, "modules" | "lock" | "declared" | "credit" | "line">>,
 ): Uint8Array {
   const modules = pkg.modules ?? [];
   const sourceName = SOURCE_NAMES.includes(pkg.sourceName) ? pkg.sourceName : /x$/.test(pkg.sourceName) ? "app.tsx" : "app.ts";
@@ -219,6 +236,7 @@ export function packAppPackage(
           ...(modules.length ? { modules: modules.map((m) => ({ path: m.path, size: m.data.byteLength })) } : {}),
           ...(pkg.declared ? { app: pkg.declared } : {}),
           ...(pkg.credit ? { credit: parseCredit(pkg.credit) } : {}),
+          ...(parseLine(pkg.line) ? { line: pkg.line } : {}),
         },
         null,
         2,

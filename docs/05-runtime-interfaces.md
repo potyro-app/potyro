@@ -285,9 +285,16 @@ items, 10,000 characters), and formats in its own locale; host time counts again
 deadline. `mediate.ts` is unchanged: formatting is not a capability. `ctx.ui` takes `Words`
 everywhere it takes words, and `ctx` resolves them before the `UiBridge` sees them, so the shell only
 ever renders strings (`ShownUiItem`, and form fields as `Localized<Field>`). `UiBridge.share`
-(`ctx.ui.share`) receives `{ text?, url?, title? }` already checked — something to send, an http(s)
-link only, at most 10,000 characters — and answers whether it was copied or handed to the share
-sheet; a headless bridge leaves it out and `ctx` answers `false`.
+(`ctx.ui.share`) receives `ShownShare` — `{ text?, url?, title?, app? }` — already checked: something
+to send, an http(s) link only, at most 10,000 characters — and answers whether it was copied or handed
+to the share sheet; a headless bridge leaves it out and `ctx` answers `false`. `app` is
+`{ page, params }`, a link to one of the app's own pages that the shell makes (docs/24 §11): the page is
+one the app declares and the params are only those its `link.params` names, text of at most
+`LINK_LIMITS.chars` (`checkLinkRequest`, from `potyro`; a mistake throws in the app's action). The app
+never sees the address. The shell's bridge (`createUiBridge(…, makeLink)`) opens the share dialog at
+once and puts the link in when it is made; a bridge with no `makeLink` (the Studio's preview) sends the
+words alone. An `AppPackage` carries the app's `line` (`manifest.json`), which is what such a link
+matches on the receiving device.
 
 Custom views from **untrusted** apps (#267, owner decision 2026-10-16, docs/22 §11). Policy —
 **a shared app's custom views run in the sealed box, on every engine, behind a watchdog**; they
