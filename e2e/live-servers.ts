@@ -75,7 +75,9 @@ async function relayArgs(): Promise<string[]> {
   const [major, minor] = process.versions.node.split(".").map(Number) as [number, number];
   if (major > 22 || (major === 22 && minor >= 6)) return ["--experimental-strip-types", "--no-warnings", "packages/rooms/src/server.ts"];
   const { build } = createRequire(new URL("../packages/shell/package.json", import.meta.url))("esbuild") as typeof import("esbuild");
-  const outfile = fileURLToPath(new URL("../packages/rooms/dist/e2e-server.mjs", import.meta.url));
+  // One file per process: ci-local runs several copies of the suite at once from one checkout, and a
+  // shard overwriting the bundle another shard is starting would hand it half a file.
+  const outfile = fileURLToPath(new URL(`../packages/rooms/dist/e2e-server-${process.pid}.mjs`, import.meta.url));
   await build({ entryPoints: [fileURLToPath(new URL("../packages/rooms/src/server.ts", import.meta.url))], bundle: true, platform: "node", format: "esm", packages: "external", outfile, logLevel: "silent" });
   return [outfile];
 }
