@@ -225,9 +225,10 @@ export async function seedRecipes(store: Store, _me: string | undefined, photo: 
   }
 
   const now = Date.now();
+  const recipes = new Map<string, string>();
   for (const r of RECIPES) {
     const pic = await photo(`photos/${r.file}.webp`);
-    await store.insert("recipe", {
+    const row = await store.insert("recipe", {
       name: r.name,
       status: r.status,
       tags: r.tags,
@@ -242,5 +243,30 @@ export async function seedRecipes(store: Store, _me: string | undefined, photo: 
       ...(r.cooked?.length ? { lastCookedAt: new Date(now - r.cooked[0]! * DAY) } : {}),
       ...(pic ? { photo: pic } : {}),
     });
+    recipes.set(r.name, String(row.id));
+  }
+
+  // The week: tonight's dinner and a few more, so "This week" and the tile have something to say.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const on = (days: number) => new Date(today.getTime() + days * DAY);
+  for (const [name, days, slot] of [
+    ["Chickpea Curry", 0, "dinner"],
+    ["Greek Salad", 1, "lunch"],
+    ["Mushroom Risotto", 2, "dinner"],
+    ["Fluffy Pancakes", 5, "breakfast"],
+  ] as const) {
+    await store.insert("meal", { recipe: recipes.get(name), date: on(days), slot, note: "" });
+  }
+
+  // The shopping list those meals made: what the pantry lacks for them.
+  for (const [name, quantity, forRecipe] of [
+    ["Coconut milk", "400 ml", "Chickpea Curry"],
+    ["Coriander", "10 g", "Chickpea Curry"],
+    ["Feta", "150 g", "Greek Salad"],
+    ["Cucumber", "200 g", "Greek Salad"],
+    ["Mushrooms", "250 g", "Mushroom Risotto"],
+  ] as const) {
+    await store.insert("buy", { name, quantity, forRecipe, ingredient: ids.get(name), done: false });
   }
 }
