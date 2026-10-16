@@ -292,8 +292,8 @@ The pieces on `vazio`:
 | Checkout | `~/appinator-deploy`, the watcher's own. It is checked out detached at whatever is being judged, so nothing is ever edited there. |
 | Lock | `~/.karta-ci.lock`, shared by the hook and cron, so only one suite ever holds the test ports. |
 | Key | `~/.ssh/potyro_deploy`. It is authorized on the server as `command="/usr/bin/rrsync /var/www/karta",restrict …`, so it can rsync into the web root and do nothing else: no shell, no other path. |
-| ssh alias | `Host karta-deploy` in `~/.ssh/config` → `e@vaz.io` with that key. |
-| cron | `*/5 * * * * cd ~/appinator-deploy && PATH=$HOME/.npm-global/bin:/usr/bin:/bin POTYRO_DEPLOY_TARGET=karta-deploy: flock -n ~/.karta-ci.lock node scripts/ci-watch.mjs >> ~/ci-watch.log 2>&1` |
+| ssh aliases | `Host karta-deploy` in `~/.ssh/config` → `e@vaz.io` (apps.vaz.io), and `Host potyro-deploy` → `deploy@65.109.228.5` (potyro.app, web root `/srv/potyro/site`), each with its own key locked by `rrsync` to its web root. |
+| cron | `*/5 * * * * cd ~/appinator-deploy && PATH=$HOME/.npm-global/bin:/usr/bin:/bin POTYRO_DEPLOY_TARGET="karta-deploy:,potyro-deploy:" flock -n ~/.karta-ci.lock node scripts/ci-watch.mjs >> ~/ci-watch.log 2>&1` |
 
 The hook and the crontab installed on vazio before the rename still say `KARTA_DEPLOY_TARGET`;
 `ci-local.mjs` reads either name, so they keep working until they are reinstalled from `deploy/`.
