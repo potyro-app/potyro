@@ -89,7 +89,10 @@ export function DetailView(props: BuiltinViewProps) {
     : resolveGroups(runtime.definition.entities[view.entity], "detail");
   // A field with nothing in it is a dash on the page and nothing to read: the page shows what the
   // record has, and the form is where the rest is filled in. The cover's photo is not shown twice.
-  const shown = (f: string): boolean => !(pictured && own && f === coverField) && !isBlank(record[f]);
+  // Only a STORED field hides when empty; a computed value is the app saying something ("no missing
+  // ingredients"), and keeps its row.
+  const stored = (f: string): boolean => Boolean(entityDef?.fields[f]);
+  const shown = (f: string): boolean => !(pictured && own && f === coverField) && !(stored(f) && isBlank(record[f]));
   const visibleGroups = groups.map((g) => ({ ...g, fields: g.fields.filter(shown) })).filter((g) => g.fields.length > 0);
 
   const runDetailAction = (a: DetailAction): void => {
