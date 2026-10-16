@@ -17,8 +17,8 @@ test.describe("desktop", () => {
     const home = await openHome(page);
     // Eight seeded apps plus the bundled examples — a number that moves whenever an example is
     // added, which is why what follows filters rather than counts.
-    const all = await home.locator(".k-launch-item").count();
-    expect(all).toBeGreaterThanOrEqual(12);
+    // Polled: the tiles render after the home screen does, and a bare count() read 0 under load.
+    await expect.poll(() => home.locator(".k-launch-item").count()).toBeGreaterThanOrEqual(12);
     await page.keyboard.type("gro");
     await expect(home.getByRole("searchbox", { name: "Find an app" })).toHaveValue("gro");
     await expect(home.locator(".k-launch-item")).toHaveCount(1);
