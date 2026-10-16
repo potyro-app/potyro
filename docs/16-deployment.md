@@ -290,10 +290,48 @@ The pieces on `vazio`:
 |---|---|
 | Bare repo | `~/appinator.git`, with `hooks/pre-receive` and `hooks/post-receive` from [`deploy/vazio-hooks/`](../deploy/vazio-hooks/). |
 | Checkout | `~/appinator-deploy`, the watcher's own. It is checked out detached at whatever is being judged, so nothing is ever edited there. |
-| Lock | `~/.karta-ci.lock`, shared by the hook and cron, so only one suite ever holds the test ports. |
+| Lock | `~/.karta-ci.lock`, shared by the hook and cron, so the watcher judges one commit at a time. (Ports no longer need it: every shard claims its own block, below.) |
 | Key | `~/.ssh/potyro_deploy`. It is authorized on the server as `command="/usr/bin/rrsync /var/www/karta",restrict …`, so it can rsync into the web root and do nothing else: no shell, no other path. |
 | ssh aliases | `Host karta-deploy` in `~/.ssh/config` → `e@vaz.io` (apps.vaz.io), and `Host potyro-deploy` → `deploy@65.109.228.5` (potyro.app, web root `/srv/potyro/site`), each with its own key locked by `rrsync` to its web root. |
 | cron | `*/5 * * * * cd ~/appinator-deploy && PATH=$HOME/.npm-global/bin:/usr/bin:/bin POTYRO_DEPLOY_TARGET="karta-deploy:,potyro-deploy:" flock -n ~/.karta-ci.lock node scripts/ci-watch.mjs >> ~/ci-watch.log 2>&1` |
+
+### The browser suite runs as parallel shards
+
+The browser suite is ~93% of a run. `ci:local all` (and `ci:local e2e` on its own) runs its shards
+**at once** — `CI_LOCAL_SHARDS`, default 8 — each still one Playwright worker, each recorded as its
+own step (`e2e-<n>.ok` / `.fail` / `.log` under `.ci-local/<sha>/`), so resuming, `status --post` and
+the watcher work as before. `CI_LOCAL_E2E=sequential` runs them one after another, the old way.
+
+What makes that safe is that the shards share **nothing**:
+
+- **Ports.** Every port the suite must know in advance is in `e2e/ports.ts`: the trusted, sandbox,
+  prod and QuickJS dev servers, the sync relay, relay-reconnect's own relay and the port nothing
+  listens on. Unset, `POTYRO_E2E_PORT_BASE` leaves them where they always were (4188, 4189, 4190,
+  4191, 4201, 4321, 4299) — `pnpm e2e` and `pnpm dev` are unchanged. Set, the suite takes ten
+  consecutive ports from that base, and the dev servers default their relay to the block's
+  (`VITE_POTYRO_DEV_RELAY`, read in development only). Ports a spec needs only for itself — echo
+  servers, the rooms relay, the realm's probe — come from the OS (`freePort()`).
+- **Browser storage.** A port is part of an origin, so each block has its own OPFS, localStorage
+  and IndexedDB. Within one origin the specs DO share state — the reason for one worker per shard,
+  which `playwright.config.ts` explains.
+- **Claims.** Each shard claims a block in 20000–32000 (below Linux's ephemeral range, where
+  `freePort()` lands) with a lockfile in `/tmp/potyro-e2e-ports/<base>.lock` naming its process,
+  bind-tests all ten ports, and releases it when it ends. A claim whose process is dead is taken
+  over. Two whole runs on one machine — the gate and somebody's `ci:local` in another checkout —
+  therefore take different blocks, and neither touches the default ports a developer's `pnpm dev`
+  or `pnpm e2e` holds.
+- **Files.** Each shard has its own Playwright output (`test-results/shard-<n>`), its own Vite
+  dependency cache (`node_modules/.vite-e2e/shard-<n>`), and its own build of the rooms relay on a
+  Node without type stripping.
+
+Files are dealt to shards by their **measured duration**, longest first into the lightest shard,
+so the shards end together. Every shard's Playwright JSON report updates
+`.ci-local/e2e-timings.json` (per checkout, kept across commits), read over the committed seed
+`e2e/timings.json` (measured on vazio; refresh it by copying a checkout's file over it when the
+suite has changed a lot). A file never timed counts as the median, and with no timings at all the
+files are dealt by index. The deal is written to
+`.ci-local/<sha>/e2e-plan.json` the first time and reused, so a resumed or re-run shard runs exactly
+the files it ran before.
 
 The hook and the crontab installed on vazio before the rename still say `KARTA_DEPLOY_TARGET`;
 `ci-local.mjs` reads either name, so they keep working until they are reinstalled from `deploy/`.

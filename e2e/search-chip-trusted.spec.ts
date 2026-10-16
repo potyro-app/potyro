@@ -18,9 +18,9 @@ test("typing in an app's search chip narrows the list, and clearing it brings ev
   await page.getByRole("button", { name: "What can I cook?" }).first().click();
 
   const rows = page.locator(".k-list-row");
-  await expect(rows.first()).toBeVisible();
+  // Polled: the rows render after the title does, and a bare count() read 0 under load.
+  await expect.poll(() => rows.count()).toBeGreaterThan(1);
   const all = await rows.count();
-  expect(all).toBeGreaterThan(1);
 
   const search = page.getByRole("searchbox", { name: "Search" });
   await expect(search).toBeVisible();
