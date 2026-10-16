@@ -1314,6 +1314,13 @@ msgstr "Tutti i dettagli e le fonti"
 msgid "All done."
 msgstr "Tutto fatto."
 
+#. On an app's home: a list of every page it has
+#. On an app's home: a list of every page it has
+#: ../shell/src/App.tsx
+#: ../shell/src/App.tsx
+msgid "All pages"
+msgstr "Tutte le pagine"
+
 #. Button: let a shared app open a live connection
 #. Button: let a shared app open a live connection
 #. Button: let a shared app use AI
