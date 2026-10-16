@@ -41,7 +41,7 @@ const ALLOWED: readonly Allowed[] = [
   // The browser realm's CSP asks for CSP3's `webrtc 'block'` on purpose (host/src/realm/protocol.ts):
   // no engine honours it yet, the frame deletes the WebRTC constructors anyway, and the directive is
   // there for the engine that one day does. Chromium says it does not know it, once per realm frame.
-  { pattern: /^Unrecognized Content-Security-Policy directive 'webrtc'\.$/, why: "a CSP3 directive kept for the engines that will honour it" },
+  { pattern: /^Unrecognized Content-Security-Policy directive 'webrtc'\.?\s*$/, why: "a CSP3 directive kept for the engines that will honour it" },
 ];
 
 /**
@@ -96,7 +96,10 @@ export const test = base.extend<GuardFixtures & GuardOptions>({
         watched.add(page);
         sparedSealedFrames(page);
         page.on("console", (m) => {
-          if (m.type() === "error") seen.push(m.text());
+          // Full Chromium (`channel: "chromium"`, which the sealed-view specs use for out-of-process
+          // frames) asks for /favicon.ico by itself, and the dev server has none: the browser's own
+          // request, not the page's.
+          if (m.type() === "error" && !/\/favicon\.ico$/.test(m.location().url)) seen.push(m.text());
         });
         page.on("pageerror", (e) => seen.push(`${e.name}: ${e.message}`));
       };

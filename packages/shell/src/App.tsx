@@ -190,9 +190,14 @@ interface AppProps {
   onPromote?: () => void;
   /** Opened from a link to one of its pages (docs/24 §11): which page, and the params the link carried — checked here against the page. */
   arrival?: Arrival;
+  /**
+   * Answers a screen's "Run it as mine…" instead of the trust dialog: a demo link, where nothing is
+   * installed to promote, offers "Keep this app" first (#267).
+   */
+  onTrustRequest?: () => void;
 }
 
-export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, onData, generator, picker, questions, navHost, lock, onPromote, arrival }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, onData, generator, picker, questions, navHost, lock, onPromote, arrival, onTrustRequest }: AppProps) {
   const { t } = useLingui();
   const def = runtime.definition;
   // The saved name (Rename) as it is; one still matching the source follows it, in the person's language.
@@ -980,13 +985,14 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // A sealed custom screen's "Run it as mine…" asks for the same dialog (views never decide trust).
   useEffect(() => {
     // Not while the Studio is open over this app: its preview has its own dialog, and one tap must
-    // not open two.
+    // not open two. Where nothing is installed to promote (a demo link), the host answers instead.
     const open = (): void => {
-      if (!genOpenRef.current) setTrustPrompt(true);
+      if (onTrustRequest) onTrustRequest();
+      else if (!genOpenRef.current) setTrustPrompt(true);
     };
     globalThis.addEventListener(TRUST_REQUEST, open);
     return () => globalThis.removeEventListener(TRUST_REQUEST, open);
-  }, []);
+  }, [onTrustRequest]);
   const chromeTrust: ChromeTool | undefined = canEdit
     ? {
         key: "trust",
