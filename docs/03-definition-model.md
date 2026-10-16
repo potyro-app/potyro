@@ -343,6 +343,37 @@ pages: [
 A record page shows only the fields that have a value; the form is where the rest is filled in.
 Everything here is data, so a shared app looks the same in the sealed box.
 
+### Records that belong to a record, rows that lead somewhere, a list that remembers
+
+```ts
+// A plant's page: its care log as a timeline, and how much water it got per week as a chart.
+{ type: "detail", entity: "plant", param: "id", sections: [
+  { title: "Care log", related: { entity: "care", via: "plant", view: "timeline", date: "when" } },
+  { title: "Water", related: { entity: "care", via: "plant", view: "chart", date: "when", value: "ml", by: "week" } },
+] }
+
+// An aggregate row that opens its record and offers its action.
+rows: (plants) => plants.filter(due).map((p) => ({ label: p.name, value: "today",
+  record: { entity: "plant", id: p.id }, action: { entity: "plant", id: p.id, key: "water" } }))
+
+// A checklist that offers earlier items, keeps an item's aisle, and guesses the rest from the words.
+{ type: "checklist", entity: "item", done: "bought", group: "aisle", icon: "emoji", layout: "tiles",
+  quickAdd: { remember: ["aisle"], defaults: (text) => (/milk|cheese/i.test(text) ? { aisle: "dairy" } : {}) } }
+
+// A record's own glyph: the lead of its row, the pin on the map.
+display: { primary: "name", icon: (p) => (p.kind === "cactus" ? "🌵" : "🌿") }
+```
+
+| option | where | what it does |
+| --- | --- | --- |
+| `related: { entity, via, view?, display?, date?, value?, by?, limit?, onOpen? }` | a detail `sections` entry (its `fields` become optional) | the records of `entity` whose relation `via` points at this one, newest first: a `list` (default), a `timeline`, or a `chart` that sums `value` (or counts) per `day`, `week` (default) or `month`. Its Add makes one already pointing here |
+| `record: { entity, id }`, `open: { page, params? }` | an aggregate row | tapping the row opens that record's page, or that page |
+| `action: { entity, id, key, label? }` | an aggregate row | a button on the row that runs the action on that record |
+| `quickAdd: { suggest?, remember?, defaults? }` | checklist | `suggest` (default on): earlier items offered as you type, and a ticked one typed again comes back rather than twice; `remember`: fields copied from the last item with the same words; `defaults: (text, ctx) => ({ … })`: the rest, worked out from the words |
+| `icon` | checklist | a glyph per item (a binding) |
+| `layout: "tiles"` | checklist | items as a grid of big tiles to tap |
+| `display.icon` | list, gallery, map | a glyph per record (a binding): its row's lead, its map pin |
+
 ### Built-in view types (conveniences)
 
 `list · table · detail · gallery · calendar · map · steps`. Their bindings (`date` for
