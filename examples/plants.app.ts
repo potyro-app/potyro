@@ -607,7 +607,7 @@ export default defineApp({
           },
           {
             title: { en: "About", "pt-BR": "Sobre", de: "Info", es: "Información", pl: "Informacje", it: "Info" },
-            fields: ["species", "labels", "tip", "lastFertilized", "feedText", "wiki", "active"],
+            fields: ["species", "labels", "needsDirectSun", "tip", "lastFertilized", "feedText", "wiki", "active"],
             collapsible: true,
           },
         ],
