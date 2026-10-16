@@ -6715,6 +6715,213 @@ body:has(.k-tabbar) .k-toasts {
   color: var(--warn);
 }
 
+/* The microphone (docs/29). A round button beside send; listening, it turns into a red stop with a
+   ring that breathes, the box takes the same colour, and a strip above says so — with where the
+   words are made, so "leaves your device" is never small print. */
+.k-composer {
+  --voice: oklch(55% 0.19 27);
+  --voice-tint: oklch(55% 0.19 27 / 0.14);
+  --voice-ink: oklch(99% 0 0);
+}
+.k-voice-btn {
+  position: relative;
+  flex: none;
+  width: 2.6rem;
+  height: 2.6rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  color: var(--ink-soft);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.k-voice-btn:hover:not(:disabled),
+.k-voice-btn:focus-visible {
+  color: var(--ink);
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
+}
+.k-voice-btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.k-voice-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.k-voice-btn > svg {
+  position: relative;
+}
+.k-voice-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--voice);
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+}
+.k-voice-btn[data-phase="starting"],
+.k-voice-btn[data-phase="listening"] {
+  background: var(--voice);
+  color: var(--voice-ink);
+}
+.k-voice-btn[data-phase="listening"] .k-voice-ring {
+  animation: k-voice-breathe 1.6s var(--ease) infinite;
+}
+@keyframes k-voice-breathe {
+  0% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.75);
+  }
+}
+.k-composer-box[data-listening] {
+  border-color: var(--voice);
+  box-shadow: 0 0 0 3px var(--voice-tint), var(--shadow);
+}
+.k-voice-note {
+  margin: var(--space-2) var(--space-4) 0;
+  font-size: 0.8rem;
+}
+.k-voice-strip {
+  width: min(44rem, 100%);
+  margin: 0 auto var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.5rem 0.75rem 0.5rem 0.9rem;
+  border-radius: 1rem;
+  background: var(--voice);
+  color: var(--voice-ink);
+  font-size: 0.86rem;
+  font-weight: 600;
+  box-sizing: border-box;
+  box-shadow: var(--shadow);
+  animation: k-voice-in var(--dur-fast) var(--ease);
+}
+@keyframes k-voice-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.k-voice-strip[data-kind="working"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.k-voice-strip[data-kind="problem"] {
+  border-radius: var(--radius-sm);
+  background: var(--danger-tint);
+  color: var(--danger);
+  font-weight: 500;
+  box-shadow: none;
+  border: 1px solid var(--danger-line);
+}
+.k-voice-strip-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  line-height: 1.3;
+}
+.k-voice-where {
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.88;
+}
+.k-voice-where[data-leaves]::before {
+  content: "↗ ";
+}
+.k-voice-strip-x {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0.1rem 0.35rem;
+}
+.k-voice-bars {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 1rem;
+}
+.k-voice-bars > i {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: currentColor;
+  transform-origin: center;
+  animation: k-voice-bar 0.9s var(--ease) infinite alternate;
+}
+.k-voice-bars > i:nth-child(2) {
+  animation-delay: -0.3s;
+}
+.k-voice-bars > i:nth-child(3) {
+  animation-delay: -0.6s;
+}
+.k-voice-bars > i:nth-child(4) {
+  animation-delay: -0.15s;
+}
+@keyframes k-voice-bar {
+  from {
+    transform: scaleY(0.25);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.k-voice-spinner {
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: k-voice-spin 0.8s linear infinite;
+}
+@keyframes k-voice-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .k-composer {
+    --voice: oklch(64% 0.19 27);
+    --voice-tint: oklch(64% 0.19 27 / 0.22);
+    --voice-ink: oklch(16% 0.02 27);
+  }
+}
+:root[data-theme="dark"] .k-composer {
+  --voice: oklch(64% 0.19 27);
+  --voice-tint: oklch(64% 0.19 27 / 0.22);
+  --voice-ink: oklch(16% 0.02 27);
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-voice-btn[data-phase="listening"] .k-voice-ring,
+  .k-voice-bars > i,
+  .k-voice-strip {
+    animation: none;
+  }
+  .k-voice-btn[data-phase="listening"] .k-voice-ring {
+    opacity: 0.3;
+    transform: scale(1.25);
+  }
+}
+
 /* The opened app. A screen of its own: anything fixed inside the app (its tab bar, a full-screen
    page, a form sheet portalled here) is placed against THIS box, not the window — layout
    containment makes it their containing block. */
@@ -11968,6 +12175,53 @@ body:has(.k-tabbar) .k-toasts {
   .k-clip-dot {
     animation: none;
   }
+}
+
+/* Make it mine (docs/24 §6). The card's sample-records choice reads like its trust choice: a box,
+   a bold line, a quiet why. */
+.k-add-app-samples {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2);
+  align-items: start;
+  cursor: pointer;
+}
+.k-add-app-samples > span {
+  display: grid;
+}
+.k-add-app-samples .k-muted {
+  font-size: 0.85rem;
+}
+/* The gallery is a link among the card's sources, and looks like one of them. */
+.k-add-app-gallery {
+  text-decoration: none;
+}
+/* The tile's details: who made it, or what it is a remix of — in the maker's voice, so italic. */
+.k-tile-menu-credit {
+  margin-top: -0.25rem;
+  font-style: italic;
+}
+/* The Studio's greeting on a remix: the credit as a small eyebrow, the question in the display face,
+   and the suggestions as the same chips a new app starts from — the one thing to do next. */
+.k-studio .k-remix-hello {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+.k-remix-credit {
+  margin: 0;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-style: italic;
+}
+.k-studio .k-thread-theirs > .k-remix-ask {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  line-height: 1.3;
+  color: var(--ink);
 }
 /* tokens-only: end — share links */
 

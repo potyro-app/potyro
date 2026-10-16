@@ -150,5 +150,14 @@ local model may work with **no extra native code**.
   protocol itself. To try it on a phone: a trusted app with
   `await ctx.caps.network!.socket("ws://<your Home Assistant>:8123/api/websocket")` should get
   `{"type":"auth_required"…}` as its first message.
+- **Voice input** (docs/29) is Potyro's own `PotyroSpeech` plugin
+  (`android-templates/SpeechPlugin.java`, registered by `patch-android.mjs`): the on-device recognizer
+  where Android 12+ has the language (`createOnDeviceSpeechRecognizer`), else the system recognizer
+  with `EXTRA_PREFER_OFFLINE`. `patch-manifest.mjs` declares `RECORD_AUDIO` — for voice only, asked at
+  runtime the first time something listens; the live camera still asks for video alone — and a
+  `<queries>` entry for `android.speech.RecognitionService` (without it Android 11+ reports no
+  recognizer). It compiled in `assembleDebug` on 2026-10-16; to try it on a phone, open the Studio,
+  tap the microphone and speak: the strip should say "On this device" where the language model is
+  installed (Settings → System → Languages → On-device speech recognition).
 - `CapacitorCapabilities` is unit-tested against fake plugins (`packages/native/test`), so the adapter
   logic is verified without a device — the device run validates the *native* half.

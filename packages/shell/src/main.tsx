@@ -356,7 +356,7 @@ async function bootDemo(root: HTMLElement, link: DemoLink): Promise<void> {
   try {
     const session = await openDemo(pkg, caps);
     shareEvent("demo-opened");
-    mount(root, <DemoScreen session={session} pkg={pkg} />);
+    mount(root, <DemoScreen session={session} pkg={pkg} startRemix={link.remix} />);
   } catch (e) {
     const why =
       e instanceof DemoDeclined
@@ -749,6 +749,8 @@ async function show(r: Route, root: HTMLElement, caps: Capabilities): Promise<vo
   caps.liveCamera?.stopAll("closed");
   // And every live connection it opened (docs/28): the app hears `why: "left"`.
   caps.sockets?.closeAll("left");
+  // And the microphone (docs/29): a listening ends, and a recording still being made is not sent.
+  caps.speech?.stopAll("left");
   const seq = ++routeSeq;
   const isCurrent = (): boolean => seq === routeSeq;
   const prev = current;
