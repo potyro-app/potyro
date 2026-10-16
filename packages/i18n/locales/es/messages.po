@@ -287,6 +287,18 @@ msgstr "{0, plural, one {Mostrar más (queda #)} other {Mostrar más (quedan #)}
 msgid "{0, plural, one {The new version no longer comes with {removedFiles}, so it is gone.} other {The new version no longer comes with {removedFiles}, so they are gone.}}"
 msgstr "{0, plural, one {La nueva versión ya no incluye {removedFiles}, así que ya no está.} other {La nueva versión ya no incluye {removedFiles}, así que ya no están.}}"
 
+#. milliseconds
+#. milliseconds
+#. milliseconds
+#. placeholder {0}: result.frameSpinMaxGapMs
+#. placeholder {0}: result.shellSpinMaxGapMs
+#. placeholder {0}: result.workerSpinMaxGapMs
+#: ../shell/src/realm-probe-screen.tsx
+#: ../shell/src/realm-probe-screen.tsx
+#: ../shell/src/realm-probe-screen.tsx
+msgid "{0} ms"
+msgstr "{0} ms"
+
 #. A Studio card for a version that was made but not saved
 #. placeholder {0}: held.name
 #: ../shell/src/studio-thread-view.tsx
@@ -885,6 +897,14 @@ msgstr "📍 Usar mi ubicación"
 #: ../shell/src/share-sheet.tsx
 msgid "A 15-second clip"
 msgstr "Un clip de 15 segundos"
+
+#: ../shell/src/realm-probe-screen.tsx
+msgid "A busy screen does not freeze Potyro on this device: screens run apart."
+msgstr "Una pantalla ocupada no congela Potyro en este dispositivo: las pantallas se ejecutan aparte."
+
+#: ../shell/src/realm-probe-screen.tsx
+msgid "A busy screen freezes Potyro on this device: screens share its thread."
+msgstr "Una pantalla ocupada congela Potyro en este dispositivo: las pantallas comparten su hilo."
 
 #: ../shell/src/studio-engine.ts
 msgid "A change passed the check."
@@ -1935,6 +1955,7 @@ msgstr "Borrar {filter}"
 #: ../shell/src/launcher.tsx
 #: ../shell/src/look-panel.tsx
 #: ../shell/src/people-panel.tsx
+#: ../shell/src/realm-probe-screen.tsx
 #: ../shell/src/studio-preview.tsx
 #: ../shell/src/trust-dialog.tsx
 #: ../views/src/map.tsx
@@ -2039,6 +2060,7 @@ msgid "Continue “{0}”"
 msgstr "Continuar “{0}”"
 
 #: ../shell/src/dialog.tsx
+#: ../shell/src/realm-probe-screen.tsx
 msgid "Copied"
 msgstr "Copiado"
 
@@ -2059,6 +2081,10 @@ msgstr "Copiar"
 #: ../shell/src/dialog.tsx
 msgid "Copy link"
 msgstr "Copiar enlace"
+
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Copy results"
+msgstr "Copiar resultados"
 
 #: ../shell/src/missing-features.ts
 msgid "copying data"
@@ -3088,6 +3114,10 @@ msgstr "Datos importados en {name}."
 msgid "In English: {0}"
 msgstr "En inglés: {0}"
 
+#: ../shell/src/trust-dialog.tsx
+msgid "In the sealed box it runs and draws its own screens, but reaches your data and this device only through Potyro. Letting it run as yours takes it out of the box, with the same reach as the apps you made. Only do this if you made it, or you know and trust whoever did. <0>{name}</0> asks for:"
+msgstr "En la caja sellada se ejecuta y dibuja sus propias pantallas, pero solo llega a tus datos y a este dispositivo a través de Potyro. Dejar que se ejecute como tuya la saca de la caja, con el mismo alcance que las apps que hiciste. Hazlo solo si la hiciste tú, o si conoces y confías en quien la hizo. <0>{name}</0> pide:"
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "In the sealed box it will not open: tick “I wrote this” below to run it as yours."
 msgstr "En la caja sellada no se abrirá: marca “La escribí yo” abajo para ejecutarla como tuya."
@@ -3179,6 +3209,10 @@ msgstr "No se pudo abrir."
 msgid "It couldn’t make this fit"
 msgstr "No consiguió encajarlo"
 
+#: ../shell/src/add-app-dialog.tsx
+msgid "It draws its own screens, inside the sealed box: from there they reach your data and this device only through Potyro, and only what you allow."
+msgstr "Dibuja sus propias pantallas, dentro de la caja sellada: desde ahí solo llegan a tus datos y a este dispositivo a través de Potyro, y solo a lo que permitas."
+
 #: ../shell/src/files-panel.tsx
 msgid "It goes from {appName} for good. Anything in the app that uses it will no longer find it."
 msgstr "Se va de {appName} para siempre. Lo que en la app lo use ya no lo encontrará."
@@ -3202,10 +3236,6 @@ msgstr "Ya está aquí"
 #: ../shell/src/data-table.tsx
 msgid "It is removed from the app too, and can’t be brought back."
 msgstr "También se quita de la app y no se puede recuperar."
-
-#: ../shell/src/trust-dialog.tsx
-msgid "It leaves the sealed box and runs like the apps you made, with the same reach. Only do this if you made it, or you know and trust whoever did. <0>{name}</0> asks for:"
-msgstr "Sale de la caja sellada y se ejecuta como las apps que hiciste tú, con el mismo alcance. Hazlo solo si la hiciste tú, o si conoces y confías en quien la hizo. <0>{name}</0> pide:"
 
 #: ../shell/src/main.tsx
 msgid "It needs a library from the internet to open, and you said not now."
@@ -3646,6 +3676,7 @@ msgstr "Como este dispositivo ({deviceName})"
 msgid "May be out of date now."
 msgstr "Puede que ya no esté al día."
 
+#: ../shell/src/realm-probe-screen.tsx
 #: ../shell/src/storage-report.tsx
 msgid "Measuring…"
 msgstr "Midiendo…"
@@ -4518,6 +4549,10 @@ msgstr "Oro Potyro"
 msgid "Potyro is open in another tab"
 msgstr "Potyro está abierto en otra pestaña"
 
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Potyro itself busy (calibration)"
+msgstr "Potyro mismo ocupado (calibración)"
+
 #: ../shell/src/missing-features.ts
 msgid "precise timing"
 msgstr "medición precisa del tiempo"
@@ -4816,6 +4851,10 @@ msgstr "restaurada"
 msgid "Restoring…"
 msgstr "Restaurando…"
 
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Results"
+msgstr "Resultados"
+
 #. Trust menu hint: look at how an app that runs as yours runs
 #: ../shell/src/App.tsx
 msgid "review"
@@ -4853,6 +4892,10 @@ msgstr "ejecutar {runsN}"
 msgid "Run ▶"
 msgstr "Ejecutar ▶"
 
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Run again"
+msgstr "Volver a ejecutar"
+
 #. Trust menu hint: let a sealed app run as yours
 #: ../shell/src/App.tsx
 msgid "run as yours"
@@ -4865,6 +4908,10 @@ msgstr "Ejecutarla como mía…"
 #: ../shell/src/add-app-dialog.tsx
 msgid "Run it as my own app"
 msgstr "Ejecutarla como mi propia app"
+
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Run the check"
+msgstr "Hacer la comprobación"
 
 #: ../shell/src/history.tsx
 msgid "running now"
@@ -4968,6 +5015,19 @@ msgstr "Dilo como se lo dirías a una persona: “añade una valoración”, “
 #: ../shell/src/App.tsx
 msgid "sealed"
 msgstr "sellada"
+
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Sealed logic busy"
+msgstr "Lógica sellada ocupada"
+
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Sealed screen busy"
+msgstr "Pantalla sellada ocupada"
+
+#. The device check for sealed screens (a diagnostic the owner runs on a phone)
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Sealed screens on this device"
+msgstr "Pantallas selladas en este dispositivo"
 
 #. The search box at the top of a list to pick from
 #: ../views/src/pick-list.tsx
@@ -5879,6 +5939,10 @@ msgstr "Los datos de esta app están abiertos en otra pestaña o ventana de Poty
 msgid "this app's pages aren't a plain array"
 msgstr "las páginas de esta app no son un array simple"
 
+#: ../views/src/custom.tsx
+msgid "This app’s screen stopped responding, so Potyro is showing its plain version."
+msgstr "La pantalla de esta app dejó de responder, así que Potyro muestra su versión sencilla."
+
 #: ../views/src/board.tsx
 msgid "This board needs an enum field for its columns."
 msgstr "Este tablero necesita un campo de opciones para sus columnas."
@@ -5978,6 +6042,10 @@ msgstr "Este enlace está dañado: no se pudo leer la app que contiene. Pide uno
 #: ../shell/src/demo.tsx
 msgid "This link no longer works: whoever shared it took it down, or it was never made."
 msgstr "Este enlace ya no funciona: quien lo compartió lo retiró, o nunca llegó a existir."
+
+#: ../shell/src/realm-probe-screen.tsx
+msgid "This makes a sealed screen busy for 3 seconds, three ways, and measures whether Potyro froze meanwhile. The counter stops while it is frozen."
+msgstr "Esto mantiene ocupada una pantalla sellada durante 3 segundos, de tres maneras, y mide si Potyro se congeló mientras tanto. El contador se detiene mientras está congelado."
 
 #: ../views/src/timeline.tsx
 msgid "This month"
@@ -6128,6 +6196,10 @@ msgstr "Pruébala en tu navegador, sin cuenta"
 #: ../shell/src/demo-share.ts
 msgid "Try it in your browser: no account, nothing to install."
 msgstr "Pruébala en tu navegador: sin cuenta, nada que instalar."
+
+#: ../views/src/custom.tsx
+msgid "Try its screen again"
+msgstr "Probar su pantalla otra vez"
 
 #: ../shell/src/platform-request-card.tsx
 msgid "Try sending again"

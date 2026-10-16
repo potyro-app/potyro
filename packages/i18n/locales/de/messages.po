@@ -287,6 +287,18 @@ msgstr "{0, plural, one {Mehr zeigen (noch #)} other {Mehr zeigen (noch #)}}"
 msgid "{0, plural, one {The new version no longer comes with {removedFiles}, so it is gone.} other {The new version no longer comes with {removedFiles}, so they are gone.}}"
 msgstr "{0, plural, one {Die neue Version bringt {removedFiles} nicht mehr mit, daher ist es weg.} other {Die neue Version bringt {removedFiles} nicht mehr mit, daher sind sie weg.}}"
 
+#. milliseconds
+#. milliseconds
+#. milliseconds
+#. placeholder {0}: result.frameSpinMaxGapMs
+#. placeholder {0}: result.shellSpinMaxGapMs
+#. placeholder {0}: result.workerSpinMaxGapMs
+#: ../shell/src/realm-probe-screen.tsx
+#: ../shell/src/realm-probe-screen.tsx
+#: ../shell/src/realm-probe-screen.tsx
+msgid "{0} ms"
+msgstr "{0} ms"
+
 #. A Studio card for a version that was made but not saved
 #. placeholder {0}: held.name
 #: ../shell/src/studio-thread-view.tsx
@@ -885,6 +897,14 @@ msgstr "📍 Meinen Standort nutzen"
 #: ../shell/src/share-sheet.tsx
 msgid "A 15-second clip"
 msgstr "Ein 15-Sekunden-Clip"
+
+#: ../shell/src/realm-probe-screen.tsx
+msgid "A busy screen does not freeze Potyro on this device: screens run apart."
+msgstr "Ein beschäftigter Bildschirm friert Potyro auf diesem Gerät nicht ein: Bildschirme laufen getrennt."
+
+#: ../shell/src/realm-probe-screen.tsx
+msgid "A busy screen freezes Potyro on this device: screens share its thread."
+msgstr "Ein beschäftigter Bildschirm friert Potyro auf diesem Gerät ein: Bildschirme teilen sich seinen Thread."
 
 #: ../shell/src/studio-engine.ts
 msgid "A change passed the check."
@@ -1935,6 +1955,7 @@ msgstr "{filter} leeren"
 #: ../shell/src/launcher.tsx
 #: ../shell/src/look-panel.tsx
 #: ../shell/src/people-panel.tsx
+#: ../shell/src/realm-probe-screen.tsx
 #: ../shell/src/studio-preview.tsx
 #: ../shell/src/trust-dialog.tsx
 #: ../views/src/map.tsx
@@ -2039,6 +2060,7 @@ msgid "Continue “{0}”"
 msgstr "„{0}“ fortsetzen"
 
 #: ../shell/src/dialog.tsx
+#: ../shell/src/realm-probe-screen.tsx
 msgid "Copied"
 msgstr "Kopiert"
 
@@ -2059,6 +2081,10 @@ msgstr "Kopieren"
 #: ../shell/src/dialog.tsx
 msgid "Copy link"
 msgstr "Link kopieren"
+
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Copy results"
+msgstr "Ergebnisse kopieren"
 
 #: ../shell/src/missing-features.ts
 msgid "copying data"
@@ -3088,6 +3114,10 @@ msgstr "Daten in {name} importiert."
 msgid "In English: {0}"
 msgstr "Auf Englisch: {0}"
 
+#: ../shell/src/trust-dialog.tsx
+msgid "In the sealed box it runs and draws its own screens, but reaches your data and this device only through Potyro. Letting it run as yours takes it out of the box, with the same reach as the apps you made. Only do this if you made it, or you know and trust whoever did. <0>{name}</0> asks for:"
+msgstr "In der versiegelten Box läuft die App und zeichnet ihre eigenen Bildschirme, erreicht deine Daten und dieses Gerät aber nur über Potyro. Lässt du sie als deine eigene laufen, verlässt sie die Box und hat dieselbe Reichweite wie die Apps, die du gemacht hast. Tu das nur, wenn du sie gemacht hast oder wer sie gemacht hat, kennst und ihm vertraust. <0>{name}</0> möchte:"
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "In the sealed box it will not open: tick “I wrote this” below to run it as yours."
 msgstr "In der versiegelten Box öffnet sie sich nicht: Hak unten „Ich habe sie geschrieben“ an, damit sie als deine eigene läuft."
@@ -3179,6 +3209,10 @@ msgstr "Sie konnte nicht geöffnet werden."
 msgid "It couldn’t make this fit"
 msgstr "Es hat nicht gepasst"
 
+#: ../shell/src/add-app-dialog.tsx
+msgid "It draws its own screens, inside the sealed box: from there they reach your data and this device only through Potyro, and only what you allow."
+msgstr "Sie zeichnet ihre eigenen Bildschirme, in der versiegelten Box: Von dort erreichen sie deine Daten und dieses Gerät nur über Potyro, und nur, was du erlaubst."
+
 #: ../shell/src/files-panel.tsx
 msgid "It goes from {appName} for good. Anything in the app that uses it will no longer find it."
 msgstr "Sie verschwindet endgültig aus {appName}. Was in der App sie nutzt, findet sie dann nicht mehr."
@@ -3202,10 +3236,6 @@ msgstr "Sie ist schon da"
 #: ../shell/src/data-table.tsx
 msgid "It is removed from the app too, and can’t be brought back."
 msgstr "Er wird auch aus der App entfernt und lässt sich nicht zurückholen."
-
-#: ../shell/src/trust-dialog.tsx
-msgid "It leaves the sealed box and runs like the apps you made, with the same reach. Only do this if you made it, or you know and trust whoever did. <0>{name}</0> asks for:"
-msgstr "Sie verlässt die versiegelte Box und läuft wie die Apps, die du gemacht hast, mit derselben Reichweite. Tu das nur, wenn du sie gemacht hast oder wenn du die Person kennst und ihr vertraust. <0>{name}</0> möchte:"
 
 #: ../shell/src/main.tsx
 msgid "It needs a library from the internet to open, and you said not now."
@@ -3646,6 +3676,7 @@ msgstr "Wie dieses Gerät ({deviceName})"
 msgid "May be out of date now."
 msgstr "Ist jetzt vielleicht veraltet."
 
+#: ../shell/src/realm-probe-screen.tsx
 #: ../shell/src/storage-report.tsx
 msgid "Measuring…"
 msgstr "Wird gemessen…"
@@ -4518,6 +4549,10 @@ msgstr "Potyro-Gold"
 msgid "Potyro is open in another tab"
 msgstr "Potyro ist in einem anderen Tab geöffnet"
 
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Potyro itself busy (calibration)"
+msgstr "Potyro selbst beschäftigt (Kalibrierung)"
+
 #: ../shell/src/missing-features.ts
 msgid "precise timing"
 msgstr "präzises Timing"
@@ -4816,6 +4851,10 @@ msgstr "wiederhergestellt"
 msgid "Restoring…"
 msgstr "Wird wiederhergestellt…"
 
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Results"
+msgstr "Ergebnisse"
+
 #. Trust menu hint: look at how an app that runs as yours runs
 #: ../shell/src/App.tsx
 msgid "review"
@@ -4853,6 +4892,10 @@ msgstr "{runsN} ausführen"
 msgid "Run ▶"
 msgstr "Ausführen ▶"
 
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Run again"
+msgstr "Noch einmal"
+
 #. Trust menu hint: let a sealed app run as yours
 #: ../shell/src/App.tsx
 msgid "run as yours"
@@ -4865,6 +4908,10 @@ msgstr "Als meine eigene ausführen…"
 #: ../shell/src/add-app-dialog.tsx
 msgid "Run it as my own app"
 msgstr "Als meine eigene App ausführen"
+
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Run the check"
+msgstr "Prüfung starten"
 
 #: ../shell/src/history.tsx
 msgid "running now"
@@ -4968,6 +5015,19 @@ msgstr "Sag es so, wie du es einem Menschen sagen würdest — „füge eine Bew
 #: ../shell/src/App.tsx
 msgid "sealed"
 msgstr "versiegelt"
+
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Sealed logic busy"
+msgstr "Versiegelte Logik beschäftigt"
+
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Sealed screen busy"
+msgstr "Versiegelter Bildschirm beschäftigt"
+
+#. The device check for sealed screens (a diagnostic the owner runs on a phone)
+#: ../shell/src/realm-probe-screen.tsx
+msgid "Sealed screens on this device"
+msgstr "Versiegelte Bildschirme auf diesem Gerät"
 
 #. The search box at the top of a list to pick from
 #: ../views/src/pick-list.tsx
@@ -5879,6 +5939,10 @@ msgstr "Die Daten dieser App sind in einem anderen Potyro-Tab oder -Fenster geö
 msgid "this app's pages aren't a plain array"
 msgstr "die Seiten dieser App sind kein einfaches Array"
 
+#: ../views/src/custom.tsx
+msgid "This app’s screen stopped responding, so Potyro is showing its plain version."
+msgstr "Der Bildschirm dieser App reagiert nicht mehr, deshalb zeigt Potyro ihre einfache Version."
+
 #: ../views/src/board.tsx
 msgid "This board needs an enum field for its columns."
 msgstr "Dieses Board braucht ein Auswahlfeld für seine Spalten."
@@ -5978,6 +6042,10 @@ msgstr "Dieser Link ist beschädigt: Die App darin konnte nicht gelesen werden. 
 #: ../shell/src/demo.tsx
 msgid "This link no longer works: whoever shared it took it down, or it was never made."
 msgstr "Dieser Link funktioniert nicht mehr: Wer ihn geteilt hat, hat ihn zurückgezogen, oder es gab ihn nie."
+
+#: ../shell/src/realm-probe-screen.tsx
+msgid "This makes a sealed screen busy for 3 seconds, three ways, and measures whether Potyro froze meanwhile. The counter stops while it is frozen."
+msgstr "Das hält einen versiegelten Bildschirm 3 Sekunden lang beschäftigt, auf drei Arten, und misst, ob Potyro dabei eingefroren ist. Der Zähler steht still, solange es eingefroren ist."
 
 #: ../views/src/timeline.tsx
 msgid "This month"
@@ -6128,6 +6196,10 @@ msgstr "Im Browser ausprobieren — ohne Konto"
 #: ../shell/src/demo-share.ts
 msgid "Try it in your browser: no account, nothing to install."
 msgstr "Probier sie im Browser aus: kein Konto, nichts zu installieren."
+
+#: ../views/src/custom.tsx
+msgid "Try its screen again"
+msgstr "Bildschirm noch einmal versuchen"
 
 #: ../shell/src/platform-request-card.tsx
 msgid "Try sending again"
