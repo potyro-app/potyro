@@ -149,7 +149,6 @@ export function EmptyState({
 }) {
   const { t } = useLingui();
   const def = runtime.definition.entities[entity];
-  const noun = def?.label ?? humanizeKey(entity);
   return (
     <div className="k-empty-state" data-page={pageId}>
       <span className="k-empty-mark" aria-hidden>
@@ -159,8 +158,10 @@ export function EmptyState({
         {text}
       </p>
       {onCreate ? (
+        // Its own words, not the floating button's "Add: …": two buttons with one name are one too many
+        // to tell apart by ear.
         <button type="button" className="k-add k-primary-action k-empty-add" onClick={() => onCreate(entity, {})}>
-          <span aria-hidden>＋</span> {t({ message: `Add: ${noun}`, comment: "A quick action that makes a new record; noun is the app's word for it" })}
+          <span aria-hidden>＋</span> {t({ message: "Add the first one", comment: "Button on an empty page: make its first record" })}
         </button>
       ) : null}
     </div>
@@ -168,14 +169,14 @@ export function EmptyState({
 }
 
 /** Under a short list, the way to add the next one — in the list's own shape, where the eye already is. */
-function AddRow({ noun, onAdd, as = "li" }: { noun: string; onAdd: () => void; as?: "li" | "div" }) {
+function AddRow({ onAdd, as = "li" }: { onAdd: () => void; as?: "li" | "div" }) {
   const { t } = useLingui();
   const body = (
     <button type="button" className="k-add-row-btn" onClick={onAdd}>
       <span className="k-lead k-add-row-mark" aria-hidden>
         ＋
       </span>
-      <span>{t({ message: `Add: ${noun}`, comment: "A quick action that makes a new record; noun is the app's word for it" })}</span>
+      <span>{t({ message: "Add another", comment: "Under a short list: make one more record like these" })}</span>
     </button>
   );
   return as === "li" ? <li className="k-add-row">{body}</li> : <div className="k-add-row k-card-add">{body}</div>;
@@ -209,7 +210,6 @@ export function ListView(props: BuiltinViewProps) {
   const groups = useRowGroups(runtime, pageId, rows, view);
   useReportCount(loading || error ? undefined : rows.length);
   const entityDef = runtime.definition.entities[view.entity];
-  const noun = entityDef?.label ?? humanizeKey(view.entity);
 
   // Tapping a row opens its detail if the app wired one, else opens the editor — so a record is
   // always reachable to view/edit even when the generated app didn't link a detail page.
@@ -280,7 +280,7 @@ export function ListView(props: BuiltinViewProps) {
           </li>
         );
       })}
-      {offerAdd ? <AddRow noun={noun} onAdd={offerAdd} /> : null}
+      {offerAdd ? <AddRow onAdd={offerAdd} /> : null}
     </ul>
   );
   return (
@@ -352,7 +352,6 @@ export function GalleryView(props: BuiltinViewProps) {
   const groups = useRowGroups(runtime, pageId, rows, view);
   useReportCount(loading || error ? undefined : rows.length);
   const entityDef = runtime.definition.entities[view.entity];
-  const noun = entityDef?.label ?? humanizeKey(view.entity);
 
   const openCard = view.onOpen
     ? (row: Resolved) => navigate(view.onOpen!.page, mapOnOpen(view.onOpen, row))
@@ -405,7 +404,7 @@ export function GalleryView(props: BuiltinViewProps) {
           </button>
         );
       })}
-      {offerAdd ? <AddRow noun={noun} onAdd={offerAdd} as="div" /> : null}
+      {offerAdd ? <AddRow onAdd={offerAdd} as="div" /> : null}
     </div>
   );
   return <Grouped runtime={runtime} pageId={pageId} groups={groups} collapsible={view.collapsible === true} render={renderCards} />;
