@@ -749,7 +749,7 @@ export default defineApp({
         },
         {
           label: { en: "Spent together", "pt-BR": "Gasto juntos", de: "Zusammen ausgegeben", es: "Gastado juntos", pl: "Wydane razem", it: "Speso insieme" },
-          value: (rows, ctx) => money(rows.reduce((n, e) => n + minorOf(e.amount), 0), ctx),
+          value: (rows, ctx) => money(rows.filter((e) => inGroup(e, ctx)).reduce((n, e) => n + minorOf(e.amount), 0), ctx),
         },
       ],
       primaryAction: "new-expense",
@@ -977,7 +977,7 @@ export default defineApp({
         param: "expenseId",
         // The receipt, when there is one, is the picture: the thing everyone checks the lines against.
         media: "receipt",
-        facts: ["amount", "kind"],
+        facts: ["kind"],
         sections: [
           { title: { en: "Expense", "pt-BR": "Despesa", de: "Ausgabe", es: "Gasto", pl: "Wydatek", it: "Spesa" }, fields: ["amount", "paidBy", "when", "category"] },
           { title: { en: "Split", "pt-BR": "Divisão", de: "Aufteilung", es: "Reparto", pl: "Podział", it: "Ripartizione" }, fields: ["split", "between", "shares", "exact", "items", "check", "breakdown"] },
