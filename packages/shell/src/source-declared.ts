@@ -70,3 +70,10 @@ export async function declaredEntities(source: string): Promise<Record<string, D
   }
   return out;
 }
+
+/** The app's declared `id`, read without running it: which app it is when it has no line of its own (app-link.ts). */
+export async function declaredAppId(source: string): Promise<string | undefined> {
+  const t = await load();
+  const ast = t ? parseModule(t, source) : null;
+  return ast ? literalString(propValue(findDefinition(ast), "id")) : undefined;
+}
