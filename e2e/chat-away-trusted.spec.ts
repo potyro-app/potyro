@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // A message that arrives while the app is NOT RUNNING, announced when it comes back.
 //
@@ -22,9 +23,9 @@ export default defineApp({
 `;
 
 async function device(context: BrowserContext, seed = false): Promise<Page> {
+  await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   await context.addInitScript(
     ([source, s]) => {
-      localStorage.setItem("potyro:sync:relay", "ws://localhost:4201");
       if (!s || localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem(
         "potyro:user-apps",

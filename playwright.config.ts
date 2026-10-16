@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { E2E_RELAY, PORTS } from "./e2e/ports";
 
 // M1 e2e smoke (issue #15): verifies the recipes DoD in a real browser — both the TRUSTED path
 // (`pnpm dev`) and the SANDBOX path (`pnpm dev:sandbox`, same app untrusted, its logic in the browser
@@ -7,14 +8,19 @@ import { defineConfig, devices } from "@playwright/test";
 // Requires Node 20+ (Playwright constraint). In CI run under Node 20/22; locally the servers can be
 // launched by Playwright's webServer below.
 
-const TRUSTED_PORT = 4188;
-const SANDBOX_PORT = 4189;
+// Every port is from e2e/ports.ts: today's (4188, 4189, 4190, 4191, relay 4201) unless
+// `POTYRO_E2E_PORT_BASE` moves the whole suite to another block, which is how ci-local runs several
+// shards at once on one machine (docs/16 §8).
+const TRUSTED_PORT = PORTS.trusted;
+const SANDBOX_PORT = PORTS.sandbox;
 // A real `vite build` + `vite preview`, because the dev server hides deployment bugs by definition:
 // the relay default, the generator endpoint and the service worker all behave differently there.
 // KA-28 exists because a production build had no relay and nobody had ever run one.
-const PROD_PORT = 4190;
+const PROD_PORT = PORTS.prod;
 /** `pnpm dev:sandbox:quickjs`: shared apps in the QuickJS fallback, for `POTYRO_QUICKJS=1` (#272). */
-const QUICKJS_PORT = 4191;
+const QUICKJS_PORT = PORTS.quickjs;
+/** The dev servers' default relay: this block's, so a page that never names one still syncs here. */
+const DEV_ENV = { VITE_POTYRO_DEV_RELAY: E2E_RELAY };
 const shellVite = (extra: string, port: number) =>
   `pnpm --filter @potyro/shell exec vite ${extra} --port ${port} --strictPort`;
 
@@ -38,7 +44,7 @@ export default defineConfig<{ guardConsole: boolean }>({
   //
   // `fullyParallel: false` only serialises tests within a file; separate files still land on
   // separate workers, and every one of them drives the SAME origin against the SAME dev server.
-  // The durable store is SQLite over OPFS and the sync specs share one relay on 4201, so two
+  // The durable store is SQLite over OPFS and the sync specs share one relay (4201), so two
   // workers are two clients of the same state. Measured, not assumed: at the default worker count
   // `export-import-trusted.spec.ts` dies on `Boot error: Missing required OPFS APIs.` and
   // `relay-reconnect` takes its neighbours down with it; at one worker both pass. (That spec also
@@ -50,6 +56,12 @@ export default defineConfig<{ guardConsole: boolean }>({
   // the understanding that a failure from it needs confirming at one worker before it is believed.
   // A bad value is refused rather than quietly becoming `NaN` or `0` workers, either of which turns
   // a typo into a suite that does not run and does not say why.
+  //
+  // Parallelism lives one level up instead, where nothing is shared. `ci:local e2e` runs several
+  // copies of this suite at once, each on a different file list and each with its own
+  // `POTYRO_E2E_PORT_BASE` (e2e/ports.ts): its own dev servers, its own relay, and — the port being
+  // part of the origin — its own browser storage. Each copy is still one worker inside, for the
+  // reason above (docs/16 §8).
   workers: workerCount(),
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
@@ -62,21 +74,23 @@ export default defineConfig<{ guardConsole: boolean }>({
       // The sync relay. Without it the sync specs exercise a local CRDT store and nothing else —
       // two peers converging is the actual claim, and that needs a relay to converge THROUGH.
       // `--in-memory` needs no native build and a test relay has nothing worth persisting.
-      command: "pnpm jazz-run sync --port 4201 --in-memory",
+      command: `pnpm jazz-run sync --port ${PORTS.relay} --in-memory`,
       // `port`, not `url`: a websocket-only server never answers an HTTP GET, so a `url` probe
       // waits until the whole run times out. `port` just checks something is listening.
-      port: 4201,
+      port: PORTS.relay,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
       command: shellVite("", TRUSTED_PORT),
+      env: DEV_ENV,
       url: `http://localhost:${TRUSTED_PORT}`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
       command: shellVite("--mode sandbox", SANDBOX_PORT),
+      env: DEV_ENV,
       url: `http://localhost:${SANDBOX_PORT}`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
@@ -87,6 +101,7 @@ export default defineConfig<{ guardConsole: boolean }>({
       ? [
           {
             command: shellVite("--mode sandbox-quickjs", QUICKJS_PORT),
+            env: DEV_ENV,
             url: `http://localhost:${QUICKJS_PORT}`,
             reuseExistingServer: !process.env.CI,
             timeout: 120_000,
