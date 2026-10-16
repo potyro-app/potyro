@@ -7,6 +7,8 @@ import { test, expect } from "./console-guard";
 async function openNewPlant(page: import("@playwright/test").Page): Promise<import("@playwright/test").Locator> {
   await page.goto("/?user=plants");
   await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
+  // Today's one big button is "Add a plant" (a photo or typed); the Plants list has the form button.
+  await page.getByRole("tab", { name: "Plants" }).or(page.getByRole("button", { name: "Plants", exact: true })).first().click();
   await page.getByRole("button", { name: "Add: Plant" }).click();
   const form = page.locator(".k-form");
   await expect(form).toBeVisible();
