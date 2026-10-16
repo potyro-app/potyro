@@ -83,7 +83,7 @@ describe("async computed that calls ctx.query (rolling personal best)", () => {
       entries: [{ exercise: squat.id, sets: [{ kg: 120, reps: 3 }] }],
     });
 
-    const { rows } = await runtime.queryPage("program");
+    const { rows } = await runtime.queryPage("program#1") // the Program page's exercises (its routines come first);
     const ex = rows.find((r) => r.name === "Squat")!;
     // lastBest is async + queries history; best score across sets = max(100*5, 120*3) = 500
     expect(ex.lastBest).not.toBeNull();
