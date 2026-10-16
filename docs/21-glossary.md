@@ -51,6 +51,8 @@ change it in every message of that language, not only the one you are looking at
 | page | página | Seite | página | strona | pagina |
 | field | campo | Feld | campo | pole | campo |
 | sealed box (where others' apps run) | caixa lacrada | versiegelte Box | caja sellada | zamknięte pudełko | scatola sigillata |
+| screen (an app's own, drawn by its code) | tela | Bildschirm | pantalla | ekran | schermata |
+| plain version (an app without its own screens, #267) | versão simples | einfache Version | versión sencilla | prosta wersja | versione semplice |
 | sandbox | ambiente isolado | Sandbox | entorno aislado | piaskownica | ambiente isolato |
 | run it as yours / let it run as yours | rodar como seu / deixar rodar como seu | als deine eigene laufen lassen | ejecutar como tuya / dejar que se ejecute como tuya | uruchamiać jako własną | eseguire come tua / lasciarla eseguire come tua |
 | trusted | confiável | vertrauenswürdig | de confianza | zaufana | attendibile |

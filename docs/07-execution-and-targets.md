@@ -20,8 +20,9 @@ Promotion is explicit and revocable.
 ## Why a browser realm for the untrusted runner (#272)
 
 Measured in docs/22 (Chromium with and without site isolation, Firefox with and without Fission,
-WebKit), and shipped for shared apps' **logic** on 2026-10-14 (phase 1). Custom views of shared apps
-stay off, as before; the view phase waits for the Android WebView probe (docs/22 §5).
+WebKit), and shipped for shared apps' **logic** on 2026-10-14 (phase 1) and for their **custom views**
+on 2026-10-16 (phase 3, #267): each mounted view draws in a sandboxed frame of its own, on every
+engine, behind a watchdog and a crash-loop guard (docs/22 §11, docs/05 "Custom views").
 
 ```
  shell page ── createSharedAppLoader → createRealmLoader(frameSpawner()) ── LoadedApp.call*(…, ctx)
@@ -30,6 +31,10 @@ stay off, as before; the view phase waits for the Android WebView probe (docs/22
    │        ▲ one MessagePort per app
    └────────┼──── <iframe sandbox="allow-scripts" srcdoc>   opaque origin, realm CSP, WebRTC deleted
             └───── Worker (blob:)  the app bundle (the same IIFE QuickJS ran) + DirectLoadedApp
+   │  SealedViewController (#267): watchdog pings, crash-loop marker, theme, size
+   │        ▲ one MessagePort per mounted view: the same op table (+ VIEW_OPS)
+   └────────┼──── <iframe sandbox="allow-scripts" srcdoc>   in the view's place; realm CSP, WebRTC deleted
+            └───── view runtime (React inside) + the view bundle (same source, the frame's React)
 ```
 
 - **A browser's own built-ins, sealed.** `Intl`, `URL`, `TextEncoder`, `crypto`, timers,
@@ -67,7 +72,7 @@ What is lost against QuickJS, and how it is answered (docs/22 §7):
 |---|---|---|
 | A memory cap (claimed 64 MB) | None per Worker | The cap never held as shipped (docs/22 §6.1). Cap what crosses `ctx`; process isolation where the engine has it. |
 | Interrupting one call, keeping the VM | The whole realm stops after ≤ 1 s of silence | App state lives in the Store, so a stop loses a cache; the next call restarts it. |
-| Pre-empting any code | Logic: yes, by ending its thread. Views: only where the frame is out of process | Views of shared apps stay off (phase 3 decides). |
+| Pre-empting any code | Logic: yes, by ending its thread. Views: only where the frame is out of process | Views run sealed anyway (#267): a view silent for 2 s, or blocking the page for 2 s, is taken down and the app's plain version shown; a view that hangs a tab for good is never mounted again on that device until the person asks (crash-loop guard); a stuck out-of-process view's shared Chromium process is freed by restarting every realm. |
 | The same semantics everywhere | The engine's own built-ins and ICU data | The point of #272: an app behaves as in the person's browser. Formatting is still `format.ts` at both provenances. |
 | No WebRTC, no navigation, by construction | Both exist in the frame | Deleted, and `frame-src 'none'` (above). |
 
@@ -290,7 +295,9 @@ Wraps the same web build. `CapacitorCapabilities` backs `ctx.caps` with real nat
 **exact local notifications**, geolocation, filesystem. Same runners: the WebView builds the realm
 from the same build, and gets the shell's `frame-src 'none'` from the `<meta>` in `index.html`, since a
 Capacitor WebView serves no headers. Whether a view in a sandboxed frame there can freeze the shell
-is what the Android probe measures (docs/22 §5) before views of shared apps are planned. Added via
+is what the Android probe measures (docs/22 §5); views run sealed there either way, behind the same
+watchdog and crash-loop guard, and the probe runs from the APK itself (`#probe=realm`, or tap "You"
+seven times in the You panel). Added via
 `npx cap add`; only the composition root changes.
 
 ## Capability matrix (unchanged truths)

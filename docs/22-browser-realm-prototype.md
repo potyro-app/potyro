@@ -1,6 +1,9 @@
 # 22 · Browser-realm prototype — shared apps in a sandboxed iframe + Worker (#272)
 
-**Status: phase 1 shipped (2026-10-14). Shared apps' logic runs in the realm** — the owner approved
+**Status: phase 1 shipped (2026-10-14), phase 3 shipped (2026-10-16). Shared apps' logic runs in the
+realm, and so do their custom views** — each view in a sandboxed frame of its own, on every engine,
+behind a watchdog and a crash-loop guard (**§11**; the owner changed condition 4 of §8 on 2026-10-16).
+Phase 1, as before: the owner approved
 phase 1 after this prototype (#272): logic in the realm, the shell's `frame-src 'none'`, the WebRTC
 removal; custom views stay as they are; the view phase waits for the Android probe (§5). What
 shipped, how it differs from the prototype, how to fall back to QuickJS and what changed for the
@@ -195,6 +198,13 @@ is torn down, and the thread goes with it.
 
 ## 5. Android WebView: test page and steps (not run here)
 
+**From the APK, without USB (#267):** open Potyro with `#probe=realm` on its address, or open **You**
+and tap its heading **seven times**. The "Sealed screens on this device" screen runs the same three
+3-second loops (`packages/shell/src/realm-probe.ts`), shows the verdict in large type and the three
+numbers, and **Copy results** copies the JSON (where there is no clipboard, the text is selected for
+a long-press copy). A counter in its corner stops while Potyro is frozen. It does nothing unless
+asked, in dev and release builds alike. The DevTools path below still works.
+
 `docs/spikes/browser-realm/android/probe.js` is self-contained, with no imports and no network. It
 builds the same realm (sandboxed srcdoc iframe, the realm CSP, a blob: Worker) **inside the running
 Potyro app's own document**. Then it runs three 3-second loops, measuring the shell's timer gaps
@@ -311,8 +321,12 @@ desktop Chromium. That is the condition.
    it embeds, before the first realm ships.
 3. The RTC deletion and the op list are in the #14 audit scope, and so is everything in "Security
    audit" below.
-4. Views ship in the realm **only where the shell cannot be frozen**. Otherwise they stay off for
-   shared apps, as today, until views-in-Worker exists.
+4. ~~Views ship in the realm **only where the shell cannot be frozen**. Otherwise they stay off for
+   shared apps, as today, until views-in-Worker exists.~~ **Changed by the owner, 2026-10-16:** views
+   of shared apps render in the sealed frame on **every** engine, protected against freezes — a
+   watchdog that takes a stuck view down and shows the app's plain version, a crash-loop guard so an
+   endless loop can freeze Potyro at most once per app, and the Chromium shared-process escalation
+   (§11). Shipped the same day.
 
 **Phases:**
 
@@ -330,10 +344,10 @@ desktop Chromium. That is the condition.
    - The Chromium shared-process escalation (§4.2).
    - Verification (`verify-candidate.ts`, the Studio) on the realm, so that candidates are judged
      in the environment they will run in.
-3. **Views.** Branch on the Android result.
-   - If the WebView isolates frames: iframe views (#267) behind the watchdog.
-   - Otherwise: views in the Worker with OffscreenCanvas or remote DOM, and the declarative
-     fallback when a view is killed.
+3. **Views. ✅ Done 2026-10-16 (§11)** — iframe views (#267) behind the watchdog on every engine,
+   not branching on the Android result (condition 4, changed). Views in the Worker (OffscreenCanvas,
+   remote DOM) remain a way to take views off every main thread, should the probe show WebView
+   frames freeze the shell and that turn out to matter in practice.
 4. **Remove QuickJS.** Delete `isolate/`, `__hostPure`, `quickjs-emscripten`, the isolate stubs'
    QuickJS-only caveats, and the docs/20 §2.4 bridge. Keep the bundle format: the realm runs the
    same IIFE.
@@ -528,3 +542,122 @@ New attack surface, all of it in `packages/host/src/realm/` and the shell's CSP:
   not surviving into the next realm; spin and return-then-spin with the shell's own gap measured),
   `shell-csp-{sandbox,prod}.spec.ts`; and every `*-sandbox.spec.ts` now runs on the realm.
   `POTYRO_REALM_BROWSERS=1` adds Firefox and WebKit projects for the realm's specs.
+
+## 11. Phase 3, as shipped (2026-10-16): shared apps draw their own screens (#267)
+
+**The decision (owner, 2026-10-16), changing §8 condition 4:** custom views of sealed apps render in
+the sealed frame on **every** engine, protected against freezes, instead of only where the shell
+cannot be frozen. Where the frame shares the shell's thread (Firefox, WebKit, Chromium without site
+isolation, and — until the probe says otherwise — Android WebView), a view that spins blocks Potyro
+for as long as it spins; the protections below bound what that can cost.
+
+### 11.1 Where a view runs
+
+```
+ shell page ─ CustomView (views/src/custom.tsx) → RealmLoadedApp.sealedView(pageRef) → SealedViewController.mount(el, props)
+   │  .k-sealed-view (the page's content area; the shell keeps the chrome and navigation)
+   │     └─ <iframe sandbox="allow-scripts" srcdoc title="<app>: <page>">   ONE PER MOUNTED VIEW
+   │           realm CSP · NO_WEBRTC first · view runtime (React + ReactDOM inside, `virtual:potyro-realm-view`)
+   │           · the view bundle: the app's source again, `react` = the frame's own (`bundleViewSource`)
+   │        ▲ its own MessagePort: ctx ops (OPS) + VIEW_OPS, pings, height, theme
+   └─ RealmLoadedApp.answer(msg, channel) → route(ctx, op, args) — the logic's table, a fresh mediated ctx per op
+```
+
+- **A frame per view, not the logic frame.** Isolation: a stuck view is removed without ending the
+  app's logic (its Worker keeps its state) and without freezing a second view of the same app.
+  Teardown: unmounting removes the frame, and the view's document — DOM, listeners, timers, object
+  URLs — goes with it, whatever the view forgot to clean up. Chromium (§4.2): every sandboxed frame of
+  the page shares one renderer process anyway, so one frame or several costs the same; what matters
+  there is freeing that process when a stuck view keeps it busy (§11.3).
+- **The same authority as the logic, no more.** `sandbox="allow-scripts"` only — no
+  `allow-same-origin`, no top navigation, no popups, no forms, no modals; the realm CSP (no network,
+  `connect-src 'none'`); the shell's `frame-src 'none'` stops it navigating itself; WebRTC deleted
+  before any app code. `ViewProps.runtime.ctx` is `makeRealmCtx` over the view's port. The host
+  answers through `answer`/`route` — the same op list, the same `mediateCaps`, values gate and
+  authorship — on `props.runtime.ctx`, a fresh ctx per op, as a trusted view's `runtime.ctx` is fresh
+  per access. The ctx id is the view's alone; anything else is "no such ctx". The `Runtime` members
+  that are not ctx (`watchQuery`, `watchRecord` and the hooks over them, `runAction`,
+  `reconcileReminders`) and the `navigate` prop are `VIEW_OPS`, accepted on a view's port only; a
+  view's live connections (docs/28) have their own `SocketBridge` on its port.
+- **What is different inside.** `ctx.media.url` / `ctx.files.url`: the host sends the bytes and the
+  frame makes its own `blob:` URL (the shell's do not load in an opaque origin). `runtime.definition`
+  is the localized definition as data. `ctx.caps.camera.live` is not there — it stays trusted-only
+  for now (Mirror Monsters is a follow-up).
+- **Layout.** The frame is as wide as the content area and at least as tall as the room below it
+  (the window's height less its top and `--k-chrome-bottom`, at least 320 px); the view's document
+  reports its height and the frame grows to it (at most 20,000 px), so a scrolling page scrolls with
+  the shell and never inside the frame, and a stage app (a game) gets the whole room. The frame's
+  document does not scroll by itself.
+- **Theme.** Every custom property where the view sits, its `color-scheme`, font and ink, at mount and
+  again when the theme, the colour scheme or the app's accent changes; a few rules (`.k-add`,
+  `.k-muted`, `.k-primary-action`) make a view written against the shell's classes look native.
+- **Input and focus.** Pointer, touch and keys go to the frame as to any iframe; the frame has a
+  title (the app's and the page's names); Tab enters and leaves it.
+
+### 11.2 Freezes: the watchdog and the crash-loop guard
+
+| | Threshold | What happens |
+|---|---|---|
+| Ping unanswered (the frame runs apart and is stuck: desktop Chromium) | **2 s** (pings every 250 ms) | the frame is removed; the page shows the app's **plain version** |
+| The page's own check ran late while a view showed (the frame shares the thread and blocked it) | **2 s** late (checks every 100 ms) | the same, the moment the loop lets go |
+| Mount (bundle evaluated, first render) | 10 s | the same |
+| Page hidden | — | nothing counts while hidden (timers are throttled) |
+| More than 4,000 messages in 100 ms | — | treated as silent |
+
+The plain version is a calm status, never an error: "This app's screen stopped responding, so Potyro
+is showing its plain version.", buttons for the app's other pages, and **Try its screen again**. A
+stop also turns that app's views **off on this device** (`localStorage["potyro:sealed-view:off"]`):
+a screen that froze Potyro once does not do it again by itself.
+
+**The crash-loop guard** (`view-guard.ts`) covers the loop that never yields, which nothing in a
+shared-thread tab can stop: before a view mounts, `potyro:sealed-view:mounting:<load>:<n>` is written
+synchronously; while the view answers its pings the marker is refreshed every second; it is removed on
+a clean unmount, on `pagehide` when the view is healthy, and while the page is hidden with the view
+healthy (a phone killing a backgrounded app is not a crash). At every mount — and so when Potyro
+starts — a marker of another page load not refreshed for **3 s** means that tab froze or died with
+the view on screen: that app's views go off, and the next start opens its plain version. An endless
+loop can therefore freeze Potyro **at most once per app**.
+
+### 11.3 Chromium's shared process
+
+Measured in §4.2: with a second realm alive, a killed spinning view kept its renderer process busy,
+freezing every other sandboxed frame. With a frame per view, the app's own logic frame is that second
+realm. So after a **silent** stop (the frame was out of process), the host pings every live logic
+frame on its control port (`FRAME_SOURCE` answers `ping`); if one does not answer within 1 s, the
+stopped view still holds the process, and **every realm is restarted** (`releaseSharedProcess`): the
+process has no frame left and exits, and each realm starts fresh on its next call (40–60 ms). The
+endless-loop spec proves it: without the escalation the next view never mounts.
+
+### 11.4 What stays as it was, and what is deferred
+
+- **The QuickJS fallback** and **the Studio's preview** (QuickJS until phase 2) cannot run views:
+  the page says the screen runs only as yours and offers the trust dialog. In a **demo link** —
+  nothing installed, nothing to promote — that button leads to **Keep this app** first.
+- **Deferred:** `ctx.caps.camera.live` in sealed views; a library that touches `document` at load
+  still breaks the logic Worker (the same bundle runs there), so such an app opens only as yours;
+  views in the Worker (OffscreenCanvas / remote DOM), should the Android probe show WebView frames
+  freeze the shell and that matter in practice; the view runtime (276 KB minified, React and the
+  schema `format.ts` pulls in) could be trimmed.
+
+### 11.5 For the #14 audit
+
+New surface: the view port (`VIEW_OPS`, the view ctx id, `SealedViewController`'s message handler, its
+flood guard), `view-runtime.ts` (untrusted like the worker runtime: app code shares its realm), the
+view frame's srcdoc (`viewDocument`, runtime inlined with `</script` escaped), the bytes the host
+fetches for a view's `blob:`/`data:` URLs, and the guard's localStorage keys (written only by the
+shell).
+
+### 11.6 Tests
+
+- **Unit:** `host/test/sealed-views.test.ts` (the watchdog's thresholds and forgiveness, the guard's
+  markers, staleness and storage failures, a view's `create` and the logic's landing identically
+  stamped and gated, the op lists and ctx ids, `sealedView` per page, the escalation);
+  `views/test/sealed-view.test.tsx` (mount and teardown, the plain version, off, retry, a throwing view).
+- **e2e** (Chromium headless shell, full Chromium `channel: "chromium"`, Firefox, WebKit):
+  `sealed-views-sandbox.spec.ts` (DOM, canvas pixels, taps and keys, a write landing in the store, the
+  theme light and dark; the adversarial screen against a probe server; a 3 s spin → plain version and
+  back; an endless loop on full Chromium with the process freed; a stale marker → plain version until
+  asked), `sealed-views-breakout-sandbox.spec.ts` (Breakout added sealed from its package plays at
+  1280 and 412 px: its board's pixels, Space, P and the pointer),
+  `sealed-views-probe-sandbox.spec.ts` (the device check), `recipes-sandbox.spec.ts` (the cook-along
+  sealed), `add-app-trusted.spec.ts` and `demo-link-trusted.spec.ts` (the words, and the demo's Keep).
