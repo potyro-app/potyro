@@ -74,6 +74,14 @@ msgstr "Feld „{name}“"
 msgid "“{name}” has been updated to a newer version."
 msgstr "„{name}“ wurde auf eine neuere Version aktualisiert."
 
+#: ../shell/src/move-archive.ts
+msgid "“{name}” in this file is damaged."
+msgstr "„{name}“ ist in dieser Datei beschädigt."
+
+#: ../shell/src/move-archive.ts
+msgid "“{name}” is in this file twice."
+msgstr "„{name}“ steht zweimal in dieser Datei."
+
 #: ../shell/src/main.tsx
 msgid "\"{name}\" is synced; a data import would overwrite what others share."
 msgstr "„{name}“ wird synchronisiert; ein Datenimport würde überschreiben, was andere teilen."
@@ -168,10 +176,26 @@ msgstr "{0, plural, one {{first} und # weitere Person} other {{first} und # weit
 msgid "{0, plural, one {# app could not be moved: {which}.} other {# apps could not be moved: {which}.}}"
 msgstr "{0, plural, one {# App konnte nicht verschoben werden: {which}.} other {# Apps konnten nicht verschoben werden: {which}.}}"
 
+#. placeholder {0}: done.apps
+#. placeholder {0}: result.apps
+#: ../shell/src/move-banner.tsx
+#: ../shell/src/move-page.tsx
+msgid "{0, plural, one {# app} other {# apps}}"
+msgstr "{0, plural, one {# App} other {# Apps}}"
+
 #. placeholder {0}: a.due
 #: ../shell/src/launcher-store.ts
 msgid "{0, plural, one {# due} other {# due}}"
 msgstr "{0, plural, one {# fällig} other {# fällig}}"
+
+#. placeholder {0}: done.files
+#. placeholder {0}: p.app.files
+#. placeholder {0}: result.files
+#: ../shell/src/move-banner.tsx
+#: ../shell/src/move-page.tsx
+#: ../shell/src/move-page.tsx
+msgid "{0, plural, one {# file} other {# files}}"
+msgstr "{0, plural, one {# Datei} other {# Dateien}}"
 
 #. placeholder {0}: lines.length
 #: ../shell/src/open-libraries.ts
@@ -199,11 +223,14 @@ msgid "{0, plural, one {# problem with it.} other {# problems with it.}}"
 msgstr "{0, plural, one {# Problem damit.} other {# Probleme damit.}}"
 
 #. placeholder {0}: app.seedRows
-#. placeholder {0}: result.records
-#. placeholder {0}: rows.length
+#. placeholder {0}: done.records
+#. placeholder {0}: p.app.records
 #: ../shell/src/add-app-dialog.tsx
 #: ../shell/src/backup-switch.tsx
 #: ../shell/src/data-table.tsx
+#: ../shell/src/move-banner.tsx
+#: ../shell/src/move-page.tsx
+#: ../shell/src/move-page.tsx
 msgid "{0, plural, one {# record} other {# records}}"
 msgstr "{0, plural, one {# Eintrag} other {# Einträge}}"
 
@@ -226,6 +253,11 @@ msgstr "{0, plural, one {# unveränderte Zeile} other {# unveränderte Zeilen}}"
 #: ../shell/src/incoming-files-host.tsx
 msgid "{0, plural, one {and # more} other {and # more}}"
 msgstr "{0, plural, one {und # weitere} other {und # weitere}}"
+
+#. placeholder {0}: plans.length
+#: ../shell/src/move-page.tsx
+msgid "{0, plural, one {Bring this app in?} other {Bring these # apps in?}}"
+msgstr "{0, plural, one {Diese App übernehmen?} other {Diese # Apps übernehmen?}}"
 
 #. placeholder {0}: lines.length
 #: ../shell/src/studio.tsx
@@ -362,6 +394,10 @@ msgstr "{cents} ¢"
 msgid "{changed, plural, one {changed # record} other {changed # records}}"
 msgstr "{changed, plural, one {# Eintrag geändert} other {# Einträge geändert}}"
 
+#: ../shell/src/move-page.tsx
+msgid "{conversations, plural, one {# Studio conversation} other {# Studio conversations}}"
+msgstr "{conversations, plural, one {# Studio-Gespräch} other {# Studio-Gespräche}}"
+
 #: ../shell/src/launcher-metro.tsx
 msgid "{count, plural, one {# app} other {# apps}}"
 msgstr "{count, plural, one {# App} other {# Apps}}"
@@ -480,6 +516,10 @@ msgstr "{fieldLabel}: keine"
 #: ../shell/src/add-app-dialog.tsx
 msgid "{fileCount, plural, one {# file} other {# files}}"
 msgstr "{fileCount, plural, one {# Datei} other {# Dateien}}"
+
+#: ../shell/src/move-page.tsx
+msgid "{files, plural, one {# file} other {# files}}"
+msgstr "{files, plural, one {# Datei} other {# Dateien}}"
 
 #. A chosen filter value; pressing it takes the filter off
 #: ../shell/src/filter-chrome.tsx
@@ -651,6 +691,10 @@ msgstr "{n} KB"
 msgid "{n} MB"
 msgstr "{n} MB"
 
+#: ../shell/src/move-page.tsx
+msgid "{name} — {done} of {total}"
+msgstr "{name} — {done} von {total}"
+
 #. The name of an app someone shared with you, when you already have one with that name
 #: ../shell/src/share-sync.ts
 msgid "{name} (shared)"
@@ -720,6 +764,11 @@ msgstr "{noun}: noch keine — füge eins hinzu"
 msgid "{original} (copy)"
 msgstr "{original} (Kopie)"
 
+#. An app brought over from the old Potyro site, beside one of the same name here
+#: ../shell/src/move-bring-in.ts
+msgid "{original} (from {site})"
+msgstr "{original} (von {site})"
+
 #. Checklist: pick a group for the item; the app's word for a group comes first (no agreement with it)
 #: ../views/src/checklist.tsx
 msgid "{pendingKind}: tap the one for “{pendingText}”"
@@ -728,6 +777,10 @@ msgstr "{pendingKind}: Tippe auf die für „{pendingText}“"
 #: ../shell/src/ask-review.tsx
 msgid "{ran, plural, one {ran # action} other {ran # actions}}"
 msgstr "{ran, plural, one {# Aktion ausgeführt} other {# Aktionen ausgeführt}}"
+
+#: ../shell/src/move-page.tsx
+msgid "{records, plural, one {# record} other {# records}}"
+msgstr "{records, plural, one {# Eintrag} other {# Einträge}}"
 
 #: ../shell/src/launcher.tsx
 msgid "{records, plural, one {Moved # record.} other {Moved # records.}}"
@@ -1308,6 +1361,10 @@ msgstr "Immer dunkel"
 msgid "Always light"
 msgstr "Immer hell"
 
+#: ../shell/src/move-archive.ts
+msgid "An app in this file is damaged."
+msgstr "Eine App in dieser Datei ist beschädigt."
+
 #: ../shell/src/incoming-files-host.tsx
 msgid "An app is added to your apps. Any other file goes into the app you choose."
 msgstr "Eine App kommt zu deinen Apps. Jede andere Datei landet in der App, die du wählst."
@@ -1377,6 +1434,18 @@ msgstr "{name} annehmen"
 #: ../shell/src/launcher.tsx
 msgid "Apps"
 msgstr "Apps"
+
+#: ../shell/src/move-page.tsx
+msgid "Apps from a file come in sealed, because a file could be from anyone. Trust the ones you made from their menu."
+msgstr "Apps aus einer Datei kommen in die versiegelte Box, denn eine Datei kann von jedem stammen. Lass die, die du selbst gemacht hast, über ihr Menü als deine eigenen laufen."
+
+#: ../shell/src/move-page.tsx
+msgid "Apps that came from other people stay sealed here, as they were there."
+msgstr "Apps von anderen Leuten bleiben hier in der versiegelten Box, wie sie es dort waren."
+
+#: ../shell/src/move-page.tsx
+msgid "Apps that will come in"
+msgstr "Apps, die übernommen werden"
 
 #: ../shell/src/ask-panel.tsx
 msgid "Area on your map · {lat}, {lng} · {km} km"
@@ -1573,14 +1642,42 @@ msgstr "Die Kopie vom {when} zurückholen?"
 msgid "Bring it back"
 msgstr "Zurückholen"
 
+#: ../shell/src/move-banner.tsx
+msgid "Bring my apps over"
+msgstr "Meine Apps mitnehmen"
+
+#: ../shell/src/move-page.tsx
+msgid "Bring them in"
+msgstr "Übernehmen"
+
+#: ../shell/src/move-banner.tsx
+msgid "Bring them over again"
+msgstr "Noch einmal mitnehmen"
+
 #. Heading over a list of your apps: pick which one the shared text goes into
 #: ../shell/src/share-page.tsx
 msgid "Bring this into…"
 msgstr "Übernehmen in…"
 
+#: ../shell/src/move-page.tsx
+msgid "Bring your apps in from a file"
+msgstr "Deine Apps aus einer Datei übernehmen"
+
+#: ../shell/src/move-banner.tsx
+msgid "Bring your apps over to {site}"
+msgstr "Nimm deine Apps mit zu {site}"
+
 #: ../views/src/file-input.tsx
 msgid "Bringing it in…"
 msgstr "Wird übernommen…"
+
+#: ../shell/src/move-banner.tsx
+msgid "Bringing them in on {site}…"
+msgstr "Wird auf {site} übernommen…"
+
+#: ../shell/src/move-page.tsx
+msgid "Bringing your apps in…"
+msgstr "Deine Apps werden übernommen…"
 
 #. Files, in a shared app: a file one of its people brought in from outside
 #: ../shell/src/files-panel.tsx
@@ -1850,6 +1947,8 @@ msgstr "Auswählen"
 msgid "choose a file"
 msgstr "Datei auswählen"
 
+#: ../shell/src/move-page.tsx
+#: ../shell/src/move-page.tsx
 #: ../views/src/file-input.tsx
 msgid "Choose a file"
 msgstr "Datei auswählen"
@@ -1873,6 +1972,14 @@ msgstr "Wähle links eins aus."
 #: ../shell/src/share-sheet.tsx
 msgid "Choose Share on its tile in your apps to invite someone: that turns on sync for it."
 msgstr "Um jemanden einzuladen, wähle „Teilen“ auf ihrer Kachel unter deinen Apps: Damit wird die Synchronisierung für sie eingeschaltet."
+
+#: ../shell/src/move-page.tsx
+msgid "Choose the file"
+msgstr "Datei wählen"
+
+#: ../shell/src/move-page.tsx
+msgid "Choose the file your old Potyro saved. You will see everything in it before anything comes in."
+msgstr "Wähle die Datei, die dein altes Potyro gespeichert hat. Du siehst alles, was darin ist, bevor etwas übernommen wird."
 
 #: ../shell/src/studio.tsx
 msgid "Choose which model writes and edits your app"
@@ -2000,6 +2107,10 @@ msgstr "Fürs Programmieren trainiert — das Ergebnis ist eine strukturierte .a
 #: ../shell/src/tile-editor.tsx
 msgid "Colour"
 msgstr "Farbe"
+
+#: ../shell/src/move-page.tsx
+msgid "comes in beside the one here"
+msgstr "kommt neben die vorhandene"
 
 #. Add an app card: the files the app ships with
 #: ../shell/src/add-app-dialog.tsx
@@ -2427,6 +2538,10 @@ msgstr "Nicht teilen"
 msgid "Done"
 msgstr "Fertig"
 
+#: ../shell/src/move-banner.tsx
+msgid "Done — your apps are on {site}"
+msgstr "Fertig — deine Apps sind auf {site}"
+
 #. Checklist: the folded section of ticked items, and how many
 #: ../views/src/checklist.tsx
 msgid "Done ({doneCount})"
@@ -2560,6 +2675,10 @@ msgstr "Alle, die den Link zum Raum haben, sehen, was die App dorthin sendet. Po
 #: ../shell/src/launcher.tsx
 msgid "Everything else"
 msgstr "Alles andere"
+
+#: ../shell/src/move-banner.tsx
+msgid "Everything is still here too. Changed something here since? Bring them over again: what is already there is never doubled."
+msgstr "Hier ist auch noch alles da. Seitdem hier etwas geändert? Nimm sie noch einmal mit: Was dort schon ist, wird nie doppelt."
 
 #. A version's note in History: the app came with Potyro
 #: ../shell/src/version-notes.ts
@@ -2765,6 +2884,10 @@ msgstr "Kostenlose KI gibt es noch nicht – füge in den Modelleinstellungen de
 msgid "Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢."
 msgstr "Kostenlos, solange das Kontingent dieses Monats reicht; danach dein eigener OpenRouter-Schlüssel, meist unter 1 ¢."
 
+#: ../shell/src/move-page.tsx
+msgid "From {from}"
+msgstr "Von {from}"
+
 #. Ask review: where a proposed record was confirmed, e.g. From Wikidata
 #: ../shell/src/ask-verdicts.ts
 msgid "From {via}"
@@ -2834,6 +2957,10 @@ msgstr "Foto wird geholt…"
 msgid "Getting the video…"
 msgstr "Video wird geholt…"
 
+#: ../shell/src/move-page.tsx
+msgid "Getting your apps ready…"
+msgstr "Deine Apps werden vorbereitet…"
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Give it a name."
 msgstr "Gib ihr einen Namen."
@@ -2854,6 +2981,8 @@ msgstr "Hierhin zurück"
 msgid "Go back to version {seq}?"
 msgstr "Zu Version {seq} zurück?"
 
+#: ../shell/src/move-page.tsx
+#: ../shell/src/move-page.tsx
 #: ../shell/src/share-page.tsx
 msgid "Go to your apps"
 msgstr "Zu deinen Apps"
@@ -3239,6 +3368,10 @@ msgstr "Sie läuft in der versiegelten Box"
 msgid "It runs in the sealed box, and its libraries need a full web page, so here they stand in and draw nothing. Let it run as yours to see them work."
 msgstr "Sie läuft in der versiegelten Box, und ihre Bibliotheken brauchen eine vollständige Webseite, daher werden sie hier nur vertreten und zeichnen nichts. Lass sie als deine eigene laufen, um sie in Aktion zu sehen."
 
+#: ../shell/src/move-page.tsx
+msgid "It runs in the sealed box, as apps from other people do. You can trust it later from its menu."
+msgstr "Sie läuft in der versiegelten Box, wie Apps von anderen. Du kannst sie später über ihr Menü als deine eigene laufen lassen."
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "It runs in the sealed box: it can only reach what you allow, when it asks. If you know who made it, you can let it run as yours once it is added — from the app, or from its ⋯ menu on your apps."
 msgstr "Sie läuft in der versiegelten Box: Sie erreicht nur, was du erlaubst, wenn sie fragt. Wenn du weißt, wer sie gemacht hat, kannst du sie nach dem Hinzufügen als deine eigene laufen lassen — in der App oder über ihr ⋯-Menü bei deinen Apps."
@@ -3254,6 +3387,10 @@ msgstr "Jemand anderes hat sie gemacht, und sie läuft in der versiegelten Box. 
 #: ../shell/src/shipped-files.ts
 msgid "It was not added from a link, so its files can only come back from its package: add it again, and choose “Replace it, keep its data”."
 msgstr "Sie wurde nicht über einen Link hinzugefügt, also kommen ihre Dateien nur aus ihrem Paket zurück: Füge sie erneut hinzu und wähle „Ersetzen, Daten behalten“."
+
+#: ../shell/src/move-page.tsx
+msgid "It was shared there. It comes in as your own copy; share it again from here if you want to."
+msgstr "Dort war sie geteilt. Sie kommt als deine eigene Kopie; teile sie von hier aus erneut, wenn du willst."
 
 #: ../shell/src/main.tsx
 msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run in the sealed box unless you say otherwise. You can change this later from the app header."
@@ -3296,6 +3433,10 @@ msgstr "Beitreten, als deine eigene"
 #: ../shell/src/splash.tsx
 msgid "Joining…"
 msgstr "Trete bei…"
+
+#: ../shell/src/move-page.tsx
+msgid "joins the one here"
+msgstr "kommt zur vorhandenen dazu"
 
 #: ../shell/src/launcher-metro.tsx
 msgid "Jump to a letter"
@@ -3345,6 +3486,10 @@ msgstr "Behalten"
 #: ../shell/src/demo.tsx
 msgid "Keep this app"
 msgstr "Diese App behalten"
+
+#: ../shell/src/move-page.tsx
+msgid "Keep this window open until it says it is done. If it closes, start again: nothing is doubled."
+msgstr "Lass dieses Fenster offen, bis es „fertig“ sagt. Schließt es sich, fang noch einmal an: Nichts wird doppelt."
 
 #: ../shell/src/backup-switch.tsx
 msgid "Keep your apps on the relay, so a new device signed in with your words can bring them back?"
@@ -3412,6 +3557,7 @@ msgstr "Breite"
 
 #. Move a tile group later on the wall
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/move-banner.tsx
 msgid "Later"
 msgstr "Später"
 
@@ -3758,6 +3904,10 @@ msgstr "{what} nach {where} verschoben."
 msgid "Moved {what} to position {at} of {count}."
 msgstr "{what} auf Position {at} von {count} verschoben."
 
+#: ../shell/src/move-page.tsx
+msgid "Moved from {site}"
+msgstr "Umgezogen von {site}"
+
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher-metro.tsx
@@ -3770,6 +3920,11 @@ msgstr "Gruppe verschoben."
 #: ../shell/src/backup-switch.tsx
 msgid "Moving {0} — {1} of {2}"
 msgstr "{0} wird verschoben — {1} von {2}"
+
+#: ../shell/src/move-page.tsx
+#: ../shell/src/move-page.tsx
+msgid "Moving to a new home"
+msgstr "Umzug an eine neue Adresse"
 
 #: ../shell/src/backup-switch.tsx
 msgid "Moving…"
@@ -4016,6 +4171,7 @@ msgstr "erst bekannt, wenn sie läuft"
 #: ../shell/src/app-sockets.ts
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/move-page.tsx
 #: ../shell/src/open-libraries.ts
 #: ../shell/src/platform-request-card.tsx
 #: ../shell/src/restore-apps.tsx
@@ -4074,6 +4230,10 @@ msgstr "Noch nichts zu {label}."
 msgid "Nothing approved"
 msgstr "Nichts angenommen"
 
+#: ../shell/src/move-page.tsx
+msgid "Nothing came in"
+msgstr "Nichts wurde übernommen"
+
 #. Board: an empty column
 #: ../views/src/board.tsx
 msgid "Nothing here"
@@ -4092,6 +4252,10 @@ msgstr "Nichts heißt genau „{match}“; hak die an, die du gemeint hast."
 #: ../shell/src/backup-switch.tsx
 msgid "Nothing is kept anywhere but this device."
 msgstr "Nichts wird irgendwo anders als auf diesem Gerät aufbewahrt."
+
+#: ../shell/src/move-page.tsx
+msgid "Nothing is removed from {from}, and nothing already here is doubled."
+msgstr "Auf {from} wird nichts entfernt, und was hier schon ist, wird nicht doppelt."
 
 #: ../shell/src/picker.tsx
 #: ../views/src/pick-list.tsx
@@ -4175,6 +4339,10 @@ msgstr "Daraus wurde noch nichts gemacht, also gibt es keine App zum Behalten."
 #: ../shell/src/App.tsx
 msgid "Nothing was recorded — navigate the app or run an action before stopping."
 msgstr "Nichts wurde aufgezeichnet — bewege dich durch die App oder führe eine Aktion aus, bevor du stoppst."
+
+#: ../shell/src/move-page.tsx
+msgid "Nothing yet? Go back to the window you came from and press “Bring my apps over” again — or bring them in from a file."
+msgstr "Noch nichts? Geh zurück zum Fenster, aus dem du kamst, und drück noch einmal „Meine Apps mitnehmen“ — oder übernimm sie aus einer Datei."
 
 #: ../shell/src/studio-tools.tsx
 msgid "Nothing yet. Once the app is made, every version shows up here — what was asked, and the way back to it."
@@ -4352,9 +4520,21 @@ msgstr "{doneName} öffnen"
 msgid "Open {name}"
 msgstr "{name} öffnen"
 
+#: ../shell/src/move-banner.tsx
+msgid "Open {site}"
+msgstr "{site} öffnen"
+
+#: ../shell/src/move-banner.tsx
+msgid "Open {site} to bring the file in"
+msgstr "{site} öffnen, um die Datei zu übernehmen"
+
 #: ../shell/src/data-page.tsx
 msgid "Open app"
 msgstr "App öffnen"
+
+#: ../shell/src/move-page.tsx
+msgid "Open your apps"
+msgstr "Deine Apps öffnen"
 
 #: ../shell/src/data-page.tsx
 #: ../shell/src/file-viewer.tsx
@@ -4383,6 +4563,14 @@ msgstr "OpenRouter-Modell"
 msgid "Owner · can invite and remove people"
 msgstr "Besitzer · kann Leute einladen und entfernen"
 
+#: ../shell/src/move-banner.tsx
+msgid "Packing {name} — {done} of {total}"
+msgstr "{name} wird gepackt — {done} von {total}"
+
+#: ../shell/src/move-banner.tsx
+msgid "Packing your apps…"
+msgstr "Deine Apps werden gepackt…"
+
 #: ../shell/src/studio-files.tsx
 msgid "Packing…"
 msgstr "Wird gepackt…"
@@ -4404,6 +4592,11 @@ msgstr "Seiten"
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Parameter name"
 msgstr "Parametername"
+
+#: ../shell/src/move-archive.ts
+#: ../shell/src/move-archive.ts
+msgid "Part of this file is damaged."
+msgstr "Ein Teil dieser Datei ist beschädigt."
 
 #: ../shell/src/ask-material.tsx
 msgid "Paste a list, a plan, a table…"
@@ -4514,6 +4707,10 @@ msgstr "Potyro kann diese Art von Datei nicht anzeigen. Speichere eine Kopie, um
 msgid "Potyro gold"
 msgstr "Potyro-Gold"
 
+#: ../shell/src/move-banner.tsx
+msgid "Potyro has a new home"
+msgstr "Potyro hat eine neue Adresse"
+
 #: ../shell/src/storage-elsewhere.tsx
 msgid "Potyro is open in another tab"
 msgstr "Potyro ist in einem anderen Tab geöffnet"
@@ -4583,6 +4780,14 @@ msgstr "Diese App wird gelesen…"
 #: ../shell/src/missing-features.ts
 msgid "reading web addresses"
 msgstr "Webadressen lesen"
+
+#: ../shell/src/move-banner.tsx
+msgid "Ready. Look at the {site} window: it shows what will come in and waits for you to say yes."
+msgstr "Bereit. Schau ins Fenster von {site}: Es zeigt, was übernommen wird, und wartet auf dein Ja."
+
+#: ../shell/src/move-page.tsx
+msgid "Receiving them…"
+msgstr "Wird empfangen…"
 
 #. Launcher sort: by how often and how lately you open an app
 #: ../shell/src/launcher-order.ts
@@ -4764,6 +4969,10 @@ msgstr "Ersetzen, Daten behalten"
 msgid "Replace…"
 msgstr "Ersetzen…"
 
+#: ../shell/src/move-page.tsx
+msgid "replaces the untouched example here"
+msgstr "ersetzt das unveränderte Beispiel hier"
+
 #. Button: run a reported problem's steps again
 #: ../shell/src/studio-tools.tsx
 msgid "Replay"
@@ -4943,6 +5152,10 @@ msgstr "Eine Sache speichern"
 msgid "Save the clip"
 msgstr "Clip speichern"
 
+#: ../shell/src/move-banner.tsx
+msgid "Save them as a file instead"
+msgstr "Stattdessen als Datei speichern"
+
 #: ../shell/src/share-sheet.tsx
 msgid "Saved {file}."
 msgstr "{file} gespeichert."
@@ -4950,6 +5163,10 @@ msgstr "{file} gespeichert."
 #: ../shell/src/studio-files.tsx
 msgid "Saved {packed}. Send it to someone, and they add it with “Add an app”."
 msgstr "{packed} gespeichert. Schick es jemandem – mit „App hinzufügen“ fügt er oder sie es hinzu."
+
+#: ../shell/src/move-banner.tsx
+msgid "Saved. Open {site} with the button below and choose this file there. Who you are does not go in a file: to be the same person there, enter your recovery words under You."
+msgstr "Gespeichert. Öffne {site} mit dem Knopf unten und wähle dort diese Datei. Wer du bist, kommt nicht in eine Datei: Um dort dieselbe Person zu sein, gib unter Du deine Wörter ein."
 
 #: ../shell/src/inline-edit.tsx
 #: ../views/src/record-form.tsx
@@ -4966,6 +5183,7 @@ msgstr "Sag es so, wie du es einem Menschen sagen würdest — „füge eine Bew
 
 #. A small mark in the header of an app that runs sealed
 #: ../shell/src/App.tsx
+#: ../shell/src/move-page.tsx
 msgid "sealed"
 msgstr "versiegelt"
 
@@ -5135,6 +5353,10 @@ msgstr "Geteilt — Änderungen hier erreichen alle darin"
 msgid "Shared app"
 msgstr "Geteilte App"
 
+#: ../shell/src/move-page.tsx
+msgid "Shared apps come in as your own copy, with everything in them. People you shared with keep the one on the old site."
+msgstr "Geteilte Apps kommen als deine eigene Kopie, mit allem darin. Die Leute, mit denen du geteilt hast, behalten die auf der alten Adresse."
+
 #: ../shell/src/studio-thread-view.tsx
 msgid "Shared costs with my flatmates"
 msgstr "Geteilte Kosten mit meinen Mitbewohnern"
@@ -5210,6 +5432,10 @@ msgstr "einige dieser Felder stammen aus einem Spread oder einem berechneten Sch
 #: ../shell/src/app-source.ts
 msgid "some pages aren't written as plain objects with an id"
 msgstr "einige Seiten sind keine einfachen Objekte mit einer id"
+
+#: ../shell/src/move-page.tsx
+msgid "Some things could not come in. Try again from {site}; what is already here is not doubled."
+msgstr "Einiges konnte nicht übernommen werden. Versuch es noch einmal von {site} aus; was hier schon ist, wird nicht doppelt."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Someone sent you one, or you made it somewhere else."
@@ -5514,6 +5740,10 @@ msgstr "diese Änderung hätte Quelltext ergeben, der sich nicht einlesen lässt
 msgid "That could not be sent."
 msgstr "Das konnte nicht gesendet werden."
 
+#: ../shell/src/move-banner.tsx
+msgid "That did not work: {reason} Nothing here was changed. Try again: nothing is doubled."
+msgstr "Das hat nicht geklappt: {reason} Hier wurde nichts geändert. Versuch es noch einmal: Nichts wird doppelt."
+
 #: ../shell/src/app-folder.ts
 msgid "That file is no longer in this app"
 msgstr "Diese Datei ist nicht mehr in dieser App"
@@ -5537,6 +5767,10 @@ msgstr "Diese Nachricht konnte nicht gesendet werden."
 #: ../shell/src/App.tsx
 msgid "the \"{shownTitle}\" page"
 msgstr "die Seite „{shownTitle}“"
+
+#: ../shell/src/move-banner.tsx
+msgid "The {site} window was closed before it finished. Bring them over again when you are ready: nothing is doubled, and whatever was left out comes in."
+msgstr "Das Fenster von {site} wurde geschlossen, bevor es fertig war. Nimm sie noch einmal mit, wenn du so weit bist: Nichts wird doppelt, und was fehlte, kommt dazu."
 
 #: ../shell/src/app-ai.ts
 msgid "The AI service could not answer this time. Try again."
@@ -5644,6 +5878,10 @@ msgstr "das Internet"
 msgid "The key goes in"
 msgstr "Der Schlüssel kommt in"
 
+#: ../shell/src/move-archive.ts
+msgid "The libraries of “{name}” in this file are damaged."
+msgstr "Die Bibliotheken von „{name}“ sind in dieser Datei beschädigt."
+
 #: ../shell/src/add-app.ts
 msgid "The link answered {status}"
 msgstr "Der Link antwortete {status}"
@@ -5651,6 +5889,15 @@ msgstr "Der Link antwortete {status}"
 #: ../shell/src/add-app.ts
 msgid "The link could not be fetched from here"
 msgstr "Der Link konnte von hier aus nicht geladen werden"
+
+#: ../shell/src/move-archive.ts
+#: ../shell/src/move-archive.ts
+msgid "The list of apps in this file is damaged."
+msgstr "Die Liste der Apps in dieser Datei ist beschädigt."
+
+#: ../shell/src/move-archive.ts
+msgid "The list of what is in this file is damaged."
+msgstr "Die Liste dessen, was in dieser Datei ist, ist beschädigt."
 
 #: ../shell/src/studio-engine.ts
 msgid "The model answered with an explanation instead of an app. Try again, or say it another way."
@@ -5691,6 +5938,10 @@ msgstr "die einzige gespeicherte Version — nichts zum Vergleichen"
 #: ../shell/src/platform-requests.ts
 msgid "The Potyro team's inbox didn't accept “{title}”."
 msgstr "Das Postfach des Potyro-Teams hat „{title}“ nicht angenommen."
+
+#: ../shell/src/move-archive.ts
+msgid "The records of “{name}” are missing from this file."
+msgstr "Die Einträge von „{name}“ fehlen in dieser Datei."
 
 #: ../shell/src/studio-engine.ts
 msgid "the repair could not be applied: {why}"
@@ -5931,6 +6182,14 @@ msgstr "die Felder dieser Entität sind kein einfaches Objekt"
 msgid "this entity's groups aren't written as plain lists of field names"
 msgstr "die Gruppen dieser Entität sind keine einfachen Listen von Feldnamen"
 
+#: ../shell/src/move-page.tsx
+msgid "This file could not be read."
+msgstr "Diese Datei konnte nicht gelesen werden."
+
+#: ../shell/src/move-archive.ts
+msgid "This file does not say which Potyro it came from."
+msgstr "Diese Datei sagt nicht, von welchem Potyro sie stammt."
+
 #: ../shell/src/share-sync.ts
 msgid "This invite has no app in it yet. Ask the sender to open the app once, then share a fresh link."
 msgstr "In dieser Einladung ist noch keine App. Bitte die Person, die sie geschickt hat, die App einmal zu öffnen und dann einen neuen Link zu teilen."
@@ -5946,6 +6205,12 @@ msgstr "Genau das wird gesendet: die Anfrage oben und wie deine App aufgebaut is
 #: ../shell/src/identity-panel.tsx
 msgid "This is my second device"
 msgstr "Das ist mein zweites Gerät"
+
+#: ../shell/src/move-archive.ts
+#: ../shell/src/move-archive.ts
+#: ../shell/src/move-archive.ts
+msgid "This is not a file Potyro saved for moving."
+msgstr "Das ist keine Datei, die Potyro für einen Umzug gespeichert hat."
 
 #: ../shell/src/file-viewer.tsx
 msgid "This is the beginning of {name}. Save a copy to read all of it."
@@ -6002,6 +6267,10 @@ msgstr "der Titel dieser Seite ist nicht als Übersetzungstabelle geschrieben"
 #: ../shell/src/app-ai.ts
 msgid "This picture's format can't be read. Try a JPEG or PNG photo."
 msgstr "Das Format dieses Bildes kann nicht gelesen werden. Versuche ein JPEG- oder PNG-Foto."
+
+#: ../shell/src/move-page.tsx
+msgid "This Potyro already knew you as someone else, and apps here are shared under that name, so it was kept. To be the person you were on {site}, enter those recovery words under You."
+msgstr "Dieses Potyro kannte dich schon als jemand anderen, und Apps hier sind unter diesem Namen geteilt, darum blieb das so. Um die Person zu sein, die du auf {site} warst, gib unter Du die Wörter von dort ein."
 
 #: ../shell/src/data-table.tsx
 #: ../views/src/builtins.tsx
@@ -6327,6 +6596,10 @@ msgstr "ggü. v{beforeSeq}"
 msgid "vs v{beforeSeq} (running)"
 msgstr "ggü. v{beforeSeq} (läuft)"
 
+#: ../shell/src/move-page.tsx
+msgid "was shared"
+msgstr "war geteilt"
+
 #. Calendar column head: Wednesday, as short as your language writes it
 #: ../views/src/date-input.tsx
 msgid "We"
@@ -6344,6 +6617,15 @@ msgstr "zu Version {seq} zurückgegangen"
 #: ../shell/src/ask-material.tsx
 msgid "What another AI made"
 msgstr "Was eine andere KI gemacht hat"
+
+#: ../shell/src/move-page.tsx
+msgid "What arrived could not be read."
+msgstr "Was angekommen ist, konnte nicht gelesen werden."
+
+#: ../shell/src/move-page.tsx
+#: ../shell/src/move-page.tsx
+msgid "What arrived is not what you were shown, so none of it was brought in."
+msgstr "Was angekommen ist, ist nicht das, was dir gezeigt wurde, darum wurde nichts übernommen."
 
 #: ../shell/src/studio.tsx
 msgid ""
@@ -6464,6 +6746,14 @@ msgstr "Welche Worte klingen falsch?"
 msgid "While the app is open it can send and receive anything there. Potyro closes the connection when you leave the app."
 msgstr "Solange die App offen ist, kann sie dorthin alles senden und von dort alles empfangen. Potyro beendet die Verbindung, wenn du die App verlässt."
 
+#: ../shell/src/move-bring-in.ts
+msgid "Who you are"
+msgstr "Wer du bist"
+
+#: ../shell/src/move-page.tsx
+msgid "Who you are does not come in a file. To be the same person here, enter your recovery words under You afterwards."
+msgstr "Wer du bist, kommt nicht in einer Datei. Um hier dieselbe Person zu sein, gib danach unter Du deine Wörter ein."
+
 #. Tile size
 #: ../shell/src/launcher-metro.tsx
 msgid "Wide"
@@ -6542,6 +6832,10 @@ msgstr "Du"
 msgid "You and your devices"
 msgstr "Du und deine Geräte"
 
+#: ../shell/src/move-page.tsx
+msgid "You are the same person here as there, with the same recovery words."
+msgstr "Du bist hier dieselbe Person wie dort, mit denselben Wörtern."
+
 #: ../shell/src/studio.tsx
 msgid "You can go back to the version before from History."
 msgstr "Über den Verlauf kannst du zur Version davor zurück."
@@ -6553,6 +6847,10 @@ msgstr "Du hast {field} von {from} auf {to} geändert"
 #: ../shell/src/activity-panel.tsx
 msgid "You changed {field} from {from} to {to} on {record}"
 msgstr "Du hast {field} bei {record} von {from} auf {to} geändert"
+
+#: ../shell/src/move-page.tsx
+msgid "You come too: here you will be {who}, with the same recovery words, so what you made is still yours."
+msgstr "Du kommst mit: Hier bist du {who}, mit denselben Wörtern, also bleibt deins, was du gemacht hast."
 
 #: ../shell/src/fix-panel.tsx
 msgid "You ended this before it finished."
@@ -6605,6 +6903,10 @@ msgstr "Deine Apps"
 msgid "Your apps and data live here. Add another device to use them there too."
 msgstr "Deine Apps und Daten sind hier. Füge ein weiteres Gerät hinzu, um sie auch dort zu nutzen."
 
+#: ../shell/src/move-page.tsx
+msgid "Your apps are here"
+msgstr "Deine Apps sind da"
+
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps are on the relay. Anything you make later goes too."
 msgstr "Deine Apps sind auf dem Relay. Alles, was du später machst, kommt auch dorthin."
@@ -6620,6 +6922,14 @@ msgstr "Deine Apps als Karten, mit einer angehefteten Reihe"
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps on this account"
 msgstr "Deine Apps in diesem Konto"
+
+#: ../shell/src/move-banner.tsx
+msgid "Your apps, their records, files and Studio conversations are kept in this browser, for this address. Bring them to {site} in one go — straight from this window to the new one, through no server. Nothing here is deleted."
+msgstr "Deine Apps, ihre Einträge, Dateien und Studio-Gespräche liegen in diesem Browser, für diese Adresse. Nimm sie in einem Rutsch mit zu {site} — direkt von diesem Fenster ins neue, über keinen Server. Hier wird nichts gelöscht."
+
+#: ../shell/src/move-banner.tsx
+msgid "Your browser blocked the new window. Allow pop-ups for this site and try again — or save them as a file instead."
+msgstr "Dein Browser hat das neue Fenster blockiert. Erlaube Pop-ups für diese Seite und versuch es noch einmal — oder speichere sie stattdessen als Datei."
 
 #: ../shell/src/share-sheet.tsx
 msgid "Your browser will ask what to record: choose this tab."
@@ -6646,6 +6956,10 @@ msgstr "Deine Daten nutzen noch die vorherige Version. Aktualisiere sie, um weit
 #: ../shell/src/identity-panel.tsx
 msgid "Your devices"
 msgstr "Deine Geräte"
+
+#: ../shell/src/move-page.tsx
+msgid "Your old Potyro is packing them. Nothing comes in until you say yes here."
+msgstr "Dein altes Potyro packt sie gerade. Nichts wird übernommen, bevor du hier Ja sagst."
 
 #: ../shell/src/app-ai.ts
 msgid "Your OpenRouter account is out of credit."
