@@ -15,7 +15,7 @@
 // be marked "I wrote this, run it as mine" on the card; a link may not, it can be promoted later.
 // The same app already installed: Replace is the default, through the ordinary update path, so
 // History keeps the old version and the data check runs on the next open.
-import { capabilityWords } from "./capability-words.js";
+import { permissionWords } from "./capability-words.js";
 import { t } from "@lingui/core/macro";
 import { pickLanguage, word, type Words } from "potyro";
 import { languagePrefs } from "./locale.js";
@@ -195,10 +195,7 @@ function shownIn(facts: AppFacts): (w: Words | undefined) => string | undefined 
   return (w) => (w == null ? undefined : word(w, language, app));
 }
 
-const asksOf = (permissions: Record<string, unknown> | undefined): string[] =>
-  Object.entries(permissions ?? {})
-    .filter(([, v]) => v)
-    .map(([k]) => capabilityWords(k));
+const asksOf = (permissions: Record<string, unknown> | undefined): string[] => permissionWords(permissions);
 
 /**
  * The id and name of an app that could not be read at all, from its text: enough for a card that says
