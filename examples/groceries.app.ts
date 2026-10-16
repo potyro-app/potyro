@@ -389,14 +389,14 @@ export default defineApp({
             const others = (ctx.space?.members ?? []).filter((m) => m.id !== ctx.me?.id).map((m) => m.name);
             return others.length
               ? ctx.format.list(others)
-              : ctx.t({ en: "Just you: tap Share", "pt-BR": "Só você: toque em Compartilhar", de: "Nur du: tippe auf Teilen", es: "Solo tú: toca Compartir", pl: "Tylko ty: stuknij Udostępnij", it: "Solo tu: tocca Condividi" });
+              : ctx.t({ en: "Just you: tap Invite", "pt-BR": "Só você: toque em Convidar", de: "Nur du: tippe auf Einladen", es: "Solo tú: toca Invitar", pl: "Tylko ty: stuknij Zaproś", it: "Solo tu: tocca Invita" });
           },
         },
       ],
       primaryAction: 0,
       actions: [
         { label: { en: "Done shopping", "pt-BR": "Compras feitas", de: "Fertig eingekauft", es: "Compra hecha", pl: "Gotowe", it: "Spesa fatta" }, icon: "✓", run: doneShopping },
-        { label: { en: "Share", "pt-BR": "Compartilhar", de: "Teilen", es: "Compartir", pl: "Udostępnij", it: "Condividi" }, icon: "👋", run: shareList },
+        { label: { en: "Invite", "pt-BR": "Convidar", de: "Einladen", es: "Invitar", pl: "Zaproś", it: "Invita" }, icon: "👋", run: shareList },
       ],
       view: {
         type: "checklist",

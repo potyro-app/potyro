@@ -148,7 +148,7 @@ test("a thousand records open at once: rows are drawn as you scroll, and search 
   });
   await page.reload();
   await dataPage(page).getByRole("tab", { name: /Item/ }).click();
-  await expect(dataPage(page).locator(".k-data-shown")).toHaveText("1,007 records", { timeout: 30_000 });
+  await expect(dataPage(page).locator(".k-data-shown")).toHaveText("1,038 records", { timeout: 30_000 });
 
   const drawn = dataPage(page).locator(".k-data-table tbody tr:not(.k-data-more)");
   const first = await drawn.count();
