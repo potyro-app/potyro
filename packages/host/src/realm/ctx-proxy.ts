@@ -13,6 +13,7 @@ import { makeFormat, translate, type WordsContext } from "../format.js";
 import type { Transport } from "./port-transport.js";
 import type { CtxBase, FetchAnswer, Op } from "./protocol.js";
 import { realmSocket, type RealmSocketInfo } from "./realm-sockets.js";
+import { realmSpeech, type RealmSpeechInfo } from "./realm-speech.js";
 
 let progressSeq = 0;
 
@@ -150,6 +151,12 @@ export function makeRealmCtx(base: CtxBase, tx: Transport, opts: RealmCtxOptions
           image: aiImages(req?.image),
         }) as never,
       ask: (prompt, o) => call<string>("caps.ai.ask", String(prompt), o ? { instructions: o.instructions, image: aiImages(o.image) } : undefined),
+    };
+  if (has("speech"))
+    caps.speech = {
+      // The host asks the person and holds the microphone (speech.ts); this is the listening's handle.
+      listen: async (o) =>
+        realmSpeech(await call<RealmSpeechInfo>("caps.speech.listen", o ? { language: o.language == null ? undefined : String(o.language), interim: o.interim == null ? undefined : o.interim !== false } : undefined), call),
     };
   if (has("notifications"))
     caps.notifications = {

@@ -19,6 +19,7 @@ import { navigateTo } from "./router.js";
 import { PromoteButton } from "./trust-dialog.js";
 import { creditLine } from "./credit-words.js";
 import { handToStudio } from "./studio-handoff.js";
+import { galleryUrl } from "./gallery-link.js";
 
 type Step =
   | { kind: "choose"; tab: AddSource | null }
@@ -59,12 +60,14 @@ const list = (words: readonly string[]): string => fmt.list(words);
  * (#254) — read straight away, as if they had been chosen here.
  *
  * `initialPackage`: the package a demo link carried (docs/24), read straight away as one that came
- * from a link — so it is sealed, and "I wrote this" is never offered for it.
+ * from a link — so it is sealed, and "I wrote this" is never offered for it. A function is called for
+ * it: Make it mine from an app on this device builds its package first (remix.tsx).
  *
  * `onAdded`: told once the app is saved, before it is opened.
  *
- * `remix`: the person's own copy to change (docs/24 §6) — always a new app beside any copy they have,
- * credited as a remix, and opened with the Studio asking what to change.
+ * `remix`: Make it mine (docs/24 §6) — the person's own copy to change: always a new app beside any copy
+ * they have, credited as a remix, sealed like anything from someone else, and opened with the Studio
+ * asking what to change. It may start with the package's sample records or empty; the card asks.
  */
 export function AddAppDialog({
   onClose,
@@ -77,7 +80,7 @@ export function AddAppDialog({
   onClose: () => void;
   initialLink?: string;
   initialFiles?: File[];
-  initialPackage?: AppPackage;
+  initialPackage?: AppPackage | (() => Promise<AppPackage>);
   onAdded?: (done: Installed) => void;
   remix?: boolean;
 }) {
@@ -88,6 +91,8 @@ export function AddAppDialog({
   const [error, setError] = useState<string | null>(null);
   const [mine, setMine] = useState(false);
   const [mode, setMode] = useState<"replace" | "copy">("replace");
+  // A remix starts with the app's sample records unless the person says otherwise (docs/24 §6).
+  const [withSamples, setWithSamples] = useState(true);
   const linkRef = useRef<HTMLInputElement>(null);
   const pasteRef = useRef<HTMLTextAreaElement>(null);
 
@@ -118,7 +123,7 @@ export function AddAppDialog({
     if (readInitial.current) return;
     if (initialPackage) {
       readInitial.current = true;
-      void read("link", async () => initialPackage);
+      void read("link", typeof initialPackage === "function" ? initialPackage : async () => initialPackage);
       return;
     }
     if (!initialFiles?.length) return;
@@ -138,12 +143,10 @@ export function AddAppDialog({
     setError(null);
     setStep({ kind: "installing", name: step.inspected.name });
     try {
-      const done = await installPackage(step.pkg, step.inspected, { source: step.source, mine, mode: remix ? "copy" : mode, link: step.link, remix });
+      const done = await installPackage(step.pkg, step.inspected, { source: step.source, mine, mode: remix ? "copy" : mode, link: step.link, remix, ...(remix ? { seed: withSamples } : {}) });
       onAdded?.(done);
-      if (remix) {
-        const name = step.inspected.name;
-        handToStudio(done.app.id, t({ message: `Make me a version of ${name} that…`, comment: "What the Studio starts with after Remix this" }));
-      }
+      // The copy opens with the Studio on it, greeting it as a remix (studio-thread-view.tsx).
+      if (remix) handToStudio(done.app.id);
       // Something to say before opening: changed files kept, files the new version dropped, or a
       // library that cannot start in the sealed box (known only once it was fetched).
       const sealed = sealedAfter(done, step.inspected);
@@ -167,7 +170,7 @@ export function AddAppDialog({
         className="k-modal k-add-app"
         role="dialog"
         aria-modal="true"
-        aria-label={remix ? t({ message: "Remix an app", comment: "The Add-an-app dialog, opened from Remix this" }) : t`Add an app`}
+        aria-label={remix ? t({ message: "Make it mine", comment: "The Add-an-app dialog, opened from Make it mine: your own copy of an app to change" }) : t`Add an app`}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.key === "Escape" && !busy && onClose()}
       >
@@ -175,10 +178,10 @@ export function AddAppDialog({
           {remix ? (
             <>
               <h2>
-                <Trans comment="The Add-an-app dialog, opened from Remix this">Remix an app</Trans>
+                <Trans comment="The Add-an-app dialog, opened from Make it mine: your own copy of an app to change">Make it mine</Trans>
               </h2>
               <p className="k-muted">
-                <Trans>You get your own copy to change. Once it is added, the Studio opens on it and asks what you want to make of it.</Trans>
+                <Trans>You get your own copy to change, beside anything you already have. Then the Studio opens on it and asks what you would like to change.</Trans>
               </p>
             </>
           ) : (
@@ -223,6 +226,16 @@ export function AddAppDialog({
                   <Trans>The whole app, as text</Trans>
                 </span>
               </button>
+              {/* Not a source of its own: the gallery's apps are demo links, which open here as any link does. */}
+              <a className="k-add-app-source k-add-app-gallery" href={galleryUrl()} target="_blank" rel="noopener">
+                <span className="k-add-app-source-glyph" aria-hidden>▦</span>
+                <span className="k-add-app-source-title">
+                  <Trans comment="Add an app: Potyro's gallery of apps">From the gallery</Trans>
+                </span>
+                <span className="k-muted">
+                  <Trans>Apps to try, and to make your own</Trans>
+                </span>
+              </a>
             </div>
 
             {step.tab === "link" ? (
@@ -266,7 +279,7 @@ export function AddAppDialog({
           </p>
         ) : null}
 
-        {step.kind === "card" ? <Card step={step} mine={mine} setMine={setMine} mode={mode} setMode={setMode} remix={remix} /> : null}
+        {step.kind === "card" ? <Card step={step} mine={mine} setMine={setMine} mode={mode} setMode={setMode} remix={remix} withSamples={withSamples} setWithSamples={setWithSamples} /> : null}
 
         {step.kind === "updated" ? (
           <div className="k-add-app-updated" role="status">
@@ -329,7 +342,7 @@ export function AddAppDialog({
               </button>
               {step.kind === "card" ? (
                 <button type="button" className="k-add k-primary-action" disabled={step.inspected.issues.length > 0} onClick={() => void install()}>
-                  {remix ? t({ message: "Remix it", comment: "Add-an-app card button, opened from Remix this" }) : step.inspected.installed && mode === "replace" ? t`Update app` : t`Add app`}
+                  {remix ? t({ message: "Make it mine", comment: "Add-an-app card button, opened from Make it mine: your own copy of an app to change" }) : step.inspected.installed && mode === "replace" ? t`Update app` : t`Add app`}
                 </button>
               ) : null}
             </>
@@ -347,8 +360,12 @@ function Card({
   mode,
   setMode,
   remix,
+  withSamples,
+  setWithSamples,
 }: {
   remix?: boolean;
+  withSamples: boolean;
+  setWithSamples: (v: boolean) => void;
   step: Extract<Step, { kind: "card" }>;
   mine: boolean;
   setMine: (v: boolean) => void;
@@ -422,7 +439,7 @@ function Card({
             </dd>
           </div>
         ) : null}
-        {app.seedRows && !(app.installed && mode === "replace") ? (
+        {app.seedRows && !remix && !(app.installed && mode === "replace") ? (
           <div>
             <dt>
               <Trans comment="Add an app card: the records it comes with">Starts with</Trans>
@@ -501,6 +518,21 @@ function Card({
             ))}
           </ul>
         </div>
+      ) : null}
+
+      {remix && app.seedRows ? (
+        // Its sample records — the app's own examples, never anyone's records (docs/24 §3) — or nothing.
+        <label className="k-add-app-samples">
+          <input type="checkbox" checked={withSamples} onChange={(e) => setWithSamples(e.target.checked)} />
+          <span>
+            <strong>
+              {plural(app.seedRows, { one: "Start with its # sample record", other: "Start with its # sample records" })}
+            </strong>
+            <span className="k-muted">
+              <Trans>So you can see what a change does. They are examples, not anyone’s own, and you can delete them. Leave it off to start empty.</Trans>
+            </span>
+          </span>
+        </label>
       ) : null}
 
       {app.installed && !remix ? (

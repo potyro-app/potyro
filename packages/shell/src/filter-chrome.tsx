@@ -98,9 +98,12 @@ function PageActions({ runtime, pageId, params }: { runtime: PotyroRuntime; page
 
 export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps) {
   const { t } = useLingui();
-  const view = runtime.definition.pages.find((p) => p.id === pageId)?.view as
-    | { entity?: string; filters?: FilterChip[] }
-    | undefined;
+  // A page's chips are the page's: they write `ctx.params`, which every item of a layout reads. So a
+  // layout shows those of the first item that declares any — a status line above a filtered map
+  // keeps the map's chips (it used to look only at the first item, and they vanished).
+  const page = runtime.definition.pages.find((p) => p.id === pageId);
+  type Chipped = { entity?: string; filters?: FilterChip[] };
+  const view = ((page?.layout?.items ?? []).map((i) => i.view as Chipped).find((v) => v.filters?.length) ?? page?.view) as Chipped | undefined;
   const filters = view?.filters;
   const hasActions = Boolean(runtime.definition.pages.find((p) => p.id === pageId)?.actions?.length);
   const [open, setOpen] = useState(false);

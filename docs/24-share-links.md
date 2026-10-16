@@ -16,14 +16,14 @@ A **demo link** does. Whoever opens it sees the app running, straight away:
 - **sealed**, in the browser realm, exactly as an app from someone else always runs (rule 3);
 - with **demo records** only — the app's sample data, never the sharer's records;
 - in **the viewer's language** (Potyro's words and, where the app has them, the app's);
-- with one calm bar: **Made with Potyro · Keep this app · Remix this**.
+- with one calm bar: **Made with Potyro · Make it mine · Keep this app**.
 
 A permission is asked for only when the app itself reaches for a capability, and a library is
 fetched only after the person says yes — both through the prompts every sealed app already gets.
 
 "Keep" goes through the ordinary Add-an-app card, as a link (so never "I wrote this"; it can be
-promoted later). "Remix" goes through the same card and then opens the Studio on the kept copy,
-prefilled with "Make me a version of <app> that…". Nothing about trust changes.
+promoted later). "Make it mine" goes through the same card and then opens the Studio on the copy, which greets it
+(§6). Nothing about trust changes.
 
 Sharing from the sharer's side is one sheet: **A link anyone can try** (the demo link) above
 **Use it together** (the existing invite). The sheet offers copy, WhatsApp, Telegram and the
@@ -114,16 +114,59 @@ quality lowered until it is under 300 KB (in practice 40–90 KB). A card rather
 because a screenshot of a sealed app would have to be taken from the person's screen, which shows
 their records.
 
-## 6. Credit and remix
+## 6. Credit and remix: Make it mine
 
 `manifest.json` gains `credit`: `{ name, by?, remixOf?: credit }`, at most five deep.
 
 - `name` is the app's name; `by` is the sharer's name, only when they have set one (You → name)
   and leave "Say it is by <name>" ticked on the share sheet.
 - Keeping an app keeps its credit on the saved app (`UserApp.credit`).
-- Remixing saves the copy with `credit: { remixOf: <the shared app's credit> }`; when that copy is
-  shared, its credit is `{ name, by, remixOf }` — a chain.
-- The Add-an-app card says "By Ana" or "Remix of Groceries by Ana"; the demo bar says the same.
+- Remixing saves the copy with `remixOf: <the shared app's credit>` — or `{ name }` when the app came
+  with none, so a remix always says what it remixed. When that copy is shared, its credit is
+  `{ name, by, remixOf }` — a chain.
+- The Add-an-app card says "By Ana"; a remix's tile and the Studio's greeting say "Remix of Groceries
+  by Ana" ("Remix of Groceries" when nobody said who made it). History keeps it too: the remix's first
+  version is noted `remix of “Groceries” by Ana` (stored in English, shown in the reader's language).
+
+**One path from any shared app** to "your own copy you can change", called **Make it mine**
+(glossary: docs/21). It is offered in three places, and all three are the Add-an-app card with
+`remix` (`AddAppDialog`), so libraries, files and trust are the ordinary install's:
+
+| Where | What it copies |
+|---|---|
+| A demo link: the bar's **Make it mine** | the package the link carried |
+| A link with the remix intent (`&remix=1`, the gallery's second button, §10) | the same; the card is already open over the running app |
+| A sealed app on this device: its tile's ⋯ menu, or the app's own menu | the package a demo link of it would carry (`remix.tsx`): its code, shipped files and sample records — never its store, which may be a space other people write in |
+
+Make it mine is offered for someone else's app (sealed) that is not already a remix of the person's
+own; their own apps have Duplicate.
+
+What the copy is:
+
+- **A new app**, always, beside anything the person has: its id is `<id>-remix` (or `-remix-2`…), never
+  the original's — the example seeders and conversations are keyed on app ids, so a copy under the
+  original's id would be given the original's first-run records and chat. Its name is the original's,
+  or "Groceries (remix)" when an app of that name is already on the device, so the two tiles differ.
+- **Sealed.** A remix of someone's code stays in the sealed box until the person lets it run as theirs
+  (docs/07); the Studio changes it either way, and previews it sealed (`studio-preview.tsx`).
+- **With the sample records, unless the person unticks it.** The card asks "Start with its N sample
+  records" (on by default) when the package has any. They are the app's own examples, never anyone's
+  records (§3), and a copy you are about to change in the Studio is judged by looking at it: a change
+  like "add a price to each item" shows on rows, not on an empty list. Off, it starts empty.
+
+Then the copy opens with the Studio on it (`studio-handoff.ts`, across the page load). The Studio greets
+a remix that nobody has asked anything of yet (`RemixHello`): the credit, **"This is your own copy.
+What would you like to change?"**, and up to four suggestions drawn from the app with no model call
+(`remix-suggestions.ts`): about its main record — the one its first page shows — what it does not have
+yet (a photo, a date or a calendar, a note, who each is for), and always one about its look. A
+suggestion fills the box, in the person's language, quoting the app's own word for its record.
+
+### The link intent
+
+`<a demo link>&remix=1` — `https://potyro.app/s/<id>#k=<key>&remix=1`, or `#try=<package>&remix=1`. It is
+in the fragment, like the key, so no server sees it; only `1` counts. `readDemoLink` returns
+`{ …, remix: true }` and the demo opens with the Make it mine card already up. A link without it is a
+plain demo.
 
 ## 7. Measuring, without measuring people
 
@@ -149,7 +192,44 @@ it), WebM otherwise. Saving waits for a tap on "Save the clip", because a browse
 
 ## 9. What this does not do
 
-- No public gallery, feed, search or listing of share links (Phase 1 is a curated showcase, later).
+- No public feed, search or listing of share links: the gallery (§10) is curated, by hand.
 - No records leave the device in a demo; no space is created.
-- No change to trust: a demo runs sealed, Keep and Remix install sealed, promotion stays explicit.
+- No change to trust: a demo runs sealed, Keep and Make it mine install sealed, promotion stays explicit.
 - No server-side rendering of apps: the service never runs app code.
+
+## 10. The gallery
+
+A curated page of apps to try and make your own, served statically on potyro.com (docs/16): Potyro's
+first public face, and the place a share-link loop starts from without anyone's feed.
+
+**The data** is one file, `gallery/gallery.json` (`potyro-gallery/1`, checked by `gallery/src/data.mjs`):
+each app's id, its name and one line in all six languages, a category, an icon, and where it comes
+from — `{ "example": "groceries" }` or `{ "package": ["apps/receipt-split/receipt-split.app.ts"] }`.
+`status` is `ready` (works sealed today, with built-in views) or `coming-soon` with `waitsFor` (the
+issue or PR it needs: #267 for apps whose custom screens need the sealed frame, or the open PR that adds
+it). People edit everything but `link`, `screenshot` and `publishedAt`, which the publish script writes.
+The page's own words are in `gallery/strings.json`, six languages, same placeholders in each.
+
+**`pnpm gallery:publish --site https://potyro.app`** (`gallery/src/publish.mjs`, Playwright) makes
+each ready app's link the way a person does, in a new, empty browser: an example is already on the
+launcher; an app under `apps/` is packed (`scripts/pack-app.mjs`) and added through Add an app. The link
+is made from the tile's Share sheet. A second empty browser then opens it as a stranger — sealed, a
+heading, no console error — opens the remix link to see the Make it mine card, and takes the
+screenshot (412 px wide, demo bar hidden). Each link and screenshot is written as soon as it is made.
+Running it again keeps every link already on that site (`--refresh` makes new ones); coming-soon apps
+are skipped and listed. Nothing personal goes out: the browser is empty, and no name is on the links
+unless `--by` says one.
+
+**`pnpm gallery:build`** (`gallery/src/build.mjs`) writes `dist/gallery/`: one HTML page that is whole
+without JavaScript (English), its stylesheet and a small script on the same origin, system fonts, the
+screenshots it shows and nothing else. The script picks the language — `?lang=`, the one chosen on the
+page, then the browser's — and handles the light/dark switch and the category filter; what it remembers
+stays in that browser. Every card has **Try it** (the demo link) and **Make it mine** (the same link
+with `&remix=1`). The footer has "Report a link", a mailto to `contact@potyro.com` (named once, in
+`build.mjs`), and links to potyro.app. Tests: `gallery/test` (data, words, page, build) and
+`e2e/gallery-trusted.spec.ts` (publish against the local dev server, axe in light and dark, no request
+leaves the page's origin, languages).
+
+In the app, the gallery is one tap from Add an app ("From the gallery"), the Classic launcher's ＋ menu
+and the Tiles launcher's app bar (`gallery-link.ts`; a build may point elsewhere with
+`VITE_POTYRO_GALLERY`).
