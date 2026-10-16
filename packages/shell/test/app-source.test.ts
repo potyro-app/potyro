@@ -287,7 +287,7 @@ export default defineApp({ id: "x", name: NAME, version: "1.0.0", schemaVersion:
 
   it("reads the example apps' identity", async () => {
     const workout = readFileSync(resolve(process.cwd(), "../../examples/workout.app.tsx"), "utf8");
-    expect(await inspect(workout)).toMatchObject({ name: "PPL Log", icon: "🏋", accent: "#5B8DEF" });
+    expect(await inspect(workout)).toMatchObject({ name: "Workout", icon: "🏋", accent: "#B6E62E" });
   });
 });
 

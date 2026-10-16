@@ -61,10 +61,13 @@ describe("the demo package", () => {
     for (const item of seed!.item!) expect(aisles.has(item.aisle)).toBe(true);
   });
 
-  it("names nobody: Split's sample expenses need a person, so only its group comes", async () => {
+  it("names nobody: Split's sample expenses come without a payer, which the app reads as the viewer", async () => {
     const seed = await demoSeed("split", ["group", "expense"]);
-    expect(seed?.group?.length).toBe(1);
-    expect(seed?.expense).toBeUndefined();
+    expect(seed?.group?.map((g) => g.name)).toEqual(["Lisbon weekend", "Flat"]);
+    expect(seed?.expense?.length).toBe(13);
+    expect(seed?.expense?.some((e) => "paidBy" in e)).toBe(false);
+    // The itemized dinner keeps its receipt as the file it shipped with.
+    expect(seed?.expense?.find((e) => e.description === "Tasca da Esquina")?.receipt).toEqual({ file: "receipts/tasca-da-esquina.webp" });
   });
 
   it("an app without sample data of its own comes empty", async () => {

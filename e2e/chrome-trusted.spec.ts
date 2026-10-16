@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "./console-guard";
+import { installGridApp } from "./grid-fixture.js";
 
 // The app's chrome (#111, #87). On a phone: a compact top bar, the page, a floating quick action,
 // a bottom tab bar with More; the shell's tools behind one ⋯ menu; no TRUSTED pill. On a wide
@@ -123,8 +124,9 @@ test.describe("desktop", () => {
   });
 
   test("an object-grid app lists Home first", async ({ page }) => {
-    await page.goto("/?user=workout");
-    await expect(page.locator("h1").first()).toHaveText("PPL Log", { timeout: 30_000 });
+    await installGridApp(page);
+    await page.goto("/?user=gridhome");
+    await expect(page.locator("h1").first()).toHaveText("Gym Notes", { timeout: 30_000 });
     await expect(page.locator(".k-sidenav .k-tab").first()).toHaveText(/Home/);
     await expect(page.locator(".k-sidenav .k-tab").first()).toHaveAttribute("data-active", "true");
   });

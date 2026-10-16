@@ -48,13 +48,13 @@ describe("a computed that throws", () => {
     warn.mockRestore();
   });
 
-  it("PPL Log: deleting an exercise past sessions mention leaves Program readable", async () => {
+  it("Workout: deleting an exercise past sessions mention leaves Program readable", async () => {
     const { store, runtime } = await harness(workout, "workout");
     const bench = await store.insert("exercise", { name: "Bench Press", day: "push", order: 0 });
     const ohp = await store.insert("exercise", { name: "OHP", day: "push", order: 1 });
     await store.insert("session", { day: "push", date: new Date(), entries: [{ exercise: bench.id, sets: [{ kg: 60, reps: 8 }] }, { exercise: ohp.id, sets: [{ kg: 40, reps: 8 }] }] });
     await runtime.remove("exercise", bench.id);
-    const { rows } = await runtime.queryPage("program");
+    const { rows } = await runtime.queryPage("program#1");
     expect(rows.map((r) => r.name)).toEqual(["OHP"]);
     expect(rows[0]!.lastBest).toMatchObject({ kg: 40, reps: 8 });
   });

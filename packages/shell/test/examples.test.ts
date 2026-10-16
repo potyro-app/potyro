@@ -30,9 +30,9 @@ describe("seedExamples", () => {
   it("seeds each example as a trusted app with its declared name and full source, once", async () => {
     expect(await seedExamples({ trusted: true, now: NOW })).toEqual(["groceries", "places", "plants", "recipes", "split", "workout"]);
     const workout = getUserApp("workout")!;
-    expect(workout).toMatchObject({ id: "workout", name: "PPL Log", trusted: true, updatedAt: NOW });
+    expect(workout).toMatchObject({ id: "workout", name: "Workout", trusted: true, updatedAt: NOW });
     expect(workout.source).toContain('defineApp({');
-    expect(workout.source).toContain("function LogSession"); // one file: the view travels with it
+    expect(workout.source).toContain("function Train"); // one file: the view travels with it
     expect(getUserApp("recipes")?.name).toBe("Recipes");
     // A translated name is saved in the app's own language (#302), not as the id.
     expect(getUserApp("groceries")?.name).toBe("Groceries");
@@ -57,7 +57,7 @@ describe("seedExamples", () => {
   it("gives the launcher the examples' identity like any other app's", async () => {
     await seedExamples({ trusted: true, now: NOW });
     await ensureIdentities(listInstalledApps());
-    expect(listInstalledApps().find((a) => a.id === "workout")).toMatchObject({ name: "PPL Log", icon: "🏋", accent: "#5B8DEF" });
+    expect(listInstalledApps().find((a) => a.id === "workout")).toMatchObject({ name: "Workout", icon: "🏋", accent: "#B6E62E" });
     expect(listInstalledApps().find((a) => a.id === "recipes")).toMatchObject({ name: "Recipes", icon: "🍳" });
   });
 });

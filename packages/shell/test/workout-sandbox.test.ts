@@ -58,7 +58,7 @@ describe("workout async computed in the isolate (lastBest via ctx.query)", () =>
   it("matches trusted for Squat and Bench Press", async () => {
     const trustedStore = await seededStore();
     const trusted = await compose({ app: workout, provenance: "trusted", store: trustedStore, caps: new FakeCapabilities(), ui, nav });
-    const trustedRows = (await trusted.runtime.queryPage("program")).rows;
+    const trustedRows = (await trusted.runtime.queryPage("program#1")).rows;
 
     const untrustedStore = await seededStore();
     const loadIsolated = await createSandboxLoader(untrustedStore);
@@ -72,7 +72,7 @@ describe("workout async computed in the isolate (lastBest via ctx.query)", () =>
       nav,
       loadIsolated,
     });
-    const untrustedRows = (await untrusted.runtime.queryPage("program")).rows;
+    const untrustedRows = (await untrusted.runtime.queryPage("program#1")).rows;
 
     for (const name of ["Squat", "Bench Press"]) {
       const t = bestOf(trustedRows, name);
@@ -82,8 +82,9 @@ describe("workout async computed in the isolate (lastBest via ctx.query)", () =>
       expect(u!.kg).toBe(t!.kg);
       expect(u!.reps).toBe(t!.reps);
     }
-    // Squat best = 110kg × 5 = 550 (heaviest-scoring set across seeded legs history)
-    expect(bestOf(untrustedRows, "Squat")).toMatchObject({ kg: 110, reps: 5, score: 550 });
+    // Squat's best of its last five sessions = 100 kg × 8 = 800: the top of its rep range at its
+    // current weight, the session before the seed's double progression adds 5 kg.
+    expect(bestOf(untrustedRows, "Squat")).toMatchObject({ kg: 100, reps: 8, score: 800 });
     untrusted.runtime.core.app.dispose();
   }, 30000);
 });
