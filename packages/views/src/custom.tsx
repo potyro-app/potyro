@@ -136,7 +136,7 @@ function SealedCustomView({ sealed, props, pageId, runtime, navigate }: { sealed
     const here = pageId.split("#")[0];
     const plain = runtime.definition.pages.filter((p) => p.id !== here && (p.view ?? p.layout?.items[0]?.view)?.type !== "custom");
     return (
-      <div className="k-sealed-notice" role="status">
+      <div key="plain" className="k-sealed-notice" role="status">
         <p>
           <Trans>This app’s screen stopped responding, so Potyro is showing its plain version.</Trans>
         </p>
@@ -160,5 +160,5 @@ function SealedCustomView({ sealed, props, pageId, runtime, navigate }: { sealed
       </div>
     );
   }
-  return <div className="k-sealed-view" ref={ref} />;
+  return <div key="live" className="k-sealed-view" ref={ref} />;
 }
