@@ -45,6 +45,9 @@ export default defineApp({
       id: "play",
       title: { en: "Play", "pt-BR": "Jogar", de: "Spielen", es: "Jugar", pl: "Graj", it: "Gioca" },
       icon: "✏️",
+      // An invite link opens this page with the game's code (docs/24 §11): it fills the box, and the
+      // person taps Join. Nothing joins by itself.
+      link: { params: ["code"] },
       view: { type: "custom", entity: "game", mount: mountPlay },
     },
     {

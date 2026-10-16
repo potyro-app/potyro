@@ -16,6 +16,7 @@ import { clearCases } from "./app-cases.js";
 import { clearChat } from "./studio-chat.js";
 import { backupEnabled } from "./backup-setting.js";
 import { libraryLock, lockJson, parseLock, type AppCredit, type AppLock } from "@potyro/store";
+import { newLine } from "./app-link.js";
 
 const KEY = "potyro:user-apps";
 /** Dispatched on `globalThis` after every write, so a launcher on screen can follow along (#81). */
@@ -70,6 +71,15 @@ export interface UserApp {
   credit?: AppCredit;
   /** The app this one is a remix of, and who made that (docs/24 §6). Passed on when it is shared. */
   remixOf?: AppCredit;
+  /**
+   * Which app this is across devices (docs/24 §11): every copy of it has the same line, so a link one
+   * person makes opens the other's copy. Absent: it is known by its declared `id` (`id:<id>`), as an
+   * example or an app that arrived from a package that did not say. An app made here, a duplicate and
+   * a remix get one of their own (`newLine`).
+   */
+  line?: string;
+  /** A remix's: the line of the app it remixed, so a link to that app opens the remix when it is all there is. */
+  lineOf?: string;
 }
 
 function read(): UserApp[] {
@@ -127,6 +137,8 @@ export async function saveUserApp(
     shipped?: string[];
     credit?: AppCredit;
     remixOf?: AppCredit;
+    line?: string;
+    lineOf?: string;
     origin?: VersionOrigin;
     note?: string;
     rationale?: string;
@@ -180,6 +192,9 @@ export async function saveUserApp(
     // And who made it: an edit does not change whose app it was, or what it remixed.
     credit: input.credit ?? prev?.credit,
     remixOf: input.remixOf ?? prev?.remixOf,
+    // And which app it is: an edit is the same app, so links to it keep opening it.
+    line: prev?.line ?? input.line,
+    lineOf: prev?.lineOf ?? input.lineOf,
   };
   write([record, ...apps.filter((a) => a.id !== id)]);
   // `prev?.source` is the baseline: for an app that predates history, it becomes the "before" the
@@ -294,7 +309,8 @@ export async function duplicateUserApp(id: string, now: string): Promise<UserApp
   const name = t({ message: `${original} (copy)`, comment: "The name of a duplicated app" });
   return saveUserApp(
     // The lock is the code's, not the data's: the copy runs the same libraries (`duplicateApp` copies their files).
-    { id: freeAppId(name), name, source: app.source, trusted: app.trusted, lock: app.lock, origin: "created", note: `copied from “${original}”` /* English on purpose: SYSTEM_NOTES matches it */ },
+    // A copy is another app from now on: links to the original keep opening the original.
+    { id: freeAppId(name), name, source: app.source, trusted: app.trusted, lock: app.lock, line: newLine(), origin: "created", note: `copied from “${original}”` /* English on purpose: SYSTEM_NOTES matches it */ },
     now,
   );
 }

@@ -26,6 +26,8 @@ export interface DialogRequest {
   destructive?: boolean;
   /** For a share: the words to send (`ctx.ui.share`), shown as they will go out; `initial` is the link, if any. */
   text?: string;
+  /** For a share: a link still being made (`ctx.ui.share({ app })`, docs/24 §11). Copy waits for it. */
+  pendingLink?: Promise<string>;
   /** `true`/`false` for confirm, the string or `null` for prompt; for a share, whether it was copied or handed on. */
   settle: (value: boolean | string | null) => void;
 }
@@ -34,7 +36,7 @@ export class DialogHost {
   private current: DialogRequest | null = null;
   private listeners = new Set<() => void>();
 
-  private open(kind: DialogRequest["kind"], message: string, initial: string, extra: Pick<DialogRequest, "detail" | "ok" | "cancel" | "destructive" | "text"> = {}): Promise<boolean | string | null> {
+  private open(kind: DialogRequest["kind"], message: string, initial: string, extra: Pick<DialogRequest, "detail" | "ok" | "cancel" | "destructive" | "text" | "pendingLink"> = {}): Promise<boolean | string | null> {
     return new Promise((resolve) => {
       // A second request while one is open would strand the first promise. Settle it as declined —
       // never as accepted: an abandoned confirm must not delete anything.
@@ -74,8 +76,8 @@ export class DialogHost {
    * `ctx.ui.share` (an app's words, a link, or both): the same dialog, showing what will be sent.
    * `true` once it was copied or handed to the device's share sheet.
    */
-  send = async (opts: { text?: string; url?: string; title?: string }): Promise<boolean> =>
-    (await this.open("share", opts.title ?? "", opts.url ?? "", opts.text ? { text: opts.text } : {})) === true;
+  send = async (opts: { text?: string; url?: string; title?: string; makeLink?: () => Promise<string> }): Promise<boolean> =>
+    (await this.open("share", opts.title ?? "", opts.url ?? "", { ...(opts.text ? { text: opts.text } : {}), ...(opts.makeLink ? { pendingLink: opts.makeLink() } : {}) })) === true;
 
   get = (): DialogRequest | null => this.current;
 
@@ -139,7 +141,7 @@ export function Dialogs({ host }: { host: DialogHost }) {
           }}
         >
           {request.message ? <p className="k-dialog-message">{request.message}</p> : null}
-          <ShareBody link={request.initial} text={request.text} onHanded={() => (handed.current = true)} onDone={done} />
+          <ShareBody link={request.initial} pendingLink={request.pendingLink} text={request.text} onHanded={() => (handed.current = true)} onDone={done} />
         </div>
       </div>
     );
@@ -196,9 +198,42 @@ type CopyState = "idle" | "copied" | "failed";
  * keystroke rather than a 200-character drag on a phone.
  */
 /** `onHanded` says how it left: copied, or through the device's own sheet (docs/24 counts which). */
-export function ShareBody({ link, text, onHanded, onDone }: { link: string; text?: string; onHanded: (how: "copy" | "native") => void; onDone: () => void }) {
+export function ShareBody({
+  link: given,
+  pendingLink,
+  text,
+  onHanded,
+  onDone,
+}: {
+  link: string;
+  /** A link still being made: shown as on its way, and Copy waits for it. If it cannot be made, the words go alone. */
+  pendingLink?: Promise<string>;
+  text?: string;
+  onHanded: (how: "copy" | "native") => void;
+  onDone: () => void;
+}) {
   const { t } = useLingui();
-  const [state, setState] = useState<CopyState>("idle");
+  const [state, setState] = useState<CopyState | "making" | "unmade">(pendingLink ? "making" : "idle");
+  const [link, setLink] = useState(given);
+  useEffect(() => {
+    if (!pendingLink) return;
+    let alive = true;
+    pendingLink.then(
+      (made) => {
+        if (!alive) return;
+        setLink(made);
+        setState("idle");
+      },
+      (e: unknown) => {
+        console.warn("[potyro] the link could not be made:", e);
+        if (alive) setState("unmade");
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [pendingLink]);
+  const making = state === "making";
   const inputRef = useRef<HTMLInputElement | null>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
   const copyRef = useRef<HTMLButtonElement | null>(null);
@@ -207,8 +242,10 @@ export function ShareBody({ link, text, onHanded, onDone }: { link: string; text
   /** What Copy puts on the clipboard: the words, then the link on a line of its own. */
   const whole = [text, link].filter(Boolean).join("\n");
 
-  // Copy is what the dialog is for, so it holds focus from the start: Enter copies.
-  useEffect(() => copyRef.current?.focus(), []);
+  // Copy is what the dialog is for, so it holds focus from the start (once there is a link to copy): Enter copies.
+  useEffect(() => {
+    if (!making) copyRef.current?.focus();
+  }, [making]);
 
   const selectIt = (): void => {
     const field = textRef.current ?? inputRef.current;
@@ -263,8 +300,12 @@ export function ShareBody({ link, text, onHanded, onDone }: { link: string; text
           onFocus={(e) => e.currentTarget.select()}
         />
       )}
-      <p className={`k-share-status${state === "failed" ? " k-share-status-failed" : ""}`} role="status" aria-live="polite">
-        {state === "copied"
+      <p className={`k-share-status${state === "failed" || state === "unmade" ? " k-share-status-failed" : ""}`} role="status" aria-live="polite">
+        {state === "making"
+          ? t({ message: "Making the link…", comment: "Share dialog: the link to an app's page is being made" })
+          : state === "unmade"
+            ? t({ message: "The link could not be made. The words can still be sent.", comment: "Share dialog: making the link to an app's page failed" })
+            : state === "copied"
           ? t`Copied`
           : state === "failed"
             ? words
@@ -277,11 +318,11 @@ export function ShareBody({ link, text, onHanded, onDone }: { link: string; text
           <Trans comment="Share dialog: close it">Done</Trans>
         </button>
         {canShare ? (
-          <button type="button" className="k-add" onClick={() => void shareNative()}>
+          <button type="button" className="k-add" disabled={making} onClick={() => void shareNative()}>
             <Trans comment="Opens the device's own share sheet">Share…</Trans>
           </button>
         ) : null}
-        <button ref={copyRef} type="button" className="k-add k-primary-action" onClick={() => void copy()}>
+        <button ref={copyRef} type="button" className="k-add k-primary-action" disabled={making} onClick={() => void copy()}>
           {words ? <Trans comment="Share dialog: copy an app's words (and link)">Copy</Trans> : <Trans>Copy link</Trans>}
         </button>
       </div>

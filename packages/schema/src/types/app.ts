@@ -561,6 +561,19 @@ export interface Page {
   layout?: PageLayout;
   /** Open with no bars (a game, a slideshow). The shell keeps its own way out. */
   fullscreen?: boolean;
+  /**
+   * What a link may open this page with (docs/24 §11): the names of the `ctx.params` it takes from
+   * one — `link: { params: ["code"] }`. A link made with `ctx.ui.share({ app: { page, params } })`
+   * opens the person's copy of the app here; each value is text, at most `LINK_LIMITS.chars` long.
+   * A name not listed here is never passed on. Without `link`, a link can open the page, with nothing.
+   */
+  link?: PageLink;
+}
+
+/** What a link may open a page with (docs/24 §11). */
+export interface PageLink {
+  /** The `ctx.params` a link may set on this page; anything else in a link is dropped. */
+  params?: string[];
 }
 
 /** A page as an app declares it: `view` or `layout` (one of the two; `defineApp` fills `view` from a
