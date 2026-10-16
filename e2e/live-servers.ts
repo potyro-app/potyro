@@ -22,9 +22,14 @@ export interface EchoServer {
   close(): Promise<void>;
 }
 
-/** Sends every message back as it came: text as text, binary as binary. */
-export async function startEcho(): Promise<EchoServer> {
-  const wss = new WebSocketServer({ port: 0, host: "127.0.0.1" });
+/** Sends every message back as it came: text as text, binary as binary. `delayMs` holds each handshake that long. */
+export async function startEcho(opts: { delayMs?: number } = {}): Promise<EchoServer> {
+  const delay = opts.delayMs ?? 0;
+  const wss = new WebSocketServer({
+    port: 0,
+    host: "127.0.0.1",
+    ...(delay > 0 ? { verifyClient: (_info: unknown, done: (ok: boolean) => void) => void setTimeout(() => done(true), delay) } : {}),
+  });
   await new Promise<void>((resolve) => wss.once("listening", () => resolve()));
   const live = new Set<unknown>();
   const paths: string[] = [];

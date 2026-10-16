@@ -24,6 +24,8 @@ export interface DialogRequest {
   /** The other button's words. Shell-only: "Not now" reads better than "Cancel" for a choice that is not undoing anything. */
   cancel?: string;
   destructive?: boolean;
+  /** A prompt's example in its empty field (the shell's own questions). */
+  placeholder?: string;
   /** For a share: the words to send (`ctx.ui.share`), shown as they will go out; `initial` is the link, if any. */
   text?: string;
   /** For a share: a link still being made (`ctx.ui.share({ app })`, docs/24 §11). Copy waits for it. */
@@ -36,7 +38,7 @@ export class DialogHost {
   private current: DialogRequest | null = null;
   private listeners = new Set<() => void>();
 
-  private open(kind: DialogRequest["kind"], message: string, initial: string, extra: Pick<DialogRequest, "detail" | "ok" | "cancel" | "destructive" | "text" | "pendingLink"> = {}): Promise<boolean | string | null> {
+  private open(kind: DialogRequest["kind"], message: string, initial: string, extra: Pick<DialogRequest, "detail" | "ok" | "cancel" | "destructive" | "text" | "placeholder" | "pendingLink"> = {}): Promise<boolean | string | null> {
     return new Promise((resolve) => {
       // A second request while one is open would strand the first promise. Settle it as declined —
       // never as accepted: an abandoned confirm must not delete anything.
@@ -59,8 +61,8 @@ export class DialogHost {
   confirm = async (message: string, opts?: { detail?: string; ok?: string; cancel?: string; destructive?: boolean }): Promise<boolean> =>
     Boolean(await this.open("confirm", message, "", { detail: opts?.detail, ok: opts?.ok, cancel: opts?.cancel, destructive: opts?.destructive }));
 
-  prompt = async (message: string, opts?: { default?: string }): Promise<string | null> => {
-    const value = await this.open("prompt", message, opts?.default ?? "");
+  prompt = async (message: string, opts?: { default?: string; detail?: string; ok?: string; cancel?: string; placeholder?: string }): Promise<string | null> => {
+    const value = await this.open("prompt", message, opts?.default ?? "", { detail: opts?.detail, ok: opts?.ok, cancel: opts?.cancel, placeholder: opts?.placeholder });
     return typeof value === "string" ? value : null;
   };
 
@@ -168,6 +170,7 @@ export function Dialogs({ host }: { host: DialogHost }) {
             ref={inputRef}
             className="k-input"
             aria-label={request.message}
+            placeholder={request.placeholder}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
