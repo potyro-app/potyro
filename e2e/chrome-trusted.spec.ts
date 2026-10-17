@@ -48,9 +48,15 @@ test.describe("phone", () => {
     await expect(page.locator(".k-page-hero")).toHaveCount(0);
     const card = (await page.locator(".k-card").first().boundingBox())!;
     expect(card.y).toBeLessThan(260);
-    // Adding a recipe is not what the cookbook is for: no bottom bar, and no "+" for it.
+    // Adding a recipe is not what the cookbook is for: no bottom bar. It is the top bar's "+", which
+    // runs the app's own way in (a photo, pasted text, or typing) — and not a chip as well.
     await expect(page.locator(".k-primary-bar")).toHaveCount(0);
-    await expect(page.locator(".k-topbar-add")).toHaveCount(0);
+    const add = page.locator(".k-topbar .k-topbar-add");
+    await expect(add).toHaveAccessibleName("Add a recipe");
+    await expect(page.locator(".k-chrome").getByRole("button", { name: "Add a recipe" })).toBeHidden();
+    await add.tap();
+    await expect(page.getByRole("menuitem", { name: /Type it in/ })).toBeVisible();
+    await page.keyboard.press("Escape");
     // No provenance pill, and no shell tool above the content.
     await expect(page.locator(".k-prov")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Studio" })).toHaveCount(0);

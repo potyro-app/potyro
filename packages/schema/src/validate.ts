@@ -651,6 +651,7 @@ const pageSchema = z
     icon: z.string().min(1).max(8).optional(),
     hidden: z.boolean().optional(),
     summary: z.array(summaryValueSchema).optional(),
+    add: z.number().int().min(0).optional(),
     actions: z.array(pageActionSchema).optional(),
     primaryAction: z.union([z.string().min(1), z.number().int().min(0)]).optional(),
     background: backdropSchema.optional(),

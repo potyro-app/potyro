@@ -15639,3 +15639,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-topbar-add:focus-visible {
   background: color-mix(in oklab, var(--accent) 28%, transparent);
 }
+/* A page's own add is the phone's "+" in the top bar: not a chip as well. */
+.k-app-phone .k-page-action[data-page-add] {
+  display: none;
+}
