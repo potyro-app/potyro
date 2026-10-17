@@ -61,7 +61,9 @@ export async function seedPlants(store: Store, _me: string | undefined, photo: S
       active: true,
       wateringIntervalDays: every,
       needsDirectSun: p.sun ?? false,
-      labels: p.labels,
+      // The first label says where it lives: that is its room, the walk round the flat goes by it.
+      room: p.labels[0] ? p.labels[0][0]!.toUpperCase() + p.labels[0].slice(1) : "",
+      labels: p.labels.slice(1),
       seasonalCare: p.winterEvery ? [{ season: "winter", intervalDays: p.winterEvery, note: "Resting: let the soil dry out" }] : [],
       lastWatered,
       snoozes: 0,
