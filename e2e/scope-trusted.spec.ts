@@ -74,3 +74,21 @@ test("a required scope is asked for on open, scopes every page, and is remembere
   await expect(page.locator(".k-form")).toHaveCount(0);
   await expect(page.locator(".k-list-row", { hasText: "Cozy Bar" })).toBeVisible();
 });
+
+test("an optional selection reads as the app's own name until one is chosen, and Show all goes back", async ({ page }) => {
+  // Places files places in lists, but shows every place until a list is chosen.
+  await page.goto("/?user=places");
+  const scope = page.locator(".k-scope");
+  await expect(scope.locator(".k-scope-name")).toHaveText("Places", { timeout: 30_000 });
+  await expect(scope).not.toContainText("Choose");
+  await scope.click();
+  const menu = page.getByRole("menu");
+  await expect(menu.getByRole("menuitem", { name: "Show all" })).toBeVisible();
+  const first = menu.getByRole("menuitem").nth(1);
+  const name = ((await first.textContent()) ?? "").trim();
+  await first.click();
+  await expect(scope.locator(".k-scope-name")).toHaveText(name);
+  await scope.click();
+  await menu.getByRole("menuitem", { name: "Show all" }).click();
+  await expect(scope.locator(".k-scope-name")).toHaveText("Places");
+});
