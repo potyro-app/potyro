@@ -247,7 +247,23 @@ export function MapView(props: BuiltinViewProps) {
     resize?: () => void;
     getZoom?: () => number;
     flyTo?: (opts: { center: [number, number]; zoom: number }) => void;
+    easeTo?: (opts: { center: [number, number] }) => void;
+    getCenter?: () => { lat: number; lng: number };
+    getBounds?: () => { contains(p: [number, number]): boolean };
   } | null>(null);
+  /** Rank the strip's cards against what the map shows now. */
+  const rankRef = useRef<() => void>(() => {});
+  rankRef.current = () => {
+    const map = mapRef.current;
+    if (!stripOnRef.current || !map?.getCenter) return;
+    const c = map.getCenter();
+    const b = map.getBounds?.();
+    const all = markersRef.current;
+    const inside = b ? all.filter((m) => b.contains([m.lng, m.lat])) : all;
+    const pool = inside.length ? inside : all;
+    const away = (m: MapMarker) => distanceKm(c.lat, c.lng, m.lat, m.lng);
+    setOrder([...pool].sort((a, z) => away(a) - away(z)).map((m) => m.id));
+  };
   const markerObjs = useRef<{ remove: () => void }[]>([]);
   // The last framing of everything pinned, kept so `ctx.views.map(page).fit()` can ask for it long
   // after the marker sync that computed it.
@@ -267,8 +283,21 @@ export function MapView(props: BuiltinViewProps) {
   const onEditRef = useRef(onEdit);
   onEditRef.current = onEdit;
   const view = getView(runtime, pageId) as unknown as
-    | { entity?: string; geo?: string; camera?: unknown; locate?: boolean }
+    | { entity?: string; geo?: string; camera?: unknown; locate?: boolean; strip?: boolean }
     | undefined;
+  // `strip`: the places in view as a row of cards along the bottom, nearest the middle first — the
+  // map says what is here without a tap on every pin. A pin brings its card; a swipe moves the map.
+  const strip = view?.strip === true;
+  const stripOnRef = useRef(strip);
+  stripOnRef.current = strip;
+  /** The card (and pin) in front. */
+  const [selected, setSelected] = useState<string | null>(null);
+  /** The strip's cards, by id: what is in view, nearest the middle first, as of the last move YOU made. */
+  const [order, setOrder] = useState<string[]>([]);
+  const markersRef = useRef(markers);
+  markersRef.current = markers;
+  const markerEls = useRef(new Map<string, HTMLElement>());
+  const stripRef = useRef<HTMLUListElement | null>(null);
   // What the app declared (a mode, a position, or a function of ctx — or, for an untrusted app, the
   // sentinel where the function was), and what it resolved to once the map was created.
   const declaredCameraRef = useRef<unknown>(view?.camera);
@@ -353,6 +382,11 @@ export function MapView(props: BuiltinViewProps) {
       };
       created.on("moveend", publish);
       (created as { once?: (e: string, f: () => void) => void }).once?.("load", publish);
+      // The strip follows the moves YOU make. A move the strip itself asked for (a swipe to the next
+      // card) must not re-order the cards under your thumb.
+      created.on("moveend", (e: { originalEvent?: Event }) => {
+        if (e.originalEvent) rankRef.current();
+      });
 
       // Remember the framing — but only for moves the user made. A programmatic fitBounds carries no
       // `originalEvent`, and recording it would pin the map to the first auto-fit forever.
@@ -418,6 +452,7 @@ export function MapView(props: BuiltinViewProps) {
       if (cancelled || !mapRef.current) return;
       for (const m of markerObjs.current) m.remove();
       markerObjs.current = [];
+      markerEls.current.clear();
       const bounds = new maplibre.LngLatBounds();
       for (const mk of markers) {
         // A record with its own glyph is pinned BY it: an emoji in a round badge of its colour.
@@ -446,9 +481,18 @@ export function MapView(props: BuiltinViewProps) {
         }
         if (onEditRef.current) actions.push({ label: tr`Edit`, run: () => onEditRef.current?.(entityRef.current, mk.id) });
         marker.getElement().style.cursor = "pointer";
-        marker.setPopup(new maplibre.Popup({ offset: 24, closeButton: false }).setDOMContent(
-          popupContent(mk.title, cellsRef.current[index], actions),
-        ) as never);
+        if (stripOnRef.current) {
+          // With a strip, a pin brings its card to the front: the card is the popup.
+          marker.getElement().addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            setSelected(mk.id);
+          });
+          markerEls.current.set(mk.id, marker.getElement());
+        } else {
+          marker.setPopup(new maplibre.Popup({ offset: 24, closeButton: false }).setDOMContent(
+            popupContent(mk.title, cellsRef.current[index], actions),
+          ) as never);
+        }
         marker.addTo(map as never);
         markerObjs.current.push(marker);
         bounds.extend([mk.lng, mk.lat]);
@@ -463,6 +507,7 @@ export function MapView(props: BuiltinViewProps) {
         map.fitBounds?.(bounds, { padding: 48, maxZoom: 14, animate: false });
         fittedRef.current = true;
       }
+      rankRef.current();
     })().catch((e: unknown) => {
       // One bad marker used to take the whole sync down with it — including the framing — and say
       // nothing, because the promise was floated.
@@ -500,6 +545,8 @@ export function MapView(props: BuiltinViewProps) {
   const moveTo = (center: [number, number], zoom: number): boolean => {
     const map = mapRef.current;
     if (!map) return false;
+    // A move you asked for (Where am I, the app's own flyTo): the strip ranks against it once there.
+    (map as { once?: (e: string, f: () => void) => void }).once?.("moveend", () => rankRef.current());
     map.flyTo?.({ center, zoom });
     if (cameraModeRef.current === "remember") {
       restoredRef.current = true;
@@ -530,6 +577,7 @@ export function MapView(props: BuiltinViewProps) {
       if (verb === "map.fit") {
         const bounds = boundsRef.current;
         if (!bounds) return false;
+        (map as { once?: (e: string, f: () => void) => void }).once?.("moveend", () => rankRef.current());
         map.fitBounds?.(bounds, { padding: 48, maxZoom: 14 });
         // A deliberate re-frame outranks a remembered position, the same as a drag would.
         restoredRef.current = true;
@@ -579,6 +627,69 @@ export function MapView(props: BuiltinViewProps) {
     onEdit?.(view?.entity ?? "", id);
   };
 
+  // The pin in front wears it, and its card comes into view (a pin tapped, or the strip re-ranked).
+  useEffect(() => {
+    for (const [id, el] of markerEls.current) el.toggleAttribute("data-selected", id === selected);
+    if (!selected) return;
+    const card = stripRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(selected)}"]`);
+    card?.scrollIntoView?.({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [selected, order, markers]);
+
+  // A swipe along the strip: the card that stops in the middle is in front, and the map goes to it.
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onStripScroll = (): void => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => {
+      const list = stripRef.current;
+      if (!list) return;
+      const mid = list.getBoundingClientRect().left + list.clientWidth / 2;
+      let best: { id: string; d: number } | null = null;
+      for (const el of list.querySelectorAll<HTMLElement>("[data-id]")) {
+        const r = el.getBoundingClientRect();
+        const d = Math.abs(r.left + r.width / 2 - mid);
+        if (!best || d < best.d) best = { id: el.dataset.id ?? "", d };
+      }
+      if (!best || best.id === selected) return;
+      setSelected(best.id);
+      const mk = markersRef.current.find((m) => m.id === best!.id);
+      if (mk) mapRef.current?.easeTo?.({ center: [mk.lng, mk.lat] });
+    }, 120);
+  };
+
+  const cards =
+    strip && !placing && order.length ? (
+      <ul ref={stripRef} className="k-map-strip" aria-label={t({ message: "On the map", comment: "The row of cards along the bottom of a map: the records in view" })} onScroll={onStripScroll}>
+        {order.map((id) => {
+          const mk = markers.find((m) => m.id === id);
+          if (!mk) return null;
+          const cell = cells[rows.findIndex((r) => String(r.id) === id)];
+          return (
+            <li key={id} data-id={id} data-selected={selected === id || undefined}>
+              <button type="button" className="k-map-card" onClick={() => openPin(id)}>
+                {cell?.mediaUrl ? (
+                  <img className="k-map-card-media" src={cell.mediaUrl} alt="" decoding="async" draggable={false} />
+                ) : (
+                  <span className="k-map-card-media k-map-card-pin" style={{ background: mk.color }} aria-hidden>
+                    {mk.icon ?? ""}
+                  </span>
+                )}
+                <span className="k-map-card-text">
+                  <span className="k-map-card-title" data-k-value>
+                    {cell?.primary || mk.title || t`Untitled`}
+                  </span>
+                  {cell?.secondary ? (
+                    <span className="k-map-card-detail" data-k-value>
+                      {cell.secondary}
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    ) : null;
+
   const sheet =
     openId && detailPage ? (
       <div className="k-map-sheet-scrim" onClick={() => setOpenId(null)}>
@@ -605,7 +716,7 @@ export function MapView(props: BuiltinViewProps) {
   return (
     // The map comes first and its chrome sits ON it. A map is the page — the way it is in every map
     // app on a phone — and a bar above it is a bar taking a bite out of the thing you came to see.
-    <div className="k-map" data-placing={placing || undefined}>
+    <div className="k-map" data-placing={placing || undefined} data-strip={cards ? "" : undefined}>
       <div ref={containerRef} className="k-map-canvas" role="application" aria-label={t({ message: "Map", comment: "The map view, read aloud" })} />
       {!loading && markers.length === 0 ? <p className="k-empty k-map-empty">{t`No places to show.`}</p> : null}
       {canLocate ? (
@@ -632,14 +743,22 @@ export function MapView(props: BuiltinViewProps) {
             </button>
           </div>
         ) : (
-          <button type="button" className="k-map-add" onClick={() => setPlacing(true)}>
+          // Over a strip of cards, a round "+" above them, beside Where am I: the cards are the page.
+          <button
+            type="button"
+            className="k-map-add"
+            data-compact={cards ? "" : undefined}
+            aria-label={cards ? t({ message: `Add here: ${entityLabel}`, comment: "Map: add a new record at a point; entityLabel is the app's word for it" }) : undefined}
+            onClick={() => setPlacing(true)}
+          >
             <span className="k-fab-plus" aria-hidden>
               ＋
             </span>
-            {t({ message: `Add here: ${entityLabel}`, comment: "Map: add a new record at a point; entityLabel is the app's word for it" })}
+            {cards ? null : t({ message: `Add here: ${entityLabel}`, comment: "Map: add a new record at a point; entityLabel is the app's word for it" })}
           </button>
         )
       ) : null}
+      {cards}
       {sheet}
     </div>
   );
