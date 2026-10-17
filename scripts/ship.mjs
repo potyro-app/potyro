@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Merge a PR the gated way: build its merge commit on GitHub's main and push it to vazio, which runs
-// the full local CI and only then moves GitHub's main and deploys apps.vaz.io (docs/16 §8).
+// the full local CI and only then moves GitHub's main and deploys potyro.app (docs/16 §8).
 //
 //   pnpm ship <pr-number>
 //

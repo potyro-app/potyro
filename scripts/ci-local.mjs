@@ -10,7 +10,7 @@
 //                                              of the gate (see below)
 //   node scripts/ci-local.mjs status           what has passed for HEAD, and what is left
 //   node scripts/ci-local.mjs status --post    ...and, if everything passed, mark HEAD green on GitHub
-//   node scripts/ci-local.mjs deploy           put HEAD on apps.vaz.io — only if it IS origin/main and
+//   node scripts/ci-local.mjs deploy           put HEAD on potyro.app — only if it IS origin/main and
 //                                              every step passed for it (docs/16 §8)
 //
 // Why steps and not one command: the full run takes longer than one sitting of most tools, and a
@@ -494,14 +494,14 @@ function firefoxStatus() {
  * always something that passed the gate — never a branch, never an edit on top of a commit.
  *
 * Where it goes is `POTYRO_DEPLOY_TARGET`: one rsync destination, or several separated by commas or
- * spaces — every site that serves the shell (apps.vaz.io, potyro.app). The build is the same for
- * all of them: the shell finds its relay and services from its own origin. The default is the path
- * on the first server; vazio's watcher uses ssh aliases whose keys are locked to each web root by
- * `rrsync`, so its targets are relative to those roots (docs/16 §8). `version.json` in each web root
+ * spaces — every site that serves the shell. The build is the same for all of them: the shell
+ * finds its relay and services from its own origin. Only potyro.app is deployed (apps.vaz.io was
+ * dropped 2026-10-17); the default is its ssh alias, whose key is locked to the web root by `rrsync`,
+ * so the target is relative to that root (docs/16 §8). `version.json` in each web root
  * names the commit it serves, and a target already serving this commit is left alone.
  */
 function deploy() {
-  const targets = (process.env.POTYRO_DEPLOY_TARGET ?? process.env.KARTA_DEPLOY_TARGET ?? "e@vaz.io:/var/www/karta/")
+  const targets = (process.env.POTYRO_DEPLOY_TARGET ?? process.env.KARTA_DEPLOY_TARGET ?? "potyro-deploy:")
     .split(/[\s,]+/)
     .filter(Boolean);
   for (const s of ["ok", "fail"]) rmSync(join(dir, `deploy.${s}`), { force: true });
