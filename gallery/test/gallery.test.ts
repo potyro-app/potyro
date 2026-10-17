@@ -34,14 +34,14 @@ describe("the gallery's data", () => {
 
   it("publishes only apps that work sealed today; the rest are coming soon, with what they wait for", () => {
     const g = readGallery(real);
-    // The apps drawn as their own screens lead (they run sealed since #267, live ones since #356); the
-    // examples follow.
+    // The apps drawn as their own screens lead (they run sealed since #267); the examples follow. An app
+    // whose demo would open empty, or cannot run sealed, waits (#388, #389).
     expect(publishable(g).map((a) => a.id)).toEqual([
-      "mood-sleep", "photo-garden", "draw-guess", "mirror-monsters", "piano", "earthquakes", "word-watch", "ticker",
-      "recipes", "groceries", "plants", "places", "split", "workout", "receipt-split", "markdown-notes",
+      "mood-sleep", "draw-guess", "mirror-monsters", "piano",
+      "recipes", "groceries", "plants", "places", "split", "workout", "receipt-split",
     ]);
     const soon = g.apps.filter((a) => a.status === "coming-soon");
-    for (const id of ["daily", "palette-catcher", "photo-puzzle", "pantry", "plant-doctor", "poster-event"]) {
+    for (const id of ["photo-garden", "earthquakes", "word-watch", "ticker", "markdown-notes", "daily", "palette-catcher", "photo-puzzle", "pantry", "plant-doctor", "poster-event"]) {
       expect(soon.map((a) => a.id)).toContain(id);
     }
     expect(soon.every((a) => a.waitsFor && !a.link)).toBe(true);

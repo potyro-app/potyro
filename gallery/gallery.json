@@ -113,7 +113,8 @@
       "from": {
         "package": [
           "apps/mood-sleep/mood-sleep.app.ts"
-        ]
+        ],
+        "seed": "apps/mood-sleep/seed.json"
       },
       "category": "wellbeing",
       "icon": "🌙",
@@ -132,34 +133,10 @@
         "es": "Cómo dormiste y cómo te sentiste, y lo que suman las mañanas.",
         "pl": "Jak spałeś i jak się czułeś, i co z tych poranków wynika.",
         "it": "Come hai dormito e come ti sei sentito, e cosa dicono le mattine messe insieme."
-      }
-    },
-    {
-      "id": "photo-garden",
-      "status": "ready",
-      "from": {
-        "package": [
-          "apps/photo-garden/photo-garden.app.ts"
-        ]
       },
-      "category": "creative",
-      "icon": "🌸",
-      "name": {
-        "en": "Photo Garden",
-        "pt-BR": "Jardim de fotos",
-        "de": "Fotogarten",
-        "es": "Jardín de fotos",
-        "pl": "Ogród zdjęć",
-        "it": "Giardino di foto"
-      },
-      "line": {
-        "en": "A photo turns into thousands of drifting specks that scatter at your touch.",
-        "pt-BR": "Uma foto vira milhares de pontinhos que flutuam e se espalham ao seu toque.",
-        "de": "Ein Foto wird zu tausenden treibenden Punkten, die bei Berührung auseinanderstieben.",
-        "es": "Una foto se vuelve miles de motas a la deriva que se dispersan al tocarlas.",
-        "pl": "Zdjęcie zmienia się w tysiące dryfujących drobinek, które pierzchają pod palcem.",
-        "it": "Una foto diventa migliaia di granelli alla deriva che si disperdono al tocco."
-      }
+      "link": "https://potyro.app/s/5OUPR2Z0zj9wCPwmGaQMkw#k=JOY96iHbUY5Lv2LmZ7zWGg",
+      "screenshot": "shots/mood-sleep.jpg",
+      "publishedAt": "2026-10-17T22:00:08.519Z"
     },
     {
       "id": "draw-guess",
@@ -186,7 +163,10 @@
         "es": "Un juego para fiestas: una persona dibuja, el resto adivina, en vivo.",
         "pl": "Gra na imprezę: jedna osoba rysuje, reszta zgaduje, na żywo.",
         "it": "Un gioco di gruppo: una persona disegna, tutti gli altri indovinano, in tempo reale."
-      }
+      },
+      "link": "https://potyro.app/s/LBb0fuk1xb4F0deVvva15Q#k=BUEh-fbx0eTzdyd3zGfqwA",
+      "screenshot": "shots/draw-guess.jpg",
+      "publishedAt": "2026-10-17T21:45:11.184Z"
     },
     {
       "id": "mirror-monsters",
@@ -213,14 +193,18 @@
         "es": "Tu cámara frontal con un monstruo dentro: ojos saltones y colmillos que siguen tu cara.",
         "pl": "Przedni aparat z potworem w środku: wyłupiaste oczy i kły, które podążają za twoją twarzą.",
         "it": "La fotocamera frontale con un mostro dentro: occhi strabuzzati e zanne che seguono il tuo viso."
-      }
+      },
+      "link": "https://potyro.app/s/qJ8U18gISNgWsTOb0ZQg6Q#k=SjznyZtrH9tCLA4UJgyGBQ",
+      "screenshot": "shots/mirror-monsters.jpg",
+      "publishedAt": "2026-10-17T21:45:22.139Z"
     },
     {
       "id": "piano",
       "status": "ready",
       "from": {
         "package": [
-          "apps/piano/piano.app.tsx"
+          "apps/piano/piano.app.tsx",
+          "apps/piano/plan.json"
         ]
       },
       "category": "music",
@@ -240,88 +224,10 @@
         "es": "Un plan de práctica de piano, un poco cada día, semana a semana.",
         "pl": "Plan ćwiczeń na pianinie, codziennie trochę, tydzień po tygodniu.",
         "it": "Un piano di studio per il pianoforte, un po’ ogni giorno, settimana dopo settimana."
-      }
-    },
-    {
-      "id": "earthquakes",
-      "status": "ready",
-      "from": {
-        "package": [
-          "apps/earthquakes/earthquakes.app.ts"
-        ]
       },
-      "category": "world",
-      "icon": "🌋",
-      "name": {
-        "en": "Earthquakes",
-        "pt-BR": "Terremotos",
-        "de": "Erdbeben",
-        "es": "Terremotos",
-        "pl": "Trzęsienia ziemi",
-        "it": "Terremoti"
-      },
-      "line": {
-        "en": "Earthquakes around the world, on a map, as they happen.",
-        "pt-BR": "Terremotos pelo mundo, num mapa, enquanto acontecem.",
-        "de": "Erdbeben auf der ganzen Welt, auf einer Karte, während sie passieren.",
-        "es": "Terremotos de todo el mundo, en un mapa, mientras ocurren.",
-        "pl": "Trzęsienia ziemi na całym świecie, na mapie, na bieżąco.",
-        "it": "Terremoti in tutto il mondo, su una mappa, mentre accadono."
-      }
-    },
-    {
-      "id": "word-watch",
-      "status": "ready",
-      "from": {
-        "package": [
-          "apps/word-watch/word-watch.app.ts"
-        ]
-      },
-      "category": "world",
-      "icon": "💬",
-      "name": {
-        "en": "Word Watch",
-        "pt-BR": "De olho na palavra",
-        "de": "Wortwache",
-        "es": "Vigía de palabras",
-        "pl": "Na tropie słowa",
-        "it": "Occhio alla parola"
-      },
-      "line": {
-        "en": "Pick a word and watch it go by on Bluesky, live.",
-        "pt-BR": "Escolha uma palavra e veja ela passar no Bluesky, ao vivo.",
-        "de": "Wähle ein Wort und sieh live zu, wie es auf Bluesky vorbeizieht.",
-        "es": "Elige una palabra y mírala pasar en Bluesky, en vivo.",
-        "pl": "Wybierz słowo i patrz, jak pojawia się na Bluesky, na żywo.",
-        "it": "Scegli una parola e guardala passare su Bluesky, in tempo reale."
-      }
-    },
-    {
-      "id": "ticker",
-      "status": "ready",
-      "from": {
-        "package": [
-          "apps/ticker/ticker.app.ts"
-        ]
-      },
-      "category": "world",
-      "icon": "📈",
-      "name": {
-        "en": "Ticker",
-        "pt-BR": "Cotações",
-        "de": "Kurse",
-        "es": "Cotizaciones",
-        "pl": "Notowania",
-        "it": "Quotazioni"
-      },
-      "line": {
-        "en": "Live prices of a few cryptocurrencies, beside the day’s euro rates.",
-        "pt-BR": "Preços ao vivo de algumas criptomoedas, ao lado das cotações do euro do dia.",
-        "de": "Live-Kurse einiger Kryptowährungen, neben den Euro-Kursen des Tages.",
-        "es": "Precios en vivo de algunas criptomonedas, junto al cambio del euro del día.",
-        "pl": "Ceny kilku kryptowalut na żywo, obok dzisiejszych kursów euro.",
-        "it": "Prezzi in tempo reale di alcune criptovalute, accanto ai cambi dell’euro del giorno."
-      }
+      "link": "https://potyro.app/s/j6NC9OtGW_db-mVSHIn7yA#k=sjkf5csDOsiF18prwy5skA",
+      "screenshot": "shots/piano.jpg",
+      "publishedAt": "2026-10-17T21:53:37.760Z"
     },
     {
       "id": "recipes",
@@ -347,9 +253,9 @@
         "pl": "Przepisy z policzonymi kaloriami i to, co ugotujesz z tego, co masz.",
         "it": "Ricette con le calorie già calcolate, e cosa puoi cucinare con quello che hai."
       },
-      "link": "https://potyro.app/s/VcqvUs0Nz_OrMtT0K5Rctg#k=11XcSDkPMDvjmm8thEO24A",
+      "link": "https://potyro.app/s/dT57Z4iPCZQ9WR-FYxEOgg#k=kOn_EfcgjKznfqnVqWd6vg",
       "screenshot": "shots/recipes.jpg",
-      "publishedAt": "2026-10-16T15:55:34.992Z"
+      "publishedAt": "2026-10-17T21:46:40.481Z"
     },
     {
       "id": "groceries",
@@ -375,9 +281,9 @@
         "pl": "Lista zakupów w kolejności, w jakiej chodzisz po sklepie. Odhacz, przeciągnij, gotowe.",
         "it": "Una lista della spesa nell’ordine in cui giri il negozio. Spunta, trascina, fatto."
       },
-      "link": "https://potyro.app/s/oED3SuuJiC5LUmt6hYhaMw#k=OuglhT87vfcL5VkOvWd-Ig",
+      "link": "https://potyro.app/s/T4CpaC3esi2UUmA4xWLHdA#k=TAv1hQZD94NoBUcQu7M5iQ",
       "screenshot": "shots/groceries.jpg",
-      "publishedAt": "2026-10-16T15:54:28.953Z"
+      "publishedAt": "2026-10-17T21:46:48.729Z"
     },
     {
       "id": "plants",
@@ -403,9 +309,9 @@
         "pl": "Twoje rośliny i to, którą dziś podlać, zależnie od pory roku.",
         "it": "Le tue piante, e quale ha bisogno d’acqua oggi, secondo la stagione."
       },
-      "link": "https://potyro.app/s/wFZgHBFnxuS6BNTM1OgLQA#k=CqFQLFJ6Zh38NyTAkwEdbA",
+      "link": "https://potyro.app/s/UyDG_i4GJO04LQiWLZJBxg#k=k5ewhiBZuA3JEf2YRW5Giw",
       "screenshot": "shots/plants.jpg",
-      "publishedAt": "2026-10-16T15:56:16.661Z"
+      "publishedAt": "2026-10-17T21:46:59.699Z"
     },
     {
       "id": "places",
@@ -431,9 +337,9 @@
         "pl": "Miejsca, które lubisz albo chcesz zobaczyć, na mapie, i które są teraz otwarte.",
         "it": "Luoghi che ami o vuoi vedere, su una mappa, e quali sono aperti adesso."
       },
-      "link": "https://potyro.app/s/VWMGVZaVJqR59vf_oQlWJA#k=D2pyNZI-PzPt0tTEk-tSnA",
+      "link": "https://potyro.app/s/AcKOBEv1xsFRAYo4waxdDw#k=VT6Oy1D03JSWX-o1OAnA9Q",
       "screenshot": "shots/places.jpg",
-      "publishedAt": "2026-10-16T15:56:29.588Z"
+      "publishedAt": "2026-10-17T21:47:16.400Z"
     },
     {
       "id": "split",
@@ -459,9 +365,9 @@
         "pl": "Wspólne wydatki ze współlokatorami lub znajomymi i kto komu ile jest winien, co do grosza.",
         "it": "Spese condivise con coinquilini o amici, e chi deve quanto a chi, al centesimo."
       },
-      "link": "https://potyro.app/s/6-tZ_oQGhkbhcBLaNjJVag#k=92u9Puq1fVfNtgA8edm_lA",
+      "link": "https://potyro.app/s/c4hNipRgdU3X-CBX_Rtn6Q#k=2B1J0WGcs7Qa6a-cx8nMxg",
       "screenshot": "shots/split.jpg",
-      "publishedAt": "2026-10-16T15:57:08.444Z"
+      "publishedAt": "2026-10-17T21:47:25.731Z"
     },
     {
       "id": "workout",
@@ -472,12 +378,12 @@
       "category": "fitness",
       "icon": "🏋",
       "name": {
-        "en": "PPL Log",
-        "pt-BR": "Diário PPL",
-        "de": "PPL-Tagebuch",
-        "es": "Registro PPL",
-        "pl": "Dziennik PPL",
-        "it": "Diario PPL"
+        "en": "Workout",
+        "pt-BR": "Treino",
+        "de": "Training",
+        "es": "Entreno",
+        "pl": "Trening",
+        "it": "Allenamento"
       },
       "line": {
         "en": "A push, pull and legs log: every set you lift, and your best so far.",
@@ -487,9 +393,9 @@
         "pl": "Dziennik push, pull i nogi: każda seria i twój najlepszy wynik do tej pory.",
         "it": "Un diario di spinta, trazione e gambe: ogni serie che sollevi, e il tuo record finora."
       },
-      "link": "https://potyro.app/s/K8b2fitphjZY0Ho5cXx54Q#k=9S4_E_HMi-oym7IEsPmdZA",
+      "link": "https://potyro.app/s/znKbERdPxDkUhmMOFkc_7Q#k=q2Qt_WmmiyIyvKdB3EsvJw",
       "screenshot": "shots/workout.jpg",
-      "publishedAt": "2026-10-16T15:57:51.059Z"
+      "publishedAt": "2026-10-17T21:47:35.425Z"
     },
     {
       "id": "receipt-split",
@@ -497,7 +403,8 @@
       "from": {
         "package": [
           "apps/receipt-split/receipt-split.app.ts"
-        ]
+        ],
+        "seed": "apps/receipt-split/seed.json"
       },
       "category": "money",
       "icon": "🧾",
@@ -517,18 +424,106 @@
         "pl": "Zrób zdjęcie paragonu, a jego pozycje staną się rzeczami do podziału.",
         "it": "Fotografa uno scontrino e le sue righe diventano voci da dividere."
       },
-      "link": "https://potyro.app/s/OOHekFheSTuvxARbR1Qc9w#k=lhaNZFlxaJXjk_gYqZVoUg",
+      "link": "https://potyro.app/s/4PkIRDNSF9bT3JsCDMoG9g#k=GSXgwj-QYx4WyryGx3wHfw",
       "screenshot": "shots/receipt-split.jpg",
-      "publishedAt": "2026-10-16T15:58:44.830Z"
+      "publishedAt": "2026-10-17T21:53:50.207Z"
+    },
+    {
+      "id": "photo-garden",
+      "status": "coming-soon",
+      "waitsFor": "#388",
+      "category": "creative",
+      "icon": "🌸",
+      "name": {
+        "en": "Photo Garden",
+        "pt-BR": "Jardim de fotos",
+        "de": "Fotogarten",
+        "es": "Jardín de fotos",
+        "pl": "Ogród zdjęć",
+        "it": "Giardino di foto"
+      },
+      "line": {
+        "en": "A photo turns into thousands of drifting specks that scatter at your touch.",
+        "pt-BR": "Uma foto vira milhares de pontinhos que flutuam e se espalham ao seu toque.",
+        "de": "Ein Foto wird zu tausenden treibenden Punkten, die bei Berührung auseinanderstieben.",
+        "es": "Una foto se vuelve miles de motas a la deriva que se dispersan al tocarlas.",
+        "pl": "Zdjęcie zmienia się w tysiące dryfujących drobinek, które pierzchają pod palcem.",
+        "it": "Una foto diventa migliaia di granelli alla deriva che si disperdono al tocco."
+      }
+    },
+    {
+      "id": "earthquakes",
+      "status": "coming-soon",
+      "waitsFor": "#389",
+      "category": "world",
+      "icon": "🌋",
+      "name": {
+        "en": "Earthquakes",
+        "pt-BR": "Terremotos",
+        "de": "Erdbeben",
+        "es": "Terremotos",
+        "pl": "Trzęsienia ziemi",
+        "it": "Terremoti"
+      },
+      "line": {
+        "en": "Earthquakes around the world, on a map, as they happen.",
+        "pt-BR": "Terremotos pelo mundo, num mapa, enquanto acontecem.",
+        "de": "Erdbeben auf der ganzen Welt, auf einer Karte, während sie passieren.",
+        "es": "Terremotos de todo el mundo, en un mapa, mientras ocurren.",
+        "pl": "Trzęsienia ziemi na całym świecie, na mapie, na bieżąco.",
+        "it": "Terremoti in tutto il mondo, su una mappa, mentre accadono."
+      }
+    },
+    {
+      "id": "word-watch",
+      "status": "coming-soon",
+      "waitsFor": "#389",
+      "category": "world",
+      "icon": "💬",
+      "name": {
+        "en": "Word Watch",
+        "pt-BR": "De olho na palavra",
+        "de": "Wortwache",
+        "es": "Vigía de palabras",
+        "pl": "Na tropie słowa",
+        "it": "Occhio alla parola"
+      },
+      "line": {
+        "en": "Pick a word and watch it go by on Bluesky, live.",
+        "pt-BR": "Escolha uma palavra e veja ela passar no Bluesky, ao vivo.",
+        "de": "Wähle ein Wort und sieh live zu, wie es auf Bluesky vorbeizieht.",
+        "es": "Elige una palabra y mírala pasar en Bluesky, en vivo.",
+        "pl": "Wybierz słowo i patrz, jak pojawia się na Bluesky, na żywo.",
+        "it": "Scegli una parola e guardala passare su Bluesky, in tempo reale."
+      }
+    },
+    {
+      "id": "ticker",
+      "status": "coming-soon",
+      "waitsFor": "#389",
+      "category": "world",
+      "icon": "📈",
+      "name": {
+        "en": "Ticker",
+        "pt-BR": "Cotações",
+        "de": "Kurse",
+        "es": "Cotizaciones",
+        "pl": "Notowania",
+        "it": "Quotazioni"
+      },
+      "line": {
+        "en": "Live prices of a few cryptocurrencies, beside the day’s euro rates.",
+        "pt-BR": "Preços ao vivo de algumas criptomoedas, ao lado das cotações do euro do dia.",
+        "de": "Live-Kurse einiger Kryptowährungen, neben den Euro-Kursen des Tages.",
+        "es": "Precios en vivo de algunas criptomonedas, junto al cambio del euro del día.",
+        "pl": "Ceny kilku kryptowalut na żywo, obok dzisiejszych kursów euro.",
+        "it": "Prezzi in tempo reale di alcune criptovalute, accanto ai cambi dell’euro del giorno."
+      }
     },
     {
       "id": "markdown-notes",
-      "status": "ready",
-      "from": {
-        "package": [
-          "apps/markdown-notes/notes.app.tsx"
-        ]
-      },
+      "status": "coming-soon",
+      "waitsFor": "#389",
       "category": "notes",
       "icon": "📝",
       "name": {
@@ -546,10 +541,7 @@
         "es": "Notas escritas en Markdown, guardadas como archivos que te llevas a cualquier parte.",
         "pl": "Notatki w Markdownie, zapisane jako pliki, które zabierzesz wszędzie.",
         "it": "Note scritte in Markdown, salvate come file che puoi portare ovunque."
-      },
-      "link": "https://potyro.app/s/7_hzK38FYkIkVzugEvyonQ#k=FTCdbYbofxXYi3JfGLHnZA",
-      "screenshot": "shots/markdown-notes.jpg",
-      "publishedAt": "2026-10-16T15:59:33.141Z"
+      }
     },
     {
       "id": "pantry",
