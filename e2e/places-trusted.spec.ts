@@ -33,8 +33,8 @@ test("places app runs the M3 flow in the browser (trusted)", async ({ page }) =>
   await page.locator(".k-chip", { hasText: "Open now" }).click();
   await expect(page.locator(".k-chip[data-on='true']", { hasText: "Open now" })).toBeVisible();
 
-  // Near me: the nearby list filters by distance from the mocked geolocation.
-  await page.locator(".k-tab", { hasText: "Near me" }).click();
+  // Near me: a chip on All places keeps what is within 2 km of the mocked geolocation.
+  await page.locator(".k-tab", { hasText: "All places" }).click();
   await page.locator(".k-chip", { hasText: "Near me" }).click();
   await expect(page.locator(".k-list-row", { hasText: "Corner Café" })).toBeVisible();
   await expect(page.locator(".k-list-row", { hasText: "Paris Bakery" })).toHaveCount(0);
