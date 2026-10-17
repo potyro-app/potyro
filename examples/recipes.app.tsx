@@ -1134,6 +1134,8 @@ export default defineApp({
         type: "checklist",
         entity: "ingredient",
         done: "inStock",
+        // Ticked is "have it", not "done": nothing is struck through.
+        strike: false,
         text: "name",
         group: "category",
         sort: (a, b) => a.name.localeCompare(b.name),

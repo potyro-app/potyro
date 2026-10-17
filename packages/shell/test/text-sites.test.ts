@@ -106,7 +106,7 @@ describe("textSites", () => {
 
   it("reads the real Recipes app, custom view included", async () => {
     const texts = (await textSites(RECIPES)).map((s) => s.text);
-    expect(texts).toEqual(expect.arrayContaining(["Recipe not found.", "Overview", "What can I cook?", "Price per kg"]));
+    expect(texts).toEqual(expect.arrayContaining(["Recipe not found.", "Overview", "Can cook now", "Price per kg"]));
   });
 
   it("is empty, not an error, for source it can't parse", async () => {
