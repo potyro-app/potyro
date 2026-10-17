@@ -4222,7 +4222,8 @@ button.k-prov:focus-visible {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-align: center;
-  line-height: 1.15;
+  /* Room for a descender: at 1.15 the clamp's overflow cut the tail off a "g" ("Shoppinq"). */
+  line-height: 1.3;
   overflow-wrap: anywhere;
   hyphens: auto;
 }
@@ -15320,7 +15321,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-page-figures .k-summary {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.15rem 0;
+  gap: 0.15rem 1.1rem;
   padding: 0;
   border: 0;
   background: none;
@@ -15332,12 +15333,6 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   justify-content: flex-end;
   align-items: baseline;
   gap: 0.3em;
-}
-.k-page-figures .k-summary-figure + .k-summary-figure::before {
-  content: "·";
-  order: 1;
-  margin: 0 0.55em;
-  color: var(--ink-soft);
 }
 .k-page-figures .k-summary-value {
   font-family: var(--font-ui);
@@ -15366,7 +15361,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.32;
+  opacity: 0.2;
   display: block;
 }
 /* The page's frequent action: a band above the tab bar and any timer, in the thumb's reach. Solid,
@@ -15377,7 +15372,8 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-primary-bar {
   position: sticky;
   bottom: var(--k-chrome-bottom, 0px);
-  z-index: 3;
+  /* Above the views' own sticky headings (a list's date heading), which would otherwise slide over it. */
+  z-index: 6;
   display: flex;
   justify-content: center;
   margin-top: var(--space-3);
@@ -15464,7 +15460,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 }
 /* Over a page's picture, the content's surfaces let it through a little: the picture is the place,
    the rows stay readable. */
-.k-app:has(.k-page-ground) :is(.k-list-row, .k-check-row, .k-card, .k-check-add, .k-summary) {
+.k-app:has(.k-page-ground) :is(.k-list-row, .k-check-row, .k-card, .k-check-add) {
   background: color-mix(in oklab, var(--surface) 84%, transparent);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
@@ -15485,4 +15481,12 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-scope-empty-text {
   margin: 0;
   color: var(--ink-soft);
+}
+/* A group's sticky heading over a page's picture: clear where it rests, frosted only once content
+   scrolls under it — not a pale band laid across the picture. */
+.k-app:has(.k-page-ground) .k-fold-group > .k-fold-head {
+  background: color-mix(in oklab, var(--bg) 55%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-radius: var(--radius-sm);
 }

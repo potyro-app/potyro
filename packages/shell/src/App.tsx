@@ -1082,7 +1082,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
         }
         onBack={isSubPage ? backTo : undefined}
         // Which page this is, on a wide screen, when there is more than one to be on.
-        pageTitle={pageId === HOME || visiblePages.length < 2 ? undefined : titles[pageId] ?? pageId}
+        // A record's own page always has one: its way back sits beside it.
+        pageTitle={pageId === HOME || (visiblePages.length < 2 && !currentPage?.hidden) ? undefined : titles[pageId] ?? pageId}
         pageKey={pageId === HOME ? undefined : pageId}
         showQuick={!isSubPage && !ownsScreen && !cta}
         // A map fills the page: it is the thing you came to look at, and every phone map app shows

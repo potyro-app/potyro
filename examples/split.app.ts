@@ -512,7 +512,8 @@ export default defineApp({
   schemaVersion: 2,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
-  theme: { accent: "#3C9A8F", background: { image: "art/lisbon.webp" } },
+  // No picture: splitting a bill needs the numbers, and a photo behind them only costs contrast.
+  theme: { accent: "#3C9A8F" },
   // Sync: it is worth nothing on one phone. AI: only when a receipt is read, and only the photo goes.
   permissions: { sync: true, ai: true },
   category: "everyday",
