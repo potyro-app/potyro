@@ -79,6 +79,8 @@ export interface AppChromeProps {
   icon: string;
   /** The page's own add (`Page.add`), which the phone's "+" runs instead of its kind's quick action. */
   pageAdd?: ChromeQuick;
+  /** The page has its own loud button (a bottom bar, or its own add): the sidebar's quick actions are plain. */
+  quietQuick?: boolean;
   /** The app-wide selection chip, when the app declares a scope. */
   scope?: ReactNode;
   /** Quiet marks: sync state, "sandbox". */
@@ -304,7 +306,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, current
   );
 }
 
-function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, onBack, pageTitle, pageKey, fullBleed, locked, children }: AppChromeProps) {
+function WideChrome({ name, icon, scope, status, pages, quick, quietQuick, currentEntity, tools, report, recording, trust, onApps, extras, onBack, pageTitle, pageKey, fullBleed, locked, children }: AppChromeProps) {
   const primary = primaryQuick(quick, currentEntity);
   const ordered = primary ? [primary, ...quick.filter((q) => q !== primary)] : quick;
   const { t } = useLingui();
@@ -366,7 +368,7 @@ function WideChrome({ name, icon, scope, status, pages, quick, currentEntity, to
         {ordered.length ? (
           <div className="k-quickbar">
             {ordered.map((q, i) => (
-              <button key={q.id} type="button" className={`k-add k-quick${i === 0 ? " k-primary-action" : ""}`} aria-disabled={locked || undefined} onClick={q.onRun}>
+              <button key={q.id} type="button" className={`k-add k-quick${i === 0 && !quietQuick ? " k-primary-action" : ""}`} aria-disabled={locked || undefined} onClick={q.onRun}>
                 <span aria-hidden>{q.icon}</span> {q.label}
               </button>
             ))}
