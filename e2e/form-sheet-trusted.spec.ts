@@ -78,9 +78,9 @@ test.describe("phone", () => {
     test.skip(browserName !== "chromium", NEEDS_CDP);
     await page.goto("/?user=plants");
     await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
-    // Today's one big button is "Add a plant"; the Plants list has the floating form button.
-    await page.locator(".k-tabbar .k-tab", { hasText: "Plants" }).tap();
-    await page.getByRole("button", { name: "Add: Plant" }).click();
+    // The "+" is "Add a plant" (a photo or typed); the whole form is in the ⋯ menu.
+    await page.getByRole("button", { name: "More", exact: true }).tap();
+    await page.getByRole("menu", { name: "More" }).getByRole("menuitem", { name: /Add: Plant/ }).tap();
     const dialog = page.getByRole("dialog", { name: "Add: Plant" });
     await expect(dialog).toBeVisible();
     await settled(dialog);
