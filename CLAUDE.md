@@ -106,8 +106,8 @@ pnpm ci:local e2e              # the 8 browser shards at once, each on its own p
 pnpm ci:local e2e:firefox      # the same specs in Firefox, 8 shards (~5 min) — NOT in the gate (too
                                # slow beside Chromium's on vazio); run it before merging UI work
 pnpm ci:local status --post    # all green for HEAD? mark it on GitHub
-pnpm ci:local deploy           # green origin/main → apps.vaz.io (automatic from vazio's cron; docs/16 §8)
-pnpm ship <pr>                 # merge a PR through vazio: CI first, then GitHub's main + apps.vaz.io
+pnpm ci:local deploy           # green origin/main → potyro.app (automatic from vazio's cron; docs/16 §8)
+pnpm ship <pr>                 # merge a PR through vazio: CI first, then GitHub's main + potyro.app
 
 # after ANY change under packages/schema/src/types: the generator's model-facing reference is
 # generated from them, and test/reference.test.ts fails while it is stale (#130). The system prompt

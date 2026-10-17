@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Keeps main green and apps.vaz.io on it, on the CI machine (vazio) — GitHub Actions is
+// Keeps main green and potyro.app on it, on the CI machine (vazio) — GitHub Actions is
 // unavailable, so nothing else would. Two ways in (docs/16 §8):
 //
 //   node scripts/ci-watch.mjs gate <sha>   a push to vazio's bare repo (its post-receive hook).
@@ -108,7 +108,7 @@ function poll() {
   }
   if (red(main)) {
     writeFileSync(finished, "red\n");
-    say(`✘ ${short} red — apps.vaz.io stays on the last green commit`);
+    say(`✘ ${short} red — potyro.app stays on the last green commit`);
     return 1;
   }
   say(`· ${short} incomplete — resumes on the next tick`);
