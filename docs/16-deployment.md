@@ -302,11 +302,22 @@ The browser suite is ~93% of a run. `ci:local all` (and `ci:local e2e` on its ow
 own step (`e2e-<n>.ok` / `.fail` / `.log` under `.ci-local/<sha>/`), so resuming, `status --post` and
 the watcher work as before. `CI_LOCAL_E2E=sequential` runs them one after another, the old way.
 
-The same specs run in **Firefox** beside them, as shards of their own (`ff:<n>`, `CI_LOCAL_FF_SHARDS`,
-default 8; `0` leaves Firefox out): the `trusted-firefox` and `sandbox-firefox` projects
+The same specs run in **Firefox** with `ci:local e2e:firefox`, as shards of their own (`ff:<n>`,
+`CI_LOCAL_FF_SHARDS`, default 8): the `trusted-firefox` and `sandbox-firefox` projects
 (`POTYRO_FIREFOX=1`), console guard on, with their own plan (`ff-plan.json`) and their own timings
 (keyed `ff:e2e/…`). Each suite names its Playwright projects, so nothing in the caller's environment
 adds an engine to a shard. What differs between the engines is in `e2e/engines.ts` (docs/12).
+
+**Firefox is not part of the gate.** Measured on vazio (2026-10-17): Chromium's eight shards alone
+take ~7 min and Firefox's eight alone ~6; all sixteen at once took 11.5 min, and the CPU they fought
+over made Chromium's shards fail on timeouts. One after the other is ~13 min. So `all`,
+`status --post` and the watcher judge Chromium; `status` also prints Firefox's result for the commit
+when it has run. Run it before merging anything a person sees, and nightly — a crontab line on vazio,
+in a checkout of its own (not `~/appinator-deploy`, which the watcher moves):
+
+```
+30 3 * * * cd ~/appinator-firefox && git fetch -q && git checkout -q --detach origin/main && export PATH=$HOME/.npm-global/bin:/usr/bin:/bin && pnpm install --frozen-lockfile -s && node scripts/ci-local.mjs e2e:firefox >> ~/ci-firefox.log 2>&1
+```
 
 What makes that safe is that the shards share **nothing**:
 

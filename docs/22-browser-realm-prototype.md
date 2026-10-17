@@ -542,7 +542,7 @@ New attack surface, all of it in `packages/host/src/realm/` and the shell's CSP:
   not surviving into the next realm; spin and return-then-spin with the shell's own gap measured),
   `shell-csp-{sandbox,prod}.spec.ts`; and every `*-sandbox.spec.ts` now runs on the realm.
   `POTYRO_REALM_BROWSERS=1` adds a WebKit project for the realm's specs; Firefox runs every sandbox spec
-  (`sandbox-firefox`, `POTYRO_FIREFOX=1`, in the gate as `ff:<n>`).
+  (`sandbox-firefox`, `POTYRO_FIREFOX=1`; `ci:local e2e:firefox`).
 
 ## 11. Phase 3, as shipped (2026-10-16): shared apps draw their own screens (#267)
 

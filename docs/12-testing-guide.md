@@ -128,7 +128,7 @@ images for every shot that moved.
   deterministic cover for the same path — Studio → save → History → rollback, with the generator
   endpoint stubbed — is `create-modify-rollback-trusted.spec.ts`, which needs no CLI and no money.
 - `deployment-prod.spec.ts` needs a production build: `pnpm test:e2e:prod`.
-- **Firefox** runs every trusted and sandbox spec (`pnpm test:e2e:firefox`; in the gate as the `ff:<n>`
+- **Firefox** runs every trusted and sandbox spec (`pnpm test:e2e:firefox`; on vazio `ci:local e2e:firefox`, its `ff:<n>`
   shards), console guard on. What differs between the engines is said once, in `e2e/engines.ts`:
   - Specs that drive a finger or the CPU through Chromium's DevTools protocol (`newCDPSession`:
     a hold, a drag, a flick, a throttled CPU) skip in Firefox — Playwright's Firefox can only tap
