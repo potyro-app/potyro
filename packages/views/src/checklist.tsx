@@ -35,6 +35,7 @@ import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { Resolved } from "potyro";
+import { FN_SENTINEL } from "@potyro/runtime";
 import type { BuiltinViewProps } from "./types.js";
 import { displayFieldFor, getView } from "./format.js";
 import { useDynamicText } from "./dynamic.js";
@@ -204,7 +205,8 @@ export function ChecklistView(props: BuiltinViewProps) {
 
   // Groups as records: `group` names a single relation, so the headings are rows of another entity
   // and every one of them exists whether or not anything is in it (an empty aisle is still an aisle).
-  const groupField = typeof view.group === "string" ? view.group : undefined;
+  // A sealed app's `group` function reaches here as the sentinel string, which is no field to write.
+  const groupField = typeof view.group === "string" && view.group !== FN_SENTINEL ? view.group : undefined;
   const groupFieldDef = groupField ? entityDef?.fields[groupField] : undefined;
   const managed = groupFieldDef?.type === "relation" && !groupFieldDef.many;
   const groupEntity = groupFieldDef?.type === "relation" ? groupFieldDef.to : undefined;

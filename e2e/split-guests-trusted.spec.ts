@@ -26,8 +26,8 @@ test("guests make a group lively before anyone joins, and Invite names more", as
 
   // The first run, alone: the guests are in the balances, and the way out names them.
   for (const who of ["Ana", "Tom", "Inês"]) await expect(balances(page)).toContainText(who, { timeout: 30_000 });
-  await expect(balances(page)).toContainText("you are owed");
-  await expect(balances(page)).toContainText(/(Ana|Tom|Inês) → You/);
+  // One row per payment that squares it, as a sentence.
+  await expect(balances(page)).toContainText(/(Ana|Tom|Inês) owes you/);
   await expect(page.locator(".k-list-row", { hasText: "Airport taxi" })).toContainText("Tom paid");
   if (shots) await page.screenshot({ path: `${shots}/split-guests-lisbon.png` });
 

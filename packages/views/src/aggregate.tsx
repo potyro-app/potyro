@@ -25,7 +25,8 @@
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { actionInfo, type AggregateRow, type Resolved } from "potyro";
-import { humanizeKey } from "./format.js";
+import { getView, humanizeKey } from "./format.js";
+import { useWriteTick } from "./write-tick.js";
 import type { BuiltinViewProps } from "./types.js";
 import { useDynamicText } from "./dynamic.js";
 
@@ -65,7 +66,11 @@ function targetsOf(r: Record<string, unknown>): Pick<AggregateRow, "record" | "o
   }
   const act = r.action as Record<string, unknown> | undefined;
   if (act && str(act.entity) && (str(act.id) || typeof act.id === "number") && str(act.key)) {
-    out.action = { entity: act.entity, id: String(act.id), key: act.key, ...(str(act.label) ? { label: act.label } : {}) };
+    // The row's own values for the action ("Tom pays you €12"): plain values only, nothing to run.
+    const input = act.input && typeof act.input === "object" && !Array.isArray(act.input)
+      ? Object.fromEntries(Object.entries(act.input as Record<string, unknown>).filter(([, v]) => ["string", "number", "boolean"].includes(typeof v)) as [string, string | number | boolean][])
+      : undefined;
+    out.action = { entity: act.entity, id: String(act.id), key: act.key, ...(str(act.label) ? { label: act.label } : {}), ...(input ? { input } : {}) };
   }
   return out;
 }
@@ -79,6 +84,8 @@ export function AggregateView({ runtime, pageId, params, navigate }: BuiltinView
 
   const [derived, setDerived] = useState<AggregateRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The fold may read other kinds of record (Split's payments): a write to them re-runs it too.
+  const tick = useWriteTick(runtime, (getView(runtime, pageId) as { entity?: string } | undefined)?.entity);
 
   useEffect(() => {
     if (loading) return;
@@ -103,7 +110,7 @@ export function AggregateView({ runtime, pageId, params, navigate }: BuiltinView
       alive = false;
     };
     // `rows` identity changes per query pass, which is exactly when the fold must re-run.
-  }, [runtime, pageId, rows, loading]);
+  }, [runtime, pageId, rows, loading, tick]);
 
   if (loading || derived === null) return <p className="k-muted">
         <Trans>Loading…</Trans>
@@ -182,7 +189,7 @@ function AggregateRowItem({ row, runtime, navigate }: { row: AggregateRow; runti
           className="k-action k-row-action"
           onClick={(e) => {
             e.stopPropagation();
-            void runtime.runAction(action.entity, action.key, action.id);
+            void runtime.runAction(action.entity, action.key, action.id, action.input);
           }}
         >
           {actionLabel}

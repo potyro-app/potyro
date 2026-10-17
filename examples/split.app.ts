@@ -1,6 +1,8 @@
 // split.app.ts
-// Splitting costs with the people you share a flat, a trip or a dinner with — the answer first ("you
-// are owed €42.85"), then what it is made of, then the shortest way to square it.
+// Splitting costs with the people you share a flat, a trip or a dinner with. Made for the till: Add
+// expense is the bar at the bottom. Above the expenses, the answer ("You're owed €42.85") and the
+// shortest way to square it, one row per payment ("Tom owes you €12") with Settle on it; it opens
+// on the group you were last in.
 //
 // Stresses: money in whole minor units (KA-26), `member` fields — the people in the shared space and
 // the guests named before they join (`ctx.people`, `ctx.guests`), not a table of names the app
@@ -317,11 +319,14 @@ async function fromReceipt(ctx: Ctx): Promise<void> {
  * as a payment — the balances move at once. When the money comes to you, the app offers a message to
  * send asking for it (payments themselves happen outside: no bank is ever connected).
  */
-async function settleUp(ctx: Ctx, direct = false): Promise<void> {
+async function settleUp(ctx: Ctx, direct = false, given?: unknown): Promise<void> {
   const { net } = await standing(ctx);
   const moves = settlements(net);
   const other = "__other";
-  const choice = direct && moves.length === 1 ? "0" : await ctx.ui.sheet<string>({
+  // A row's Settle names its payment: straight to the form, filled in from it.
+  const asked = given && typeof given === "object" ? (given as { from?: unknown; to?: unknown }) : undefined;
+  const named = asked ? moves.findIndex((m) => m.from === asked.from && m.to === asked.to) : -1;
+  const choice = named >= 0 ? String(named) : direct && moves.length === 1 ? "0" : await ctx.ui.sheet<string>({
     title: moves.length
       ? ctx.t({ en: "Settle up", "pt-BR": "Acertar as contas", de: "Ausgleichen", es: "Saldar cuentas", pl: "Rozlicz się", it: "Salda i conti" })
       : ctx.t({ en: "All square 🎉", "pt-BR": "Tudo certo 🎉", de: "Alles ausgeglichen 🎉", es: "Cuentas saldadas 🎉", pl: "Wszystko rozliczone 🎉", it: "Tutto in pari 🎉" }),
@@ -357,19 +362,8 @@ async function settleUp(ctx: Ctx, direct = false): Promise<void> {
     note: filled.note || ctx.t({ en: "Settling up", "pt-BR": "Acertando as contas", de: "Ausgleich", es: "Saldando cuentas", pl: "Rozliczenie", it: "Saldo dei conti" }),
     group: ctx.scope.group?.id,
   });
-  if (idOf(filled.to) === ctx.me?.id && idOf(filled.from) !== ctx.me?.id) {
-    const ask = await ctx.ui.confirm(ctx.t({ en: "Recorded. Send them a reminder?", "pt-BR": "Registrado. Mandar um lembrete?", de: "Eingetragen. Eine Erinnerung schicken?", es: "Registrado. ¿Enviar un recordatorio?", pl: "Zapisano. Wysłać przypomnienie?", it: "Registrato. Mandare un promemoria?" }), {
-      ok: ctx.t({ en: "Write it", "pt-BR": "Escrever", de: "Schreiben", es: "Escribir", pl: "Napisz", it: "Scrivi" }),
-      cancel: ctx.t({ en: "No need", "pt-BR": "Não precisa", de: "Nicht nötig", es: "No hace falta", pl: "Nie trzeba", it: "Non serve" }),
-    });
-    if (ask)
-      await ctx.ui.share({
-        text: ctx.t(
-          { en: "{group}: {amount} to me when you can. Thanks!", "pt-BR": "{group}: {amount} para mim quando puder. Obrigado!", de: "{group}: {amount} an mich, wenn du kannst. Danke!", es: "{group}: {amount} para mí cuando puedas. ¡Gracias!", pl: "{group}: {amount} dla mnie, kiedy możesz. Dzięki!", it: "{group}: {amount} a me quando puoi. Grazie!" },
-          { group: String(ctx.scope.group?.name ?? ""), amount: money(minorOf(filled.amount), ctx) },
-        ),
-      });
-  } else ctx.ui.toast(ctx.t({ en: "Payment recorded", "pt-BR": "Pagamento registrado", de: "Zahlung eingetragen", es: "Pago registrado", pl: "Płatność zapisana", it: "Pagamento registrato" }));
+  // It happened: say so. (Asking "send them a reminder?" here asked for money just paid.)
+  ctx.ui.toast(ctx.t({ en: "Payment recorded", "pt-BR": "Pagamento registrado", de: "Zahlung eingetragen", es: "Pago registrado", pl: "Płatność zapisana", it: "Pagamento registrato" }));
 }
 
 /**
@@ -596,7 +590,8 @@ export default defineApp({
         settle: {
           label: { en: "Settle up", "pt-BR": "Acertar as contas", de: "Ausgleichen", es: "Saldar cuentas", pl: "Rozlicz się", it: "Salda i conti" },
           icon: "💸",
-          run: (_group, ctx) => settleUp(ctx, true),
+          // From a row of the balances, the row says which payment (`input`); else you choose.
+          run: (_group, ctx, input) => settleUp(ctx, true, input),
         },
       },
     },
@@ -869,13 +864,13 @@ export default defineApp({
       // owes whom and the way out of it; then what it is made of, by day.
       summary: [
         {
-          label: { en: "Your balance", "pt-BR": "Seu saldo", de: "Dein Saldo", es: "Tu saldo", pl: "Twoje saldo", it: "Il tuo saldo" },
+          // No label: the figure is the whole phrase ("You're owed €42.85"); which way it goes is the point.
           value: async (_rows, ctx) => {
             const you = (await standing(ctx)).net.get(ctx.me?.id ?? "") ?? 0;
             if (you === 0) return ctx.t({ en: "All square 🎉", "pt-BR": "Tudo certo 🎉", de: "Ausgeglichen 🎉", es: "En paz 🎉", pl: "Na zero 🎉", it: "In pari 🎉" });
             return you > 0
-              ? ctx.t({ en: "Owed {amount}", "pt-BR": "A receber {amount}", de: "Du bekommst {amount}", es: "Te deben {amount}", pl: "Do odebrania {amount}", it: "Da ricevere {amount}" }, { amount: money(you, ctx) })
-              : ctx.t({ en: "You owe {amount}", "pt-BR": "Você deve {amount}", de: "Du schuldest {amount}", es: "Debes {amount}", pl: "Do oddania {amount}", it: "Devi {amount}" }, { amount: money(-you, ctx) });
+              ? ctx.t({ en: "You're owed {amount}", "pt-BR": "Você tem a receber {amount}", de: "Du bekommst {amount}", es: "Te deben {amount}", pl: "Masz do odebrania {amount}", it: "Devi ricevere {amount}" }, { amount: money(you, ctx) })
+              : ctx.t({ en: "You owe {amount}", "pt-BR": "Você deve {amount}", de: "Du schuldest {amount}", es: "Debes {amount}", pl: "Masz do oddania {amount}", it: "Devi {amount}" }, { amount: money(-you, ctx) });
           },
         },
         {
@@ -884,8 +879,8 @@ export default defineApp({
         },
       ],
       primaryAction: "new-expense",
+      // Settling is each row's Settle below (and Payments' own page); here only what adds to the group.
       actions: [
-        { label: { en: "Settle up", "pt-BR": "Acertar", de: "Ausgleichen", es: "Saldar", pl: "Rozlicz", it: "Salda" }, icon: "💸", run: settleUp },
         { label: { en: "Split a receipt", "pt-BR": "Dividir uma nota", de: "Beleg aufteilen", es: "Dividir un ticket", pl: "Podziel paragon", it: "Dividi uno scontrino" }, icon: "📷", run: fromReceipt },
         { label: { en: "Invite", "pt-BR": "Convidar", de: "Einladen", es: "Invitar", pl: "Zaproś", it: "Invita" }, icon: "👋", run: invite },
       ],
@@ -896,7 +891,7 @@ export default defineApp({
             view: {
               type: "aggregate",
               entity: "expense",
-              title: { en: "Balances", "pt-BR": "Saldos", de: "Salden", es: "Saldos", pl: "Salda", it: "Saldi" },
+              title: { en: "To settle up", "pt-BR": "Para acertar", de: "Zum Ausgleichen", es: "Para saldar", pl: "Do rozliczenia", it: "Da saldare" },
               // Alone, there is nobody to owe: the empty balances are where the group starts — ask the others in.
               emptyText: (ctx) =>
                 everyone(ctx, ctx.scope.group).some((id) => id !== ctx.me?.id)
@@ -914,47 +909,29 @@ export default defineApp({
               rows: async (all, ctx) => {
                 const expenses = all.filter((e) => inGroup(e, ctx));
                 const payments = (await ctx.query("payment")).filter((p) => inGroup(p, ctx));
-                const net = netBalances(expenses, payments, ctx);
-                const people = [...net.entries()].filter(([, v]) => v !== 0);
-                // You and someone else take different verbs in most languages ("du schuldest",
-                // "Ana schuldet"), so each line has two forms.
-                const owed = (me: boolean): string =>
-                  me
-                    ? ctx.t({ en: "you are owed", "pt-BR": "você tem a receber", de: "du bekommst noch", es: "te deben", pl: "masz do odebrania", it: "devi ricevere" })
-                    : ctx.t({ en: "is owed", "pt-BR": "tem a receber", de: "bekommt noch", es: "le deben", pl: "ma do odebrania", it: "deve ricevere" });
-                const owes = (me: boolean): string =>
-                  me
-                    ? ctx.t({ en: "you owe", "pt-BR": "você deve", de: "du schuldest", es: "debes", pl: "masz do oddania", it: "devi" })
-                    : ctx.t({ en: "owes", "pt-BR": "deve", de: "schuldet", es: "debe", pl: "ma do oddania", it: "deve" });
-                return [
-                  ...people
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([id, v]) => ({
-                      id,
-                      label: nameOf(id, ctx),
-                      value: money(Math.abs(v), ctx),
-                      detail: v > 0 ? owed(id === ctx.me?.id) : owes(id === ctx.me?.id),
-                      tone: (id === ctx.me?.id ? (v > 0 ? "positive" : "negative") : "neutral") as "positive" | "negative" | "neutral",
-                      group: ctx.t({
-                        en: "Where everyone stands",
-                        "pt-BR": "Como está cada um",
-                        de: "Wer wo steht",
-                        es: "Cómo está cada uno",
-                        pl: "Kto ile",
-                        it: "La situazione di ognuno",
-                      }),
-                    })),
-                  // The way out of it, in as few payments as possible. "Settle up" above records one.
-                  ...settlements(net).map((s) => ({
-                    id: `${s.from}->${s.to}`,
-                    label: `${nameOf(s.from, ctx)} → ${nameOf(s.to, ctx)}`,
-                    value: money(s.amount, ctx),
-                    tone: "neutral" as const,
-                    group: ctx.t({ en: "To settle up", "pt-BR": "Para acertar", de: "Zum Ausgleichen", es: "Para saldar", pl: "Do rozliczenia", it: "Da saldare" }),
-                    // Tap Settle on the row: the payment is filled in from it, to confirm.
-                    ...(ctx.scope.group ? { action: { entity: "group", id: String(ctx.scope.group.id), key: "settle", label: ctx.t({ en: "Settle", "pt-BR": "Acertar", de: "Ausgleichen", es: "Saldar", pl: "Rozlicz", it: "Salda" }) } } : {}),
-                  })),
-                ];
+                const me = ctx.me?.id ?? "";
+                // Where everyone stands IS who pays whom: one row per payment that squares the
+                // group, as a sentence ("Tom owes you"), with Settle on it. The fewest payments.
+                return settlements(netBalances(expenses, payments, ctx)).map((s) => ({
+                  id: `${s.from}->${s.to}`,
+                  label: ctx.t(
+                    {
+                      en: "{dir, select, toMe {{from} owes you} fromMe {You owe {to}} other {{from} owes {to}}}",
+                      "pt-BR": "{dir, select, toMe {{from} te deve} fromMe {Você deve a {to}} other {{from} deve a {to}}}",
+                      de: "{dir, select, toMe {{from} schuldet dir} fromMe {Du schuldest {to}} other {{from} schuldet {to}}}",
+                      es: "{dir, select, toMe {{from} te debe} fromMe {Le debes a {to}} other {{from} le debe a {to}}}",
+                      pl: "{dir, select, toMe {{from} ma ci oddać} fromMe {Oddajesz: {to}} other {{from} oddaje: {to}}}",
+                      it: "{dir, select, toMe {{from} ti deve} fromMe {Devi a {to}} other {{from} deve a {to}}}",
+                    },
+                    { dir: s.to === me ? "toMe" : s.from === me ? "fromMe" : "other", from: nameOf(s.from, ctx), to: nameOf(s.to, ctx) },
+                  ),
+                  value: money(s.amount, ctx),
+                  tone: (s.to === me ? "positive" : s.from === me ? "negative" : "neutral") as "positive" | "negative" | "neutral",
+                  // Tap Settle on the row: the payment is filled in from it, to confirm.
+                  ...(ctx.scope.group
+                    ? { action: { entity: "group", id: String(ctx.scope.group.id), key: "settle", label: ctx.t({ en: "Settle", "pt-BR": "Acertar", de: "Ausgleichen", es: "Saldar", pl: "Rozlicz", it: "Salda" }), input: { from: s.from, to: s.to } } }
+                    : {}),
+                }));
               },
             },
           },
