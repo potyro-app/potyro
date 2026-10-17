@@ -101,8 +101,10 @@ pnpm lint:boundaries
 # local CI — the same checks as GitHub's ci.yml, per commit, resumable; the merge gate while
 # GitHub Actions is unavailable. `status --post` puts a `local-ci` check on the commit.
 pnpm ci:local all              # every step (run in a terminal; on vazio ~7 min of it is the browser shards)
-pnpm ci:local e2e:3            # one step: install build unit typecheck lint e2e:1..8 (Chromium) ff:1..8 (Firefox)
-pnpm ci:local e2e              # every browser shard at once, each on its own ports (docs/16 §8)
+pnpm ci:local e2e:3            # one step: install build unit typecheck lint e2e:1..8
+pnpm ci:local e2e              # the 8 browser shards at once, each on its own ports (docs/16 §8)
+pnpm ci:local e2e:firefox      # the same specs in Firefox, 8 shards (~6 min) — NOT in the gate (too
+                               # slow beside Chromium's on vazio); run it before merging UI work
 pnpm ci:local status --post    # all green for HEAD? mark it on GitHub
 pnpm ci:local deploy           # green origin/main → apps.vaz.io (automatic from vazio's cron; docs/16 §8)
 pnpm ship <pr>                 # merge a PR through vazio: CI first, then GitHub's main + apps.vaz.io

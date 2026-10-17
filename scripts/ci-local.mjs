@@ -4,8 +4,10 @@
 //
 //   node scripts/ci-local.mjs all              every step, in order (run it in a terminal); the
 //                                              browser shards run side by side (see below)
-//   node scripts/ci-local.mjs <step>           one step: install build unit typecheck lint e2e:1..N ff:1..M
+//   node scripts/ci-local.mjs <step>           one step: install build unit typecheck lint e2e:1..N (or ff:1..M)
 //   node scripts/ci-local.mjs e2e              every browser shard not yet passed, all at once
+//   node scripts/ci-local.mjs e2e:firefox      the same specs in Firefox, its shards at once — NOT part
+//                                              of the gate (see below)
 //   node scripts/ci-local.mjs status           what has passed for HEAD, and what is left
 //   node scripts/ci-local.mjs status --post    ...and, if everything passed, mark HEAD green on GitHub
 //   node scripts/ci-local.mjs deploy           put HEAD on apps.vaz.io — only if it IS origin/main and
@@ -27,9 +29,12 @@
 // together; the deal is frozen per commit, so a resumed shard runs the files it ran before.
 // `CI_LOCAL_E2E=sequential` runs the shards one after another instead, as before (for comparison).
 //
-// Two suites, side by side: `e2e:<n>` is Chromium (the trusted and sandbox projects) and `ff:<n>` is
-// the same specs in Firefox (trusted-firefox, sandbox-firefox: POTYRO_FIREFOX=1), the browser the
-// owner uses. Each has its own shards, plan and timings; all of them run at once.
+// Two suites: `e2e:<n>` is Chromium (the trusted and sandbox projects), the gate's; `ff:<n>` is the
+// same specs in Firefox (trusted-firefox, sandbox-firefox: POTYRO_FIREFOX=1), the browser the owner
+// uses, run by `e2e:firefox`. Each has its own shards, plan and timings. Firefox is not in `all` and
+// not in `status --post`: measured on vazio (2026-10-17), the sixteen shards at once took 11.5 min
+// and the CPU they fought over made Chromium's flaky; one after the other it is 7 + 6 min. So it is
+// a step of its own, run before a merge that touches what Firefox sees, and nightly (docs/16 §8).
 //
 // What differs from GitHub's run, on purpose:
 //   - The browser suite runs as parallel shards of one worker each (above).
@@ -44,7 +49,7 @@ import { createConnection, createServer } from "node:net";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const SHARDS = Number(process.env.CI_LOCAL_SHARDS ?? 8);
-/** Firefox's shards. `0` leaves Firefox out of the run (and out of the gate's steps). */
+/** Firefox's shards (`e2e:firefox`). */
 const FF_SHARDS = Number(process.env.CI_LOCAL_FF_SHARDS ?? 8);
 /**
  * The browser suites: which Playwright projects a shard runs, with what in its environment. Projects
@@ -70,7 +75,9 @@ const CLAIMS = "/tmp/potyro-e2e-ports";
 /** Each spec file's last duration in seconds, kept across commits (gitignored, like every result). */
 const TIMINGS = join(ROOT, ".ci-local", "e2e-timings.json");
 const SEED_TIMINGS = join(ROOT, "e2e", "timings.json");
-const STEPS = ["install", "build", "unit", "typecheck", "lint", ...shardSteps("e2e"), ...shardSteps("ff")];
+const STEPS = ["install", "build", "unit", "typecheck", "lint", ...shardSteps("e2e")];
+/** Firefox's steps: recorded like the gate's, reported beside them, never part of its verdict. */
+const FF_STEPS = shardSteps("ff");
 
 const sh = (cmd) => execSync(cmd, { cwd: ROOT, encoding: "utf8" }).trim();
 const sha = sh("git rev-parse HEAD");
@@ -403,9 +410,9 @@ function refuseDirty() {
 }
 
 /** Every shard not yet passed (all of them with `fresh`), at once, each recorded as its own step. */
-async function e2eParallel(fresh) {
+async function e2eParallel(fresh, suites = ["e2e"]) {
   refuseDirty();
-  const shards = Object.keys(SUITES).flatMap((suite) => (SUITES[suite].shards ? shardPlan(suite).map((files, n) => ({ suite, i: n + 1, files })) : []));
+  const shards = suites.flatMap((suite) => (SUITES[suite].shards ? shardPlan(suite).map((files, n) => ({ suite, i: n + 1, files })) : []));
   const todo = shards.filter(({ suite, i }) => fresh || !existsSync(join(dir, `${suite}-${i}.ok`)));
   for (const { suite, i } of shards.filter((sh) => !todo.includes(sh))) process.stdout.write(`✓ ${suite}:${i} (already passed for ${short})\n`);
   const started = Date.now();
@@ -431,7 +438,7 @@ async function step(name) {
     }
     default: {
       const m = /^(e2e|ff):(\d+)$/.exec(name);
-      if (!m || Number(m[2]) < 1 || Number(m[2]) > SUITES[m[1]].shards) throw new Error(`unknown step "${name}" — one of: ${STEPS.join(" ")} e2e`);
+      if (!m || Number(m[2]) < 1 || Number(m[2]) > SUITES[m[1]].shards) throw new Error(`unknown step "${name}" — one of: ${[...STEPS, ...FF_STEPS].join(" ")} e2e e2e:firefox`);
       // On its own claimed block of ports (claimBlock), so a server another checkout left listening
       // on the suite's default ports can never be tested in place of this one.
       const [suite, i] = [m[1], Number(m[2])];
@@ -450,6 +457,7 @@ function status(post) {
   const todo = done.filter((d) => d.state === "todo").map((d) => d.s);
   const green = !failed.length && !todo.length;
   process.stdout.write(`\n${short}: ${green ? "GREEN" : failed.length ? `RED (${failed.join(", ")})` : `incomplete (left: ${todo.join(" ")})`}\n`);
+  firefoxStatus();
   if (post) {
     if (dirty()) {
       console.error("✘ not posting: tracked files are modified.");
@@ -466,6 +474,19 @@ function status(post) {
     process.stdout.write(`posted local-ci: ${state} on ${short}\n`);
   }
   return green;
+}
+
+/** Firefox's shards, when they have run for this commit: said, never counted in the gate's verdict. */
+function firefoxStatus() {
+  const states = FF_STEPS.map((s) => {
+    const f = s.replace(":", "-");
+    return existsSync(join(dir, `${f}.ok`)) ? "ok" : existsSync(join(dir, `${f}.fail`)) ? "fail" : "todo";
+  });
+  if (states.every((st) => st === "todo")) return null;
+  const failed = FF_STEPS.filter((_, n) => states[n] === "fail");
+  const left = FF_STEPS.filter((_, n) => states[n] === "todo");
+  process.stdout.write(`${short} in Firefox (not part of the gate): ${!failed.length && !left.length ? "GREEN" : failed.length ? `RED (${failed.join(", ")})` : `incomplete (left: ${left.join(" ")})`}\n`);
+  return !failed.length && !left.length;
 }
 
 /**
@@ -556,7 +577,7 @@ if (!cmd || cmd === "status") {
       process.stdout.write(`✓ ${s} (already passed for ${short})\n`);
       continue;
     }
-    if (/^(e2e|ff):/.test(s) && E2E_MODE === "parallel") {
+    if (s.startsWith("e2e:") && E2E_MODE === "parallel") {
       await e2eParallel(fresh); // every shard left, at once; status below says what passed
       break;
     }
@@ -567,6 +588,9 @@ if (!cmd || cmd === "status") {
 } else if (cmd === "e2e") {
   await e2eParallel(rest.includes("--fresh"));
   process.exit(status(false) ? 0 : 1);
+} else if (cmd === "e2e:firefox") {
+  await e2eParallel(rest.includes("--fresh"), ["ff"]);
+  process.exit(firefoxStatus() ? 0 : 1);
 } else {
   await step(cmd);
   process.exit(existsSync(join(dir, `${cmd.replace(":", "-")}.ok`)) ? 0 : 1);
