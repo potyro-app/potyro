@@ -718,6 +718,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       liveApps(-1);
       // Its screen goes back to sleeping as usual; its timers go on (they are the shell's).
       screenAwake.releaseApp(id);
+      // …and its chips show again, whatever its pages forgot to say about drawing them themselves.
+      timerHub.releaseDraws(id);
       clearTimerFocus(id);
       for (const stop of stops.splice(0)) stop();
       forgetModules(id);

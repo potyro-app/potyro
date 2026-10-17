@@ -73,29 +73,38 @@ test("a sealed screen asks with the shell's sheet, and its answer reaches the sc
   await expect(el).toHaveCount(1, { timeout: 30_000 });
   const frame = page.frameLocator(".k-sealed-view iframe");
   await frame.getByRole("button", { name: /Start Pull A/ }).click({ timeout: 30_000 });
-  // The workout under way holds the screen on, and a ticked set's rest is the shell's timer — its chip
-  // in the shell's page, its countdown drawn in the frame (docs/04 §Timers, §Keeping the screen on).
+  // The workout under way holds the screen on, and a ticked set's rest is the shell's timer, its
+  // countdown drawn in the frame (docs/04 §Timers, §Keeping the screen on). The frame says it draws it
+  // (`ctx.ui.drawsTimer`, across the realm's port), so the shell's chip steps aside on Train…
   const html = page.locator("html");
   await expect(html).toHaveAttribute("data-k-awake", "");
   await frame.locator(".wk-ex", { hasText: "Barbell Row" }).getByRole("button", { name: "Complete set" }).first().click();
   const chip = page.locator(".k-timer-chip", { hasText: "Rest" });
-  await expect(chip).toHaveCount(1);
   await expect(frame.getByRole("timer", { name: "Rest" })).toBeVisible();
-  // The chip is shell chrome: `--k-chrome-bottom` takes it in, the frame ends above it, and the view's
-  // own bottom bar with it — Finish is tapped with the rest still running, by a real click (#377).
-  await expect(chip).toBeVisible();
+  await expect(page.locator(".k-timer-chip")).toHaveCount(0);
+  if (shots) await page.screenshot({ path: `${shots}/sealed-train-rest-bar-only.png` });
+  // …and is in sight on History, where nothing else shows the rest. The frame went: its hold with it.
+  await page.locator(".k-sidenav .k-tab", { hasText: "History" }).click();
+  await expect(chip).toBeVisible({ timeout: 30_000 });
+  await expect(chip.getByRole("timer")).toHaveText(/^[12]:\d\d$/);
+  if (shots) await page.screenshot({ path: `${shots}/sealed-history-rest-chip.png` });
+  await page.locator(".k-sidenav .k-tab", { hasText: "Train" }).click();
+  await expect(frame.getByRole("timer", { name: "Rest" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".k-timer-chip")).toHaveCount(0);
+  // Finish is tapped with the rest still running, by a real click (#377).
   const finish = frame.getByRole("button", { name: "Finish" });
-  const [chipBox, finishBox] = [await chip.boundingBox(), await finish.boundingBox()];
-  expect(chipBox && finishBox && finishBox.y + finishBox.height <= chipBox.y).toBe(true);
-  if (shots) await page.screenshot({ path: `${shots}/sealed-train-rest-finish-clear.png` });
   await finish.click();
   const sheet = page.getByRole("menu", { name: "Finish workout?" });
   await expect(sheet).toBeVisible();
   await expect(sheet.getByRole("menuitem")).toHaveText([/Save and finish/, /Keep training/, /Discard workout/]);
   await sheet.getByRole("menuitem", { name: /Discard workout/ }).click();
   await expect(frame.getByRole("button", { name: /Start Pull A/ })).toBeVisible();
-  // Thrown away, the rest goes with it: the shell's timer stops, not just its drawing.
+  // Thrown away, the rest goes with it: the shell's timer stops, not just its drawing — History has no chip.
+  await page.locator(".k-sidenav .k-tab", { hasText: "History" }).click();
+  await expect(page.locator(".k-tl-card").first()).toBeVisible({ timeout: 30_000 });
   await expect(chip).toHaveCount(0);
+  await page.locator(".k-sidenav .k-tab", { hasText: "Train" }).click();
+  await expect(frame.getByRole("button", { name: /Start Pull A/ })).toBeVisible({ timeout: 30_000 });
   // Thrown away: the screen may sleep.
   await expect(html).not.toHaveAttribute("data-k-awake", "");
 });

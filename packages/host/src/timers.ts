@@ -23,6 +23,12 @@ export interface TimerBridge {
   start(opts: { label: string; seconds: number; id?: string }): Promise<TimerData>;
   list(): Promise<TimerData[]>;
   control(id: string, verb: TimerVerb): Promise<void>;
+  /**
+   * `ctx.ui.drawsTimer`: the app's page draws timer `id` itself, so its chip stays out of the way until
+   * the returned function is called (once). The shell lets go of every one when the app is left.
+   * Headless, left out: nothing to hide.
+   */
+  draw?(id: string): () => void;
 }
 
 export const TIMER_LIMITS = {
@@ -65,8 +71,18 @@ export function plainTimer(d: unknown): TimerData {
   };
 }
 
+/**
+ * Whole seconds in `ms`, rounded up: the one rounding every countdown uses — the shell's chip, a
+ * timer's `left` and its handle's `secondsLeft()` — so a page drawing a timer agrees with its chip to
+ * the second. Up, as a kitchen timer counts: "0:01" until it is done, never "0:00" with time to go.
+ */
+export function secondsLeft(ms: number): number {
+  return Math.max(0, Math.ceil(ms / 1000));
+}
+
 /** The handle app code holds: the data, frozen, and the three things a person can do on the chip. */
 export function timerHandle(d: TimerData, control: (id: string, verb: TimerVerb) => Promise<void>): UiTimer {
+  const ends = d.endsAt ? Date.parse(d.endsAt) : null;
   return Object.freeze({
     id: d.id,
     label: d.label,
@@ -74,6 +90,7 @@ export function timerHandle(d: TimerData, control: (id: string, verb: TimerVerb)
     endsAt: d.endsAt ? new Date(d.endsAt) : null,
     left: d.left,
     paused: d.paused,
+    secondsLeft: (at?: Date | number) => (ends === null ? d.left : secondsLeft(ends - (at == null ? Date.now() : Number(at)))),
     cancel: () => control(d.id, "cancel"),
     pause: () => control(d.id, "pause"),
     resume: () => control(d.id, "resume"),

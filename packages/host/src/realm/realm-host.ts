@@ -174,7 +174,10 @@ export class RealmLoadedApp implements LoadedApp {
   private ctxById = new Map<number, Ctx>();
   private ctxSeq = 0;
   private progress = new Map<string, UiProgress>();
-  /** Screens held on by the realm, by its number for each: let go when the realm goes. */
+  /**
+   * What the realm holds by its number for each — screens held on (`w…`), timers a screen draws
+   * itself (`d…`) — let go when the port that asked goes, and all when the realm goes.
+   */
   private awake = new Map<string, { release(): void }>();
   private questionsOpen = 0;
   private questionSince = 0;
@@ -322,7 +325,7 @@ export class RealmLoadedApp implements LoadedApp {
     this.awake.clear();
   }
 
-  /** Let go of the screen keep-awakes a port holds (a sealed view's, when it goes). */
+  /** Let go of what a port holds by name — screens, drawn timers — (a sealed view's, when it goes). */
   private releaseHolds(prefix: string): void {
     for (const [hid, held] of this.awake) {
       if (!hid.startsWith(prefix)) continue;
@@ -545,6 +548,16 @@ export class RealmLoadedApp implements LoadedApp {
         else if (bar && what === "done") {
           bar.done();
           this.progress.delete(pid);
+        }
+        return null;
+      }
+      case "ui.drawsTimer": {
+        // Under the asking port's names, as keepAwake: a screen that goes lets its chips show again.
+        const [hid, what] = [`${ch.progress}${s(0)}`, s(1)];
+        if (what === "hold" && !this.awake.has(hid) && this.awake.size < 64) this.awake.set(hid, ctx.ui.drawsTimer(s(2)));
+        else if (what === "release") {
+          this.awake.get(hid)?.release();
+          this.awake.delete(hid);
         }
         return null;
       }

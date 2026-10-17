@@ -29,6 +29,23 @@ const ACTIONS = {
     await all[0].pause();
     ctx.ui.toast(`n=${all.length}`);
   },
+  draws: async (_r: unknown, ctx: any) => {
+    const d = ctx.ui.drawsTimer("rest");
+    ctx.ui.toast("drawn");
+    d.release();
+    d.release(); // twice is fine
+  },
+  drawsForgot: async (_r: unknown, ctx: any) => {
+    ctx.ui.drawsTimer("rest");
+  },
+  left: async (_r: unknown, ctx: any) => {
+    const t = await ctx.ui.timer({ label: "Rest", seconds: 90, id: "rest" });
+    const end = t.endsAt.getTime();
+    ctx.ui.toast(`${t.secondsLeft(end - 89_001)}:${t.secondsLeft(new Date(end - 89_000))}:${t.secondsLeft(end + 5)}`);
+    await t.pause();
+    const [p] = await ctx.ui.timers();
+    ctx.ui.toast(`${p.secondsLeft()}:${p.secondsLeft(end + 99_000)}`);
+  },
   badTimer: async (_r: unknown, ctx: any) => {
     await ctx.ui.timer({ label: "x", seconds: 0 });
   },
@@ -63,7 +80,12 @@ const BUNDLE = `globalThis.__potyroApp = ${JSON.stringify({ ...DEF, entities: { 
 function fakeTimers(now = 1_000_000) {
   const kept = new Map<string, TimerData>();
   const verbs: string[] = [];
+  const drawn: string[] = [];
   const bridge: TimerBridge = {
+    draw: (id) => {
+      drawn.push(`+${id}`);
+      return () => void drawn.push(`-${id}`);
+    },
     start: async (o) => {
       const d: TimerData = { id: o.id ?? "t1", label: o.label, seconds: o.seconds, endsAt: new Date(now + o.seconds * 1000).toISOString(), left: o.seconds, paused: false };
       kept.set(d.id, d);
@@ -73,11 +95,11 @@ function fakeTimers(now = 1_000_000) {
     control: async (id, verb) => {
       verbs.push(`${id}:${verb}`);
       const d = kept.get(id);
-      if (d && verb === "pause") kept.set(id, { ...d, paused: true, endsAt: null });
+      if (d && verb === "pause") kept.set(id, { ...d, paused: true, endsAt: null, left: 42 });
       if (verb === "cancel") kept.delete(id);
     },
   };
-  return { bridge, kept, verbs };
+  return { bridge, kept, verbs, drawn };
 }
 
 interface Rig {
@@ -160,6 +182,34 @@ describe.each(MAKERS)("%s", (_name, make) => {
     expect(r.timers.verbs).toEqual(["rest:pause"]);
     expect([...r.timers.kept.values()][0]).toMatchObject({ id: "rest", label: "Rest", seconds: 90, paused: true });
     await expect(r.loaded.callAction("expense", "badTimer", rec as never, r.ctx)).rejects.toThrow(/seconds/);
+    r.loaded.dispose();
+  });
+
+  it("drawsTimer tells the shell the page draws that timer itself, and lets go once", async () => {
+    const r = await rig(make);
+    const rec = await r.store.insert("expense", { what: "x" });
+    await r.loaded.callAction("expense", "draws", rec as never, r.ctx);
+    expect(r.toasts).toEqual(["drawn"]);
+    await expect.poll(() => r.timers.drawn).toEqual(["+rest", "-rest"]);
+    r.loaded.dispose();
+  });
+
+  it("a drawn timer the app forgot is let go when the app goes", async () => {
+    const r = await rig(make);
+    const rec = await r.store.insert("expense", { what: "x" });
+    await r.loaded.callAction("expense", "drawsForgot", rec as never, r.ctx);
+    await expect.poll(() => r.timers.drawn).toEqual(["+rest"]);
+    r.loaded.dispose();
+    // Direct: the shell lets go on leaving (timer-hub.ts releaseDraws); a sealed box lets go itself.
+    if (_name !== "direct") expect(r.timers.drawn).toEqual(["+rest", "-rest"]);
+  });
+
+  it("a timer's handle counts whole seconds left the way the chip does", async () => {
+    const r = await rig(make);
+    const rec = await r.store.insert("expense", { what: "x" });
+    await r.loaded.callAction("expense", "left", rec as never, r.ctx);
+    // Running: rounded up to the second, nothing below none; paused: what the shell froze, whenever.
+    expect(r.toasts).toEqual(["90:89:0", "42:42"]);
     r.loaded.dispose();
   });
 

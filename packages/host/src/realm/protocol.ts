@@ -91,6 +91,8 @@ export const OPS = [
   "ui.timer",
   "ui.timers",
   "ui.timer.control",
+  // A timer the screen draws itself, by a number the realm picked: "hold" + the timer's id / "release".
+  "ui.drawsTimer",
   "guests.add",
   "guests.rename",
   "guests.remove",

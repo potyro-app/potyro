@@ -275,6 +275,7 @@ describe("a view's ops go through the logic's op table", () => {
 
   it("a sealed screen keeps the screen on and runs timers through the same ops; its holds go when it goes", async () => {
     let held = 0;
+    let drawn = 0;
     const timers: Array<{ id: string; label: string; seconds: number; endsAt: string | null; left: number; paused: boolean }> = [];
     const { loaded, makeCtx } = await setup(true, undefined, {
       keepAwake: () => {
@@ -289,6 +290,10 @@ describe("a view's ops go through the logic's op table", () => {
         },
         list: async () => timers,
         control: async () => {},
+        draw: () => {
+          drawn++;
+          return () => void drawn--;
+        },
       },
     });
     const { ch, posted, viewCtxId } = viewChannel(makeCtx);
@@ -302,9 +307,15 @@ describe("a view's ops go through the logic's op table", () => {
     await answer({ id: 1, ctxId: viewCtxId, op: "ui.timer", args: [{ label: "Rest", seconds: 90 }] }, ch);
     expect(posted[0]).toMatchObject({ id: 1, ok: true, value: { label: "Rest", seconds: 90 } });
     expect(timers).toHaveLength(1);
-    // The view goes: its hold goes with it, the logic's stays.
+    // The screen draws the rest itself (`ui.drawsTimer`): the shell is told, under the view's own name.
+    await answer({ id: 0, ctxId: viewCtxId, op: "ui.drawsTimer", args: ["d1", "hold", "rest"] }, ch);
+    await answer({ id: 0, ctxId: viewCtxId, op: "ui.drawsTimer", args: ["d2", "hold", "rest"] }, ch);
+    await answer({ id: 0, ctxId: viewCtxId, op: "ui.drawsTimer", args: ["d2", "release"] }, ch);
+    expect(drawn).toBe(1);
+    // The view goes (unmounted, or stopped by its watchdog): its holds go with it, the logic's stays.
     (loaded as unknown as { releaseHolds(p: string): void }).releaseHolds(ch.progress);
     expect(held).toBe(1);
+    expect(drawn).toBe(0);
     loaded.dispose();
     expect(held).toBe(0);
   });
