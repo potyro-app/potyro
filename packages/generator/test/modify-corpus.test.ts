@@ -27,7 +27,7 @@ const shape = async (src: string, dir: string) => (await loadApp(src, dir)) as u
 const PLANTS_LIST_FILTERS =
   '            placeholder: { en: "Name or label", "pt-BR": "Nome ou etiqueta", de: "Name oder Schlagwort", es: "Nombre o etiqueta", pl: "Nazwa lub etykieta", it: "Nome o etichetta" },\n          },';
 const PLANTS_LIST_RETURN =
-  "          return !q || p.name.toLowerCase().includes(q) || ((p.labels as string[] | undefined) ?? []).some((l) => l.toLowerCase().includes(q));";
+  '          return !q || p.name.toLowerCase().includes(q) || String(p.room ?? "").toLowerCase().includes(q) || ((p.labels as string[] | undefined) ?? []).some((l) => l.toLowerCase().includes(q));';
 const RECIPE_PHOTO = '        photo: { type: "media", accept: "image", label: { en: "Photo", "pt-BR": "Foto", de: "Foto", es: "Foto", pl: "Zdjęcie", it: "Foto" } },';
 const PLACE_NOTES = '        notes: { type: "text", multiline: true, label: { en: "Notes", "pt-BR": "Anotações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" } },';
 const RIGHT: Record<string, Array<[string, string]>> = {

@@ -1,12 +1,13 @@
 // plants.app.ts
-// A calm greenhouse: who wants water today, as photo cards you tick with one tap — or tell it "the
-// soil is still wet", and after two of those the plant's rhythm stretches by a day, with a rule you
-// can read. Every watering, feed, mist and repot goes in a care log you can backdate. A new plant can
-// come from a photo: AI suggests the name and the rhythm, you check them.
+// Made for the walk round the flat with a watering can: Today is who wants water, room by room, each
+// with a 💧 to tap, and what comes up next. Or tell it "the soil is still wet", and after two of
+// those the plant's rhythm stretches by a day, with a rule you can read. Every watering, feed, mist
+// and repot goes in a care log you can backdate. A new plant can come from a photo: AI suggests the
+// name and the rhythm, you check them.
 //
 // Stresses: datetime logic, season-dependent computed interval (real branching), reminders as
 // functions returning Date|null, actions with input (log care on any day), `ctx.caps.ai` with a
-// confirm form, a calendar and a timeline. And words built inside functions (#302): "in 3 days" from
+// confirm form, grouped lists and a timeline. And words built inside functions (#302): "in 3 days" from
 // `ctx.format.relative`, a plural from `ctx.t`, both right in any language and in the sealed box.
 //
 // In six languages (#303). A plant's name, photo and labels are records and stay as written; every
@@ -123,17 +124,19 @@ async function addPlant(ctx: Ctx): Promise<void> {
       }
     }
   }
-  const checked = await ctx.ui.form<{ name: string; species: string; wateringIntervalDays: number; needsDirectSun: boolean }>({
+  const checked = await ctx.ui.form<{ name: string; species: string; room: string; wateringIntervalDays: number; needsDirectSun: boolean }>({
     title: guess.commonName
       ? ctx.t({ en: "AI's guess — check it", "pt-BR": "Palpite da IA — confira", de: "Tipp der KI — prüf ihn", es: "Lo que cree la IA — revísalo", pl: "Domysł AI — sprawdź", it: "L'ipotesi dell'IA — controlla" })
       : ctx.t({ en: "New plant", "pt-BR": "Nova planta", de: "Neue Pflanze", es: "Planta nueva", pl: "Nowa roślina", it: "Nuova pianta" }),
     fields: {
       name: { type: "text", required: true, label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" } },
       species: { type: "text", label: { en: "Species", "pt-BR": "Espécie", de: "Art", es: "Especie", pl: "Gatunek", it: "Specie" } },
+      // Where it lives: Today lists who wants water room by room.
+      room: { type: "text", label: { en: "Room", "pt-BR": "Cômodo", de: "Zimmer", es: "Habitación", pl: "Pokój", it: "Stanza" }, placeholder: { en: "Living room", "pt-BR": "Sala", de: "Wohnzimmer", es: "Salón", pl: "Salon", it: "Soggiorno" } },
       wateringIntervalDays: { type: "number", min: 1, integer: true, label: { en: "Water every (days)", "pt-BR": "Regar a cada (dias)", de: "Gießen alle (Tage)", es: "Regar cada (días)", pl: "Podlewaj co (dni)", it: "Annaffia ogni (giorni)" } },
       needsDirectSun: { type: "boolean", label: { en: "Wants direct sun", "pt-BR": "Gosta de sol direto", de: "Mag direkte Sonne", es: "Quiere sol directo", pl: "Lubi pełne słońce", it: "Vuole il sole diretto" } },
     },
-    initial: { name: guess.commonName ?? "", species: guess.species ?? "", wateringIntervalDays: Math.max(1, Math.round(guess.waterEveryDays ?? 7)), needsDirectSun: guess.directSun ?? false },
+    initial: { name: guess.commonName ?? "", species: guess.species ?? "", room: "", wateringIntervalDays: Math.max(1, Math.round(guess.waterEveryDays ?? 7)), needsDirectSun: guess.directSun ?? false },
     submit: ctx.t({ en: "Add plant", "pt-BR": "Adicionar planta", de: "Pflanze hinzufügen", es: "Añadir planta", pl: "Dodaj roślinę", it: "Aggiungi pianta" }),
   });
   if (!checked) return;
@@ -183,6 +186,7 @@ export default defineApp({
     };
   },
   permissions: { camera: true, notifications: true, ai: true },
+  // The "+" on Today and Plants runs addPlant (a photo AI reads, or typed); this is the whole form.
   quickActions: [
     { id: "add-plant", label: { en: "Add: Plant", "pt-BR": "Adicionar: Planta", de: "Hinzufügen: Pflanze", es: "Añadir: Planta", pl: "Dodaj: Roślina", it: "Aggiungi: Pianta" }, icon: "🌱", entity: "plant", mode: "form" },
   ],
@@ -209,6 +213,12 @@ export default defineApp({
             pl: "Własnymi słowami: gdzie stoi, kto ci ją dał",
             it: "Con parole tue: dove sta, chi te l'ha regalata",
           },
+        },
+        // Where it lives: Today goes room by room, the way you walk round with the watering can.
+        room: {
+          type: "text",
+          label: { en: "Room", "pt-BR": "Cômodo", de: "Zimmer", es: "Habitación", pl: "Pokój", it: "Stanza" },
+          placeholder: { en: "Living room", "pt-BR": "Sala", de: "Wohnzimmer", es: "Salón", pl: "Salon", it: "Soggiorno" },
         },
         needsDirectSun: {
           type: "boolean",
@@ -291,7 +301,7 @@ export default defineApp({
         snoozes: { type: "number", integer: true, default: 0, hidden: true, label: { en: "Still wet, in a row", "pt-BR": "Ainda úmida, seguidas", de: "Noch nass, hintereinander", es: "Aún húmeda, seguidas", pl: "Wciąż wilgotna, z rzędu", it: "Ancora umida, di fila" } },
       },
       groups: [
-        { fields: ["name", "species", "photo", "labels", "needsDirectSun"] },
+        { fields: ["name", "species", "photo", "room", "labels", "needsDirectSun"] },
         { title: { en: "Watering", "pt-BR": "Rega", de: "Gießen", es: "Riego", pl: "Podlewanie", it: "Annaffiatura" }, fields: ["lastWatered", "wateringIntervalDays", "rhythm", "nextText", "seasonalCare"] },
         { title: { en: "Care", "pt-BR": "Cuidados", de: "Pflege", es: "Cuidados", pl: "Pielęgnacja", it: "Cura" }, fields: ["lastFertilized", "feedText", "tip", "wiki", "active"], collapsible: true },
       ],
@@ -426,71 +436,48 @@ export default defineApp({
   },
 
   pages: [
-    // Today: who wants water now, as photo rows you tick in one tap, what comes up this week, and the
-    // figures. Each block is an ordinary view, so this page renders the same in the sealed box.
+    // Today, for the walk round the flat: who wants water, room by room, each with a 💧 — tapped, it
+    // leaves the list. Under it on a phone (beside it on a wide screen), the days ahead. One line of
+    // figures; no picture, no table of counts.
     {
       id: "today",
       title: { en: "Today", "pt-BR": "Hoje", de: "Heute", es: "Hoy", pl: "Dziś", it: "Oggi" },
       icon: "☀️",
-      description: { en: "Who wants water today, and who can wait.", "pt-BR": "Quem quer água hoje, e quem pode esperar.", de: "Wer heute Wasser will, und wer warten kann.", es: "Quién quiere agua hoy, y quién puede esperar.", pl: "Kto dziś chce wody, a kto może poczekać.", it: "Chi vuole acqua oggi, e chi può aspettare." },
-      background: { image: "art/leaves.webp" },
+      description: { en: "Who wants water today, room by room, and who comes next.", "pt-BR": "Quem quer água hoje, cômodo a cômodo, e quem vem depois.", de: "Wer heute Wasser will, Zimmer für Zimmer, und wer als Nächstes dran ist.", es: "Quién quiere agua hoy, habitación por habitación, y quién va después.", pl: "Kto chce dziś wody, pokój po pokoju, i kto następny.", it: "Chi vuole acqua oggi, stanza per stanza, e chi viene dopo." },
       actions: [{ label: { en: "Add a plant", "pt-BR": "Adicionar planta", de: "Pflanze hinzufügen", es: "Añadir planta", pl: "Dodaj roślinę", it: "Aggiungi pianta" }, icon: "＋", run: addPlant }],
-      primaryAction: 0,
+      add: 0,
+      summary: [
+        {
+          label: { en: "to water today", "pt-BR": "para regar hoje", de: "heute zu gießen", es: "para regar hoy", pl: "do podlania dziś", it: "da annaffiare oggi" },
+          value: async (_rows, ctx) => (await ctx.query("plant")).filter((p) => p.overdue).length,
+        },
+        {
+          label: { en: "tomorrow", "pt-BR": "amanhã", de: "morgen", es: "mañana", pl: "jutro", it: "domani" },
+          value: async (_rows, ctx) => {
+            const end = ctx.today().getTime() + 2 * DAY;
+            return (await ctx.query("plant")).filter((p) => p.active && !p.overdue && p.nextWatering.getTime() < end).length;
+          },
+        },
+      ],
       layout: {
         type: "grid",
         items: [
           {
-            title: { en: "Watering", "pt-BR": "Rega", de: "Gießen", es: "Riego", pl: "Podlewanie", it: "Annaffiatura" },
-            span: 1,
-            view: {
-              type: "aggregate",
-              entity: "plant",
-              rows: (plants, ctx) => {
-                const week = Date.now() + 7 * DAY;
-                const thisWeek = plants.filter((p) => p.active && p.nextWatering.getTime() <= week).length;
-                // The value stays a number — the view formats it; the words around it come from ctx.t.
-                return [
-                  {
-                    label: ctx.t({ en: "Due now", "pt-BR": "Regar agora", de: "Jetzt fällig", es: "Regar ya", pl: "Do podlania teraz", it: "Da annaffiare ora" }),
-                    value: plants.filter((p) => p.overdue).length,
-                    tone: plants.some((p) => p.overdue) ? "negative" : undefined,
-                  },
-                  {
-                    label: ctx.t({ en: "This week", "pt-BR": "Esta semana", de: "Diese Woche", es: "Esta semana", pl: "W tym tygodniu", it: "Questa settimana" }),
-                    value: thisWeek,
-                    detail: ctx.t(
-                      {
-                        en: "{n, plural, =0 {nothing to water} one {# plant to water} other {# plants to water}}",
-                        "pt-BR": "{n, plural, =0 {nada para regar} one {# planta para regar} other {# plantas para regar}}",
-                        de: "{n, plural, =0 {nichts zu gießen} one {# Pflanze zu gießen} other {# Pflanzen zu gießen}}",
-                        es: "{n, plural, =0 {nada que regar} one {# planta que regar} other {# plantas que regar}}",
-                        pl: "{n, plural, =0 {nic do podlania} one {# roślina do podlania} few {# rośliny do podlania} many {# roślin do podlania} other {# rośliny do podlania}}",
-                        it: "{n, plural, =0 {niente da annaffiare} one {# pianta da annaffiare} other {# piante da annaffiare}}",
-                      },
-                      { n: thisWeek },
-                    ),
-                  },
-                  {
-                    label: ctx.t({ en: "Plants", "pt-BR": "Plantas", de: "Pflanzen", es: "Plantas", pl: "Rośliny", it: "Piante" }),
-                    value: plants.filter((p) => p.active).length,
-                  },
-                ];
-              },
-            },
-          },
-          {
-            title: { en: "Thirsty", "pt-BR": "Com sede", de: "Durstig", es: "Con sed", pl: "Spragnione", it: "Assetate" },
+            title: { en: "Water now", "pt-BR": "Regar agora", de: "Jetzt gießen", es: "Regar ahora", pl: "Podlej teraz", it: "Annaffia ora" },
             span: 2,
             view: {
               type: "list",
               entity: "plant",
               filter: (p) => p.overdue,
-              sort: (a, b) => a.nextWatering.getTime() - b.nextWatering.getTime(),
+              // A plant with no room comes first, under no heading.
+              group: "room",
+              sort: (a, b) => String(a.room ?? "").localeCompare(String(b.room ?? "")) || a.nextWatering.getTime() - b.nextWatering.getTime(),
               display: {
                 primary: "name",
+                // One short line beside the 💧: how long it has gone without.
                 secondary: (p, ctx) =>
                   p.lastWatered
-                    ? ctx.t({ en: "watered {when} · every {n} days", "pt-BR": "regada {when} · a cada {n} dias", de: "gegossen {when} · alle {n} Tage", es: "regada {when} · cada {n} días", pl: "podlana {when} · co {n} dni", it: "annaffiata {when} · ogni {n} giorni" }, { when: when(new Date(p.lastWatered), ctx), n: p.currentIntervalDays })
+                    ? ctx.t({ en: "watered {when}", "pt-BR": "regada {when}", de: "gegossen {when}", es: "regada {when}", pl: "podlana {when}", it: "annaffiata {when}" }, { when: when(new Date(p.lastWatered), ctx) })
                     : ctx.t({ en: "never watered here yet", "pt-BR": "ainda não regada aqui", de: "hier noch nie gegossen", es: "aún no regada aquí", pl: "jeszcze tu nie podlana", it: "mai annaffiata qui" }),
                 media: "photo",
               },
@@ -501,7 +488,7 @@ export default defineApp({
           },
           {
             title: { en: "Coming up", "pt-BR": "Em breve", de: "Demnächst", es: "Próximamente", pl: "Wkrótce", it: "In arrivo" },
-            span: 3,
+            span: 1,
             view: {
               type: "list",
               entity: "plant",
@@ -509,7 +496,7 @@ export default defineApp({
               sort: (a, b) => a.nextWatering.getTime() - b.nextWatering.getTime(),
               display: {
                 primary: "name",
-                secondary: (p, ctx) => ctx.t({ en: "water {when}", "pt-BR": "regar {when}", de: "gießen {when}", es: "regar {when}", pl: "podlej {when}", it: "annaffia {when}" }, { when: when(p.nextWatering, ctx) }),
+                secondary: (p, ctx) => [ctx.t({ en: "water {when}", "pt-BR": "regar {when}", de: "gießen {when}", es: "regar {when}", pl: "podlej {when}", it: "annaffia {when}" }, { when: when(p.nextWatering, ctx) }), String(p.room ?? "")].filter(Boolean).join(" · "),
                 media: "photo",
               },
               onOpen: { page: "plant", param: { plantId: "id" } },
@@ -522,13 +509,15 @@ export default defineApp({
     {
       // Every plant as a photo, by where it lives.
       id: "list",
+      actions: [{ label: { en: "Add a plant", "pt-BR": "Adicionar planta", de: "Pflanze hinzufügen", es: "Añadir planta", pl: "Dodaj roślinę", it: "Aggiungi pianta" }, icon: "＋", run: addPlant }],
+      add: 0,
       title: { en: "Plants", "pt-BR": "Plantas", de: "Pflanzen", es: "Plantas", pl: "Rośliny", it: "Piante" },
       icon: "🪴",
       description: { en: "Every plant in the house, by its photo.", "pt-BR": "Todas as plantas da casa, pela foto.", de: "Alle Pflanzen im Haus, mit Foto.", es: "Todas las plantas de casa, con su foto.", pl: "Wszystkie rośliny w domu, ze zdjęciem.", it: "Tutte le piante di casa, con la foto." },
       view: {
         type: "list",
         entity: "plant",
-        // Search matches the name and the person's own labels ("kitchen", "from Ana").
+        // Search matches the name, the room and the person's own labels ("from Ana").
         filters: [
           {
             label: { en: "Search", "pt-BR": "Buscar", de: "Suche", es: "Buscar", pl: "Szukaj", it: "Cerca" },
@@ -539,9 +528,10 @@ export default defineApp({
         ],
         filter: (p, ctx) => {
           const q = String(ctx.params.q ?? "").trim().toLowerCase();
-          return !q || p.name.toLowerCase().includes(q) || ((p.labels as string[] | undefined) ?? []).some((l) => l.toLowerCase().includes(q));
+          return !q || p.name.toLowerCase().includes(q) || String(p.room ?? "").toLowerCase().includes(q) || ((p.labels as string[] | undefined) ?? []).some((l) => l.toLowerCase().includes(q));
         },
-        sort: (a, b) => a.nextWatering.getTime() - b.nextWatering.getTime(),
+        group: "room",
+        sort: (a, b) => String(a.room ?? "").localeCompare(String(b.room ?? "")) || a.name.localeCompare(b.name),
         display: {
           primary: (p) => p.name,
           secondary: (p, ctx) =>
@@ -572,18 +562,6 @@ export default defineApp({
       },
     },
     {
-      id: "schedule",
-      title: { en: "Schedule", "pt-BR": "Agenda", de: "Gießplan", es: "Calendario", pl: "Harmonogram", it: "Calendario" },
-      icon: "📅",
-      view: {
-        type: "calendar",
-        entity: "plant",
-        date: "nextWatering",
-        title: (p) => p.name,
-        color: (p) => (p.needsDirectSun ? "#E4A93C" : "#7FCF8E"),
-      },
-    },
-    {
       // A plant's own page: its photo, what it needs, and Water as the one big button.
       id: "plant",
       title: { en: "Plant", "pt-BR": "Planta", de: "Pflanze", es: "Planta", pl: "Roślina", it: "Pianta" },
@@ -592,24 +570,23 @@ export default defineApp({
         type: "detail",
         entity: "plant",
         param: "plantId",
-        cover: "banner",
+        // What to do is on the first screen, over the plant's photo; Water is the bar at the bottom.
+        cover: "background",
         facts: ["nextText", "rhythm", "sun"],
         primaryAction: "water",
         actions: ["snooze", "logCare"],
+        // The chips already say when and how often; the log says when it was last done. So the page is
+        // short, and "Soil still wet" is a thumb's reach above Water.
         sections: [
           {
-            title: { en: "Watering", "pt-BR": "Rega", de: "Gießen", es: "Riego", pl: "Podlewanie", it: "Annaffiatura" },
-            fields: ["lastWatered", "wateringIntervalDays", "seasonalCare"],
-          },
-          {
-            // The plant's history, on its own page: every watering, feed and repot, newest first.
+            // The plant's recent history: every watering, feed and repot, newest first.
             title: { en: "Care log", "pt-BR": "Diário", de: "Pflegebuch", es: "Diario", pl: "Dziennik", it: "Diario" },
-            related: { entity: "care", via: "plant", view: "timeline", date: "at", display: { primary: "what", secondary: "note", icon: "glyph" }, limit: 12 },
+            related: { entity: "care", via: "plant", view: "timeline", date: "at", display: { primary: "what", secondary: "note", icon: "glyph" }, limit: 5 },
           },
           {
             title: { en: "About", "pt-BR": "Sobre", de: "Info", es: "Información", pl: "Informacje", it: "Info" },
-            fields: ["species", "labels", "needsDirectSun", "tip", "lastFertilized", "feedText", "wiki", "active"],
-            collapsible: true,
+            fields: ["room", "species", "labels", "tip", "seasonalCare", "feedText", "wiki", "active"],
+            collapsed: true,
           },
         ],
       },
