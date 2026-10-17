@@ -4,7 +4,7 @@
 //
 //   node scripts/ci-local.mjs all              every step, in order (run it in a terminal); the
 //                                              browser shards run side by side (see below)
-//   node scripts/ci-local.mjs <step>           one step: install build unit typecheck lint e2e:1..N
+//   node scripts/ci-local.mjs <step>           one step: install build unit typecheck lint e2e:1..N ff:1..M
 //   node scripts/ci-local.mjs e2e              every browser shard not yet passed, all at once
 //   node scripts/ci-local.mjs status           what has passed for HEAD, and what is left
 //   node scripts/ci-local.mjs status --post    ...and, if everything passed, mark HEAD green on GitHub
@@ -27,6 +27,10 @@
 // together; the deal is frozen per commit, so a resumed shard runs the files it ran before.
 // `CI_LOCAL_E2E=sequential` runs the shards one after another instead, as before (for comparison).
 //
+// Two suites, side by side: `e2e:<n>` is Chromium (the trusted and sandbox projects) and `ff:<n>` is
+// the same specs in Firefox (trusted-firefox, sandbox-firefox: POTYRO_FIREFOX=1), the browser the
+// owner uses. Each has its own shards, plan and timings; all of them run at once.
+//
 // What differs from GitHub's run, on purpose:
 //   - The browser suite runs as parallel shards of one worker each (above).
 //   - The pixel baselines are skipped: they are GitHub's runner's pixels, and font hinting on any
@@ -40,6 +44,18 @@ import { createConnection, createServer } from "node:net";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const SHARDS = Number(process.env.CI_LOCAL_SHARDS ?? 8);
+/** Firefox's shards. `0` leaves Firefox out of the run (and out of the gate's steps). */
+const FF_SHARDS = Number(process.env.CI_LOCAL_FF_SHARDS ?? 8);
+/**
+ * The browser suites: which Playwright projects a shard runs, with what in its environment. Projects
+ * are named, not left to the config's defaults, so a POTYRO_* variable in the caller's environment
+ * cannot quietly add an engine to a shard.
+ */
+const SUITES = {
+  e2e: { shards: SHARDS, projects: ["trusted", "sandbox"], env: {} },
+  ff: { shards: FF_SHARDS, projects: ["trusted-firefox", "sandbox-firefox"], env: { POTYRO_FIREFOX: "1" } },
+};
+const shardSteps = (suite) => Array.from({ length: SUITES[suite].shards }, (_, i) => `${suite}:${i + 1}`);
 /** `sequential`: the browser shards one after another, the way this ran before they were isolated. */
 const E2E_MODE = process.env.CI_LOCAL_E2E === "sequential" ? "sequential" : "parallel";
 /** Keep in step with PORT_BLOCK in e2e/ports.ts. */
@@ -54,7 +70,7 @@ const CLAIMS = "/tmp/potyro-e2e-ports";
 /** Each spec file's last duration in seconds, kept across commits (gitignored, like every result). */
 const TIMINGS = join(ROOT, ".ci-local", "e2e-timings.json");
 const SEED_TIMINGS = join(ROOT, "e2e", "timings.json");
-const STEPS = ["install", "build", "unit", "typecheck", "lint", ...Array.from({ length: SHARDS }, (_, i) => `e2e:${i + 1}`)];
+const STEPS = ["install", "build", "unit", "typecheck", "lint", ...shardSteps("e2e"), ...shardSteps("ff")];
 
 const sh = (cmd) => execSync(cmd, { cwd: ROOT, encoding: "utf8" }).trim();
 const sha = sh("git rev-parse HEAD");
@@ -254,11 +270,15 @@ const readJson = (f) => {
 
 /**
  * Each file's last duration: this checkout's own measurements over the committed seed
- * (`e2e/timings.json`, measured on vazio), so even a fresh clone's first run is balanced.
+ * (`e2e/timings.json`, measured on vazio), so even a fresh clone's first run is balanced. A suite
+ * other than Chromium's keys its files with its own prefix (`ff:e2e/…`): Firefox's durations differ.
  */
-function readTimings() {
-  return { ...readJson(SEED_TIMINGS), ...readJson(TIMINGS) };
+function readTimings(suite) {
+  const all = { ...readJson(SEED_TIMINGS), ...readJson(TIMINGS) };
+  const key = timingKey(suite);
+  return Object.fromEntries(specFiles().map((f) => [f, all[key(f)]]).filter(([, t]) => typeof t === "number"));
 }
+const timingKey = (suite) => (suite === "e2e" ? (f) => f : (f) => `${suite}:${f}`);
 
 /**
  * Which files each shard runs, decided once per commit and kept in `e2e-plan.json` — a shard that
@@ -266,8 +286,9 @@ function readTimings() {
  * would run twice and others never. Longest first into the lightest shard, by each file's last
  * duration; a file never timed counts as the median. With no timings at all, by index.
  */
-function shardPlan() {
-  const planFile = join(dir, "e2e-plan.json");
+function shardPlan(suite) {
+  const SHARDS = SUITES[suite].shards;
+  const planFile = join(dir, `${suite}-plan.json`);
   const files = specFiles();
   try {
     const plan = JSON.parse(readFileSync(planFile, "utf8"));
@@ -277,8 +298,8 @@ function shardPlan() {
   }
   // A new deal: any shard result already here was for other files (CI_LOCAL_SHARDS changed, or a
   // result from before plans were kept), so it describes nothing any more.
-  for (const f of readdirSync(dir)) if (/^e2e-\d+\.(ok|fail)$/.test(f)) rmSync(join(dir, f), { force: true });
-  const timings = readTimings();
+  for (const f of readdirSync(dir)) if (new RegExp(`^${suite}-\\d+\\.(ok|fail)$`).test(f)) rmSync(join(dir, f), { force: true });
+  const timings = readTimings(suite);
   const known = files.map((f) => timings[f]).filter((t) => typeof t === "number").sort((a, b) => a - b);
   let plan;
   if (!known.length) {
@@ -293,14 +314,14 @@ function shardPlan() {
       lightest.total += cost(f);
     }
     plan = shards.map((sh) => sh.files.sort());
-    process.stdout.write(`· shards by measured duration: ${shards.map((sh) => `${Math.round(sh.total)}s`).join(" ")}\n`);
+    process.stdout.write(`· ${suite} shards by measured duration: ${shards.map((sh) => `${Math.round(sh.total)}s`).join(" ")}\n`);
   }
   writeFileSync(planFile, `${JSON.stringify(plan, null, 1)}\n`);
   return plan;
 }
 
 /** Fold a shard's Playwright JSON report into the timings: each file's total, retries included. */
-function learnTimings(report) {
+function learnTimings(report, suite) {
   let parsed;
   try {
     parsed = JSON.parse(readFileSync(report, "utf8"));
@@ -318,38 +339,42 @@ function learnTimings(report) {
   for (const suite of parsed.suites ?? []) walk(suite);
   if (!Object.keys(perFile).length) return;
   const timings = readJson(TIMINGS);
-  for (const [f, secs] of Object.entries(perFile)) timings[f] = Math.round(secs * 10) / 10;
+  const key = timingKey(suite);
+  for (const [f, secs] of Object.entries(perFile)) timings[key(f)] = Math.round(secs * 10) / 10;
   writeFileSync(TIMINGS, `${JSON.stringify(Object.fromEntries(Object.entries(timings).sort()), null, 1)}\n`);
 }
 
 /** One shard, as a child process with its own port block, log and Playwright output directory. */
-async function runShard(i, files) {
-  const label = `e2e:${i}`;
-  const f = `e2e-${i}`;
+async function runShard(suite, i, files) {
+  const label = `${suite}:${i}`;
+  const f = `${suite}-${i}`;
+  const { projects, env: suiteEnv } = SUITES[suite];
   const log = join(dir, `${f}.log`);
   const report = join(dir, `${f}.json`);
   rmSync(report, { force: true });
   const block = await claimBlock();
   const mark = `${process.pid}-${i}-${block.base}`;
-  const args = ["exec", "playwright", "test", ...files, "--workers=1", "--retries=1", "--reporter=line,json", `--output=test-results/shard-${i}`];
+  const out = suite === "e2e" ? `shard-${i}` : `${suite}-shard-${i}`;
+  const args = ["exec", "playwright", "test", ...files, ...projects.map((p) => `--project=${p}`), "--workers=1", "--retries=1", "--reporter=line,json", `--output=test-results/${out}`];
   const env = {
     ...process.env,
+    ...suiteEnv,
     POTYRO_E2E_PORT_BASE: String(block.base),
     POTYRO_E2E_SHARD: mark,
     // Its own Vite dependency cache, by shard number so it stays warm from one run to the next.
-    POTYRO_VITE_CACHE_DIR: join(ROOT, "node_modules", ".vite-e2e", `shard-${i}`),
+    POTYRO_VITE_CACHE_DIR: join(ROOT, "node_modules", ".vite-e2e", out),
     PLAYWRIGHT_JSON_OUTPUT_NAME: report,
   };
   process.stdout.write(`▶ ${label}: ${files.length} files on ports ${block.base}..${block.base + PORT_BLOCK - 1}\n`);
   const started = Date.now();
-  const out = createWriteStream(log);
-  out.write(`$ POTYRO_E2E_PORT_BASE=${block.base} pnpm ${args.join(" ")}\n`);
+  const logFile = createWriteStream(log);
+  logFile.write(`$ ${Object.entries(suiteEnv).map(([k, v]) => `${k}=${v} `).join("")}POTYRO_E2E_PORT_BASE=${block.base} pnpm ${args.join(" ")}\n`);
   let tail = "";
   const status = await new Promise((resolve) => {
     // Its own process group, so stopping a shard reaches pnpm and Playwright at once (stopShards).
     const child = spawn("pnpm", args, { cwd: ROOT, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
     const onData = (d) => {
-      out.write(d);
+      logFile.write(d);
       tail = (tail + d.toString()).slice(-20_000);
     };
     child.stdout.on("data", onData);
@@ -363,9 +388,9 @@ async function runShard(i, files) {
     });
     child.once("error", (e) => (onData(String(e)), resolve(1)));
   });
-  await new Promise((r) => out.end(r));
+  await new Promise((r) => logFile.end(r));
   block.release();
-  learnTimings(report);
+  learnTimings(report, suite);
   const secs = Math.round((Date.now() - started) / 1000);
   return { ok: status === 0, secs, log, tail: tail.trim().split("\n").slice(-25).join("\n") };
 }
@@ -380,13 +405,12 @@ function refuseDirty() {
 /** Every shard not yet passed (all of them with `fresh`), at once, each recorded as its own step. */
 async function e2eParallel(fresh) {
   refuseDirty();
-  const plan = shardPlan();
-  const shards = plan.map((files, n) => ({ i: n + 1, files }));
-  const todo = shards.filter(({ i }) => fresh || !existsSync(join(dir, `e2e-${i}.ok`)));
-  for (const { i } of shards.filter((sh) => !todo.includes(sh))) process.stdout.write(`✓ e2e:${i} (already passed for ${short})\n`);
+  const shards = Object.keys(SUITES).flatMap((suite) => (SUITES[suite].shards ? shardPlan(suite).map((files, n) => ({ suite, i: n + 1, files })) : []));
+  const todo = shards.filter(({ suite, i }) => fresh || !existsSync(join(dir, `${suite}-${i}.ok`)));
+  for (const { suite, i } of shards.filter((sh) => !todo.includes(sh))) process.stdout.write(`✓ ${suite}:${i} (already passed for ${short})\n`);
   const started = Date.now();
-  await Promise.all(todo.map(async ({ i, files }) => record(`e2e:${i}`, await runShard(i, files))));
-  if (todo.length) process.stdout.write(`· browser suite: ${todo.length} shards at once in ${Math.round((Date.now() - started) / 1000)}s\n`);
+  await Promise.all(todo.map(async ({ suite, i, files }) => record(`${suite}:${i}`, await runShard(suite, i, files))));
+  if (todo.length) process.stdout.write(`· browser suites: ${todo.length} shards at once in ${Math.round((Date.now() - started) / 1000)}s\n`);
 }
 
 async function step(name) {
@@ -406,12 +430,12 @@ async function step(name) {
       return record(name, { ok: results.every((r) => r.ok), secs: results.reduce((n, r) => n + r.secs, 0), log: bad.log, tail: bad.tail });
     }
     default: {
-      const m = /^e2e:(\d+)$/.exec(name);
-      if (!m || Number(m[1]) < 1 || Number(m[1]) > SHARDS) throw new Error(`unknown step "${name}" — one of: ${STEPS.join(" ")} e2e`);
+      const m = /^(e2e|ff):(\d+)$/.exec(name);
+      if (!m || Number(m[2]) < 1 || Number(m[2]) > SUITES[m[1]].shards) throw new Error(`unknown step "${name}" — one of: ${STEPS.join(" ")} e2e`);
       // On its own claimed block of ports (claimBlock), so a server another checkout left listening
       // on the suite's default ports can never be tested in place of this one.
-      const i = Number(m[1]);
-      return record(name, await runShard(i, shardPlan()[i - 1]));
+      const [suite, i] = [m[1], Number(m[2])];
+      return record(name, await runShard(suite, i, shardPlan(suite)[i - 1]));
     }
   }
 }
@@ -532,7 +556,7 @@ if (!cmd || cmd === "status") {
       process.stdout.write(`✓ ${s} (already passed for ${short})\n`);
       continue;
     }
-    if (s.startsWith("e2e:") && E2E_MODE === "parallel") {
+    if (/^(e2e|ff):/.test(s) && E2E_MODE === "parallel") {
       await e2eParallel(fresh); // every shard left, at once; status below says what passed
       break;
     }
