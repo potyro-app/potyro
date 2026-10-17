@@ -76,8 +76,11 @@ read over it · `"band"` · `"none"`), `media` (a photo field, or a computed ret
 `ctx.files`), `facts` (fields as chips on the cover) and `primaryAction` (the one big button, a bar at
 the bottom; the page's other actions then come after its sections), a list field's `lines` (its rows
 read as lines of these sub-fields: `["quantity", "unit", "ingredient"]` → "350 g flour"), and
-an `ActionDef`'s `icon`. A quick action floats (the phone's round button) only on a page that shows its kind of record; the
-others are in the ⋯ menu and the wide sidebar. They are data — the shell draws them, at either provenance — and an app that
+an `ActionDef`'s `icon`. A quick action is the phone's "+" in the top bar, on a page that shows its kind of record — or a
+page's own `add` (the index of one of its `actions`, the app's own way in: "Add a recipe" with its
+photo, paste and type), which the "+" runs instead; the
+others are in the ⋯ menu, and all of them in the wide sidebar. Nothing floats over a list: a page
+whose point is adding names that action as its `primaryAction`, the bar at the bottom. They are data — the shell draws them, at either provenance — and an app that
 sets none still gets its content first — above a page's view there is only its `summary`, as one line
 ("11 to buy · 2 in the basket") — rows led by their photo or a tinted initial, and a cover on every
 record page (docs/03 §How a page looks). Additive: no app bumps `schemaVersion` for them.

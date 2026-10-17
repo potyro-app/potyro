@@ -13,13 +13,15 @@ import { contentsOf, deleteScope, duplicateScope } from "./scope-manage.js";
 
 interface ScopeSwitcherProps {
   runtime: PotyroRuntime;
+  /** The app's name: what the title reads while an optional selection is none — everything shows. */
+  appName: string;
   /** Where the selection is remembered (`scope.ts`). */
   appId: string;
   /** Open the form for a new one; the shell selects it once made. */
   onNew: () => void;
 }
 
-export function ScopeSwitcher({ runtime, appId, onNew }: ScopeSwitcherProps) {
+export function ScopeSwitcher({ runtime, appName, appId, onNew }: ScopeSwitcherProps) {
   const { t } = useLingui();
   const def = runtime.definition.scope!;
   const entityDef = runtime.definition.entities[def.entity];
@@ -83,7 +85,12 @@ export function ScopeSwitcher({ runtime, appId, onNew }: ScopeSwitcherProps) {
       await chooseScope(runtime, appId, next ? String(next.id) : null);
     });
 
+  // An optional selection can be none: everything shows, and the title says the app's own name.
+  const showAll: MenuEntry[] = def.required
+    ? []
+    : [{ key: "all", label: t({ message: "Show all", comment: "Scope menu: no list/trip chosen, so every record shows" }), icon: scoped ? "" : "✓", onSelect: () => void chooseScope(runtime, appId, null) }];
   const entries: MenuEntry[] = [
+    ...showAll,
     ...all.map((r): MenuEntry => ({
       key: `s-${String(r.id)}`,
       label: nameOf(r),
@@ -116,8 +123,8 @@ export function ScopeSwitcher({ runtime, appId, onNew }: ScopeSwitcherProps) {
       buttonClassName="k-scope"
       trigger={
         <>
-          <span className="k-scope-name" data-empty={!scoped || undefined}>
-            {scoped ? current : t`Choose…`}
+          <span className="k-scope-name" data-empty={(!scoped && def.required) || undefined}>
+            {scoped ? current : def.required ? t`Choose…` : appName}
           </span>
           <span className="k-scope-caret" aria-hidden>
             ▾

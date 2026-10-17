@@ -1005,6 +1005,8 @@ export default defineApp({
       title: { en: "Recipes", "pt-BR": "Receitas", de: "Rezepte", es: "Recetas", pl: "Przepisy", it: "Ricette" },
       description: { en: "Your cookbook, keepers first.", "pt-BR": "Seu livro de receitas, as favoritas primeiro.", de: "Dein Kochbuch, Lieblingsrezepte zuerst.", es: "Tu recetario, las favoritas primero.", pl: "Twoja książka kucharska, ulubione na początku.", it: "Il tuo ricettario, le preferite prima." },
       actions: [{ label: { en: "Add a recipe", "pt-BR": "Adicionar receita", de: "Rezept hinzufügen", es: "Añadir receta", pl: "Dodaj przepis", it: "Aggiungi ricetta" }, icon: "＋", run: addRecipe }],
+      // It is the phone's "+" in the top bar: there when wanted, never in the way.
+      add: 0,
       view: {
         type: "gallery",
         entity: "recipe",

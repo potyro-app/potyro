@@ -5130,10 +5130,6 @@ msgstr "Colocar de volta na caixa lacrada"
 msgid "Putting places at their address ({placedNow} of {placedOf})…"
 msgstr "Posicionando os lugares no endereço ({placedNow} de {placedOf})…"
 
-#: ../shell/src/chrome.tsx
-msgid "Quick actions"
-msgstr "Ações rápidas"
-
 #: ../shell/src/app-lock.tsx
 msgid "Read-only"
 msgstr "Somente leitura"
@@ -5852,6 +5848,11 @@ msgstr "Atalhos"
 #: ../shell/src/remix-suggestions.ts
 msgid "Show “{label}” on a calendar"
 msgstr "Mostrar “{label}” num calendário"
+
+#. Scope menu: no list/trip chosen, so every record shows
+#: ../shell/src/scope-switcher.tsx
+msgid "Show all"
+msgstr "Mostrar tudo"
 
 #: ../shell/src/share-page.tsx
 msgid "Show all of it"

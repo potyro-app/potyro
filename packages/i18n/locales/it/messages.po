@@ -5130,10 +5130,6 @@ msgstr "Rimetti nella scatola sigillata"
 msgid "Putting places at their address ({placedNow} of {placedOf})…"
 msgstr "Posizionamento dei luoghi al loro indirizzo ({placedNow} di {placedOf})…"
 
-#: ../shell/src/chrome.tsx
-msgid "Quick actions"
-msgstr "Azioni rapide"
-
 #: ../shell/src/app-lock.tsx
 msgid "Read-only"
 msgstr "Sola lettura"
@@ -5852,6 +5848,11 @@ msgstr "Scorciatoie"
 #: ../shell/src/remix-suggestions.ts
 msgid "Show “{label}” on a calendar"
 msgstr "Mostra “{label}” in un calendario"
+
+#. Scope menu: no list/trip chosen, so every record shows
+#: ../shell/src/scope-switcher.tsx
+msgid "Show all"
+msgstr "Mostra tutto"
 
 #: ../shell/src/share-page.tsx
 msgid "Show all of it"

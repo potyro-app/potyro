@@ -101,7 +101,7 @@ test.describe("phone", () => {
 
   test("a recipe opens on its ingredients, over its photo, with Start cooking at the bottom", async ({ page }) => {
     await openRecipes(page);
-    // The cookbook: no floating Add, and the first cards right under the search and its chips.
+    // The cookbook: nothing floating, and the first cards right under the search and its chips.
     await expect(page.locator(".k-fab")).toHaveCount(0);
     expect((await page.locator(".k-card").first().boundingBox())!.y).toBeLessThan(260);
     // A card's name is under its photo, not on it.
