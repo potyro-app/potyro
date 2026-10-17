@@ -611,23 +611,24 @@ export interface PageAction {
 
 export interface Page {
   id: string;
-  /** The tab label. A function of ctx can name the selection: `(ctx) => \`Places in ${ctx.scope.trip?.city ?? "…"}\``. */
+  /** The tab label; a function of ctx may name the selection. */
   title: Dynamic<Words>;
   /** What the page is for, in a sentence: shown where pages are listed, not on the page. */
   description?: Words;
-  /** The page's frequent action ("Done shopping"), a bar at the bottom: a quick action's `id`, or an
-   *  index into `actions`. No floating Add then. Name an Add here only if adding is what the page is for. */
+  /** The page's frequent action ("Done shopping"), a bottom bar: a quick action's `id` or an `actions` index. */
   primaryAction?: string | number;
   /** This page's ground; overrides `theme.background`. */
   background?: Backdrop;
-  /** One emoji or short glyph for the page's tab (#111). Without it the tab shows the entity's icon. */
+  /** One emoji for the page's tab; default: the entity's icon. */
   icon?: string;
   hidden?: boolean;
   /** Figures shown above the view, computed over the page's filtered rows. */
   summary?: SummaryValue[];
+  /** The `actions` index that adds what the page shows (the "+"). */
+  add?: number;
   /** Buttons in the page's own chrome, beside its filter chips. */
   actions?: PageAction[];
-  /** The page's view — or, for a page with a `layout`, its first item's view (filled in by `defineApp`). */
+  /** The page's view (with a `layout`: its first item's, filled in by `defineApp`). */
   view: View;
   /** Several views on one page (#105). A page declares EITHER `view` OR `layout`. */
   layout?: PageLayout;

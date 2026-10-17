@@ -77,6 +77,8 @@ export interface ChromeTool {
 export interface AppChromeProps {
   name: string;
   icon: string;
+  /** The page's own add (`Page.add`), which the phone's "+" runs instead of its kind's quick action. */
+  pageAdd?: ChromeQuick;
   /** The app-wide selection chip, when the app declares a scope. */
   scope?: ReactNode;
   /** Quiet marks: sync state, "sandbox". */
@@ -190,8 +192,8 @@ function toolEntry(tool: ChromeTool): MenuEntry {
   };
 }
 
-function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, onBack, showQuick = true, fullBleed, locked, children }: AppChromeProps) {
-  const primary = primaryQuick(quick, currentEntity);
+function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, currentEntity, tools, report, recording, trust, onApps, extras, onBack, showQuick = true, fullBleed, locked, children }: AppChromeProps) {
+  const primary = pageAdd ?? primaryQuick(quick, currentEntity);
   const others = quick.filter((q) => q !== primary);
   const { t } = useLingui();
 

@@ -72,6 +72,8 @@ function PageActions({ runtime, pageId, params }: { runtime: PotyroRuntime; page
   const actions = page?.actions;
   // The page's primary action is its header's big button, not one more chip.
   const primary = (page as { primaryAction?: string | number } | undefined)?.primaryAction;
+  // The page's add (`add`) is the phone's "+" in the top bar; here it stays for a wide screen.
+  const add = (page as { add?: number } | undefined)?.add;
   // Which button is mid-run — a `run` that awaits the position or the network takes a moment, and a
   // button that looks inert while it works gets pressed again.
   const [busy, setBusy] = useState<number | null>(null);
@@ -83,6 +85,7 @@ function PageActions({ runtime, pageId, params }: { runtime: PotyroRuntime; page
           key={`${action.label}:${index}`}
           type="button"
           className="k-chip k-page-action"
+          data-page-add={index === add || undefined}
           data-k-wording
           disabled={busy !== null}
           aria-busy={busy === index || undefined}

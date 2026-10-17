@@ -914,6 +914,14 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
         },
       }
     : undefined;
+  // The page's own add (`add`): one of its actions — "Add a recipe" with its photo, paste and type —
+  // is the phone's "+", in place of a plain form for the kind it shows.
+  const addRef = (currentPage as { add?: number } | undefined)?.add;
+  const addAction = typeof addRef === "number" ? currentPage?.actions?.[addRef] : undefined;
+  const pageAdd: ChromeQuick | undefined =
+    addAction && typeof addRef === "number"
+      ? { id: `page-add-${addRef}`, label: addAction.label, icon: addAction.icon ?? "＋", entity: currentEntity ?? "", onRun: () => void runtime.runPageAction(pageId, addRef, params) }
+      : undefined;
   const backTo = (): void => {
     const list = visiblePages.find((p) => (p.view as { entity?: string }).entity === currentEntity);
     navigate(list?.id ?? landingPage());
@@ -1044,6 +1052,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
         }
         pages={chromePages}
         quick={chromeQuick}
+        pageAdd={pageAdd}
         currentEntity={currentEntity}
         tools={chromeTools}
         report={chromeReport}
