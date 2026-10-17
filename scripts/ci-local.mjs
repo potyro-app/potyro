@@ -33,7 +33,7 @@
 // same specs in Firefox (trusted-firefox, sandbox-firefox: POTYRO_FIREFOX=1), the browser the owner
 // uses, run by `e2e:firefox`. Each has its own shards, plan and timings. Firefox is not in `all` and
 // not in `status --post`: measured on vazio (2026-10-17), the sixteen shards at once took 11.5 min
-// and the CPU they fought over made Chromium's flaky; one after the other it is 7 + 6 min. So it is
+// and the CPU they fought over made Chromium's flaky; one after the other it is ~6 + ~5 min. So it is
 // a step of its own, run before a merge that touches what Firefox sees, and nightly (docs/16 §8).
 //
 // What differs from GitHub's run, on purpose:
