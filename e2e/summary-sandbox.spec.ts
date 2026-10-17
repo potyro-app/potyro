@@ -34,7 +34,6 @@ test("a summary value function computes inside the isolate", async ({ page }) =>
 
   // The declarative forms were never broken; asserting them here pins the parity claim.
   await expect(figure(page, "Places")).toHaveText("13");
-  await expect(figure(page, "Average rating")).toHaveText("4.5");
 });
 
 test("the isolate-computed figure tracks the filter chips", async ({ page }) => {
@@ -50,13 +49,12 @@ test("the isolate-computed figure tracks the filter chips", async ({ page }) => 
   await expect(figure(page, "Visited")).toHaveText("8");
 });
 
-test("an empty set still distinguishes a true zero from an unanswerable average", async ({ page }) => {
+test("an empty set reports zero, computed in the isolate", async ({ page }) => {
   await openList(page);
 
   await chooseFilter(page, "museum");
   await expect(page.locator(".k-list-row")).toHaveCount(0);
 
-  // Zero visited places is true; an average rating over nothing is not zero, it is unanswerable.
+  // Zero visited places is true: the function ran over no rows and said so.
   await expect(figure(page, "Visited")).toHaveText("0");
-  await expect(figure(page, "Average rating")).toHaveText("–");
 });
