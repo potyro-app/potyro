@@ -4,23 +4,12 @@
 // Playwright's Firefox knows only `geolocation`, `notifications` and a few others by name:
 // `grantPermissions(["clipboard-read"])` or `permissions: ["camera"]` there is a thrown
 // `Unknown permission`, before the test has done anything. Firefox is given the same powers by its
-// own prefs instead, set once for its projects in playwright.config.ts (FIREFOX_PREFS below): the
+// own prefs instead, set once for its projects in playwright.config.ts (firefox-prefs.ts): the
 // async clipboard reads without its paste prompt, and getUserMedia gets a fake camera without asking.
 
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "./console-guard";
 
-/**
- * Firefox's prefs for what Chromium is granted by name. `dom.events.testing.asyncClipboard` is
- * Firefox's own switch for tests: `navigator.clipboard.readText()` answers without the paste menu
- * a person would be shown. The media pair is Firefox's fake camera and microphone, handed over
- * without the permission doorhanger.
- */
-export const FIREFOX_PREFS: Record<string, boolean> = {
-  "dom.events.asyncClipboard.readText": true,
-  "dom.events.testing.asyncClipboard": true,
-  "media.navigator.streams.fake": true,
-  "media.navigator.permission.disabled": true,
-};
+export { FIREFOX_PREFS } from "./firefox-prefs";
 
 /** Let the page read and write the clipboard: by name in Chromium, by FIREFOX_PREFS in Firefox. */
 export async function grantClipboard(context: BrowserContext, browserName: string): Promise<void> {

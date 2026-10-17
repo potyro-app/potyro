@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import { E2E_RELAY, PORTS } from "./e2e/ports";
-import { FIREFOX_PREFS } from "./e2e/engines";
+import { FIREFOX_PREFS } from "./e2e/firefox-prefs";
 
 // M1 e2e smoke (issue #15): verifies the recipes DoD in a real browser — both the TRUSTED path
 // (`pnpm dev`) and the SANDBOX path (`pnpm dev:sandbox`, same app untrusted, its logic in the browser
