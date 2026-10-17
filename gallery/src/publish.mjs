@@ -77,11 +77,16 @@ async function savedApps(page) {
   return page.evaluate(() => /** @type {Array<{ id: string; name: string }>} */ (JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]")));
 }
 
-/** Pack an app under apps/ into a zip, as `pnpm pack:app` does. @param {string[]} files @param {string} dir */
-function pack(files, dir) {
+/**
+ * Pack an app under apps/ into a zip, as `pnpm pack:app` does — with its sample records when it has
+ * them: they are what its demo link opens on, and an app without them is an empty screen.
+ * @param {string[]} files @param {string | undefined} seed @param {string} dir
+ */
+function pack(files, seed, dir) {
   const [source, ...rest] = files.map((f) => resolve(ROOT, f));
   const out = join(dir, "app.potyro-app.zip");
-  execFileSync(process.execPath, [join(ROOT, "scripts", "pack-app.mjs"), source, ...rest, "-o", out], { cwd: ROOT, stdio: "pipe" });
+  const seeded = seed ? ["--seed", resolve(ROOT, seed)] : [];
+  execFileSync(process.execPath, [join(ROOT, "scripts", "pack-app.mjs"), source, ...rest, ...seeded, "-o", out], { cwd: ROOT, stdio: "pipe" });
   return out;
 }
 
@@ -93,7 +98,7 @@ async function bringApp(page, app, scratch) {
   await page.goto("/");
   const from = /** @type {import("./data.mjs").From} */ (app.from);
   if ("package" in from) {
-    const zip = pack(from.package, scratch);
+    const zip = pack(from.package, from.seed, scratch);
     await page.getByRole("button", { name: "Add an app" }).first().click();
     const dialog = page.getByRole("dialog", { name: "Add an app" });
     const chooser = page.waitForEvent("filechooser");
@@ -137,6 +142,17 @@ async function makeLink(page, name) {
 }
 
 /**
+ * An app that needs a library (Sleep & Mood: chart.js) asks before it opens, as it asks anyone: say
+ * yes, the way a visitor does. Returns once either the question was answered or `ready` showed.
+ * @param {import("@playwright/test").Page} page @param {import("@playwright/test").Locator} ready
+ */
+async function answerFetch(page, ready) {
+  const fetchIt = page.getByRole("button", { name: "Fetch and open" });
+  await Promise.race([ready.waitFor({ timeout: LONG }), fetchIt.waitFor({ timeout: LONG })]).catch(() => {});
+  if (await fetchIt.isVisible()) await fetchIt.click();
+}
+
+/**
  * Open the link as a stranger: it must open sealed, named, without errors; the remix intent must open
  * the Make it mine card. Returns the screenshot's bytes.
  * @param {import("@playwright/test").Browser} browser @param {string} link
@@ -148,6 +164,7 @@ async function verify(browser, link) {
     const page = await context.newPage();
     await page.goto(link);
     const app = page.locator('.k-app[data-provenance="untrusted"]');
+    await answerFetch(page, app);
     await app.waitFor({ timeout: LONG });
     await page.locator("h1").first().waitFor({ state: "visible", timeout: LONG });
     await page.waitForLoadState("networkidle").catch(() => {});
@@ -158,7 +175,9 @@ async function verify(browser, link) {
 
     const mine = await context.newPage();
     await mine.goto(remixLink(link));
-    await mine.getByRole("dialog", { name: "Make it mine" }).getByRole("region", { name: /^About / }).waitFor({ timeout: LONG });
+    const about = mine.getByRole("dialog", { name: "Make it mine" }).getByRole("region", { name: /^About / });
+    await answerFetch(mine, about);
+    await about.waitFor({ timeout: LONG });
     if (errors.length) throw new Error(`the console said:\n  ${errors.join("\n  ")}`);
     return shot;
   } finally {

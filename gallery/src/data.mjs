@@ -108,6 +108,8 @@ export function galleryProblems(data, opts = {}) {
         ((typeof from.example === "string" && ID_RE.test(from.example)) ||
           (Array.isArray(from.package) && from.package.length > 0 && from.package.every((p) => typeof p === "string" && /^apps\/[^\s]+$/.test(p) && !p.includes(".."))));
       if (!fromOk) out.push(`${where}: a ready app says where it comes from — { "example": "<id>" } or { "package": ["apps/…"] }`);
+      const seed = isObject(from) ? from.seed : undefined;
+      if (seed !== undefined && !(typeof seed === "string" && /^apps\/[^\s]+\.json$/.test(seed) && !seed.includes(".."))) out.push(`${where}: a seed is a JSON file under apps/`);
     } else {
       if (typeof app.waitsFor !== "string" || !app.waitsFor.trim()) out.push(`${where}: a coming-soon app says what it waits for`);
       if (app.link !== undefined) out.push(`${where}: a coming-soon app has no link yet`);
