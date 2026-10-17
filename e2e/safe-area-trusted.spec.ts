@@ -53,9 +53,9 @@ const SCREENS: Array<[string, string, (page: Page) => Promise<void>]> = [
     "/?app=recipes",
     async (page) => {
       await expect(page.locator(".k-topbar")).toBeVisible({ timeout: 30_000 });
-      // The cookbook's one button is "Add a recipe"; "What can I cook?" has the floating form button.
-      await page.locator(".k-tabbar .k-tab", { hasText: "What can I cook?" }).tap();
-      await page.getByRole("button", { name: /Add: Recipe/ }).first().tap();
+      // The pantry's floating button opens the ingredient form.
+      await page.locator(".k-tabbar .k-tab", { hasText: "Pantry" }).tap();
+      await page.getByRole("button", { name: /Add: Ingredient/ }).first().tap();
       await expect(page.getByRole("dialog")).toBeVisible();
     },
   ],

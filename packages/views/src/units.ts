@@ -15,10 +15,19 @@ export function formatWithUnit(value: unknown, field: Pick<NumberField, "unit" |
   return field.unit && n !== "" ? `${n} ${field.unit}` : n;
 }
 
-/** A duration in the field's base unit. Minutes and hours split into `h` and `min`. */
+/** A duration in the field's base unit, read the way a person says it: "6 min", "1 h 15 min",
+ *  "45 s" — never "360 s" for six minutes. Under a minute it keeps its seconds (or milliseconds). */
 export function formatDuration(value: unknown, field: Pick<DurationField, "unit">): string {
   if (typeof value !== "number" || !Number.isFinite(value)) return String(value ?? "");
   const unit = field.unit ?? "ms";
+  const seconds = unit === "s" ? value : unit === "ms" ? value / 1000 : undefined;
+  if (seconds !== undefined && seconds >= 60) {
+    const whole = Math.round(seconds);
+    const rest = whole % 60;
+    // A step of "1 min 30 s" keeps its half minute; whole minutes read as minutes.
+    if (rest && whole < 3600) return `${Math.floor(whole / 60)} min ${rest} s`;
+    return formatDuration(Math.round(whole / 60), { unit: "min" });
+  }
   if (unit === "min" || unit === "h") {
     const minutes = Math.round(unit === "h" ? value * 60 : value);
     const h = Math.floor(minutes / 60);

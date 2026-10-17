@@ -26,11 +26,13 @@ test("export → import round-trips app data (trusted)", async ({ page }) => {
   const bundlePath = await download.path();
 
   // Add a recipe that is NOT in the exported bundle.
-  await page.locator(".k-quickbar").getByRole("button", { name: /Add: Recipe/ }).click();
-  const modal = page.locator(".k-modal");
-  await modal.getByRole("textbox").first().fill("Ephemeral Dish");
-  await modal.getByRole("button", { name: "Create" }).click();
-  await page.getByRole("button", { name: /Recipes/ }).first().click(); // create-and-open → back to the cookbook
+  await page.getByRole("button", { name: "Add a recipe" }).click();
+  await page.getByRole("menuitem", { name: /Type it in/ }).click();
+  const form = page.getByRole("dialog", { name: "New recipe" });
+  await form.getByRole("textbox").first().fill("Ephemeral Dish");
+  await form.getByRole("button", { name: "Add recipe" }).click();
+  await expect(page.locator("article.k-detail")).toContainText("Ephemeral Dish");
+  await page.getByRole("button", { name: /Recipes/ }).first().click(); // back to the cookbook
   await expect(page.locator(".k-card", { hasText: "Ephemeral Dish" })).toBeVisible();
 
   // Import the earlier bundle → replaces the live data (reloads the app).

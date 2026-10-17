@@ -69,10 +69,15 @@ small (240 px) before keeping it.
 above it), a page's `description` (where pages are listed, not on the page) and `primaryAction` (a quick
 action `id`, or the index of one of its `actions`: a bar at the bottom of the screen, no floating Add on
 that page; a page action's `when: (rows, ctx) => boolean` shows it only when it applies), a list's `display.lead` (`"monogram"` ·
-`"icon"` · `"none"`), a gallery's `aspect` (`"landscape"` · `"square"` · `"portrait"`), a detail view's
-`cover` (`"banner"` · `"full"` · `"band"` · `"none"`), `media` (a photo field, or a computed returning a
-path in `ctx.files`), `facts` (fields as chips on the cover) and `primaryAction` (the one big button), and
-an `ActionDef`'s `icon`. They are data — the shell draws them, at either provenance — and an app that
+`"icon"` · `"none"`), a gallery's `aspect` (`"landscape"` · `"square"` · `"portrait"`), `caption` (its words
+under the picture, the default, or `"over"` it) and `filters` (search and chips, as a list's), a detail
+view's `cover` (`"banner"` · `"full"` · `"background"` — the picture behind the whole page, the sections
+read over it · `"band"` · `"none"`), `media` (a photo field, or a computed returning a path in
+`ctx.files`), `facts` (fields as chips on the cover) and `primaryAction` (the one big button, a bar at
+the bottom; the page's other actions then come after its sections), a list field's `lines` (its rows
+read as lines of these sub-fields: `["quantity", "unit", "ingredient"]` → "350 g flour"), and
+an `ActionDef`'s `icon`. A quick action floats (the phone's round button) only on a page that shows its kind of record; the
+others are in the ⋯ menu and the wide sidebar. They are data — the shell draws them, at either provenance — and an app that
 sets none still gets its content first — above a page's view there is only its `summary`, as one line
 ("11 to buy · 2 in the basket") — rows led by their photo or a tinted initial, and a cover on every
 record page (docs/03 §How a page looks). Additive: no app bumps `schemaVersion` for them.

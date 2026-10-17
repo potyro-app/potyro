@@ -14,10 +14,8 @@ import { test, expect } from "./console-guard";
 test("typing in an app's search chip narrows the list, and clearing it brings everything back", async ({ page }) => {
   await page.goto("/?app=recipes");
   await expect(page.locator("h1")).toHaveText("Recipes");
-  // The search is on "What can I cook?", beside the pantry and the other ways to narrow it.
-  await page.getByRole("button", { name: "What can I cook?" }).first().click();
-
-  const rows = page.locator(".k-list-row");
+  // The search is the cookbook's own, above its cards: choosing what to cook is what it is for.
+  const rows = page.locator(".k-card");
   // Polled: the rows render after the title does, and a bare count() read 0 under load.
   await expect.poll(() => rows.count()).toBeGreaterThan(1);
   const all = await rows.count();
@@ -49,9 +47,6 @@ test("the search box stays in the page's own row, not hidden inside the Filter s
   // "Filter" it may as well not exist.
   await page.goto("/?app=recipes");
   await expect(page.locator("h1")).toHaveText("Recipes");
-  // The search is on "What can I cook?", beside the pantry and the other ways to narrow it.
-  await page.getByRole("button", { name: "What can I cook?" }).first().click();
-
   const chrome = page.locator(".k-chrome");
   await expect(chrome.getByRole("searchbox", { name: "Search" })).toBeVisible();
 });

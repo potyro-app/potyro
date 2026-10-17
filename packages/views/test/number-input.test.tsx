@@ -28,6 +28,12 @@ describe("formatting", () => {
     expect(formatDuration(120, { unit: "min" })).toBe("2 h");
     expect(formatDuration(45, { unit: "min" })).toBe("45 min");
     expect(formatDuration(1.5, { unit: "h" })).toBe("1 h 30 min");
+    // Seconds read as minutes once there is a minute in them (a recipe step: 360 s is "6 min").
+    expect(formatDuration(360, { unit: "s" })).toBe("6 min");
+    expect(formatDuration(90, { unit: "s" })).toBe("1 min 30 s");
+    expect(formatDuration(45, { unit: "s" })).toBe("45 s");
+    expect(formatDuration(4500, { unit: "s" })).toBe("1 h 15 min");
+    expect(formatDuration(120_000, { unit: "ms" })).toBe("2 min");
     expect(formatDuration(1500, { unit: "ms" })).toBe("1500 ms");
     expect(formatDuration(30, { unit: "s" })).toBe("30 s");
   });

@@ -42,7 +42,7 @@ export function ActionMenu({ label, trigger, title, entries, className, buttonCl
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [anchor, setAnchor] = useState<{ top: number; right?: number; left?: number } | null>(null);
+  const [anchor, setAnchor] = useState<{ top?: number; bottom?: number; right?: number; left?: number } | null>(null);
 
   const close = (refocus: boolean): void => {
     setOpen(false);
@@ -55,12 +55,16 @@ export function ActionMenu({ label, trigger, title, entries, className, buttonCl
     const rect = buttonRef.current?.getBoundingClientRect();
     // Hung from the side of the screen the button is on: a button at the left (a title that is a
     // switcher) opens rightwards, so the menu never runs off the screen's left edge.
-    if (rect)
+    // And from the side of the screen it has room on: a button low on the screen (a record's actions,
+    // after its sections) opens upwards, rather than off the bottom where nothing can be tapped.
+    if (rect) {
+      const vertical = rect.top > window.innerHeight / 2 ? { bottom: window.innerHeight - rect.top + 6 } : { top: rect.bottom + 6 };
       setAnchor(
         rect.left + rect.width / 2 < window.innerWidth / 2
-          ? { top: rect.bottom + 6, left: Math.max(8, rect.left) }
-          : { top: rect.bottom + 6, right: Math.max(8, window.innerWidth - rect.right) },
+          ? { ...vertical, left: Math.max(8, rect.left) }
+          : { ...vertical, right: Math.max(8, window.innerWidth - rect.right) },
       );
+    }
     menuRef.current?.querySelector<HTMLButtonElement>("[role=menuitem]:not(:disabled)")?.focus();
   }, [open]);
 
@@ -101,7 +105,7 @@ export function ActionMenu({ label, trigger, title, entries, className, buttonCl
                 className={`k-menu${className ? ` ${className}` : ""}`}
                 role="menu"
                 aria-label={label}
-                style={anchor ? { top: anchor.top, right: anchor.right, left: anchor.left } : undefined}
+                style={anchor ? { top: anchor.top ?? "auto", bottom: anchor.bottom ?? "auto", right: anchor.right ?? "auto", left: anchor.left ?? "auto" } : undefined}
                 onKeyDown={onMenuKey}
               >
                 <div className="k-menu-grip" aria-hidden />
