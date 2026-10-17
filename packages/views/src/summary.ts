@@ -19,6 +19,7 @@ import type { ShownSummaryValue as SummaryValue } from "./shown.js";
 export type CallSummaryValue = (rows: readonly Resolved[]) => Promise<unknown>;
 
 export interface SummaryFigure {
+  /** Empty when the figure is its own sentence. */
   label: string;
   /** Ready to render. `null` when the figure could not be computed. */
   text: string | null;
@@ -109,12 +110,12 @@ export async function computeFigure(
   callValue?: CallSummaryValue,
 ): Promise<SummaryFigure> {
   try {
-    return { label: spec.label, text: formatFigure(await figureValue(spec, rows, ctx, callValue), unit) };
+    return { label: spec.label ?? "", text: formatFigure(await figureValue(spec, rows, ctx, callValue), unit) };
   } catch (e) {
     // Reported, not swallowed: the figure shows a dash and says why on hover.
     const reason = e instanceof Error ? e.message : String(e);
-    console.warn(`[potyro] summary "${spec.label}" failed:`, e);
-    return { label: spec.label, text: null, error: reason };
+    console.warn(`[potyro] summary "${spec.label ?? ""}" failed:`, e);
+    return { label: spec.label ?? "", text: null, error: reason };
   }
 }
 
