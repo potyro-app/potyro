@@ -49,8 +49,8 @@ describe("a translated app in the structural editor", () => {
 
   it("edit mode offers each language of a displayed map, and still not a placeholder's", async () => {
     const texts = (await textSites(groceries)).map((s) => s.text);
-    expect(texts).toContain("Lista jest pusta. Dodaj pierwszą rzecz poniżej albo przywróć stałe.");
-    expect(texts).toContain("Nothing on the list. Add the first thing below, or bring back your usuals.");
+    expect(texts).toContain("Lista jest pusta. Dodaj pierwszą rzecz poniżej — stuknij pole, by zobaczyć stałe zakupy.");
+    expect(texts).toContain("Nothing on the list. Add the first thing below — tap the box for your usuals.");
     expect(texts).not.toContain("Milk"); // placeholder: { en: "Milk", … } reads like a record
   });
 

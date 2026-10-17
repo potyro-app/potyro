@@ -508,7 +508,12 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
             break;
           }
           case "fold": {
-            var fv = findView(app, p.pageId), fp = String(p.path);
+            var fp = String(p.path), fv;
+            if (fp.indexOf("page.") === 0) {
+              var fpid = String(p.pageId).split("#")[0];
+              fv = (app.pages||[]).find(function(pg){ return pg.id === fpid; }) || null;
+              fp = fp.slice(5);
+            } else fv = findView(app, p.pageId);
             if (!/^[A-Za-z_$][\\w$]*(\\.(\\d+|[A-Za-z_$][\\w$]*))*$/.test(fp)) fv = null;
             var fk = fp.split(".");
             for (var fi = 0; fv != null && fi < fk.length; fi++) fv = (typeof fv === "object" && Object.prototype.hasOwnProperty.call(fv, fk[fi])) ? fv[fk[fi]] : null;

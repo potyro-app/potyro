@@ -156,6 +156,35 @@ describe("JazzStore blobs + kv", () => {
 });
 
 describe("JazzStore migrations", () => {
+
+  it("addRecord makes the record existing ones are pointed at, once", async () => {
+    const s = await seeded();
+    await s.insert("todo", { title: "Milk" });
+    const plan = {
+      fromAppVersion: "1.0.0",
+      toAppVersion: "2.0.0",
+      fromSchemaVersion: 1,
+      toSchemaVersion: 2,
+      migrations: [
+        {
+          from: "1.0.0",
+          to: "2.0.0",
+          steps: [
+            { op: "addRecord" as const, entity: "list", id: "first-list", values: { name: "Shopping" } },
+            { op: "addField" as const, entity: "todo", field: "list", default: "first-list" },
+          ],
+        },
+      ],
+    };
+    await s.runMigrations(plan);
+    // Run again (another device, or a retry): still one list, and its name is not overwritten.
+    await s.update("list", "first-list", { name: "Weekly shop" });
+    await s.runMigrations({ ...plan, fromSchemaVersion: 2, toSchemaVersion: 2 });
+    const lists = await s.all("list");
+    expect(lists.map((l) => [l.id, l.name])).toEqual([["first-list", "Weekly shop"]]);
+    const [todo] = await s.all("todo");
+    expect(todo.list).toBe("first-list");
+  });
   it("applies declarative ops and bumps schema version", async () => {
     const s = await seeded();
     await s.insert("recipe", { name: "Soup", notes: "old" });

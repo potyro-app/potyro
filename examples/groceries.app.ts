@@ -3,6 +3,12 @@
 // shopping" puts them away, and next week they are one tap from the list again — your usuals, in the
 // aisle they were in last time.
 //
+// Made for the moment it is used most: in a shop, phone in one hand. The list opens straight on the
+// items, in the aisles' walking order, a tap anywhere on a row ticks it, ticked things fold away into
+// "In the basket", and "Done shopping" shows up only once there is something in it. Usuals are not a
+// page to visit: they are what the add box offers when you tap it. Several lists ("Weekly shop",
+// "Party") are the app's `scope`: the shell switches, makes, renames, copies and deletes them.
+//
 // Stresses: the `checklist` view (#106) at full stretch — tick in place, quick-add, rename a row by
 // tapping it, drag items between aisles, and aisles that are RECORDS you can rename, reorder and
 // delete from the list itself. All of that is declared. What the app's own code adds is memory:
@@ -119,11 +125,27 @@ function aisleFor(name: unknown, items: readonly Resolved[], aisles: readonly Re
   return words ? (aisles.find((a) => words.test(String(a.name ?? "")))?.id ?? "") : "";
 }
 
-/** Back on the list, at the end of its aisle, unticked. */
+/** The list being shown, by id ("" before one is chosen). */
+const listId = (ctx: Ctx): string => String(ctx.scope.list?.id ?? "");
+/** On the list being shown: the rows the list page is made of. */
+const onThisList = (i: Resolved, ctx: Ctx): boolean => onList(i) && relId(i.list) === listId(ctx);
+
+/** Back on the list being shown, at the end of its aisle, unticked. */
 async function putOnList(ctx: Ctx, item: Resolved, items: readonly Resolved[]): Promise<void> {
   const aisle = relId(item.aisle);
-  const last = Math.max(-1, ...items.filter((i) => onList(i) && relId(i.aisle) === aisle).map((i) => Number(i.position) || 0));
-  await ctx.patch("item", item.id, { onList: true, bought: false, position: last + 1 });
+  const last = Math.max(-1, ...items.filter((i) => onThisList(i, ctx) && relId(i.aisle) === aisle).map((i) => Number(i.position) || 0));
+  await ctx.patch("item", item.id, { onList: true, bought: false, position: last + 1, list: listId(ctx) || null });
+}
+
+/** What the add box offers: the things you buy, most usual first. Remembered across every list. */
+async function usualNames(ctx: Ctx): Promise<string[]> {
+  const now = ctx.now();
+  const seen = new Set<string>();
+  return (await ctx.query("item"))
+    .filter((i) => !onList(i) && (Number(i.timesBought) || 0) > 0)
+    .sort((a, b) => usualness(b, now) - usualness(a, now))
+    .map((i) => String(i.name ?? "").trim())
+    .filter((n) => n && !seen.has(norm(n)) && seen.add(norm(n)));
 }
 
 /**
@@ -133,7 +155,7 @@ async function putOnList(ctx: Ctx, item: Resolved, items: readonly Resolved[]): 
  */
 async function doneShopping(ctx: Ctx): Promise<void> {
   const items = await ctx.query("item");
-  const basket = items.filter((i) => onList(i) && i.bought);
+  const basket = items.filter((i) => onThisList(i, ctx) && i.bought);
   if (!basket.length) {
     ctx.ui.toast(
       ctx.t({
@@ -162,45 +184,16 @@ async function doneShopping(ctx: Ctx): Promise<void> {
   ctx.ui.toast(
     ctx.t(
       {
-        en: "{n, plural, one {Put # thing away} other {Put # things away}}. They're in Usuals for next time.",
-        "pt-BR": "{n, plural, one {# item guardado} other {# itens guardados}}. Estão em Habituais para a próxima.",
-        de: "{n, plural, one {# Sache weggeräumt} other {# Sachen weggeräumt}}. Sie stehen beim nächsten Mal unter Üblich.",
-        es: "{n, plural, one {# cosa guardada} other {# cosas guardadas}}. Están en Habituales para la próxima.",
-        pl: "{n, plural, one {Odłożono # rzecz} few {Odłożono # rzeczy} many {Odłożono # rzeczy} other {Odłożono # rzeczy}}. Czekają w Stałych na następny raz.",
-        it: "{n, plural, one {# cosa messa via} other {# cose messe via}}. Sono nei Soliti per la prossima volta.",
+        en: "{n, plural, one {Put # thing away} other {Put # things away}}. Next time, tap the add box to bring them back.",
+        "pt-BR": "{n, plural, one {# item guardado} other {# itens guardados}}. Da próxima vez, toque na caixa de adicionar para trazê-los de volta.",
+        de: "{n, plural, one {# Sache weggeräumt} other {# Sachen weggeräumt}}. Nächstes Mal tippst du ins Eingabefeld, um sie zurückzuholen.",
+        es: "{n, plural, one {# cosa guardada} other {# cosas guardadas}}. La próxima vez, toca la caja de añadir para recuperarlas.",
+        pl: "{n, plural, one {Odłożono # rzecz} few {Odłożono # rzeczy} many {Odłożono # rzeczy} other {Odłożono # rzeczy}}. Następnym razem stuknij pole dodawania, by je przywrócić.",
+        it: "{n, plural, one {# cosa messa via} other {# cose messe via}}. La prossima volta tocca la casella per aggiungere e riprendile.",
       },
       { n: basket.length },
     ),
   );
-}
-
-/** Bring the household in: the shell mints the link (an app could otherwise hand its list away silently). */
-async function shareList(ctx: Ctx): Promise<void> {
-  const link = ctx.space?.invite ? await ctx.space.invite().catch(() => "") : "";
-  if (!link) {
-    ctx.ui.toast(
-      ctx.t({
-        en: "Open ⋯ and choose Share to shop together. No account needed.",
-        "pt-BR": "Abra ⋯ e escolha Compartilhar para fazer compras juntos. Sem conta.",
-        de: "Öffne ⋯ und wähle Teilen, um gemeinsam einzukaufen. Ohne Konto.",
-        es: "Abre ⋯ y elige Compartir para comprar juntos. Sin cuenta.",
-        pl: "Otwórz ⋯ i wybierz Udostępnij, by robić zakupy razem. Bez konta.",
-        it: "Apri ⋯ e scegli Condividi per fare la spesa insieme. Senza account.",
-      }),
-    );
-    return;
-  }
-  await ctx.ui.share({
-    url: link,
-    text: ctx.t({
-      en: "Our shopping list: add what we need, tick what you buy.",
-      "pt-BR": "Nossa lista de compras: adicione o que falta, marque o que comprar.",
-      de: "Unsere Einkaufsliste: trag ein, was fehlt, hak ab, was du kaufst.",
-      es: "Nuestra lista de la compra: añade lo que falta, marca lo que compres.",
-      pl: "Nasza lista zakupów: dopisz, czego brakuje, odhacz, co kupisz.",
-      it: "La nostra lista della spesa: aggiungi cosa manca, spunta cosa compri.",
-    }),
-  });
 }
 
 /** "Ana" for a row someone else added, in a list more than one person writes to. */
@@ -214,17 +207,22 @@ export default defineApp({
   id: "groceries",
   name: { en: "Groceries", "pt-BR": "Compras", de: "Einkäufe", es: "Compras", pl: "Zakupy", it: "Spesa" },
   icon: "🛒",
-  version: "3.0.0",
+  version: "4.0.0",
   // 3.0.0: a bought item is remembered instead of deleted. A copy before it would show every
   // remembered item back on the list, so the data version moves and an older copy waits (KA-22).
-  schemaVersion: 3,
+  // 4.0.0: items belong to a list. A copy before it would show every list's items as one, so the
+  // data version moves again.
+  schemaVersion: 4,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
-  theme: { accent: "#5B9C5B", background: { image: "art/market.webp" } },
+  // No picture: a list is read in a shop, and a photo behind it only costs contrast.
+  theme: { accent: "#5B9C5B" },
   permissions: { sync: true },
   category: "everyday",
-  // Nothing to add by a button: the list has its own add row, and Usuals one tap per row.
+  // Nothing to add by a button: the list has its own add box, and the usuals are one tap in it.
   quickActions: [],
+  // One list at a time — the shell's switcher makes, renames, copies and deletes them.
+  scope: { entity: "list", required: true },
   // The launcher tile (docs/04 §Tile): what is still to buy, in the order the list has it.
   tile: async (ctx) => {
     const left = (await ctx.query("item")).filter((i) => onList(i) && !i.bought).sort((a, b) => Number(a.position ?? 0) - Number(b.position ?? 0));
@@ -246,6 +244,21 @@ export default defineApp({
   },
 
   entities: {
+    // A list: "Weekly shop", "Party", "Hardware store". Its items are the items pointing at it.
+    list: {
+      label: { en: "List", "pt-BR": "Lista", de: "Liste", es: "Lista", pl: "Lista", it: "Lista" },
+      icon: "📝",
+      displayField: "name",
+      fields: {
+        name: {
+          type: "text",
+          required: true,
+          label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" },
+          placeholder: { en: "Weekly shop", "pt-BR": "Compras da semana", de: "Wocheneinkauf", es: "Compra semanal", pl: "Zakupy na tydzień", it: "Spesa settimanale" },
+        },
+      },
+    },
+
     // The aisles of the shop you actually go to — so the list comes out in walking order.
     aisle: {
       label: { en: "Aisle", "pt-BR": "Seção", de: "Abteilung", es: "Sección", pl: "Dział", it: "Reparto" },
@@ -278,6 +291,8 @@ export default defineApp({
           to: "aisle",
           label: { en: "Aisle", "pt-BR": "Seção", de: "Abteilung", es: "Sección", pl: "Dział", it: "Reparto" },
         },
+        // The list it is on — the one being shown, when it is added there.
+        list: { type: "relation", to: "list", hidden: true, label: { en: "List", "pt-BR": "Lista", de: "Liste", es: "Lista", pl: "Lista", it: "Lista" } },
         quantity: {
           type: "text",
           label: { en: "Quantity", "pt-BR": "Quantidade", de: "Menge", es: "Cantidad", pl: "Ilość", it: "Quantità" },
@@ -381,22 +396,26 @@ export default defineApp({
         pl: "Odhaczaj, co trafia do koszyka. Gotowe zapamięta to na następny raz.",
         it: "Spunta quello che va nel carrello. Spesa fatta lo mette via per la prossima volta.",
       },
+      // One line above the list: what is left, and what is in the basket.
       summary: [
         {
-          label: { en: "Shopping with", "pt-BR": "Comprando com", de: "Einkaufen mit", es: "Comprando con", pl: "Zakupy z", it: "Spesa con" },
-          // Alone, the header says where the household comes in.
-          value: (_rows, ctx) => {
-            const others = (ctx.space?.members ?? []).filter((m) => m.id !== ctx.me?.id).map((m) => m.name);
-            return others.length
-              ? ctx.format.list(others)
-              : ctx.t({ en: "Just you: tap Invite", "pt-BR": "Só você: toque em Convidar", de: "Nur du: tippe auf Einladen", es: "Solo tú: toca Invitar", pl: "Tylko ty: stuknij Zaproś", it: "Solo tu: tocca Invita" });
-          },
+          label: { en: "to buy", "pt-BR": "para comprar", de: "zu kaufen", es: "por comprar", pl: "do kupienia", it: "da comprare" },
+          value: (rows) => rows.filter((i) => !i.bought).length,
+        },
+        {
+          label: { en: "in the basket", "pt-BR": "na cesta", de: "im Korb", es: "en la cesta", pl: "w koszyku", it: "nel carrello" },
+          value: (rows) => rows.filter((i) => i.bought).length,
         },
       ],
+      // At the bottom of the screen, and only once something is in the basket.
       primaryAction: 0,
       actions: [
-        { label: { en: "Done shopping", "pt-BR": "Compras feitas", de: "Fertig eingekauft", es: "Compra hecha", pl: "Gotowe", it: "Spesa fatta" }, icon: "✓", run: doneShopping },
-        { label: { en: "Invite", "pt-BR": "Convidar", de: "Einladen", es: "Invitar", pl: "Zaproś", it: "Invita" }, icon: "👋", run: shareList },
+        {
+          label: { en: "Done shopping", "pt-BR": "Compras feitas", de: "Fertig eingekauft", es: "Compra hecha", pl: "Gotowe", it: "Spesa fatta" },
+          icon: "✓",
+          run: doneShopping,
+          when: (rows) => rows.some((i) => i.bought),
+        },
       ],
       view: {
         type: "checklist",
@@ -405,11 +424,14 @@ export default defineApp({
         text: "name",
         icon: "emoji",
         detail: "line",
-        filter: (i) => i.onList !== false,
+        filter: (i, ctx) => onThisList(i, ctx),
         group: "aisle",
         groupOrder: "order",
         reorder: "position",
         editText: true,
+        // Ticked things fold away, so what is left to find stays on screen.
+        hideDone: "collapse",
+        doneLabel: { en: "In the basket", "pt-BR": "Na cesta", de: "Im Korb", es: "En la cesta", pl: "W koszyku", it: "Nel carrello" },
         // Type a name: earlier ones are offered as you go, and it lands in the aisle it was in last
         // time — or, the first time, where the dictionary says it lives among YOUR aisles.
         quickAdd: {
@@ -418,53 +440,18 @@ export default defineApp({
             const aisle = aisleFor(text, [], await ctx.query("aisle"));
             return aisle ? { aisle } : {};
           },
+          // Tap the box: what you usually buy, one tap each.
+          usuals: (_rows, ctx) => usualNames(ctx),
         },
         emptyText: {
-          en: "Nothing on the list. Add the first thing below, or bring back your usuals.",
-          "pt-BR": "A lista está vazia. Adicione a primeira coisa aqui embaixo ou traga seus habituais.",
-          de: "Die Liste ist leer. Füge unten das Erste hinzu oder hol dir dein Übliches.",
-          es: "La lista está vacía. Añade lo primero aquí abajo o recupera tus habituales.",
-          pl: "Lista jest pusta. Dodaj pierwszą rzecz poniżej albo przywróć stałe.",
-          it: "La lista è vuota. Aggiungi la prima cosa qui sotto o riprendi i tuoi soliti.",
+          en: "Nothing on the list. Add the first thing below — tap the box for your usuals.",
+          "pt-BR": "A lista está vazia. Adicione a primeira coisa aqui embaixo — toque na caixa para ver seus itens de sempre.",
+          de: "Die Liste ist leer. Füge unten das Erste hinzu — tippe ins Feld für dein Übliches.",
+          es: "La lista está vacía. Añade lo primero aquí abajo — toca la caja para ver lo habitual.",
+          pl: "Lista jest pusta. Dodaj pierwszą rzecz poniżej — stuknij pole, by zobaczyć stałe zakupy.",
+          it: "La lista è vuota. Aggiungi la prima cosa qui sotto — tocca la casella per i tuoi soliti.",
         },
         onOpen: { page: "item", param: { itemId: "id" } },
-      },
-    },
-    {
-      // Everything you have bought, most usual first: one tap puts it back on the list.
-      id: "usuals",
-      title: { en: "Usuals", "pt-BR": "Habituais", de: "Üblich", es: "Habituales", pl: "Stałe", it: "Soliti" },
-      icon: "⭐",
-      description: {
-        en: "What you buy, most often first. Tap one and it is on the list, in its aisle.",
-        "pt-BR": "O que você compra, do mais frequente. Toque num e ele vai para a lista, na seção certa.",
-        de: "Was du kaufst, das Häufigste zuerst. Tippe darauf, und es steht auf der Liste.",
-        es: "Lo que compras, lo más frecuente primero. Toca uno y va a la lista, en su sección.",
-        pl: "To, co kupujesz, najczęstsze najpierw. Stuknij, a trafi na listę, do swojego działu.",
-        it: "Quello che compri, il più frequente prima. Toccalo ed è in lista, nel suo reparto.",
-      },
-      // Tiles you tap (Bring!'s grid): the usuals that are not on the list. Tap one and it is on the
-      // list, in the aisle it was in.
-      view: {
-        type: "checklist",
-        entity: "item",
-        layout: "tiles",
-        done: "onList",
-        text: "name",
-        icon: "emoji",
-        // What is on the list already is not offered again: a tapped tile goes onto the list and
-        // leaves the grid.
-        hideDone: true,
-        filter: (i) => (Number(i.timesBought) || 0) > 0,
-        sort: (a, b, ctx) => usualness(b, ctx.now()) - usualness(a, ctx.now()) || String(a.name).localeCompare(String(b.name)),
-        emptyText: {
-          en: "Nothing remembered yet. After Done shopping, what you bought waits here.",
-          "pt-BR": "Nada guardado ainda. Depois de Compras feitas, o que você comprou fica aqui.",
-          de: "Noch nichts gemerkt. Nach Fertig eingekauft wartet hier, was du gekauft hast.",
-          es: "Nada recordado aún. Tras Compra hecha, lo que compraste te espera aquí.",
-          pl: "Nic jeszcze nie zapamiętano. Po Gotowe tu czeka to, co kupiłeś.",
-          it: "Ancora niente. Dopo Spesa fatta, quello che hai comprato aspetta qui.",
-        },
       },
     },
     {
@@ -502,6 +489,15 @@ export default defineApp({
     { from: "2.0.0", to: "2.3.0", steps: [] },
     { from: "2.1.0", to: "2.3.0", steps: [] },
     { from: "2.2.0", to: "2.3.0", steps: [] },
+    {
+      from: "3.0.0",
+      to: "4.0.0",
+      // Lists. Everything already there was one list, and stays one: the list it is now on.
+      steps: [
+        { op: "addRecord", entity: "list", id: "list-1", values: { name: "Shopping" } },
+        { op: "addField", entity: "item", field: "list", default: "list-1" },
+      ],
+    },
     {
       from: "2.3.0",
       to: "3.0.0",

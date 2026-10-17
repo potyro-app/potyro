@@ -17,6 +17,9 @@ async function resolveOption(option: unknown, ctx: unknown): Promise<Value> {
 }
 
 /** The view a page ref names — a layout item's when the ref is `page#index` (#105). */
+/** A fold path that names a function on the PAGE rather than its view: `"page.actions.0.when"`. */
+export const PAGE_PATH = "page.";
+
 /** What `path` ("series", "items.0.compare.value") names inside a view: own keys and indexes only. */
 export function foldAt(view: unknown, path: string): unknown {
   if (!/^[A-Za-z_$][\w$]*(\.(\d+|[A-Za-z_$][\w$]*))*$/.test(path)) return undefined;
@@ -134,7 +137,9 @@ export class DirectLoadedApp implements LoadedApp {
   }
 
   async callFold(pageId: string, path: string, rows: Resolved[], ctx: unknown): Promise<Value> {
-    const fn = foldAt(pageView(this.definition, pageId), path);
+    const fn = path.startsWith(PAGE_PATH)
+      ? foldAt(this.definition.pages.find((p) => p.id === pageId.split("#")[0]), path.slice(PAGE_PATH.length))
+      : foldAt(pageView(this.definition, pageId), path);
     if (typeof fn !== "function") throw new Error(`${pageId} has no function at ${path}`);
     return (await (fn as Fn)(rows, ctx)) as Value;
   }
