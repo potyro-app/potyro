@@ -176,7 +176,11 @@ test("an app the new device already seeded for itself is still offered, with the
   const offer = b.locator(".k-restore");
   await expect(offer).toBeVisible({ timeout: 60_000 });
   await expect(offer).toContainText("Groceries");
+  // Loading reloads the page once it has installed them (main.tsx): going elsewhere before that
+  // reload lands interrupts one navigation with another (Firefox refuses it: NS_ERROR_FAILURE).
+  const reloaded = b.waitForEvent("load");
   await offer.getByRole("button", { name: /^Load/ }).click();
+  await reloaded;
 
   await b.goto("/?user=groceries");
   await expect(b.getByRole("checkbox", { name: unique })).toBeVisible({ timeout: 60_000 });
@@ -254,7 +258,11 @@ test("an app that was never synced is backed up by one switch, and a linked devi
   const offer = b.locator(".k-restore");
   await expect(offer).toBeVisible({ timeout: 60_000 });
   await expect(offer).toContainText("Notes");
+  // Loading reloads the page once it has installed them (main.tsx): going elsewhere before that
+  // reload lands interrupts one navigation with another (Firefox refuses it: NS_ERROR_FAILURE).
+  const reloaded = b.waitForEvent("load");
   await offer.getByRole("button", { name: /^Load/ }).click();
+  await reloaded;
 
   await b.goto("/?user=notes");
   await expect(b.locator(".k-list-row", { hasText: "Ship the thing" })).toBeVisible({ timeout: 60_000 });

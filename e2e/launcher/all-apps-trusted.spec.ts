@@ -1,5 +1,6 @@
 import { test, expect } from "../console-guard";
 import { expectTappable, openHome, seed, useStart } from "./fixture.js";
+import { NEEDS_CDP } from "../engines";
 
 // The Tiles home screen (the Start style), chosen in Look; Classic is the default (#96).
 test.beforeEach(async ({ page }) => {
@@ -38,7 +39,8 @@ test("alphabetical under letters; a letter opens the jump grid and a letter ther
   await expect(page.locator(".k-metro-letter-group", { has: t }).locator(".k-launch-name").first()).toHaveText("Tasks");
 });
 
-test("a swipe moves between Start and All apps, like a pivot", async ({ page }) => {
+test("a swipe moves between Start and All apps, like a pivot", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", NEEDS_CDP);
   const home = await openHome(page);
   await expect(home.locator(".k-metro-wall")).toBeVisible();
   const box = (await home.locator(".k-metro-pane").boundingBox())!;

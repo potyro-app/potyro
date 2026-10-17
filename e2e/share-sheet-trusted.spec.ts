@@ -1,14 +1,15 @@
 import { test, expect } from "./console-guard";
 import { readFileSync } from "node:fs";
 import { tileAction } from "./launcher-actions";
+import { grantClipboard } from "./engines";
 
 // The share sheet's ways out (docs/24 §1, §8): copy, WhatsApp, Telegram, the device's own sheet — and,
 // inside an app, a 15-second clip of it where the browser can record one, said plainly where not.
 
 test.use({ viewport: { width: 1280, height: 800 } });
 
-test("a demo link goes straight into WhatsApp or Telegram, or is copied; each is counted on this device only", async ({ page, context }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+test("a demo link goes straight into WhatsApp or Telegram, or is copied; each is counted on this device only", async ({ page, context, browserName }) => {
+  await grantClipboard(context, browserName);
   // The chats are never really reached from a test: their addresses answer here.
   await context.route(/^https:\/\/(wa\.me|t\.me)\//, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<p>chat</p>" }));
   await page.goto("/");

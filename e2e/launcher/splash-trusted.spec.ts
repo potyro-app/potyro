@@ -1,5 +1,6 @@
 import { test, expect } from "../console-guard";
 import { seed } from "./fixture.js";
+import { NEEDS_CDP } from "../engines";
 
 // What is on screen while an app opens (#89).
 //
@@ -10,7 +11,8 @@ import { seed } from "./fixture.js";
 const PHONE = { width: 390, height: 780 };
 test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
 
-test("opening an app shows its tile, its name and a moving bar, in the middle of the screen", async ({ page }) => {
+test("opening an app shows its tile, its name and a moving bar, in the middle of the screen", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", NEEDS_CDP);
   await seed(page);
   // Opening is a second on a phone and a blink on this machine, so slow the machine down: without
   // this the splash is gone before it can be looked at, which is also why it had never been seen.

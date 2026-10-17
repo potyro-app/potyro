@@ -9,7 +9,8 @@ import { installShared, startGapMeter, startProbe, type Probe } from "./realm.js
 // watchdog: logic that never yields, and logic that returns and THEN spins, are stopped without the
 // shell's own thread noticing, and the app answers again afterwards.
 //
-// Runs in Chromium by default (the `sandbox` project); POTYRO_REALM_BROWSERS=1 adds Firefox and WebKit.
+// Runs in Chromium (the `sandbox` project), Firefox (`sandbox-firefox`, POTYRO_FIREFOX=1) and WebKit
+// (POTYRO_REALM_BROWSERS=1).
 
 test.use({ viewport: { width: 1280, height: 800 } });
 
@@ -39,7 +40,12 @@ const toast = (page: Page) => page.locator(".k-toast").last();
  */
 const EXPECTED_ALLOWED = new Set(["create with forged createdBy", "new Worker(url)"]);
 
-test("nothing the realm's logic tries reaches the network, the shell's storage or another identity", async ({ page, browserName }) => {
+test("nothing the realm's logic tries reaches the network, the shell's storage or another identity", async ({ page, browserName, consoleGuard }) => {
+  // Firefox puts each refusal by the realm's own CSP, and its refused cross-origin Worker, in the page's
+  // console (Chromium keeps the frame's to itself). Every attempt is the test's; the probe counts them.
+  consoleGuard.allow(/^\[JavaScript Error: "Content-Security-Policy: The page’s settings blocked .*\{file: "about:srcdoc"/, "the escape attempts are refused by the realm's CSP on purpose");
+  consoleGuard.allow(/^\[JavaScript Error: "Security Error: Content at moz-nullprincipal:\S+ may not load data from http:\/\/127\.0\.0\.1:\d+\/probe\//, "the realm's Worker from the probe's URL is refused on purpose");
+  consoleGuard.allow(/^\[JavaScript Error: "Firefox can’t establish a connection to the server at http:\/\/127\.0\.0\.1:\d+\/probe\/sse\."/, "the realm's EventSource to the probe is refused on purpose");
   await open(page);
   const before = page.url();
   await page.locator(".k-page-action", { hasText: "Try to escape" }).click();
@@ -82,6 +88,10 @@ test("what a realm stores does not reach the next realm", async ({ page }) => {
 
 test("control: the same app run as yours does reach the probe, so the empty count above means something", async ({ page, consoleGuard }) => {
   consoleGuard.allow(/^WebSocket connection to 'ws:\/\/127\.0\.0\.1:\d+\/relay' failed|^EventSource's response has a MIME type/, "the trusted control dials the test's probe server with every kind of connection; the probe only counts them");
+  consoleGuard.allow(
+    /^\[JavaScript Error: "(Firefox can’t establish a connection to the server at (ws|http):\/\/127\.0\.0\.1:\d+\/(relay|probe\/sse)\.|Security Error: Content at http:\/\/localhost:\d+\/\?user=realm-escape may not load data from http:\/\/127\.0\.0\.1:\d+\/probe\/worker\.js\.)"/,
+    "the same dials in Firefox's words (a cross-origin Worker URL is refused there by the browser itself)",
+  );
   probe.hits.length = 0;
   const source = FIXTURE.replaceAll("__PROBE__", probe.origin).replaceAll("__SHELL__", new URL(String(test.info().project.use.baseURL)).origin);
   await page.addInitScript((src) => {
