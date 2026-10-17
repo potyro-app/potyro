@@ -116,6 +116,10 @@ describe("the page", () => {
     expect(page).toContain("On the workbench");
   });
 
+  it("has no inline style: potyro.com's CSP is style-src 'self', and the browser blocks one with an error", () => {
+    expect(html()).not.toMatch(/\sstyle="/);
+  });
+
   it("asks nothing of anyone else: every address it loads is its own", () => {
     const page = html();
     const loads = [...page.matchAll(/\b(?:src|href)="([^"]+)"/g)].map((m) => m[1]!);
