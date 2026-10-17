@@ -71,6 +71,7 @@ export type {
   CtxUi,
   UiItem,
   UiProgress,
+  UiDrawnTimer,
   UiKeepAwake,
   UiTimer,
   UiTimerOptions,

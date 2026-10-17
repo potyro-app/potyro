@@ -204,6 +204,27 @@ function CookAlong(props: ViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The step on screen draws its own timer (its button counts down): the shell's chip for that one
+  // stays out of the way while it is here, and shows for the other steps' timers, on other pages and
+  // once it rings. Drawn again the moment its second changes, so it never trails the chip's count.
+  const shownStep = record && Array.isArray(record.steps) ? (record.steps as Step[])[at] : undefined;
+  const shownId = record && shownStep?.durationSec ? `step:${record.id}:${at}` : null;
+  const shown = timers.find((t) => t.id === shownId);
+  // Said while the step's timer button is on screen, before it is tapped: the chip never flashes up.
+  useEffect(() => {
+    if (!shownId) return;
+    const drawn = ctx.ui.drawsTimer(shownId);
+    return () => drawn.release();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shownId]);
+  const nextSecond = shown?.endsAt ? shown.endsAt.getTime() - now : 0;
+  const tick = nextSecond > 0 ? nextSecond % 1000 || 1000 : null;
+  useEffect(() => {
+    if (tick === null) return;
+    const id = setTimeout(() => setNow(Date.now()), tick + 4);
+    return () => clearTimeout(id);
+  }, [tick, now]);
+
   // The screen stays on for as long as cook mode is open, and may sleep again when it closes.
   useEffect(() => {
     const awake = ctx.ui.keepAwake();
@@ -241,8 +262,9 @@ function CookAlong(props: ViewProps) {
   // One timer per step of this recipe: two pans can count down at once, and starting a step's timer
   // again restarts it rather than stacking a second.
   const timerId = (i: number): string => `step:${record.id}:${i}`;
-  const timer = timers.find((t) => t.id === timerId(at));
-  const left = timer ? (timer.endsAt ? Math.max(0, Math.ceil((timer.endsAt.getTime() - now) / 1000)) : timer.left) : 0;
+  const timer = shown;
+  // The chip's own count (`secondsLeft`): the button and the chip on another page say the same second.
+  const left = timer ? timer.secondsLeft(now) : 0;
   const clock = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
   const toggleTimer = (seconds: number): void => {
     if (timer) {

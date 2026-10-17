@@ -252,8 +252,9 @@ interface Ctx {
                       app?: { page: string; params?: Record<string, string> } }): Promise<boolean>;   // true = copied / handed on
         keepAwake(): { release(): void };                                          // the screen stays on (below)
         timer(opts: { label: Words; seconds: number; id?: string }): Promise<UiTimer>;   // a countdown the shell keeps
-        timers(): Promise<UiTimer[]>; };
-  // UiTimer = { id; label; seconds; endsAt: Date | null; left: number; paused; cancel(); pause(); resume() }
+        timers(): Promise<UiTimer[]>;
+        drawsTimer(id: string): { release(): void }; };                             // this page draws that countdown: no chip for it here
+  // UiTimer = { id; label; seconds; endsAt: Date | null; left: number; paused; secondsLeft(at?): number; cancel(); pause(); resume() }
   // UiItem<T> = { id: T; label: Words; detail?: Words; icon?: string; destructive?: boolean }
 
   // ---- navigation (in view/action contexts) ----
@@ -519,10 +520,28 @@ const running = await ctx.ui.timers();   // this app's, counting or paused, soon
   the rest timer rather than stacking a second). Without one, every call is new.
 - **Limits:** 1 second to a day; a label is required; at most 10 at once per app (the 11th throws).
   The label is `Words`, shown in the app's language; a rung timer is no longer in `timers()`.
+- **Drawing the countdown on the page** (a rest bar, a step's button): read `t.secondsLeft()` — whole
+  seconds left now, rounded up exactly as the chip counts — and draw again when it changes, so the
+  page and the chip never disagree by a second. While the page shows that countdown itself, say so
+  with **`ctx.ui.drawsTimer(id)`** and the shell leaves out that timer's chip there, instead of the
+  same countdown twice a line apart. Release it when the page stops showing it (a React effect's
+  cleanup); the page going away, its sealed frame stopping or the app being left lets go too. Say it
+  before starting the timer and the chip never flashes up. The timer still counts and rings either
+  way; its chip shows on the app's other pages, and when it has rung (its Done is on the chip).
+
+```tsx
+// The rest bar draws the rest, so its chip stays out of the way while the workout screen is up.
+useEffect(() => {
+  if (!underWay) return;
+  const drawn = ctx.ui.drawsTimer("rest");
+  return () => drawn.release();
+}, [underWay]);
+const left = rest?.secondsLeft(now);   // the chip's own second
+```
 
 No permission — the person sees every timer on its chip and can stop it — and the same sealed (the
-shell owns the countdown; the app only asks). Both are new optional members: no app's
-`schemaVersion` changes.
+shell owns the countdown; the app only asks; `drawsTimer` crosses the realm's port as a number per
+hold). All are new optional members: no app's `schemaVersion` changes.
 
 ### Guests — people who have not joined yet (`ctx.people`, `ctx.guests`)
 

@@ -114,8 +114,14 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
   // A timer crosses as data; its three methods are rebuilt here, each one a host call by id.
   function timerOf(d){
     if (!d) return d;
+    var ends = d.endsAt ? Date.parse(d.endsAt) : null;
     return Object.freeze({
       id: d.id, label: d.label, seconds: d.seconds, endsAt: d.endsAt ? new Date(d.endsAt) : null, left: d.left, paused: !!d.paused,
+      secondsLeft: function(at){
+        if (!ends) return d.left;
+        var ms = ends - (at == null ? Date.now() : Number(at));
+        return Math.max(0, Math.ceil(ms / 1000));
+      },
       cancel: async function(){ await bridge({op:"ui.timer.control", id:d.id, verb:"cancel"}); },
       pause: async function(){ await bridge({op:"ui.timer.control", id:d.id, verb:"pause"}); },
       resume: async function(){ await bridge({op:"ui.timer.control", id:d.id, verb:"resume"}); }
@@ -236,6 +242,12 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         },
         timer: async function(o){ return timerOf(await bridge({op:"ui.timer", opts: o ? {label:o.label, seconds:o.seconds, id: o.id == null ? null : o.id} : null})); },
         timers: async function(){ var list = await bridge({op:"ui.timers"}); return (list || []).map(timerOf); },
+        drawsTimer: function(tid){
+          var id = "d" + (++awakeSeq);
+          bridgeSync({op:"ui.drawsTimer", id:id, hold:true, timer: String(tid)});
+          var done = false;
+          return { release: function(){ if (done) return; done = true; bridgeSync({op:"ui.drawsTimer", id:id, hold:false}); } };
+        },
         progress: function(label){
           var id = "p" + (++progressSeq);
           bridgeSync({op:"ui.progress", id:id, label:words(label)});

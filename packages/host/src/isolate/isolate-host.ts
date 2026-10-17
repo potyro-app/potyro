@@ -97,7 +97,7 @@ class IsolateLoadedApp implements LoadedApp {
 
   private ctxHost: Ctx | null = null;
   private progress = new Map<string, UiProgress>();
-  /** Screens the box holds on, by its id for each (`ui.keepAwake`). */
+  /** Screens the box holds on and timers it draws, by its id for each (`ui.keepAwake`, `ui.drawsTimer`). */
   private awake = new Map<string, { release(): void }>();
   private disposed = false;
   /** Questions open for the person, and the time they have held calls up — a call's budget pauses for them. */
@@ -507,6 +507,16 @@ class IsolateLoadedApp implements LoadedApp {
       case "cap.haptics.vibrate":
         void this.ctxHost?.caps.haptics?.vibrate(op.pattern as number | number[]);
         return;
+      case "ui.drawsTimer": {
+        // As keepAwake: a handle in the VM, an id out here; let go of with the box.
+        const id = String(op.id);
+        if (op.hold && !this.awake.has(id) && this.ctxHost && this.awake.size < 64) this.awake.set(id, this.ctxHost.ui.drawsTimer(String(op.timer)));
+        else if (!op.hold) {
+          this.awake.get(id)?.release();
+          this.awake.delete(id);
+        }
+        return;
+      }
       case "ui.keepAwake": {
         // Like a progress bar: a handle in the VM, an id out here.
         const id = String(op.id);

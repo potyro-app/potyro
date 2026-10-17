@@ -47,10 +47,14 @@ test("the cook-along screen runs sealed in its own frame, and its steps tick", a
   await expect(html).toHaveAttribute("data-k-awake", "");
   await frame.locator(".ck-timer").click();
   const chip = page.locator(".k-timer-chip", { hasText: ", step 1" });
-  await expect(chip).toHaveCount(1);
   await expect(frame.locator(".ck-timer")).toHaveAttribute("data-running", "true");
+  await expect(frame.locator(".ck-timer")).toContainText(/\d+:\d\d · stop/);
+  // The frame draws that countdown and says so (`ctx.ui.drawsTimer`, across the port): no chip for it…
+  await expect(page.locator(".k-timer-chip")).toHaveCount(0);
   await frame.getByRole("button", { name: "Next step" }).click();
   await expect(frame.getByText(/Step 2 of \d+/).first()).toBeVisible();
+  // …until the step it belongs to is off screen: then step 1's chip is in sight.
+  await expect(chip).toHaveCount(1);
   await expect(frame.locator("ol li input[type=checkbox]").first()).toBeChecked();
   const secondStep = frame.locator("ol li input[type=checkbox]").nth(1);
   await secondStep.check();
