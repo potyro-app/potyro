@@ -123,7 +123,11 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
 
   const entity = view!.entity ?? "";
   const options = filters.filter(isOptionChip);
-  const direct = filters.filter((c) => !isOptionChip(c));
+  // A box to type in gets a line of its own, the width of the screen: it is what someone with three
+  // hundred rows came for. Everything else is one row of chips under it, scrolling sideways on a
+  // phone rather than stacking three rows of choices above the content.
+  const boxes = filters.filter((c) => c.type === "text");
+  const direct = filters.filter((c) => !isOptionChip(c) && c.type !== "text");
   const picked = options.flatMap((chip) => chosen(chip, params).map((value) => ({ chip, value })));
 
   const drop = (chip: FilterChip, value: string): void => {
@@ -133,6 +137,10 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
 
   return (
     <section className="k-chrome" aria-label={t`Filters`} data-k-view>
+      {boxes.map((chip) => (
+        <ChipControl key={chip.param} chip={chip} entity={entity} runtime={runtime} params={params} setParam={setParam} />
+      ))}
+      <div className="k-chrome-row">
       {options.length ? (
         <button
           type="button"
@@ -172,6 +180,7 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
       ))}
 
       <PageActions runtime={runtime} pageId={pageId} params={params} />
+      </div>
 
       {open ? (
         <FilterSheet

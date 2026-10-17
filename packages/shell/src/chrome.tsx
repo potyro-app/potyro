@@ -116,8 +116,13 @@ const TAB_SLOTS = 4;
 const HOLD_MS = 450;
 
 /** The quick action for this page: the one whose entity the page is about, else the first. */
+/**
+ * The quick action a page floats: the one that adds what the page shows. Never another kind's —
+ * "Add: Ingredient" floating over a cookbook of recipes is an action for a different page, and the
+ * ⋯ menu (or the wide sidebar) still has it.
+ */
 export function primaryQuick(quick: ChromeQuick[], currentEntity: string | undefined): ChromeQuick | undefined {
-  return quick.find((q) => q.entity === currentEntity) ?? quick[0];
+  return quick.find((q) => q.entity === currentEntity);
 }
 
 export function AppChrome(props: AppChromeProps) {

@@ -510,11 +510,9 @@ export default defineApp({
   // A step timer rings through the shell (`ctx.ui.timer`), which needs no permission.
   permissions: { camera: true, filesystem: true, ai: true },
   nav: "tabs",
-  // What can be added by hand: a recipe (typed in; the Recipes page's own button also reads one from a
-  // photo or pasted text) and an ingredient. Meals come from a recipe's "Plan it", shopping items from
-  // "Add to shopping" or the list's own box.
+  // Adding a recipe is rare next to choosing and cooking it: a quiet button beside the cookbook's
+  // search, never a floating one. An ingredient is added where the pantry is — its page's own button.
   quickActions: [
-    { id: "add-recipe", label: { en: "Add: Recipe", "pt-BR": "Adicionar: Receita", de: "Hinzufügen: Rezept", es: "Añadir: Receta", pl: "Dodaj: Przepis", it: "Aggiungi: Ricetta" }, icon: "🍳", entity: "recipe", mode: "form" },
     { id: "add-ingredient", label: { en: "Add: Ingredient", "pt-BR": "Adicionar: Ingrediente", de: "Hinzufügen: Zutat", es: "Añadir: Ingrediente", pl: "Dodaj: Składnik", it: "Aggiungi: Ingrediente" }, icon: "🥕", entity: "ingredient", mode: "form" },
   ],
   category: "everyday",
@@ -736,6 +734,8 @@ export default defineApp({
         ingredients: {
           type: "list",
           label: { en: "Ingredients", "pt-BR": "Ingredientes", de: "Zutaten", es: "Ingredientes", pl: "Składniki", it: "Ingredienti" },
+          // Read as a recipe card reads: "350 g banana", one per line.
+          lines: ["quantity", "unit", "ingredient"],
           of: {
             ingredient: {
               type: "relation",
@@ -996,23 +996,41 @@ export default defineApp({
 
   pages: [
     {
-      // The cookbook: every recipe as a photo, keepers first. Adding one is the page's one big button,
-      // and two of its three ways in are a photo or pasted text that AI reads for you.
+      // The cookbook: what you open the app for most days — choosing what to cook. Search and a few
+      // chips first ("Can cook now", "Under 30 min", the meal), then every recipe as a photo, keepers
+      // first. Adding one is rare next to that: a quiet button beside the search, whose three ways in
+      // are a photo or pasted text that AI reads for you, or typing it.
       id: "all",
       icon: "🍳",
       title: { en: "Recipes", "pt-BR": "Receitas", de: "Rezepte", es: "Recetas", pl: "Przepisy", it: "Ricette" },
       description: { en: "Your cookbook, keepers first.", "pt-BR": "Seu livro de receitas, as favoritas primeiro.", de: "Dein Kochbuch, Lieblingsrezepte zuerst.", es: "Tu recetario, las favoritas primero.", pl: "Twoja książka kucharska, ulubione na początku.", it: "Il tuo ricettario, le preferite prima." },
-      background: { image: "art/market.webp" },
-      summary: [
-        { label: { en: "Recipes", "pt-BR": "Receitas", de: "Rezepte", es: "Recetas", pl: "Przepisy", it: "Ricette" }, op: "count" },
-        { label: { en: "Ready to cook", "pt-BR": "Prontas para fazer", de: "Kochbereit", es: "Listas para cocinar", pl: "Można gotować", it: "Pronte da cucinare" }, value: (rows) => rows.filter((r) => r.canCook).length },
-        { label: { en: "Times cooked", "pt-BR": "Vezes feitas", de: "Mal gekocht", es: "Veces cocinadas", pl: "Razy ugotowane", it: "Volte cucinate" }, field: "timesCooked", op: "sum" },
-      ],
       actions: [{ label: { en: "Add a recipe", "pt-BR": "Adicionar receita", de: "Rezept hinzufügen", es: "Añadir receta", pl: "Dodaj przepis", it: "Aggiungi ricetta" }, icon: "＋", run: addRecipe }],
-      primaryAction: 0,
       view: {
         type: "gallery",
         entity: "recipe",
+        // Search, and what searching MEANS is the app's own rule: the chip only collects what was typed
+        // (#216) — here the name or any tag.
+        filters: [
+          {
+            label: { en: "Search", "pt-BR": "Buscar", de: "Suche", es: "Buscar", pl: "Szukaj", it: "Cerca" },
+            param: "q",
+            type: "text",
+            placeholder: { en: "Search recipes", "pt-BR": "Buscar receitas", de: "Rezepte suchen", es: "Buscar recetas", pl: "Szukaj przepisów", it: "Cerca ricette" },
+          },
+          { label: { en: "Can cook now", "pt-BR": "Dá para fazer agora", de: "Jetzt kochbar", es: "Puedo hacerla ya", pl: "Mogę ugotować teraz", it: "Si può fare ora" }, param: "ready", type: "boolean" },
+          { label: { en: "Under 30 min", "pt-BR": "Menos de 30 min", de: "Unter 30 Min.", es: "Menos de 30 min", pl: "Poniżej 30 min", it: "Meno di 30 min" }, param: "quick", type: "boolean" },
+          { label: { en: "Meal", "pt-BR": "Refeição", de: "Mahlzeit", es: "Comida", pl: "Posiłek", it: "Pasto" }, param: "tag", from: "tags", multi: true },
+        ],
+        filter: (r, ctx) => {
+          const { q, ready, quick, tag } = ctx.params as { q?: string; ready?: boolean; quick?: boolean; tag?: string[] };
+          const query = String(q ?? "").trim().toLowerCase();
+          const tags = (r.tags as string[] | undefined) ?? [];
+          if (query && !r.name.toLowerCase().includes(query) && !tags.some((t) => t.toLowerCase().includes(query))) return false;
+          if (ready && !r.canCook) return false;
+          if (quick && !(r.totalMinutes > 0 && r.totalMinutes <= 30)) return false;
+          if (tag?.length && !tag.some((t) => tags.includes(t))) return false;
+          return true;
+        },
         // Keepers, then what you have tried, then what you want to try; by name inside each.
         sort: (a, b) => ["keeper", "tried", "want to try"].indexOf(String(a.status)) - ["keeper", "tried", "want to try"].indexOf(String(b.status)) || a.name.localeCompare(b.name),
         // Under a heading per status, in the order the rows are sorted (a function's groups keep it).
@@ -1036,72 +1054,6 @@ export default defineApp({
           es: "Aún no hay recetas. Añade una desde la foto de una página o pega el texto.",
           pl: "Nie ma jeszcze przepisów. Dodaj przepis ze zdjęcia strony z książki albo wklej tekst.",
           it: "Ancora nessuna ricetta. Aggiungine una dalla foto di una pagina o incolla il testo.",
-        },
-      },
-    },
-    {
-      // Find something to cook: everything you can make right now first, then what each is missing.
-      id: "cook-with",
-      icon: "🔍",
-      title: { en: "What can I cook?", "pt-BR": "O que posso cozinhar?", de: "Was kann ich kochen?", es: "¿Qué puedo cocinar?", pl: "Co mogę ugotować?", it: "Cosa posso cucinare?" },
-      description: { en: "What you can make with what you have, and what each one is missing.", "pt-BR": "O que dá para fazer com o que você tem, e o que falta em cada uma.", de: "Was du mit deinem Vorrat kochen kannst, und was jeweils fehlt.", es: "Lo que puedes hacer con lo que tienes, y lo que le falta a cada una.", pl: "Co ugotujesz z tego, co masz, i czego brakuje do każdego przepisu.", it: "Cosa puoi fare con quello che hai, e cosa manca a ciascuna." },
-      view: {
-        type: "list",
-        entity: "recipe",
-        // Search, and what searching MEANS is the app's own rule: the chip only collects what was typed
-        // (#216). Here it is the name or any tag. The pantry chip picks ingredient records into
-        // ctx.params.pantry; the JS predicate below keeps the recipes those ingredients can make.
-        filters: [
-          {
-            label: { en: "Search", "pt-BR": "Buscar", de: "Suche", es: "Buscar", pl: "Szukaj", it: "Cerca" },
-            param: "q",
-            type: "text",
-            placeholder: { en: "Name or tag", "pt-BR": "Nome ou etiqueta", de: "Name oder Schlagwort", es: "Nombre o etiqueta", pl: "Nazwa lub tag", it: "Nome o tag" },
-          },
-          { label: { en: "Can cook now", "pt-BR": "Dá para fazer agora", de: "Jetzt kochbar", es: "Puedo hacerla ya", pl: "Mogę ugotować teraz", it: "Si può fare ora" }, param: "ready", type: "boolean" },
-          {
-            label: { en: "Ready in (min)", "pt-BR": "Pronta em (min)", de: "Fertig in (Min.)", es: "Lista en (min)", pl: "Gotowe w (min)", it: "Pronta in (min)" },
-            param: "max",
-            type: "number",
-            placeholder: "30",
-          },
-          { label: { en: "Meal", "pt-BR": "Refeição", de: "Mahlzeit", es: "Comida", pl: "Posiłek", it: "Pasto" }, param: "tag", from: "tags", multi: true },
-          { label: { en: "In my pantry", "pt-BR": "Na minha despensa", de: "In meinem Vorrat", es: "En mi despensa", pl: "W mojej spiżarni", it: "Nella mia dispensa" }, param: "pantry", from: "ingredient", multi: true },
-        ],
-        filter: (r, ctx) => {
-          const { q, ready, max, tag, pantry } = ctx.params as { q?: string; ready?: boolean; max?: number; tag?: string[]; pantry?: string[] };
-          const query = String(q ?? "").trim().toLowerCase();
-          const tags = (r.tags as string[] | undefined) ?? [];
-          if (query && !r.name.toLowerCase().includes(query) && !tags.some((t) => t.toLowerCase().includes(query))) return false;
-          if (ready && !r.canCook) return false;
-          if (typeof max === "number" && max > 0 && !(r.totalMinutes > 0 && r.totalMinutes <= max)) return false;
-          if (tag?.length && !tag.some((t) => tags.includes(t))) return false;
-          if (pantry?.length) {
-            const have = new Set(pantry);
-            return ingredientRows(r).length > 0 && ingredientRows(r).every((i) => have.has(i.ingredient.id));
-          }
-          return true;
-        },
-        // What you can cook comes first; then the fewest missing.
-        sort: (a, b) => a.missingIngredients.length - b.missingIngredients.length || a.name.localeCompare(b.name),
-        display: {
-          primary: "name",
-          secondary: (r, ctx) =>
-            r.canCook
-              ? ctx.t({ en: "✓ You have everything · {line}", "pt-BR": "✓ Você tem tudo · {line}", de: "✓ Alles da · {line}", es: "✓ Tienes todo · {line}", pl: "✓ Masz wszystko · {line}", it: "✓ Hai tutto · {line}" }, { line: recipeLine(r, ctx) })
-              : ctx.t({ en: "Missing: {list}", "pt-BR": "Falta: {list}", de: "Es fehlt: {list}", es: "Falta: {list}", pl: "Brakuje: {list}", it: "Manca: {list}" }, { list: (r.missingIngredients as string[]).join(", ") }),
-          media: "photo",
-          badges: ["tags"],
-        },
-        rowActions: ["shop"],
-        onOpen: { page: "detail", param: { recipeId: "id" } },
-        emptyText: {
-          en: "Nothing matches. Loosen a filter, or mark ingredients “in stock”.",
-          "pt-BR": "Nada combina. Afrouxe um filtro ou marque ingredientes como “em estoque”.",
-          de: "Nichts passt. Lockere einen Filter oder markiere Zutaten als „vorrätig“.",
-          es: "Nada coincide. Quita algún filtro o marca ingredientes como «en casa».",
-          pl: "Nic nie pasuje. Poluzuj filtr albo zaznacz składniki jako „na stanie”.",
-          it: "Nessuna corrispondenza. Allenta un filtro o segna ingredienti “in dispensa”.",
         },
       },
     },
@@ -1175,61 +1127,25 @@ export default defineApp({
     {
       id: "pantry",
       icon: "🥕",
-      title: { en: "Ingredients", "pt-BR": "Ingredientes", de: "Zutaten", es: "Ingredientes", pl: "Składniki", it: "Ingredienti" },
+      title: { en: "Pantry", "pt-BR": "Despensa", de: "Vorrat", es: "Despensa", pl: "Spiżarnia", it: "Dispensa" },
       description: { en: "Your pantry. What's in stock decides what you can cook.", "pt-BR": "Sua despensa. O que há em estoque decide o que dá para fazer.", de: "Dein Vorrat. Was da ist, entscheidet, was du kochen kannst.", es: "Tu despensa. Lo que hay en casa decide qué puedes cocinar.", pl: "Twoja spiżarnia. To, co masz, decyduje, co ugotujesz.", it: "La tua dispensa. Quello che c'è decide cosa puoi cucinare." },
+      // What you have, as a list you tick: ticked is in stock. That is what decides "Can cook now".
       view: {
-        type: "list",
+        type: "checklist",
         entity: "ingredient",
-        sort: (a, b) => Number(b.inStock) - Number(a.inStock) || a.name.localeCompare(b.name),
-        display: {
-          primary: (i) => i.name,
-          secondary: (i, ctx) => {
-            const stock = i.inStock
-              ? ctx.t({ en: "✓ in stock", "pt-BR": "✓ em estoque", de: "✓ vorrätig", es: "✓ en casa", pl: "✓ na stanie", it: "✓ in dispensa" })
-              : ctx.t({ en: "out of stock", "pt-BR": "em falta", de: "nicht vorrätig", es: "falta", pl: "brak", it: "finito" });
-            return `${stock} · ${categoryName(i.category, ctx)}`;
-          },
-          badges: ["diet"],
-        },
-        rowActions: ["toggleStock"],
+        done: "inStock",
+        // Ticked is "have it", not "done": nothing is struck through.
+        strike: false,
+        text: "name",
+        group: "category",
+        sort: (a, b) => a.name.localeCompare(b.name),
         onOpen: { page: "ingredient", param: { ingredientId: "id" } },
       },
     },
     {
-      // Every recipe by where it stands with you: drag one to "keeper" once it earns it (#107).
-      id: "cookbook",
-      icon: "📒",
-      title: { en: "Cookbook", "pt-BR": "Livro de receitas", de: "Kochbuch", es: "Recetario", pl: "Książka kucharska", it: "Ricettario" },
-      description: { en: "Drag a recipe to “keeper” once it earns it.", "pt-BR": "Arraste uma receita para “favorita” quando ela merecer.", de: "Zieh ein Rezept zu „Lieblingsrezept“, wenn es das verdient.", es: "Arrastra una receta a «favorita» cuando se lo gane.", pl: "Przeciągnij przepis do „ulubionych”, gdy na to zasłuży.", it: "Trascina una ricetta tra le “preferite” quando se lo merita." },
-      view: {
-        type: "board",
-        entity: "recipe",
-        column: "status",
-        sort: (a, b) => a.name.localeCompare(b.name),
-        display: {
-          primary: "name",
-          secondary: (r, ctx) => recipeLine(r, ctx),
-          media: "photo",
-          badges: ["tags"],
-        },
-        onOpen: { page: "detail", param: { recipeId: "id" } },
-      },
-    },
-    {
-      id: "high-protein",
-      icon: "💪",
-      title: { en: "High protein", "pt-BR": "Rico em proteína", de: "Proteinreich", es: "Alto en proteína", pl: "Dużo białka", it: "Ricco di proteine" },
-      description: { en: "20 g of protein a serving or more.", "pt-BR": "20 g de proteína por porção ou mais.", de: "Ab 20 g Eiweiß pro Portion.", es: "20 g de proteína por ración o más.", pl: "Co najmniej 20 g białka na porcję.", it: "Almeno 20 g di proteine a porzione." },
-      view: {
-        type: "table",
-        entity: "recipe",
-        filter: (r) => r.proteinPerServing >= 20,
-        sort: (a, b) => b.protein - a.protein,
-        display: { columns: ["name", "proteinPerServing", "caloriesPerServing", "servings"] },
-      },
-    },
-    {
-      // A recipe as a full screen: its photo, the facts on it, and "Start cooking".
+      // A recipe as it is used at the stove: the ingredients first, then the steps, over its photo —
+      // the picture is behind the page, not a screen to scroll past. "Start cooking" waits at the
+      // bottom, where the thumb is.
       id: "detail",
       title: { en: "Recipe", "pt-BR": "Receita", de: "Rezept", es: "Receta", pl: "Przepis", it: "Ricetta" },
       hidden: true,
@@ -1237,9 +1153,18 @@ export default defineApp({
         type: "detail",
         entity: "recipe",
         param: "recipeId",
-        cover: "full",
-        facts: ["status", "time", "kcal", "serves"],
-        // No `sections`: the page shows the entity's `groups`, as the form does.
+        cover: "background",
+        facts: ["time", "serves", "kcal", "status"],
+        sections: [
+          { title: { en: "Ingredients", "pt-BR": "Ingredientes", de: "Zutaten", es: "Ingredientes", pl: "Składniki", it: "Ingredienti" }, fields: ["ingredients"] },
+          { title: { en: "Steps", "pt-BR": "Passos", de: "Schritte", es: "Pasos", pl: "Kroki", it: "Passaggi" }, fields: ["steps"] },
+          { title: { en: "Your notes", "pt-BR": "Suas anotações", de: "Deine Notizen", es: "Tus notas", pl: "Twoje notatki", it: "Le tue note" }, fields: ["notes", "source"] },
+          {
+            title: { en: "Nutrition & cost", "pt-BR": "Nutrição e custo", de: "Nährwerte & Kosten", es: "Nutrición y coste", pl: "Wartości odżywcze i koszt", it: "Nutrizione e costo" },
+            fields: ["caloriesPerServing", "proteinPerServing", "diet", "estimatedCost", "missingIngredients"],
+            collapsed: true,
+          },
+        ],
         primaryAction: {
           label: { en: "Start cooking", "pt-BR": "Começar a cozinhar", de: "Loskochen", es: "Empezar a cocinar", pl: "Zacznij gotować", it: "Inizia a cucinare" },
           navigate: { page: "cook", param: { recipeId: "id" } },

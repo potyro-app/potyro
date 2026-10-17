@@ -66,15 +66,16 @@ describe("recipe computed derived from the ingredient model", () => {
   });
 });
 
-describe("What can I cook?", () => {
-  it("lists what you can cook first, then by how little is missing", async () => {
-    const rows = (await runtime.queryPage("cook-with")).rows;
-    expect(rows.map((r) => r.name)).toEqual(["Pancakes", "Roast chicken"]);
+describe("the cookbook's chips (choosing what to cook is the first page)", () => {
+  it("“Can cook now” keeps only fully-stocked recipes", async () => {
+    expect((await runtime.queryPage("all")).rows.map((r) => r.name).sort()).toEqual(["Pancakes", "Roast chicken"]);
+    const ready = (await runtime.queryPage("all", { ready: true })).rows.map((r) => r.name);
+    expect(ready).toEqual(["Pancakes"]);
   });
 
-  it("“Can cook now” keeps only fully-stocked recipes", async () => {
-    const ready = (await runtime.queryPage("cook-with", { ready: true })).rows.map((r) => r.name);
-    expect(ready).toEqual(["Pancakes"]);
+  it("search reads the name or a tag", async () => {
+    expect((await runtime.queryPage("all", { q: "roast" })).rows.map((r) => r.name)).toEqual(["Roast chicken"]);
+    expect((await runtime.queryPage("all", { q: "nothing like it" })).rows).toEqual([]);
   });
 });
 
@@ -84,7 +85,7 @@ describe("ingredient action toggleStock", () => {
     const chicken = await store.get("ingredient", ids.chicken);
     expect(chicken!.inStock).toBe(true);
 
-    const ready = (await runtime.queryPage("cook-with", { ready: true })).rows.map((r) => r.name);
+    const ready = (await runtime.queryPage("all", { ready: true })).rows.map((r) => r.name);
     expect(ready).toContain("Roast chicken");
   });
 });

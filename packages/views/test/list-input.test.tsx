@@ -24,6 +24,12 @@ const app = defineApp({
       fields: {
         name: { type: "text", required: true },
         steps: { type: "list", ordered: true, label: "Steps", of: { text: { type: "text" }, minutes: { type: "number" } } },
+        ingredients: {
+          type: "list",
+          label: "Ingredients",
+          lines: ["quantity", "unit", "item"],
+          of: { item: { type: "text" }, quantity: { type: "number" }, unit: { type: "enum", options: ["g", "tbsp"], labels: { tbsp: "tbsp" } } },
+        },
       },
     },
   },
@@ -134,5 +140,20 @@ describe("the value on a record page", () => {
     expect(items).toHaveLength(3);
     expect(items[0]!.textContent).toContain("Heat the pan");
     expect(container.querySelector("table")).toBeNull();
+  });
+
+  it("reads a list with `lines` as lines in that order: the amount, its unit, the thing", async () => {
+    const runtime = await makeRuntime();
+    const value = [
+      { item: "flour", quantity: 350, unit: "g" },
+      { item: "olive oil", quantity: 2, unit: "tbsp" },
+      { item: "salt" },
+    ];
+    const { container } = render(<FieldValue runtime={runtime} entity="recipe" fieldKey="ingredients" value={value} />);
+    const items = [...container.querySelectorAll("ul.k-row-lines li")].map((li) => li.textContent);
+    expect(items).toEqual(["350 g flour", "2 tbsp olive oil", "salt"]);
+    // Plain words: no table, and the unit is not a coloured pill.
+    expect(container.querySelector("table")).toBeNull();
+    expect(container.querySelector(".k-enum-pill, [data-swatch]")).toBeNull();
   });
 });

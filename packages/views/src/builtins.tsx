@@ -360,6 +360,7 @@ export function GalleryView(props: BuiltinViewProps) {
     group?: unknown;
     collapsible?: boolean;
     aspect?: "square" | "portrait" | "landscape";
+    caption?: "below" | "over";
     display?: { lead?: LeadKind };
   };
   const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", t`Nothing here yet.`);
@@ -382,7 +383,7 @@ export function GalleryView(props: BuiltinViewProps) {
   // Only on a page that IS this list: a layout's "Overdue" is a selection, not a place to add to.
   const offerAdd = onCreate && byPeople(runtime, view.entity) && !pageId.includes("#") && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
   const renderCards = (list: Resolved[]) => (
-    <div className="k-gallery" data-aspect={view.aspect ?? "landscape"}>
+    <div className="k-gallery" data-aspect={view.aspect ?? "landscape"} data-caption={view.caption ?? "below"}>
       {list.map((row) => {
         const cell = cells[cellIndex.get(row.id) ?? -1] ?? {};
         const primary = cell.primary ?? String(row[displayFieldFor(runtime, view.entity)] ?? row.id);
@@ -394,8 +395,9 @@ export function GalleryView(props: BuiltinViewProps) {
             data-photo={cell.mediaUrl ? "true" : undefined}
             onClick={openCard ? () => openCard(row) : undefined}
           >
-            {/* A photo fills the card and the words sit on it; without one the card is the record's
-                own colour with its initial, never a striped placeholder that says "missing". */}
+            {/* A photo fills the top of the card and the words sit under it (or on it, `caption:
+                "over"`); without one the card is the record's own colour with its initial, never a
+                striped placeholder that says "missing". */}
             <span className="k-card-media" style={cell.mediaUrl ? undefined : leadStyle(cell.badges, primary)}>
               {cell.mediaUrl ? (
                 <img src={cell.mediaUrl} alt="" loading="lazy" decoding="async" draggable={false} />

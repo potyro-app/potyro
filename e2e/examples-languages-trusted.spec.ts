@@ -71,7 +71,8 @@ test("a recipe's computed values are headed in Polish, not by their keys (#310)"
   const detail = page.locator("article.k-detail");
   await expect(detail).toBeVisible();
   // The "Nutrition & cost" group lists a field (servings) and the computed values beside it.
-  await expect(detail.getByText("Wartości odżywcze i koszt", { exact: true })).toBeVisible();
+  // Folded under the ingredients and steps: opened to read it.
+  await detail.getByRole("button", { name: /^Wartości odżywcze i koszt/ }).click();
   await expect(detail.locator("dt", { hasText: "Kalorie na porcję" })).toBeVisible();
   await expect(detail.locator("dt", { hasText: "Białko na porcję" })).toBeVisible();
   await expect(detail.locator("dt", { hasText: "Szacowany koszt" })).toBeVisible();

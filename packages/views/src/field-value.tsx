@@ -45,6 +45,22 @@ function FieldByType({ runtime, field, value }: { runtime: PotyroRuntime; field:
           </span>
         );
       const subEntries = Object.entries(field.of);
+      // Rows that read as a line (`lines`): "350 g flour", not a table with a column per part.
+      const lineKeys = (field as { lines?: string[] }).lines?.filter((k) => field.of[k]);
+      if (lineKeys?.length) {
+        return (
+          <ul className="k-row-lines">
+            {rows.map((row, i) => (
+              <li key={i}>
+                {lineKeys
+                  .map((k) => plainText(runtime, field.of[k]!, row[k]))
+                  .filter(Boolean)
+                  .join(" ")}
+              </li>
+            ))}
+          </ul>
+        );
+      }
       const nested = subEntries.filter(([, f]) => f.type === "list");
       const scalar = subEntries.filter(([, f]) => f.type !== "list");
 
@@ -191,6 +207,23 @@ function FieldByType({ runtime, field, value }: { runtime: PotyroRuntime; field:
       return <>{formatDuration(value, field)}</>;
     default:
       return <>{formatValue(value)}</>;
+  }
+}
+
+/** A value as words in a line: an option's label, a record's name, a number with its unit. */
+function plainText(runtime: PotyroRuntime, field: ShownField, value: unknown): string {
+  if (value == null || value === "") return "";
+  switch (field.type) {
+    case "enum":
+      return optionLabel(field, String(value));
+    case "relation":
+      return Array.isArray(value) ? value.map((v) => relText(v, displayFieldFor(runtime, field.to))).join(", ") : relText(value, displayFieldFor(runtime, field.to));
+    case "number":
+      return formatWithUnit(value, field);
+    case "duration":
+      return formatDuration(value, field);
+    default:
+      return formatValue(value);
   }
 }
 
