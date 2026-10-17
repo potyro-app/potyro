@@ -8,6 +8,12 @@ import { test, expect, type Page } from "./console-guard";
 // the shell also makes, renames, copies and deletes them.
 
 const scope = (page: Page) => page.locator(".k-scope");
+/** One of the figures above the list: its number and what it counts ("11" "to buy"). */
+async function expectFigure(page: Page, n: number, value: string, label: string): Promise<void> {
+  const figure = page.locator(".k-page-figures .k-summary-figure").nth(n);
+  await expect(figure.locator(".k-summary-value")).toHaveText(value);
+  await expect(figure.locator(".k-summary-label")).toHaveText(label);
+}
 
 async function openList(page: Page): Promise<void> {
   await page.goto("/?user=groceries");
@@ -24,8 +30,8 @@ test.describe("phone", () => {
     // Content first: the first item sits right under the app bar and the one line of figures.
     const first = (await list.locator(".k-check-row").first().boundingBox())!;
     expect(first.y).toBeLessThan(220);
-    await expect(page.locator(".k-page-figures .k-summary")).toContainText("11 to buy");
-    await expect(page.locator(".k-page-figures .k-summary")).toContainText("2 in the basket");
+    await expectFigure(page, 0, "11", "to buy");
+    await expectFigure(page, 1, "2", "in the basket");
     // Aisles in walking order.
     await expect(list.locator(".k-check-heading").first()).toHaveText("Produce");
 
@@ -38,7 +44,7 @@ test.describe("phone", () => {
     await expect(basket.locator("summary")).toHaveText("In the basket (3)");
     await basket.locator("summary").tap();
     await expect(basket.getByRole("checkbox", { name: "Milk" })).toHaveAttribute("aria-checked", "true");
-    await expect(page.locator(".k-page-figures .k-summary")).toContainText("3 in the basket");
+    await expectFigure(page, 1, "3", "in the basket");
 
     // Persisted: still bought after a reload.
     await page.reload();
@@ -127,7 +133,7 @@ test.describe("desktop", () => {
     await openList(page);
     const menu = page.getByRole("menu");
     await scope(page).click();
-    await menu.getByRole("menuitem", { name: "Party" }).click();
+    await menu.getByRole("menuitem", { name: "Party", exact: true }).click();
     await expect(scope(page)).toContainText("Party");
     await expect(page.getByRole("checkbox", { name: "Limes" })).toBeVisible();
     await expect(page.getByRole("checkbox", { name: "Apples" })).toHaveCount(0);
@@ -152,7 +158,7 @@ test.describe("desktop", () => {
 
     // Deleted, asked first, with what is in it; another list is shown.
     await scope(page).click();
-    await menu.getByRole("menuitem", { name: "Party" }).click();
+    await menu.getByRole("menuitem", { name: "Party", exact: true }).click();
     await scope(page).click();
     await menu.getByRole("menuitem", { name: "Delete…" }).click();
     await expect(page.getByRole("dialog")).toContainText("Delete “Party”?");

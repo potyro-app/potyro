@@ -62,6 +62,27 @@ async function spread(page: Page, png: Buffer): Promise<number> {
   }, png.toString("base64"));
 }
 
+/** How far apart two same-sized screenshots are: the mean absolute difference per channel (0–255). */
+async function difference(page: Page, a: Buffer, b: Buffer): Promise<number> {
+  return page.evaluate(
+    async ([a64, b64]) => {
+      const read = async (b: string) => {
+        const bmp = await createImageBitmap(new Blob([Uint8Array.from(atob(b), (c) => c.charCodeAt(0))], { type: "image/png" }));
+        const c = new OffscreenCanvas(bmp.width, bmp.height);
+        const g = c.getContext("2d")!;
+        g.drawImage(bmp, 0, 0);
+        return g.getImageData(0, 0, bmp.width, bmp.height).data;
+      };
+      const [x, y] = [await read(a64!), await read(b64!)];
+      let sum = 0;
+      let n = 0;
+      for (let i = 0; i < x.length; i += 4) for (let ch = 0; ch < 3; ch++, n++) sum += Math.abs(x[i + ch]! - y[i + ch]!);
+      return sum / n;
+    },
+    [a.toString("base64"), b.toString("base64")] as const,
+  );
+}
+
 for (const scheme of ["light", "dark"] as const) {
   test(`a page's background picture is the ground behind its content (${scheme})`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
@@ -79,14 +100,17 @@ for (const scheme of ["light", "dark"] as const) {
     const content = (await page.locator(".k-main").boundingBox())!;
     expect(content.y).toBeLessThan(groundBox.y + groundBox.height / 2);
     await page.waitForTimeout(800);
-    // The ground itself, read with the content set aside: a patch near its top, at the right.
+    // The ground itself, read with the content set aside: its top band, before it fades to paper.
     await page.locator(".k-main").evaluate((m: HTMLElement) => (m.style.visibility = "hidden"));
     const box = groundBox;
-    const clip = { x: box.x + box.width * 0.62, y: box.y + box.height * 0.08, width: box.width * 0.34, height: box.height * 0.3 };
-    const withPhoto = await spread(page, await page.screenshot({ clip, animations: "disabled" }));
-    // The same patch with the photo taken out: the shade on the plain ground.
+    const clip = { x: box.x + box.width * 0.05, y: box.y + box.height * 0.02, width: box.width * 0.9, height: box.height * 0.2 };
+    const withPhoto = await page.screenshot({ clip, animations: "disabled" });
+    // The same patch with the photo taken out: the plain ground.
     await img.evaluate((i: HTMLImageElement) => (i.style.visibility = "hidden"));
-    const without = await spread(page, await page.screenshot({ clip, animations: "disabled" }));
-    expect(withPhoto).toBeGreaterThan(without + 8);
+    const without = await page.screenshot({ clip, animations: "disabled" });
+    // Faded to a ground, the picture is still plainly there: the patch differs from bare paper, and
+    // varies more than it.
+    expect(await difference(page, withPhoto, without)).toBeGreaterThan(6);
+    expect(await spread(page, withPhoto)).toBeGreaterThan(await spread(page, without));
   });
 }
