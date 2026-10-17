@@ -517,7 +517,7 @@ export default defineApp({
       view: {
         type: "list",
         entity: "plant",
-        // Search matches the name and the person's own labels ("kitchen", "from Ana").
+        // Search matches the name, the room and the person's own labels ("from Ana").
         filters: [
           {
             label: { en: "Search", "pt-BR": "Buscar", de: "Suche", es: "Buscar", pl: "Szukaj", it: "Cerca" },
