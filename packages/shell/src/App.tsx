@@ -868,13 +868,13 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   useEffect(() => setLeftFullscreen(null), [pageId]);
   const currentEntity = (currentPage?.view as { entity?: string } | undefined)?.entity;
   // A view with its own way to add (the checklist's "Add an item…", the map's "Add place here")
-  // already does the one thing the floating button would, and better — the map's puts the new record
-  // where you tapped. Two buttons for one act is one too many, so the page's own wins and the
-  // floating one drops. Other entities' actions stay; only the one this page adds inline goes.
+  // already does the one thing the top bar's "+" would, and better — the map's puts the new record
+  // where you tapped. Two buttons for one act is one too many, so the page's own wins and the "+"
+  // drops. Other entities' actions stay; only the one this page adds inline goes.
   const pageView = currentPage?.view as { type?: string; quickAdd?: unknown; geo?: unknown } | undefined;
   const addsInline = Boolean(pageView?.quickAdd) || (pageView?.type === "map" && typeof pageView.geo === "string") ? currentEntity : undefined;
-  // A custom view is a screen the app drew itself, with its own controls and often its own bottom
-  // bar: a floating button of ours lands on top of them. The app can put its own there.
+  // A custom view is a screen the app drew itself, with its own controls: what it adds, it offers
+  // itself, so the shell's "+" stays out of it.
   const ownsScreen = pageView?.type === "custom";
   const chromeQuick: ChromeQuick[] = quickActions
     .filter((qa) => qa.entity !== addsInline)
@@ -886,7 +886,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       onRun: () => triggerQuick(qa),
     }));
   // A hidden page (a record's detail, a custom walk-through) is a sub-page: the top bar gets a back
-  // control to the entity's list, and the floating quick action stays out of the page's own actions.
+  // control to the entity's list, and the "+" stays out of the page's own actions.
   const isSubPage = Boolean(currentPage?.hidden);
   // The page's header (page-header.tsx): every page that lists or sums records — not a record's own
   // page, a map that fills the screen, or a screen the app drew itself.
@@ -896,7 +896,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     !fullscreen &&
     (Boolean(currentPage?.layout) || !["detail", "map", "custom"].includes(pageView?.type ?? ""));
   // The page's ONE primary action (`primaryAction`): a quick action by id, or one of its own actions
-  // by index. It is the bar at the bottom of the page (page-primary.tsx), and the floating Add stands
+  // by index. It is the bar at the bottom of the page (page-primary.tsx), and the top bar's "+" stands
   // down for it.
   const primaryRef = (currentPage as { primaryAction?: string | number } | undefined)?.primaryAction;
   const ctaQuick = typeof primaryRef === "string" ? quickActions.find((qa) => qa.id === primaryRef) : undefined;
@@ -1021,7 +1021,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       <AppChrome
         name={appLabel}
         icon={def.icon ?? "◆"}
-        scope={scopeDef ? <ScopeSwitcher runtime={runtime} appId={scopeAppId} onNew={newScope} /> : null}
+        scope={scopeDef ? <ScopeSwitcher runtime={runtime} appName={appLabel} appId={scopeAppId} onNew={newScope} /> : null}
         status={
           <>
             {/* Provenance is shown only when it is unusual (#87): an app that runs in the sandbox

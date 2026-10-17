@@ -15624,3 +15624,18 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-checklist[data-strike="off"] .k-check-row[data-done] {
   opacity: 1;
 }
+
+/* Adding, on a phone: a "+" in the top bar for what the page shows — in the app's colour, so it is
+   found, and out of the way of the rows people came to read. */
+.k-topbar-add {
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--accent-ink);
+  background: color-mix(in oklab, var(--accent) 16%, transparent);
+  border-radius: 999px;
+}
+.k-topbar-add:hover,
+.k-topbar-add:focus-visible {
+  background: color-mix(in oklab, var(--accent) 28%, transparent);
+}

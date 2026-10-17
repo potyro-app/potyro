@@ -309,7 +309,7 @@ test.describe("guard: the Studio, Add an app, data, forms and the splash in the 
     await expect(page.locator("h1").first()).toHaveText("Places", { timeout: 30_000 });
     // The map page adds in place; the list page has the quick action that opens the form.
     await page.getByRole("tab", { name: "All places" }).or(page.getByRole("button", { name: "All places" })).first().click();
-    await page.locator(".k-quick:visible, .k-fab:visible").first().click();
+    await page.locator(".k-quick:visible").first().click();
     const sheet = page.locator(".k-sheet").last();
     await expect(sheet).toBeVisible();
     await settled(sheet);
