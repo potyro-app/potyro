@@ -480,14 +480,14 @@ msgstr "{count, plural, one {Otherwise it stays on the list ({kind}: none).} oth
 msgid "{count, plural, one {Shared with # person} other {Shared with # people}}"
 msgstr "{count, plural, one {Shared with # person} other {Shared with # people}}"
 
-#. How many records the page shows, read after its title
-#: ../shell/src/page-header.tsx
-msgid "{count} shown"
-msgstr "{count} shown"
-
 #: ../shell/src/ask-review.tsx
 msgid "{created, plural, one {added # record} other {added # records}}"
 msgstr "{created, plural, one {added # record} other {added # records}}"
+
+#. The suggested name of a duplicated list
+#: ../shell/src/scope-switcher.tsx
+msgid "{current} (copy)"
+msgstr "{current} (copy)"
 
 #. done is e.g. “Added 3 places”
 #: ../shell/src/ask-panel.tsx
@@ -597,6 +597,16 @@ msgstr "{input}/{output} /M"
 #: ../shell/src/point-target.ts
 msgid "{kind} · {pageName}"
 msgstr "{kind} · {pageName}"
+
+#. The scope switcher: which one the app shows, e.g. which trip
+#: ../shell/src/scope-switcher.tsx
+msgid "{kind}: {current} — change"
+msgstr "{kind}: {current} — change"
+
+#. The scope switcher, nothing chosen yet
+#: ../shell/src/scope-switcher.tsx
+msgid "{kind}: none chosen — change"
+msgstr "{kind}: none chosen — change"
 
 #. Ask review: pick which of your records a change is for; kind is the app's name for them
 #: ../shell/src/ask-review-edits.tsx
@@ -861,21 +871,6 @@ msgstr "{repeats, plural, one {This text is written # time in the app — all of
 #: ../shell/src/App.tsx
 msgid "{roomUnread, plural, one {Chat — # unread} other {Chat — # unread}}"
 msgstr "{roomUnread, plural, one {Chat — # unread} other {Chat — # unread}}"
-
-#. The scope picker: which one the app shows, e.g. which trip
-#: ../shell/src/App.tsx
-msgid "{scopeLabel}: {scopedName} — change"
-msgstr "{scopeLabel}: {scopedName} — change"
-
-#. The scope picker, nothing chosen yet
-#: ../shell/src/App.tsx
-msgid "{scopeLabel}: none chosen — change"
-msgstr "{scopeLabel}: none chosen — change"
-
-#. The scope picker; scopeLabel is the app's word, e.g. Trip (docs/20 Q3: it goes first)
-#: ../shell/src/App.tsx
-msgid "{scopeLabel}: which one the app is showing"
-msgstr "{scopeLabel}: which one the app is showing"
 
 #. Data table: records matching the search, of all records
 #: ../shell/src/data-table.tsx
@@ -1612,7 +1607,9 @@ msgid "Area on your map · {lat}, {lng} · <1 km"
 msgstr "Area on your map · {lat}, {lng} · <1 km"
 
 #. Button under the tile wall: resize, move and group the tiles
+#. Checklist: drag, rename and group the items (a mode)
 #: ../shell/src/launcher-metro.tsx
+#: ../views/src/checklist.tsx
 msgid "Arrange"
 msgstr "Arrange"
 
@@ -1698,7 +1695,6 @@ msgstr "Asks for"
 #: ../shell/src/chrome.tsx
 #: ../shell/src/chrome.tsx
 #: ../shell/src/data-page.tsx
-#: ../shell/src/page-header.tsx
 #: ../shell/src/suggest-wording.tsx
 msgid "Back"
 msgstr "Back"
@@ -2165,7 +2161,7 @@ msgstr "Choose the file your old Potyro saved. You will see everything in it bef
 msgid "Choose which model writes and edits your app"
 msgstr "Choose which model writes and edits your app"
 
-#: ../shell/src/App.tsx
+#: ../shell/src/scope-switcher.tsx
 #: ../views/src/enum-input.tsx
 #: ../views/src/relation-input.tsx
 msgid "Choose…"
@@ -2573,6 +2569,7 @@ msgstr "Decrease {label}"
 #: ../shell/src/files-panel.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/remove-app.ts
+#: ../shell/src/scope-switcher.tsx
 #: ../shell/src/studio.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
@@ -2586,6 +2583,11 @@ msgstr "Delete"
 #: ../shell/src/draft-strip.tsx
 msgid "Delete “{0}”"
 msgstr "Delete “{0}”"
+
+#. Scope menu: deleting the list/trip/group being shown
+#: ../shell/src/scope-switcher.tsx
+msgid "Delete “{current}”?"
+msgstr "Delete “{current}”?"
 
 #: ../views/src/checklist.tsx
 msgid "Delete “{groupName}”?"
@@ -2634,6 +2636,10 @@ msgstr "Delete this conversation"
 #: ../shell/src/studio.tsx
 msgid "Delete this conversation?"
 msgstr "Delete this conversation?"
+
+#: ../shell/src/scope-switcher.tsx
+msgid "Delete…"
+msgstr "Delete…"
 
 #: ../shell/src/launcher.tsx
 msgid "Describe a new app"
@@ -2758,6 +2764,11 @@ msgstr "Done — your apps are on {site}"
 msgid "Done ({doneCount})"
 msgstr "Done ({doneCount})"
 
+#. Checklist: leave the mode where rows drag and rename
+#: ../views/src/checklist.tsx
+msgid "Done arranging"
+msgstr "Done arranging"
+
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
 #: ../views/src/list-input.tsx
@@ -2780,6 +2791,11 @@ msgstr "Drop to add to Potyro"
 #: ../shell/src/studio.tsx
 msgid "Duplicate"
 msgstr "Duplicate"
+
+#. Scope menu: a copy of the list with everything in it
+#: ../shell/src/scope-switcher.tsx
+msgid "Duplicate…"
+msgstr "Duplicate…"
 
 #: ../shell/src/ask-panel.tsx
 msgid "e.g. five dog-friendly cafés near the river"
@@ -2896,6 +2912,11 @@ msgstr "Everything else"
 #: ../shell/src/guests-panel.tsx
 msgid "Everything in “{appName}” that names {name} will name you instead."
 msgstr "Everything in “{appName}” that names {name} will name you instead."
+
+#. Deleting a list: the records in it are deleted with it; the number is how many
+#: ../shell/src/scope-switcher.tsx
+msgid "Everything in it goes too ({inside})."
+msgstr "Everything in it goes too ({inside})."
 
 #: ../shell/src/move-banner.tsx
 msgid "Everything is still here too. Changed something here since? Bring them over again: what is already there is never doubled."
@@ -4242,6 +4263,11 @@ msgstr "My plants, and when each one needs water"
 msgid "Name"
 msgstr "Name"
 
+#. Scope menu: duplicating a list; asks for the copy's name
+#: ../shell/src/scope-switcher.tsx
+msgid "Name the copy of “{current}”"
+msgstr "Name the copy of “{current}”"
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Name the header the key goes in."
 msgstr "Name the header the key goes in."
@@ -4271,6 +4297,11 @@ msgstr "new"
 #: ../shell/src/ask-verdicts.ts
 msgid "New"
 msgstr "New"
+
+#. Scope menu: start a new list/trip/group; the app's word for it
+#: ../shell/src/scope-switcher.tsx
+msgid "New {kind}"
+msgstr "New {kind}"
 
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
@@ -5282,6 +5313,11 @@ msgstr "Removed {name}"
 msgid "Rename"
 msgstr "Rename"
 
+#. Scope menu: a new name for the list/trip/group being shown
+#: ../shell/src/scope-switcher.tsx
+msgid "Rename “{current}”"
+msgstr "Rename “{current}”"
+
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
 msgid "Rename {heading}"
@@ -5298,6 +5334,10 @@ msgstr "Rename {name}"
 #: ../shell/src/studio.tsx
 msgid "Rename app"
 msgstr "Rename app"
+
+#: ../shell/src/scope-switcher.tsx
+msgid "Rename…"
+msgstr "Rename…"
 
 #: ../views/src/list-input.tsx
 msgid "Reorder {name}, {position} of {count}. Use the arrow keys."
@@ -6193,6 +6233,10 @@ msgstr "that change would have produced source that doesn't parse"
 #: ../shell/src/suggest-wording.tsx
 msgid "That could not be sent."
 msgstr "That could not be sent."
+
+#: ../shell/src/scope-switcher.tsx
+msgid "That did not work"
+msgstr "That did not work"
 
 #: ../shell/src/move-banner.tsx
 msgid "That did not work: {reason} Nothing here was changed. Try again: nothing is doubled."
@@ -7128,6 +7172,11 @@ msgstr "Use your voice to describe the app?"
 #: ../shell/src/look-panel.tsx
 msgid "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
 msgstr "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
+
+#. Checklist: what the app suggests adding, while the add box is empty
+#: ../views/src/checklist-usuals.tsx
+msgid "Usual items"
+msgstr "Usual items"
 
 #. Chart data table: the bar's value
 #: ../views/src/chart.tsx

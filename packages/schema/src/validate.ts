@@ -400,9 +400,10 @@ const checklistView = z.object({
   sort: zFn.optional(),
   filters: z.array(filterChipSchema).optional(),
   hideDone: z.union([z.boolean(), z.literal("collapse")]).optional(),
+  doneLabel: zWords.optional(),
   donePlacement: z.enum(["sink", "stay"]).optional(),
   quickAdd: z
-    .union([z.boolean(), z.object({ suggest: z.boolean().optional(), remember: z.array(z.string()).optional(), defaults: zFn.optional() }).strict()])
+    .union([z.boolean(), z.object({ suggest: z.boolean().optional(), remember: z.array(z.string()).optional(), defaults: zFn.optional(), usuals: zFn.optional() }).strict()])
     .optional(),
   icon: zBinding.optional(),
   layout: z.enum(["rows", "tiles"]).optional(),
@@ -635,6 +636,7 @@ const pageActionSchema = z.object({
   label: zWordsNonEmpty,
   icon: z.string().min(1).max(8).optional(),
   run: zFn,
+  when: zFn.optional(),
 });
 
 const pageSchema = z
@@ -705,6 +707,7 @@ const migrationOpSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("renameEntity"), from: z.string(), to: z.string() }),
   z.object({ op: z.literal("setDefaultForExisting"), entity: z.string(), field: z.string(), value: z.any() }),
   z.object({ op: z.literal("addRelation"), entity: z.string(), field: z.string(), to: z.string(), many: z.boolean().optional() }),
+  z.object({ op: z.literal("addRecord"), entity: z.string(), id: z.string().min(1), values: z.record(z.any()) }),
 ]);
 
 // Wrapping the discriminated union in a `z.union` with the `{ transform }` branch would throw its

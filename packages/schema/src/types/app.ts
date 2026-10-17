@@ -319,6 +319,9 @@ export interface ChecklistView {
   filters?: FilterChip[];
   /** `true`: done rows disappear. `"collapse"`: they fold into a "Done (n)" section. Default: listed under "Done". */
   hideDone?: boolean | "collapse";
+  /** The folded section's heading under `hideDone: "collapse"`, in the app's words ("In the basket").
+   *  Default: "Done". The count follows it. */
+  doneLabel?: Words;
   /** Where a ticked row goes. `"stay"` (default) leaves it exactly where it is. `"sink"` moves it to
    *  the bottom of its own group, so what is left to do stays together — at the cost of the row you
    *  just touched leaving from under your finger. `hideDone` still wins. */
@@ -352,6 +355,12 @@ export interface ChecklistQuickAdd {
   remember?: string[];
   /** The new item's other fields, from what was typed. */
   defaults?: (text: string, ctx: Ctx) => Record<string, unknown> | Promise<Record<string, unknown>>;
+  /**
+   * What to offer while the box is empty, most likely first: item texts as chips, one tap adds one
+   * ("Milk", "Eggs"). Gets the rows the page shows now; a text already open on the list is never
+   * offered. A tapped chip is added like typed text, so `remember` and `defaults` apply to it.
+   */
+  usuals?: (rows: Resolved[], ctx: Ctx) => string[] | Promise<string[]>;
 }
 
 /** Records in columns by an enum field; dragging a card, or its Move to, patches that field (#107). */
@@ -599,16 +608,22 @@ export interface PageAction {
   /** One emoji or short glyph, shown before the label. */
   icon?: string;
   run: (ctx: Ctx) => void | Promise<void>;
+  /** Whether the action applies now, from the rows the page shows: "Done shopping" only once
+   *  something is ticked. Without it the action is always there. */
+  when?: (rows: Resolved[], ctx: Ctx) => boolean | Promise<boolean>;
 }
 
 export interface Page {
   id: string;
   /** The tab label. A function of ctx can name the selection: `(ctx) => \`Places in ${ctx.scope.trip?.city ?? "…"}\``. */
   title: Dynamic<Words>;
-  /** One line under the page's title. */
+  /** What the page is for, in a sentence: shown in the app's list of pages and the Studio, not on the
+   *  page itself, where it would sit above the content on every visit. */
   description?: Words;
-  /** A big button in the page's header ("Start workout"): a quick action's `id`, or the index of one
-   *  of its `actions`. The page then has no floating Add. */
+  /** The page's frequent action ("Done shopping", "Start workout"), as a bar at the bottom of the
+   *  screen: a quick action's `id`, or the index of one of its `actions` (whose `when` decides when
+   *  the bar shows). The page then has no floating Add. Adding a record is rarely what a page is
+   *  opened for: name it here only when it is ("+ Expense" on a page you add to every day). */
   primaryAction?: string | number;
   /** This page's ground; overrides `theme.background`. */
   background?: Backdrop;
@@ -671,6 +686,9 @@ export type MigrationStep =
   | { op: "renameEntity"; from: string; to: string }
   | { op: "setDefaultForExisting"; entity: string; field: string; value: unknown }
   | { op: "addRelation"; entity: string; field: string; to: string; many?: boolean }
+  /** A record the existing ones need — the list that a new `list` relation gives them — under a fixed
+   *  `id`, so a following `setDefaultForExisting` can point at it. Nothing happens if it exists. */
+  | { op: "addRecord"; entity: string; id: string; values: Record<string, unknown> }
   | { transform: (record: PotyroRecord, ctx: Ctx) => PotyroRecord };
 
 export interface Migration {

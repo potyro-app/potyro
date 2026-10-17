@@ -480,14 +480,14 @@ msgstr "{count, plural, one {W przeciwnym razie zostanie na liście ({kind}: bra
 msgid "{count, plural, one {Shared with # person} other {Shared with # people}}"
 msgstr "{count, plural, one {Udostępniono # osobie} few {Udostępniono # osobom} many {Udostępniono # osobom} other {Udostępniono # osoby}}"
 
-#. How many records the page shows, read after its title
-#: ../shell/src/page-header.tsx
-msgid "{count} shown"
-msgstr "Widocznych: {count}"
-
 #: ../shell/src/ask-review.tsx
 msgid "{created, plural, one {added # record} other {added # records}}"
 msgstr "{created, plural, one {dodano # wpis} few {dodano # wpisy} many {dodano # wpisów} other {dodano # wpisu}}"
+
+#. The suggested name of a duplicated list
+#: ../shell/src/scope-switcher.tsx
+msgid "{current} (copy)"
+msgstr "{current} (kopia)"
 
 #. done is e.g. “Added 3 places”
 #: ../shell/src/ask-panel.tsx
@@ -597,6 +597,16 @@ msgstr "{input}/{output} /M"
 #: ../shell/src/point-target.ts
 msgid "{kind} · {pageName}"
 msgstr "{kind} · {pageName}"
+
+#. The scope switcher: which one the app shows, e.g. which trip
+#: ../shell/src/scope-switcher.tsx
+msgid "{kind}: {current} — change"
+msgstr "{kind}: {current} — zmień"
+
+#. The scope switcher, nothing chosen yet
+#: ../shell/src/scope-switcher.tsx
+msgid "{kind}: none chosen — change"
+msgstr "{kind}: nic nie wybrano — zmień"
 
 #. Ask review: pick which of your records a change is for; kind is the app's name for them
 #: ../shell/src/ask-review-edits.tsx
@@ -861,21 +871,6 @@ msgstr "{repeats, plural, one {Ten tekst występuje w aplikacji # raz — zmieni
 #: ../shell/src/App.tsx
 msgid "{roomUnread, plural, one {Chat — # unread} other {Chat — # unread}}"
 msgstr "{roomUnread, plural, one {Czat — # nieprzeczytana} few {Czat — # nieprzeczytane} many {Czat — # nieprzeczytanych} other {Czat — # nieprzeczytanej}}"
-
-#. The scope picker: which one the app shows, e.g. which trip
-#: ../shell/src/App.tsx
-msgid "{scopeLabel}: {scopedName} — change"
-msgstr "{scopeLabel}: {scopedName} — zmień"
-
-#. The scope picker, nothing chosen yet
-#: ../shell/src/App.tsx
-msgid "{scopeLabel}: none chosen — change"
-msgstr "{scopeLabel}: nic nie wybrano — zmień"
-
-#. The scope picker; scopeLabel is the app's word, e.g. Trip (docs/20 Q3: it goes first)
-#: ../shell/src/App.tsx
-msgid "{scopeLabel}: which one the app is showing"
-msgstr "{scopeLabel}: który pokazuje aplikacja"
 
 #. Data table: records matching the search, of all records
 #: ../shell/src/data-table.tsx
@@ -1612,7 +1607,9 @@ msgid "Area on your map · {lat}, {lng} · <1 km"
 msgstr "Obszar na twojej mapie · {lat}, {lng} · <1 km"
 
 #. Button under the tile wall: resize, move and group the tiles
+#. Checklist: drag, rename and group the items (a mode)
 #: ../shell/src/launcher-metro.tsx
+#: ../views/src/checklist.tsx
 msgid "Arrange"
 msgstr "Uporządkuj"
 
@@ -1698,7 +1695,6 @@ msgstr "Prosi o"
 #: ../shell/src/chrome.tsx
 #: ../shell/src/chrome.tsx
 #: ../shell/src/data-page.tsx
-#: ../shell/src/page-header.tsx
 #: ../shell/src/suggest-wording.tsx
 msgid "Back"
 msgstr "Wstecz"
@@ -2165,7 +2161,7 @@ msgstr "Wybierz plik zapisany przez twoje stare Potyro. Zobaczysz całą jego za
 msgid "Choose which model writes and edits your app"
 msgstr "Wybierz, który model pisze i edytuje twoją aplikację"
 
-#: ../shell/src/App.tsx
+#: ../shell/src/scope-switcher.tsx
 #: ../views/src/enum-input.tsx
 #: ../views/src/relation-input.tsx
 msgid "Choose…"
@@ -2573,6 +2569,7 @@ msgstr "Zmniejsz {label}"
 #: ../shell/src/files-panel.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/remove-app.ts
+#: ../shell/src/scope-switcher.tsx
 #: ../shell/src/studio.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
@@ -2586,6 +2583,11 @@ msgstr "Usuń"
 #: ../shell/src/draft-strip.tsx
 msgid "Delete “{0}”"
 msgstr "Usuń „{0}”"
+
+#. Scope menu: deleting the list/trip/group being shown
+#: ../shell/src/scope-switcher.tsx
+msgid "Delete “{current}”?"
+msgstr "Usunąć „{current}”?"
 
 #: ../views/src/checklist.tsx
 msgid "Delete “{groupName}”?"
@@ -2634,6 +2636,10 @@ msgstr "Usuń tę rozmowę"
 #: ../shell/src/studio.tsx
 msgid "Delete this conversation?"
 msgstr "Usunąć tę rozmowę?"
+
+#: ../shell/src/scope-switcher.tsx
+msgid "Delete…"
+msgstr "Usuń…"
 
 #: ../shell/src/launcher.tsx
 msgid "Describe a new app"
@@ -2758,6 +2764,11 @@ msgstr "Gotowe — twoje aplikacje są na {site}"
 msgid "Done ({doneCount})"
 msgstr "Zrobione ({doneCount})"
 
+#. Checklist: leave the mode where rows drag and rename
+#: ../views/src/checklist.tsx
+msgid "Done arranging"
+msgstr "Zakończ układanie"
+
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
 #: ../views/src/list-input.tsx
@@ -2780,6 +2791,11 @@ msgstr "Upuść, aby dodać do Potyro"
 #: ../shell/src/studio.tsx
 msgid "Duplicate"
 msgstr "Duplikuj"
+
+#. Scope menu: a copy of the list with everything in it
+#: ../shell/src/scope-switcher.tsx
+msgid "Duplicate…"
+msgstr "Duplikuj…"
 
 #: ../shell/src/ask-panel.tsx
 msgid "e.g. five dog-friendly cafés near the river"
@@ -2896,6 +2912,11 @@ msgstr "Wszystko inne"
 #: ../shell/src/guests-panel.tsx
 msgid "Everything in “{appName}” that names {name} will name you instead."
 msgstr "Wszystko w „{appName}”, co wskazuje na {name}, będzie wskazywać na ciebie."
+
+#. Deleting a list: the records in it are deleted with it; the number is how many
+#: ../shell/src/scope-switcher.tsx
+msgid "Everything in it goes too ({inside})."
+msgstr "Wszystko, co w niej jest, też zostanie usunięte ({inside})."
 
 #: ../shell/src/move-banner.tsx
 msgid "Everything is still here too. Changed something here since? Bring them over again: what is already there is never doubled."
@@ -4242,6 +4263,11 @@ msgstr "Moje rośliny i kiedy każda potrzebuje wody"
 msgid "Name"
 msgstr "Nazwa"
 
+#. Scope menu: duplicating a list; asks for the copy's name
+#: ../shell/src/scope-switcher.tsx
+msgid "Name the copy of “{current}”"
+msgstr "Nazwa kopii „{current}”"
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Name the header the key goes in."
 msgstr "Podaj nazwę nagłówka, w którym idzie klucz."
@@ -4271,6 +4297,11 @@ msgstr "nowy"
 #: ../shell/src/ask-verdicts.ts
 msgid "New"
 msgstr "Nowy"
+
+#. Scope menu: start a new list/trip/group; the app's word for it
+#: ../shell/src/scope-switcher.tsx
+msgid "New {kind}"
+msgstr "Utwórz: {kind}"
 
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
@@ -5282,6 +5313,11 @@ msgstr "Usunięto {name}"
 msgid "Rename"
 msgstr "Zmień nazwę"
 
+#. Scope menu: a new name for the list/trip/group being shown
+#: ../shell/src/scope-switcher.tsx
+msgid "Rename “{current}”"
+msgstr "Zmień nazwę „{current}”"
+
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
 msgid "Rename {heading}"
@@ -5298,6 +5334,10 @@ msgstr "Zmień nazwę: {name}"
 #: ../shell/src/studio.tsx
 msgid "Rename app"
 msgstr "Zmień nazwę aplikacji"
+
+#: ../shell/src/scope-switcher.tsx
+msgid "Rename…"
+msgstr "Zmień nazwę…"
 
 #: ../views/src/list-input.tsx
 msgid "Reorder {name}, {position} of {count}. Use the arrow keys."
@@ -6193,6 +6233,10 @@ msgstr "ta zmiana dałaby kod źródłowy, którego nie da się odczytać"
 #: ../shell/src/suggest-wording.tsx
 msgid "That could not be sent."
 msgstr "Nie udało się tego wysłać."
+
+#: ../shell/src/scope-switcher.tsx
+msgid "That did not work"
+msgstr "To się nie udało"
 
 #: ../shell/src/move-banner.tsx
 msgid "That did not work: {reason} Nothing here was changed. Try again: nothing is doubled."
@@ -7128,6 +7172,11 @@ msgstr "Opisać aplikację głosem?"
 #: ../shell/src/look-panel.tsx
 msgid "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
 msgstr "Używany przez ekran aplikacji i Studio oraz przez każdą aplikację, która nie dostała własnego koloru — kolor aplikacji jest na jej kafelku, w <0>Edytuj kafelek</0>."
+
+#. Checklist: what the app suggests adding, while the add box is empty
+#: ../views/src/checklist-usuals.tsx
+msgid "Usual items"
+msgstr "Zwykłe zakupy"
 
 #. Chart data table: the bar's value
 #: ../views/src/chart.tsx
