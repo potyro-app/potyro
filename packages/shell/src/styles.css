@@ -9928,8 +9928,8 @@ body:has(.k-tabbar) .k-toasts {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  /* The page scrolls, not the list: Add (below) sticks to the screen's foot only then. */
   padding: var(--space-3) var(--space-3) calc(4.5rem + var(--k-safe-bottom));
-  overflow-y: auto;
 }
 .k-map-list-note {
   margin: 0;
@@ -9944,6 +9944,25 @@ body:has(.k-tabbar) .k-toasts {
   position: static;
   transform: none;
   align-self: center;
+}
+/* With no map to float over, the filters keep a row of their own instead of covering the list. */
+.k-page[data-full]:has(.k-map-list) > .k-chrome {
+  position: static;
+  margin: var(--space-3) var(--space-3) 0;
+}
+/* Add stays in reach at the foot of the list as it scrolls. */
+.k-map-list > .k-map-add {
+  position: sticky;
+  align-self: flex-end;
+  margin-top: auto;
+  right: auto;
+}
+/* A record opened from the list sits on the screen, not at the foot of a list longer than it. */
+.k-map-list > .k-map-sheet-scrim {
+  position: fixed;
+}
+.k-geo-no-map {
+  margin: 0;
 }
 .k-map-list-rows {
   display: flex;
