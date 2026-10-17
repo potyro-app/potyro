@@ -13,7 +13,7 @@
 
 import { t } from "@lingui/core/macro";
 import type { TimerBridge, TimerData, TimerVerb } from "@potyro/host";
-import { TIMER_LIMITS } from "@potyro/host";
+import { secondsLeft, TIMER_LIMITS } from "@potyro/host";
 
 /** One countdown, as this device keeps it. Times in ms. */
 export interface KeptTimer {
@@ -48,6 +48,7 @@ const RING_FOR_MS = 10 * 60_000;
 const MAX_WAIT = 2 ** 31 - 1;
 
 const notificationId = (k: KeptTimer): string => `timer:${k.app}:${k.id}`;
+const drawnKey = (app: string, id: string): string => `${app}\u0000${id}`;
 
 function readKept(storage: StorageLike | undefined): KeptTimer[] {
   try {
@@ -75,6 +76,8 @@ export class TimerHub {
   private wake: ReturnType<typeof setTimeout> | null = null;
   private seq = 0;
   private readonly now: () => number;
+  /** Timers a page on screen draws itself (`ctx.ui.drawsTimer`): how many holds each, by app and id. */
+  private drawn = new Map<string, number>();
 
   constructor(private readonly deps: TimerHubDeps = {}) {
     this.now = deps.now ?? Date.now;
@@ -90,7 +93,65 @@ export class TimerHub {
       start: async (o) => this.data(this.start(app, appName, o)),
       list: async () => this.running(app).map((k) => this.data(k)),
       control: async (id, verb) => this.control(app, id, verb),
+      draw: (id) => this.draw(app, id),
     };
+  }
+
+  /**
+   * `app`'s page draws its timer `id` itself: the chip stays out of the way until the returned
+   * function is called (once each; with several holds, the last one brings it back). Kept apart from
+   * the timers: a hold for a timer that has not started yet hides it the moment it does.
+   */
+  draw(app: string, id: string): () => void {
+    const key = drawnKey(app, id);
+    this.drawn = new Map(this.drawn).set(key, (this.drawn.get(key) ?? 0) + 1);
+    this.notify();
+    let done = false;
+    return () => {
+      if (done) return;
+      done = true;
+      const n = (this.drawn.get(key) ?? 1) - 1;
+      const next = new Map(this.drawn);
+      if (n > 0) next.set(key, n);
+      else next.delete(key);
+      this.drawn = next;
+      this.notify();
+    };
+  }
+
+  /** The person left `app`: whatever its pages said they draw, they draw no longer. The timers go on. */
+  releaseDraws(app: string): void {
+    const prefix = drawnKey(app, "");
+    const next = new Map([...this.drawn].filter(([k]) => !k.startsWith(prefix)));
+    if (next.size === this.drawn.size) return;
+    this.drawn = next;
+    this.notify();
+  }
+
+  /**
+   * The chips to show, with `app` (the one on screen; `null` at home) first: every timer but those a
+   * page is drawing itself — unless it has rung, when its chip is the way to say Done.
+   */
+  chips(app: string | null): KeptTimer[] {
+    return this.all()
+      .filter((k) => k.ringing || !this.drawn.has(drawnKey(k.app, k.id)))
+      .sort((a, b) => Number(b.app === app) - Number(a.app === app));
+  }
+
+  /**
+   * Milliseconds until a counting timer's whole seconds (`secondsLeft`) next change, or `null` when
+   * none counts: the chips draw again then, on the second, not up to a second late.
+   */
+  nextChangeIn(): number | null {
+    let soonest: number | null = null;
+    for (const k of this.kept) {
+      if (k.ringing || k.endsAt === null) continue;
+      const left = k.endsAt - this.now();
+      if (left <= 0) continue;
+      const wait = left % 1000 || 1000;
+      if (soonest === null || wait < soonest) soonest = wait;
+    }
+    return soonest;
   }
 
   start(app: string, appName: string, o: { label: string; seconds: number; id?: string }): KeptTimer {
@@ -139,6 +200,9 @@ export class TimerHub {
     return k.endsAt === null ? k.leftMs : Math.max(0, k.endsAt - this.now());
   }
 
+  /** A stable snapshot of what pages draw themselves, for `useSyncExternalStore`. */
+  drawnSnapshot = (): ReadonlyMap<string, number> => this.drawn;
+
   subscribe = (cb: () => void): (() => void) => {
     this.listeners.add(cb);
     return () => this.listeners.delete(cb);
@@ -185,7 +249,7 @@ export class TimerHub {
   // ---- inside ----
 
   private data(k: KeptTimer): TimerData {
-    return { id: k.id, label: k.label, seconds: k.seconds, endsAt: k.endsAt === null ? null : new Date(k.endsAt).toISOString(), left: Math.ceil(this.leftOf(k) / 1000), paused: k.endsAt === null };
+    return { id: k.id, label: k.label, seconds: k.seconds, endsAt: k.endsAt === null ? null : new Date(k.endsAt).toISOString(), left: secondsLeft(this.leftOf(k)), paused: k.endsAt === null };
   }
 
   private replace(k: KeptTimer, next: KeptTimer): void {
@@ -212,6 +276,10 @@ export class TimerHub {
       // Storage full or blocked: the timers still run while Potyro is open.
     }
     this.arm();
+    this.notify();
+  }
+
+  private notify(): void {
     for (const cb of [...this.listeners]) cb();
   }
 

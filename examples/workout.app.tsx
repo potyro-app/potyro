@@ -300,8 +300,12 @@ interface Active {
 const REST_ID = "rest";
 const REST_LABEL = { en: "Rest", "pt-BR": "Descanso", de: "Pause", es: "Descanso", pl: "Przerwa", it: "Recupero" };
 
-/** Seconds left on a timer: counted to its end while it runs, as the shell left it while paused. */
-const secondsLeft = (t: UiTimer, now: number): number => (t.endsAt ? Math.max(0, Math.ceil((t.endsAt.getTime() - now) / 1000)) : t.left);
+/** Milliseconds until a running timer's whole seconds change: the screen draws again exactly then. */
+const toNextSecond = (t: UiTimer, now: number): number | null => {
+  if (!t.endsAt) return null;
+  const left = t.endsAt.getTime() - now;
+  return left > 0 ? left % 1000 || 1000 : null;
+};
 
 interface Summary {
   name: string;
@@ -389,7 +393,25 @@ function Train(props: ViewProps) {
     return () => awake.release();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [underWay]);
-  const restLeft = rest ? secondsLeft(rest, now) : null;
+  // `secondsLeft` is the chip's own count, so the bar and the chip on History say the same second.
+  const restLeft = rest ? rest.secondsLeft(now) : null;
+  const restShown = rest != null && restLeft != null && restLeft > 0;
+  // …and drawn again the moment that second changes, not on the 500 ms beat's own phase.
+  const restTick = rest ? toNextSecond(rest, now) : null;
+  useEffect(() => {
+    if (restTick === null) return;
+    const id = setTimeout(() => setNow(Date.now()), restTick + 4);
+    return () => clearTimeout(id);
+  }, [restTick, now]);
+  // While a workout is under way this screen draws the rest itself (the bar, with +30s and skip), so
+  // the shell's chip for it stays out of the way here — said before the rest starts, so the chip never
+  // flashes up under the bar. It is back on History, and when the rest rings (its Done is the chip's).
+  useEffect(() => {
+    if (!underWay) return;
+    const drawn = ctx.ui.drawsTimer(REST_ID);
+    return () => drawn.release();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [underWay]);
 
   // The exercises this screen needs are the ones in routines and in sessions, which arrive with them
   // (a relation is read with its record): no third query, and none of an exercise's own figures,
@@ -919,7 +941,7 @@ function Train(props: ViewProps) {
       </div>
 
       <div className="wk-bar">
-        {rest && restLeft != null && restLeft > 0 ? (
+        {rest && restLeft != null && restShown ? (
           <div className="wk-rest" data-paused={rest.paused || undefined} role="timer" aria-label={ctx.t({ en: "Rest", "pt-BR": "Descanso", de: "Pause", es: "Descanso", pl: "Przerwa", it: "Recupero" })}>
             <svg className="wk-ring" viewBox="0 0 44 44" aria-hidden="true">
               <circle cx="22" cy="22" r="19" />

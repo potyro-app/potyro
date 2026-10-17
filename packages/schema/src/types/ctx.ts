@@ -238,9 +238,20 @@ export interface UiTimer {
   /** Seconds left when this was read (the frozen amount, while paused). */
   readonly left: number;
   readonly paused: boolean;
+  /**
+   * Whole seconds left now — or at `at` — rounded up, exactly as the chip counts: draw this and a
+   * countdown on the page agrees with the chip to the second. While paused, what was left.
+   */
+  secondsLeft(at?: Date | number): number;
   cancel(): Promise<void>;
   pause(): Promise<void>;
   resume(): Promise<void>;
+}
+
+/** What `ui.drawsTimer` hands back. */
+export interface UiDrawnTimer {
+  /** The page no longer draws it: its chip shows again. Leaving the page or the app does this too; twice is fine. */
+  release(): void;
 }
 
 /** Takes `Words` wherever it takes words. */
@@ -287,6 +298,13 @@ export interface CtxUi {
   timer(opts: UiTimerOptions): Promise<UiTimer>;
   /** This app's timers that are running or paused, soonest first. */
   timers(): Promise<UiTimer[]>;
+  /**
+   * This page draws the timer `id` itself (its own countdown, on screen): until `release()`, the
+   * shell leaves out that timer's chip, so the countdown is not shown twice. Call it while the page
+   * shows the countdown — in a React effect, releasing in its cleanup. The timer still counts and
+   * rings; its chip shows on the app's other pages, when it has rung, and once the page goes.
+   */
+  drawsTimer(id: string): UiDrawnTimer;
 }
 
 /** A link to the app making it: which page it opens, and with what (docs/24 §11). */
