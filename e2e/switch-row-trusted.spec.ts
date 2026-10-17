@@ -7,9 +7,14 @@ import { test, expect } from "./console-guard";
 async function openNewPlant(page: import("@playwright/test").Page): Promise<import("@playwright/test").Locator> {
   await page.goto("/?user=plants");
   await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
-  // Today's one big button is "Add a plant" (a photo or typed); the Plants list has the form button.
-  await page.getByRole("tab", { name: "Plants" }).or(page.getByRole("button", { name: "Plants", exact: true })).first().click();
-  await page.getByRole("button", { name: "Add: Plant" }).click();
+  // On a phone the "+" is "Add a plant" (a photo or typed) and the whole form is in the ⋯ menu; a
+  // wide screen lists it in the sidebar.
+  const direct = page.getByRole("button", { name: "Add: Plant" });
+  if (await direct.count()) await direct.click();
+  else {
+    await page.getByRole("button", { name: "More", exact: true }).click();
+    await page.getByRole("menu", { name: "More" }).getByRole("menuitem", { name: /Add: Plant/ }).click();
+  }
   const form = page.locator(".k-form");
   await expect(form).toBeVisible();
   return form;
@@ -47,9 +52,9 @@ test.describe("phone", () => {
     await page.locator(".k-list-row", { hasText: "Sun-lover" }).click();
     await expect(page.locator(".k-detail-title")).toHaveText("Sun-lover");
     // The record page states the value in words, which is the form the claim takes here: the
-    // switch was on when it was saved, so the plant needs direct sun after a reload.
-    const sunField = page.locator(".k-detail .k-field", { hasText: "Wants direct sun" }).first();
-    await expect(sunField).toContainText("Yes");
+    // switch was on when it was saved, so the plant's cover says "Direct sun" after a reload (off, it
+    // would say "Bright, no direct sun").
+    await expect(page.locator(".k-detail-hero")).toContainText("Direct sun");
   });
 });
 

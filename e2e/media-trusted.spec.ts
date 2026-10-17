@@ -49,10 +49,11 @@ test.describe("desktop", () => {
     await form.getByRole("button", { name: "Create" }).click();
     const detail = page.locator("article.k-detail");
     await expect(detail).toBeVisible();
-    // The record's photo is its page's cover now, across the top with the name on it — and not shown
-    // a second time as a tile further down.
-    await expect(detail).toHaveAttribute("data-cover", "banner");
-    await expect(detail.locator(".k-detail-photo img")).toHaveAttribute("src", /^blob:|^data:/);
+    // The record's photo is its page's cover now, behind the page with the name on it — and not
+    // shown a second time as a tile further down.
+    await expect(detail).toHaveAttribute("data-cover", "background");
+    await expect(detail.locator(".k-detail-backdrop img")).toHaveAttribute("src", /^blob:|^data:/);
+    await expect(detail.locator(".k-media-tile")).toHaveCount(0);
     await expect(detail.locator(".k-detail-title")).toHaveText("E2E Photo Plant");
     // Read-only there: nothing to remove from a record you are reading.
     await expect(detail.locator(".k-media-x")).toHaveCount(0);
@@ -64,9 +65,9 @@ test.describe("phone", () => {
 
   test("the tile offers the camera or the library", async ({ page }) => {
     await openApp(page, "plants", "Plants");
-    // Today's one big button is "Add a plant"; the Plants list has the floating form button.
-    await page.locator(".k-tabbar .k-tab", { hasText: "Plants" }).tap();
-    await page.getByRole("button", { name: "Add: Plant" }).tap();
+    // The "+" is "Add a plant" (a photo or typed); the whole form is in the ⋯ menu.
+    await page.getByRole("button", { name: "More", exact: true }).tap();
+    await page.getByRole("menu", { name: "More" }).getByRole("menuitem", { name: /Add: Plant/ }).tap();
     const form = page.locator(".k-form");
     await form.getByRole("button", { name: "Photo: add photo" }).tap();
     // A phone with a camera gets the choice, as a sheet under the thumb.

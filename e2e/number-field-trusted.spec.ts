@@ -11,7 +11,13 @@ async function openForm(page: Page, app: string, title: string, button: string, 
   // than showing two buttons for one act. Places lands on its Map, so its form is reached from the
   // list; the form itself is the same one either way, and the number field is what is under test.
   if (via) await page.getByRole("tab", { name: via }).or(page.getByRole("button", { name: via })).first().click();
-  await page.getByRole("button", { name: button }).click();
+  // A page whose "+" runs its own add (Plants: a photo or typed) has the whole form in the ⋯ menu.
+  const direct = page.getByRole("button", { name: button });
+  if (await direct.count()) await direct.click();
+  else {
+    await page.getByRole("button", { name: "More", exact: true }).click();
+    await page.getByRole("menu", { name: "More" }).getByRole("menuitem", { name: button }).click();
+  }
   const form = page.locator(".k-form");
   await expect(form).toBeVisible();
   return form;
