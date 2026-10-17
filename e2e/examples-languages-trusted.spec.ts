@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "./console-guard";
+import { skipWithoutMaps } from "./engines";
 
 // Every example in Polish (#303): a Polish browser opens each one and reads the app's own words in
 // Polish, as rendered — the name in the header, the tabs, a heading or a button the app declares, and
@@ -42,13 +43,14 @@ test("plants reads in Polish, with a Polish plural and a Polish relative date", 
 });
 
 test("places reads in Polish", async ({ page }) => {
+  await skipWithoutMaps(page);
   await open(page, "places", "Miejsca");
   await expect(page.getByRole("button", { name: /Pokaż wszystkie/ })).toBeVisible();
   await expect(page.getByText("Teraz otwarte").first()).toBeVisible();
-  await tab(page, "Według kategorii").click();
-  // The fold's group heading and its rows' words come from the app's functions.
-  await expect(page.locator(".k-aggregate")).toContainText("Kategorie", { timeout: 30_000 });
-  await expect(page.locator(".k-aggregate")).toContainText(/restauracja|kawiarnia|bar|pizzeria|piekarnia|inne/);
+  // The map's cards: a category and whether it is open, put into Polish by the app's functions.
+  const card = page.locator(".k-map-strip .k-map-card-detail").first();
+  await expect(card).toContainText(/restauracja|kawiarnia|bar|pizzeria|piekarnia|park|inne/, { timeout: 30_000 });
+  await expect(card).toContainText(/teraz otwarte|zamknięte|godziny nieznane/);
 });
 
 test("recipes reads in Polish, its custom cook-along view too", async ({ page }) => {

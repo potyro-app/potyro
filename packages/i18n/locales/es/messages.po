@@ -1305,6 +1305,8 @@ msgid "Add files"
 msgstr "Añadir archivos"
 
 #. Map: add a new record at a point; entityLabel is the app's word for it
+#. Map: add a new record at a point; entityLabel is the app's word for it
+#: ../views/src/map.tsx
 #: ../views/src/map.tsx
 msgid "Add here: {entityLabel}"
 msgstr "Añadir aquí: {entityLabel}"
@@ -4747,6 +4749,11 @@ msgstr "En {where}, sobre “{text}”: "
 msgid "On {where}: "
 msgstr "En {where}: "
 
+#. The row of cards along the bottom of a map: the records in view
+#: ../views/src/map.tsx
+msgid "On the map"
+msgstr "En el mapa"
+
 #. Voice input: the words are made on the phone or computer itself; nothing leaves it
 #: ../shell/src/app-speech.ts
 msgid "On this device"
@@ -7110,6 +7117,7 @@ msgstr "Deshacer el grupo"
 msgid "Unpin"
 msgstr "Desfijar"
 
+#: ../views/src/map.tsx
 #: ../views/src/map.tsx
 msgid "Untitled"
 msgstr "Sin título"
