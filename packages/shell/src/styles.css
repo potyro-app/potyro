@@ -15378,7 +15378,8 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   justify-content: center;
   margin-top: var(--space-3);
   padding: var(--space-2) var(--space-1);
-  background: linear-gradient(to bottom, color-mix(in oklab, var(--paper) 0%, transparent), var(--paper) 30%);
+  background: var(--paper);
+  box-shadow: 0 -10px 18px -14px color-mix(in oklab, var(--ink) 30%, transparent);
   animation: k-rise var(--dur) var(--ease) both;
 }
 .k-primary-bar .k-cta {
