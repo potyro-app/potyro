@@ -466,7 +466,9 @@ export interface Ctx {
    * `ctx.scope.trip` is the current trip as a `Resolved` record, or `undefined` while none is
    * chosen. Synchronous and fixed per evaluation pass, so a `filter` can read it directly:
    * `(e, ctx) => e.trip?.id === ctx.scope.trip?.id`. Always present; `{}` for an app with no scope.
-   * Per device — which trip *you* are looking at is not shared state.
+   * Per device — which trip *you* are looking at is not shared state. Live: the record as it is
+   * now — renamed, a guest added, by anyone — not as it was when picked; watchers re-run when it
+   * changes. Deleted, nothing is selected.
    */
   scope: Readonly<Record<string, Resolved | undefined>>;
 

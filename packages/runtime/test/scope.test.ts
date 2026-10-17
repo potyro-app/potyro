@@ -130,4 +130,68 @@ describe("ctx.scope", () => {
     // An option that was never declared is null, not an error.
     expect(await runtime.viewOption("places", "camera")).toBeNull();
   });
+
+  describe("is live: the selected record as it is now, not as it was when it was picked", () => {
+    const settle = async (): Promise<void> => {
+      for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0));
+    };
+
+    it("an edit to the selected record reaches ctx.scope and re-runs live watchers, with no reselect", async () => {
+      const { runtime, store, berlin } = await setup();
+      await runtime.setScope("trip", berlin);
+      const titles: string[] = [];
+      const stop = runtime.core.onInvalidate(() => void runtime.pageOption("places", "title").then((t) => titles.push(String(t))));
+      await store.update("trip", berlin, { city: "Berlin-Mitte" });
+      await settle();
+      stop();
+      expect((runtime.scope.trip as { city?: string }).city).toBe("Berlin-Mitte");
+      expect((runtime.ctx.scope.trip as { city?: string }).city).toBe("Berlin-Mitte");
+      expect(titles.at(-1)).toBe("Places in Berlin-Mitte");
+      expect(await runtime.viewOption("places", "emptyText")).toBe("No places in Berlin-Mitte yet");
+    });
+
+    it("a write to another record of the entity changes nothing, and re-runs nothing", async () => {
+      const { runtime, store, berlin, lisbon } = await setup();
+      await runtime.setScope("trip", berlin);
+      let runs = 0;
+      const stop = runtime.core.onInvalidate(() => void runs++);
+      await store.update("trip", lisbon, { city: "Porto" });
+      await settle();
+      stop();
+      expect(runs).toBe(0);
+      expect((runtime.scope.trip as { city?: string }).city).toBe("Berlin");
+    });
+
+    it("a record deleted while selected is no longer selected", async () => {
+      const { runtime, store, berlin } = await setup();
+      await runtime.setScope("trip", berlin);
+      await store.delete("trip", berlin);
+      await settle();
+      expect(runtime.scope.trip).toBeUndefined();
+      expect((await runtime.queryPage("places")).rows.map((r) => r.name)).toEqual(["Cozy Bar", "Pastelaria"]);
+    });
+
+    it("an old selection's re-read never lands over a newer selection", async () => {
+      const { runtime, store, berlin, lisbon } = await setup();
+      await runtime.setScope("trip", berlin);
+      const write = store.update("trip", berlin, { city: "Berlin-Mitte" });
+      await runtime.setScope("trip", lisbon);
+      await write;
+      await settle();
+      expect((runtime.scope.trip as { city?: string }).city).toBe("Lisbon");
+      // And the old one is no longer followed: editing it now changes nothing.
+      await store.update("trip", berlin, { city: "Berlin-Kreuzberg" });
+      await settle();
+      expect((runtime.scope.trip as { city?: string }).city).toBe("Lisbon");
+    });
+
+    it("a selection cleared stops following the record", async () => {
+      const { runtime, store, berlin } = await setup();
+      await runtime.setScope("trip", berlin);
+      await runtime.setScope("trip", null);
+      await store.update("trip", berlin, { city: "Berlin-Mitte" });
+      await settle();
+      expect(runtime.scope.trip).toBeUndefined();
+    });
+  });
 });

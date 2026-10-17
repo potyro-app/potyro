@@ -7,6 +7,8 @@ import { grantClipboard } from "./engines";
 
 test.use({ viewport: { width: 1280, height: 800 } });
 
+const shots = process.env.POTYRO_SHOTS;
+
 test("an untrusted app asks with a form, a menu and a progress bar", async ({ page }) => {
   await installQuestions(page, false);
 
@@ -80,15 +82,21 @@ test("a sealed screen asks with the shell's sheet, and its answer reaches the sc
   const chip = page.locator(".k-timer-chip", { hasText: "Rest" });
   await expect(chip).toHaveCount(1);
   await expect(frame.getByRole("timer", { name: "Rest" })).toBeVisible();
-  // Skipped in the frame: the shell's timer stops, not just its drawing.
-  await frame.getByRole("button", { name: "skip" }).click();
-  await expect(chip).toHaveCount(0);
-  await frame.getByRole("button", { name: "Finish" }).click();
+  // The chip is shell chrome: `--k-chrome-bottom` takes it in, the frame ends above it, and the view's
+  // own bottom bar with it — Finish is tapped with the rest still running, by a real click (#377).
+  await expect(chip).toBeVisible();
+  const finish = frame.getByRole("button", { name: "Finish" });
+  const [chipBox, finishBox] = [await chip.boundingBox(), await finish.boundingBox()];
+  expect(chipBox && finishBox && finishBox.y + finishBox.height <= chipBox.y).toBe(true);
+  if (shots) await page.screenshot({ path: `${shots}/sealed-train-rest-finish-clear.png` });
+  await finish.click();
   const sheet = page.getByRole("menu", { name: "Finish workout?" });
   await expect(sheet).toBeVisible();
   await expect(sheet.getByRole("menuitem")).toHaveText([/Save and finish/, /Keep training/, /Discard workout/]);
   await sheet.getByRole("menuitem", { name: /Discard workout/ }).click();
   await expect(frame.getByRole("button", { name: /Start Pull A/ })).toBeVisible();
+  // Thrown away, the rest goes with it: the shell's timer stops, not just its drawing.
+  await expect(chip).toHaveCount(0);
   // Thrown away: the screen may sleep.
   await expect(html).not.toHaveAttribute("data-k-awake", "");
 });

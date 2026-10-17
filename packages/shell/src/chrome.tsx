@@ -238,13 +238,13 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
   // How much room the chrome takes at the bottom of the screen, as a custom property the PAGE can
   // read. A view that draws its own bottom bar — the workout tracker's rest timer — otherwise has
   // to guess the tab bar's height, and a wrong guess puts its bar underneath it, where the workout's
-  // rest countdown sat unseen.
+  // rest countdown sat unseen. A running timer's chips sit on the tab bar and take more (timer-dock.tsx).
   const tabs = pages.length > 1;
   return (
     <div
       className="k-app-phone"
       data-recording={recording || undefined}
-      style={{ ["--k-chrome-bottom" as string]: tabs ? "calc(4.75rem + var(--k-safe-bottom))" : "var(--k-safe-bottom)" }}
+      style={{ ["--k-chrome-bottom" as string]: `max(${tabs ? "calc(4.75rem + var(--k-safe-bottom))" : "var(--k-safe-bottom)"}, var(--k-timer-room, 0px))` }}
     >
       <header className="k-topbar">
         {onBack ? (

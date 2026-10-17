@@ -10,10 +10,15 @@
 :root {
   color-scheme: light;
 
-  /* How much room the app's chrome takes at the bottom of the screen. The phone chrome overrides
-     this with its tab bar's height; a view drawing its own bottom bar reads it instead of guessing
-     (see `.wk-bar` in the workout example). */
-  --k-chrome-bottom: 0px;
+  /* How much of the bottom of the screen the shell's running timers take (`ctx.ui.timer`'s chips,
+     timer-dock.tsx sets it while they show in an app), from the bottom edge to just above them. */
+  --k-timer-room: 0px;
+
+  /* How much room the app's chrome takes at the bottom of the screen: the phone's tab bar (chrome.tsx
+     overrides this with its height) and the shell's timer chips while a countdown runs. A view
+     drawing its own bottom bar reads it instead of guessing (see `.wk-bar` in the workout example),
+     so its buttons are never under the shell's. */
+  --k-chrome-bottom: var(--k-timer-room);
 
   /* How much room the shell's own chrome takes at the top of the app's screen, under its top bar:
      the "Camera on" sign while it shows (camera-indicator.ts sets it), else nothing. A custom view
@@ -497,13 +502,13 @@ button {
 /* On a phone the map runs under the fixed tab bar — that is the look — so its chrome clears it. */
 .k-app-phone .k-page[data-full] .k-map-add,
 .k-app-phone .k-page[data-full] .k-map-bar {
-  bottom: calc(4.75rem + var(--k-safe-bottom));
+  bottom: max(calc(4.75rem + var(--k-safe-bottom)), var(--k-timer-room));
 }
 .k-app-phone .k-page[data-full] .k-map-locate {
-  bottom: calc(4.75rem + var(--k-safe-bottom));
+  bottom: max(calc(4.75rem + var(--k-safe-bottom)), var(--k-timer-room));
 }
 .k-app-phone .k-page[data-full] .k-map-locate[data-stacked] {
-  bottom: calc(4.75rem + 3.5rem + var(--k-safe-bottom));
+  bottom: calc(max(calc(4.75rem + var(--k-safe-bottom)), var(--k-timer-room)) + 3.5rem);
 }
 /* Armed: the cursor says the next tap does something, and the map is visibly the target. */
 .k-map[data-placing] .k-map-canvas {
@@ -4236,11 +4241,12 @@ button.k-prov:focus-visible {
   outline-offset: -3px;
 }
 
-/* The floating quick action, above the tab bar in thumb reach; held, the others rise above it. */
+/* The floating quick action, above the tab bar in thumb reach — and above a running timer's chip,
+   which sits on the tab bar; held, the others rise above it. */
 .k-fab {
   position: fixed;
   right: var(--space-3);
-  bottom: calc(4.75rem + var(--k-safe-bottom));
+  bottom: max(calc(4.75rem + var(--k-safe-bottom)), var(--k-timer-room));
   z-index: 21;
   display: inline-flex;
   align-items: center;
@@ -4282,7 +4288,7 @@ button.k-prov:focus-visible {
 .k-fab-dial {
   position: fixed;
   right: var(--space-3);
-  bottom: calc(8.5rem + var(--k-safe-bottom));
+  bottom: calc(max(calc(4.75rem + var(--k-safe-bottom)), var(--k-timer-room)) + 3.75rem);
   z-index: 21;
   display: flex;
   flex-direction: column;
@@ -14494,13 +14500,14 @@ button.k-metro-group-name {
 /* `ctx.ui.timer` (docs/04 §Timers): the countdowns the shell keeps, on every page and at home. A dark
    pill reads as the shell's, not the app's — the same family as the progress bar —
    and a rung timer turns the accent colour and breathes until someone says Done. */
-/* In thumb reach and off the page's own controls: stacked above the floating add button (which sits
-   above the tab bar on a phone), like a player's mini bar — the top of a page is its filters and
-   actions. At home, above "New app". */
+/* In thumb reach and off the page's own controls: on the tab bar, like a player's mini bar — the top
+   of a page is its filters and actions. It is shell chrome: while it shows, `--k-chrome-bottom` takes
+   it in (timer-dock.tsx measures it), so the floating add button and an app's own bottom bar sit
+   above it rather than under it. At home, above "New app". */
 .k-timer-dock {
   position: fixed;
   right: calc(var(--space-3) + var(--k-safe-right));
-  bottom: calc(8.6rem + var(--k-safe-bottom));
+  bottom: calc(var(--space-3) + var(--k-safe-bottom));
   z-index: 56;
   display: flex;
   flex-direction: column-reverse;
@@ -14508,6 +14515,9 @@ button.k-metro-group-name {
   gap: var(--space-2);
   max-width: calc(100vw - 2 * var(--space-3));
   pointer-events: none;
+}
+body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
+  bottom: calc(4.75rem + var(--k-safe-bottom) + var(--space-2));
 }
 .k-timer-dock[data-home] {
   bottom: calc(5rem + var(--k-safe-bottom));

@@ -62,15 +62,6 @@ const everyone = (ctx: Ctx, group?: unknown): string[] => {
 };
 
 /**
- * Everyone in the selected group, read fresh: `ctx.scope.group` is the group as it was when it was
- * chosen, and naming guests changes it while it stays chosen.
- */
-const everyoneHere = async (ctx: Ctx): Promise<string[]> => {
-  const id = ctx.scope.group?.id;
-  return everyone(ctx, (id ? await ctx.get("group", String(id)) : null) ?? ctx.scope.group);
-};
-
-/**
  * Who paid. Said by the expense; else whoever wrote it down, which is who paid nine times out of ten;
  * else — for sample records nobody wrote, in an app nobody else is in (a demo) or a group of one —
  * you. Without the last two, a sample expense would be paid by nobody and owed by everybody.
@@ -698,8 +689,8 @@ export default defineApp({
           // is when the maths runs". Otherwise every expense written before you shared the app is
           // invisible to the person you shared it with: they see it in the list with a share of
           // €0.00, which reads as a broken app rather than as a decision about who was there.
-          default: async (ctx) => {
-            const ids = await everyoneHere(ctx);
+          default: (ctx) => {
+            const ids = everyone(ctx, ctx.scope.group);
             return ids.length > 1 ? ids : [];
           },
         },
@@ -906,8 +897,8 @@ export default defineApp({
               entity: "expense",
               title: { en: "Balances", "pt-BR": "Saldos", de: "Salden", es: "Saldos", pl: "Salda", it: "Saldi" },
               // Alone, there is nobody to owe: the empty balances are where the group starts — ask the others in.
-              emptyText: async (ctx) =>
-                (await everyoneHere(ctx)).some((id) => id !== ctx.me?.id)
+              emptyText: (ctx) =>
+                everyone(ctx, ctx.scope.group).some((id) => id !== ctx.me?.id)
                   ? ctx.t({ en: "Nobody owes anybody. 🎉", "pt-BR": "Ninguém deve nada a ninguém. 🎉", de: "Niemand schuldet jemandem etwas. 🎉", es: "Nadie le debe nada a nadie. 🎉", pl: "Nikt nikomu nic nie jest winien. 🎉", it: "Nessuno deve niente a nessuno. 🎉" })
                   : ctx.t({
                       en: "Just you so far. Tap Invite to name who's coming, or send them the link: no account needed.",

@@ -161,6 +161,10 @@ interface Ctx {
   // ---- the app-wide selection, when the app declares a top-level `scope` (docs/03) ----
   // `ctx.scope.trip` is the current trip as a Resolved record, or undefined; `{}` without a scope.
   // Synchronous and fixed per evaluation pass, so a filter can read it. Per device, not shared.
+  // Live: the record as it is NOW — renamed, a guest added, by you or anyone in the space — not as
+  // it was when it was picked; every watcher re-runs when it changes, as for a new choice. Deleted,
+  // nothing is selected. (A long action that writes it back reads it with ctx.get first: its own
+  // pass keeps the value it started with.)
   scope: Readonly<Record<string, Resolved | undefined>>;
 
   // ---- the app's words and the person's formats (#302, docs/20) ----
@@ -503,9 +507,9 @@ await rest.pause();     // resume(), cancel() — the person can do the same on 
 const running = await ctx.ui.timers();   // this app's, counting or paused, soonest first
 ```
 
-- **A chip** above the add button shows each running timer on every page of the app and on the home
+- **A chip** on the tab bar (bottom right on a wide screen) shows each running timer on every page of the app and on the home
   screen — another app's names its app and opens it. Pause, resume and stop are on the chip. At the
-  end it chimes and buzzes, and the chip turns "Time's up" until the person says Done.
+  end it chimes and buzzes, and the chip turns "Time's up" until the person says Done. The chips are shell chrome: `--k-chrome-bottom` takes them in, so the add button and an app's own bottom bar sit above them.
 - **At the end, with the screen locked:** a notification is scheduled for its end on the device —
   exactly the scheduling reminders use, so it rings with Potyro closed on Android and iOS. On the web
   a closed tab cannot ring: Potyro rings on time while it is open (a system notification too if the
@@ -657,7 +661,7 @@ properties a custom view reads instead of guessing:
 
 | Property | What it is |
 |---|---|
-| `--k-chrome-bottom` | The room the shell's tab bar (and the phone's gesture bar) takes at the bottom. A view with its own bottom bar sits above it: `bottom: var(--k-chrome-bottom, 0px)`. |
+| `--k-chrome-bottom` | The room the shell's chrome takes at the bottom: its tab bar (and the phone's gesture bar), and the chips of `ctx.ui.timer` while a countdown runs — on a phone they sit on the tab bar, on a wide screen at its bottom right. A view with its own bottom bar or floating button sits above it: `bottom: var(--k-chrome-bottom, 0px)`, so a rest running never covers Finish. Like `--k-chrome-top`, it changes while the view is open. |
 | `--k-chrome-top` | The room the shell's chrome takes at the top of the app's screen, under its top bar — the "Camera on" sign while the live camera runs (docs/25), `0px` otherwise. A stage with something of its own at its top (a badge, a score) keeps it below: `padding-top: var(--k-chrome-top, 0px)`. It changes while the view is open; a view that sizes itself in script measures again when it does. |
 
 ## Design rules for `ctx`
