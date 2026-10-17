@@ -25,7 +25,7 @@ test.describe("phone", () => {
     await expect(sun).toHaveAttribute("aria-checked", "false");
     await expect(active).toHaveAttribute("aria-checked", "true"); // its default
     const box = (await sun.boundingBox())!;
-    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(Math.round(box.height)).toBeGreaterThanOrEqual(44); // 43.9999… is a 44px row, measured mid-animation
     const formBox = (await form.boundingBox())!;
     expect(box.width).toBeGreaterThan(formBox.width * 0.8); // the row, not a 13px box
     // A tap on the label end of the row, far from the toggle, toggles it.
