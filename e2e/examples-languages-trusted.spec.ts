@@ -30,13 +30,15 @@ test("groceries reads in Polish", async ({ page }) => {
 
 test("plants reads in Polish, with a Polish plural and a Polish relative date", async ({ page }) => {
   await open(page, "plants", "Rośliny");
-  await expect(page.getByRole("region", { name: "Podlewanie" })).toContainText("Do podlania teraz");
-  // ICU plural from ctx.t: "1 roślina", "2 rośliny", "5 roślin" — never "2 roślin" or "plants".
-  await expect(page.getByRole("region", { name: "Podlewanie" })).toContainText(/nic do podlania|\d+ roślin(a|y)? do podlania/);
-  // ctx.format.relative inside ctx.t: "podlana 30 dni temu · co 7 dni".
-  await expect(page.getByRole("region", { name: "Spragnione" })).toContainText(/podlana .*(temu|dzisiaj|wczoraj)/);
+  await expect(page.locator(".k-page-figures")).toContainText("do podlania dziś");
+  // ctx.format.relative inside ctx.t: "podlana 30 dni temu".
+  const now = page.getByRole("region", { name: "Podlej teraz" });
+  await expect(now).toContainText(/podlana .*(temu|dzisiaj|wczoraj)/);
   await expect(page.getByRole("button", { name: "Podlej" }).first()).toBeVisible();
-  await expect(tab(page, "Harmonogram")).toBeVisible();
+  await expect(tab(page, "Dziennik")).toBeVisible();
+  // ICU plural from ctx.t, on the plant's page: Fern every 7 days is "Co 7 dni" — never "Co 7 dnia".
+  await now.locator(".k-list-row", { hasText: "Fern" }).locator(".k-list-text").click();
+  await expect(page.locator(".k-detail-hero")).toContainText("Co 7 dni");
 });
 
 test("places reads in Polish", async ({ page }) => {

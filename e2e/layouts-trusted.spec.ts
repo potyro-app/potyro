@@ -1,8 +1,8 @@
 import { test, expect, type Page } from "./console-guard";
 
-// Page layouts (#105). Plants opens on "Today": a grid of the watering figures, the thirsty plants and
-// what comes up this week — three views on one page, three columns on a wide page, one column on a
-// phone. Places' "All places" is a split: on a wide screen a row fills the place beside the list; on
+// Page layouts (#105). Plants opens on "Today": a grid of the plants to water now and what comes up
+// this week — two views on one page, side by side (two columns and one) on a wide page, one under the
+// other on a phone. Places' "All places" is a split: on a wide screen a row fills the place beside the list; on
 // a phone the row opens the place's page, as any list does.
 
 async function open(page: Page, app: string, title: string): Promise<void> {
@@ -20,27 +20,24 @@ async function allPlaces(page: Page, phone = false): Promise<void> {
 test.describe("desktop", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("Plants' Today page is a grid of three views, in three columns", async ({ page }) => {
+  test("Plants' Today page is a grid of two views, two columns and one", async ({ page }) => {
     await open(page, "plants", "Plants");
     await expect(page.locator(".k-page-title")).toHaveText("Today");
     const grid = page.locator(".k-layout-grid");
-    await expect(grid.locator(".k-layout-title")).toHaveText(["Watering", "Thirsty", "Coming up"]);
-    // The figures (an aggregate), the thirsty plants and the week ahead (lists), each its own view.
-    await expect(grid.getByRole("region", { name: "Watering" })).toContainText("Due now");
-    await expect(grid.getByRole("region", { name: "Thirsty" }).locator(".k-list-row", { hasText: "Fern" })).toBeVisible();
+    await expect(grid.locator(".k-layout-title")).toHaveText(["Water now", "Coming up"]);
+    // The plants to water now and the week ahead, each its own list view.
+    const now = grid.getByRole("region", { name: "Water now" });
+    await expect(now.locator(".k-list-row", { hasText: "Fern" })).toBeVisible();
     await expect(grid.getByRole("region", { name: "Coming up" }).locator(".k-list-row").first()).toBeVisible();
-    // Three columns: the week ahead spans the row under the two above it.
-    const watering = (await grid.getByRole("region", { name: "Watering" }).boundingBox())!;
-    const thirsty = (await grid.getByRole("region", { name: "Thirsty" }).boundingBox())!;
+    // Side by side: the week ahead is the narrow column beside the wide one (span 2 + span 1).
+    const wide = (await now.boundingBox())!;
     const coming = (await grid.getByRole("region", { name: "Coming up" }).boundingBox())!;
-    expect(Math.abs(watering.y - thirsty.y)).toBeLessThan(2);
-    expect(thirsty.width).toBeGreaterThan(watering.width * 1.6);
-    expect(coming.y).toBeGreaterThan(Math.min(watering.y + watering.height, thirsty.y + thirsty.height) - 1);
-    expect(coming.width).toBeGreaterThan(thirsty.width + watering.width - 2);
-    // Watering from the Thirsty block patches the record through the item's own view.
-    const thirstyBlock = grid.getByRole("region", { name: "Thirsty" });
-    await thirstyBlock.locator(".k-list-row", { hasText: "Fern" }).getByRole("button", { name: "Water" }).click();
-    await expect(thirstyBlock.locator(".k-list-row", { hasText: "Fern" })).toHaveCount(0);
+    expect(Math.abs(wide.y - coming.y)).toBeLessThan(2);
+    expect(coming.x).toBeGreaterThan(wide.x + wide.width - 1);
+    expect(wide.width).toBeGreaterThan(coming.width * 1.6);
+    // Watering from the Water now block patches the record through the item's own view.
+    await now.locator(".k-list-row", { hasText: "Fern" }).getByRole("button", { name: "Water" }).click();
+    await expect(now.locator(".k-list-row", { hasText: "Fern" })).toHaveCount(0);
   });
 
   test("Places' split: a row fills the place on the right without leaving the page", async ({ page }) => {
@@ -69,10 +66,10 @@ test.describe("phone", () => {
   test("the grid stacks into one column, and the split's rows navigate", async ({ page }) => {
     await open(page, "plants", "Plants");
     const grid = page.locator(".k-layout-grid");
-    const watering = (await grid.getByRole("region", { name: "Watering" }).boundingBox())!;
-    const thirsty = (await grid.getByRole("region", { name: "Thirsty" }).boundingBox())!;
-    expect(thirsty.y).toBeGreaterThan(watering.y + watering.height - 1);
-    expect(Math.abs(thirsty.width - watering.width)).toBeLessThan(2);
+    const now = (await grid.getByRole("region", { name: "Water now" }).boundingBox())!;
+    const coming = (await grid.getByRole("region", { name: "Coming up" }).boundingBox())!;
+    expect(coming.y).toBeGreaterThan(now.y + now.height - 1);
+    expect(Math.abs(coming.width - now.width)).toBeLessThan(2);
 
     await allPlaces(page, true);
     await expect(page.locator(".k-layout-split")).not.toHaveAttribute("data-wide", "true");
