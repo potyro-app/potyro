@@ -309,8 +309,9 @@ The same specs run in **Firefox** with `ci:local e2e:firefox`, as shards of thei
 adds an engine to a shard. What differs between the engines is in `e2e/engines.ts` (docs/12).
 
 **Firefox is not part of the gate.** Measured on vazio (2026-10-17): Chromium's eight shards alone
-take ~7 min and Firefox's eight alone ~6; all sixteen at once took 11.5 min, and the CPU they fought
-over made Chromium's shards fail on timeouts. One after the other is ~13 min. So `all`,
+take ~6 min (the whole `all` ~8) and Firefox's eight alone ~5; all sixteen at once took 11.5 min,
+and the CPU they fought over made Chromium's shards fail on timeouts. One after the other the run
+is ~13 min. So `all`,
 `status --post` and the watcher judge Chromium; `status` also prints Firefox's result for the commit
 when it has run. Run it before merging anything a person sees, and nightly — a crontab line on vazio,
 in a checkout of its own (not `~/appinator-deploy`, which the watcher moves):
