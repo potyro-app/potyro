@@ -275,6 +275,8 @@ export interface MapView {
    * else (a city guide, a route someone else walked) where the button would only ever disappoint.
    */
   locate?: boolean;
+  /** The records in view as cards along the bottom (from `display`), nearest first; a pin brings its card. */
+  strip?: boolean;
   /**
    * What a pin's popup shows besides its title — the same shape a list row uses: a photo, a second
    * line, tags. A name on its own rarely answers "is this the one I meant?"; the photo usually does.

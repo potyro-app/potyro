@@ -491,6 +491,117 @@ button {
   border-color: var(--accent);
   color: var(--accent);
 }
+/* `strip`: the records in view as a row of cards along the bottom, nearest the middle first. The
+   map says what is here without a tap on every pin; a pin brings its card, a swipe moves the map. */
+.k-map-strip {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--space-3) + var(--k-safe-bottom));
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0 var(--space-4);
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--space-4);
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.k-map-strip::-webkit-scrollbar {
+  display: none;
+}
+.k-map-strip > li {
+  flex: 0 0 min(17.5rem, calc(100% - 3.5rem));
+  scroll-snap-align: center;
+}
+.k-map-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  height: 5.5rem;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.k-map-strip > li[data-selected] .k-map-card {
+  border-color: var(--accent);
+  box-shadow: var(--shadow), 0 0 0 1px var(--accent);
+}
+.k-map-card:active {
+  transform: scale(0.98);
+}
+.k-map-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.k-map-card-media {
+  flex: 0 0 4.5rem;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: var(--radius);
+  object-fit: cover;
+}
+.k-map-card-pin {
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+}
+.k-map-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.k-map-card-title {
+  font-weight: 650;
+  font-size: 0.98rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.k-map-card-detail {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* Above the cards: the add (round, beside the locate) and Where am I, as one stack at the right. */
+.k-map[data-strip] .k-map-add,
+.k-map[data-strip] .k-map-locate {
+  bottom: calc(var(--space-3) + 5.5rem + var(--space-3) + var(--k-safe-bottom));
+}
+.k-map[data-strip] .k-map-locate[data-stacked] {
+  bottom: calc(var(--space-3) + 5.5rem + var(--space-3) + 3.5rem + var(--k-safe-bottom));
+}
+.k-map-add[data-compact] {
+  width: 3rem;
+  padding: 0;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+/* The pin whose card is in front stands out of the crowd. */
+.maplibregl-marker[data-selected] {
+  z-index: 2;
+}
+.k-map-pin[data-selected] .k-map-pin-head {
+  background: var(--pin);
+  transform: rotate(-45deg) scale(1.2);
+}
 .k-map-locate:active {
   transform: scale(0.94);
 }
@@ -509,6 +620,17 @@ button {
 }
 .k-app-phone .k-page[data-full] .k-map-locate[data-stacked] {
   bottom: calc(max(calc(4.75rem + var(--k-safe-bottom)), var(--k-timer-room)) + 3.5rem);
+}
+/* …and so do the strip's cards, with the round add and Where am I stacked above them. */
+.k-app-phone .k-page[data-full] .k-map-strip {
+  bottom: max(calc(4.75rem + var(--k-safe-bottom)), var(--k-timer-room));
+}
+.k-app-phone .k-page[data-full] .k-map[data-strip] .k-map-add,
+.k-app-phone .k-page[data-full] .k-map[data-strip] .k-map-locate {
+  bottom: calc(max(calc(4.75rem + var(--k-safe-bottom)), var(--k-timer-room)) + 5.5rem + var(--space-3));
+}
+.k-app-phone .k-page[data-full] .k-map[data-strip] .k-map-locate[data-stacked] {
+  bottom: calc(max(calc(4.75rem + var(--k-safe-bottom)), var(--k-timer-room)) + 5.5rem + var(--space-3) + 3.5rem);
 }
 /* Armed: the cursor says the next tap does something, and the map is visibly the target. */
 .k-map[data-placing] .k-map-canvas {

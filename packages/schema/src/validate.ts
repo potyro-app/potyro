@@ -366,6 +366,7 @@ const mapView = z.object({
   // The "centre on me" button, on by default. `camera` cannot stand in for it — that is read when
   // the view opens, and this is the one thing that moves a map afterwards.
   locate: z.boolean().optional(),
+  strip: z.boolean().optional(),
   display: listDisplaySchema.optional(),
 });
 
