@@ -88,9 +88,9 @@ test.describe("phone", () => {
 
   test("Plants: the half-width fields stack", async ({ page }) => {
     await openApp(page, "plants", "Plants");
-    // Today's one big button is "Add a plant" (a photo or typed); the Plants list has the form.
-    await page.locator(".k-tabbar .k-tab", { hasText: "Plants" }).tap();
-    await page.getByRole("button", { name: "Add: Plant" }).click();
+    // The "+" is "Add a plant" (a photo or typed); the whole form is in the ⋯ menu.
+    await page.getByRole("button", { name: "More", exact: true }).tap();
+    await page.getByRole("menu", { name: "More" }).getByRole("menuitem", { name: /Add: Plant/ }).tap();
     const form = page.locator(".k-form");
     await settled(page);
     const watered = form.locator(".k-form-field").filter({ has: page.getByLabel("Last watered") });
