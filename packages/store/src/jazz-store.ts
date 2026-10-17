@@ -1388,7 +1388,9 @@ export class JazzStore implements Store {
     }
 
     for (const [entity, rows] of records) {
-      const index = await this.entityIndexIfPresent(entity);
+      // An entity with no index yet only gets one when a step gave it records (`addRecord`): reading
+      // must never create, but writing what a migration made has to.
+      const index = (await this.entityIndexIfPresent(entity)) ?? (rows.size ? await this.entityIndex(entity) : null);
       if (!index) continue;
       const live = new Set(rows.keys());
       for (const id of index.keys()) {

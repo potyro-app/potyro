@@ -1,4 +1,5 @@
 import { test, expect, type BrowserContext, type Locator, type Page } from "./console-guard";
+import { pickScope } from "./scope-pick.js";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 import { notOnTheList } from "./claim-prompt.js";
@@ -60,9 +61,7 @@ const SEEDED_HALF = 82.22;
 const openSplit = async (page: Page): Promise<void> => {
   await page.goto("/?user=split");
   // The app asks which group before it shows anything; the seed leaves exactly one.
-  const flat = page.getByRole("button", { name: /^Flat/ });
-  await expect(flat.first()).toBeVisible({ timeout: 30_000 });
-  await flat.first().click();
+  await pickScope(page, /^Flat/, 30_000);
 };
 
 test("a bill split by shares lands on the same cents for both people", async ({ browser }) => {
@@ -92,9 +91,7 @@ test("a bill split by shares lands on the same cents for both people", async ({ 
   await bo.goto(link);
   await bo.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(bo, "Bo");
-  const boFlat = bo.getByRole("button", { name: /^Flat/ });
-  await expect(boFlat.first()).toBeVisible({ timeout: 60_000 });
-  await boFlat.first().click();
+  await pickScope(bo, /^Flat/, 60_000);
   await expect(bo.locator(".k-list-row", { hasText: "Groceries" })).toBeVisible({ timeout: 60_000 });
 
   // ---- Ana pays €100 for dinner, split two shares to one ----
@@ -169,9 +166,7 @@ test("two people who each paid for something owe the difference, not the whole",
   await bo.goto(link);
   await bo.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(bo, "Bo");
-  const boFlat = bo.getByRole("button", { name: /^Flat/ });
-  await expect(boFlat.first()).toBeVisible({ timeout: 60_000 });
-  await boFlat.first().click();
+  await pickScope(bo, /^Flat/, 60_000);
   // Ana has to see Bo before an expense of hers can be split with him.
   await expect(ana.locator(".k-sync-status")).toContainText("Synced", { timeout: 60_000 });
   await expect(bo.locator(".k-list-row", { hasText: "Groceries" })).toBeVisible({ timeout: 60_000 });
@@ -219,9 +214,7 @@ test("an expense with nobody named is still split between the people in the grou
   await bo.goto(link);
   await bo.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(bo, "Bo");
-  const boFlat = bo.getByRole("button", { name: /^Flat/ });
-  await expect(boFlat.first()).toBeVisible({ timeout: 60_000 });
-  await boFlat.first().click();
+  await pickScope(bo, /^Flat/, 60_000);
   await expect(bo.locator(".k-list-row", { hasText: "Groceries" })).toBeVisible({ timeout: 60_000 });
   await expect(ana.locator(".k-sync-status")).toContainText("Synced", { timeout: 60_000 });
 

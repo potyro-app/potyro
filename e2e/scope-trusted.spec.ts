@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import { test, expect, type Page } from "./console-guard";
 
 // `scope` (#134): the one record everything else belongs to. This is the journey that opened the
-// issue — "select a trip, then everything shows that trip" — driven as a person would: the app asks
-// for a trip when it opens, a new place belongs to the trip you are in, switching trips changes what
-// every page shows, and the choice survives a reload. Fails without the scope chip, the runtime's
-// `setScope`, or the form default.
+// issue — "select a trip, then everything shows that trip" — driven as a person would: with no trip
+// yet the page offers a first one in place (never a question), a new place belongs to the trip
+// you are in, switching trips from the title changes what every page shows, and the choice survives a
+// reload. Fails without the switcher, the runtime's `setScope`, or the form default.
 
 const SOURCE = readFileSync(new URL("./fixtures/trips.app.ts.txt", import.meta.url), "utf8");
 
@@ -20,10 +20,10 @@ async function seed(page: Page): Promise<void> {
 }
 
 const chip = (page: Page) => page.locator(".k-scope");
-const picker = (page: Page) => page.getByRole("dialog", { name: "Choose" });
+const menu = (page: Page) => page.getByRole("menu");
 
+/** Fill the trip form that is open — the first one on open, or one asked for from the switcher. */
 async function createTrip(page: Page, city: string): Promise<void> {
-  await picker(page).getByRole("button", { name: /Add: Trip/ }).click();
   const form = page.locator(".k-form");
   await form.getByLabel(/City/).fill(city);
   await form.getByRole("button", { name: "Create" }).click();
@@ -35,9 +35,11 @@ test("a required scope is asked for on open, scopes every page, and is remembere
   await page.goto("/?user=trips");
   await expect(page.locator("h1").first()).toHaveText("Trips");
 
-  // Nothing to choose from yet: the picker offers only to create one.
-  await expect(picker(page)).toBeVisible();
+  // Nothing to choose from yet: the page offers a first trip in place — no question, no form
+  // popping up on its own.
   await expect(chip(page)).toContainText("Choose");
+  await expect(page.locator(".k-form")).toHaveCount(0);
+  await page.locator(".k-scope-empty").getByRole("button", { name: "New Trip" }).click();
   await createTrip(page, "Berlin");
 
   // A new place belongs to the trip you are in — the relation defaulted to the scope.
@@ -50,17 +52,18 @@ test("a required scope is asked for on open, scopes every page, and is remembere
   await page.getByRole("navigation", { name: "Pages" }).getByRole("button", { name: "Places" }).click();
   await expect(page.locator(".k-list-row", { hasText: "Cozy Bar" })).toContainText("Berlin");
 
-  // Another trip: the page narrows to it (nothing there yet), with no record written.
+  // Another trip, from the title: the page narrows to it (nothing there yet), with no record written.
   await chip(page).click();
+  await menu(page).getByRole("menuitem", { name: "New Trip" }).click();
   await createTrip(page, "Lisbon");
   await expect(page.locator(".k-list-row", { hasText: "Cozy Bar" })).toHaveCount(0);
   // The tab and the empty state are functions of the selection (#133).
   await expect(page.getByRole("navigation", { name: "Pages" }).getByRole("button", { name: "Places in Lisbon" })).toBeVisible();
   await expect(page.locator(".k-empty")).toHaveText("No places in Lisbon yet.");
 
-  // Back to Berlin through the picker's rows.
+  // Back to Berlin from the title.
   await chip(page).click();
-  await picker(page).getByRole("button", { name: "Berlin" }).click();
+  await menu(page).getByRole("menuitem", { name: "Berlin" }).click();
   await expect(chip(page)).toContainText("Berlin");
   await expect(page.locator(".k-list-row", { hasText: "Cozy Bar" })).toBeVisible();
 
@@ -68,6 +71,6 @@ test("a required scope is asked for on open, scopes every page, and is remembere
   await page.reload();
   await expect(page.locator("h1").first()).toHaveText("Trips");
   await expect(chip(page)).toContainText("Berlin");
-  await expect(picker(page)).toHaveCount(0);
+  await expect(page.locator(".k-form")).toHaveCount(0);
   await expect(page.locator(".k-list-row", { hasText: "Cozy Bar" })).toBeVisible();
 });

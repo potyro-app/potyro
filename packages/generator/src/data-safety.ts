@@ -222,6 +222,7 @@ function declaredBy(chain: readonly Migration[]): Declared {
         case "setDefaultForExisting":
         case "addField":
         case "addRelation":
+        case "addRecord":
           break;
         case "renameEntity":
           d.renamedEntities.push({ from: step.from, to: step.to });

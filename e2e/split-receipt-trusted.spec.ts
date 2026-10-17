@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { test, expect, type Page } from "./console-guard";
+import { pickScope } from "./scope-pick.js";
 
 // Split a receipt (docs/23): the photo goes to the AI service and comes back as lines in ONE form —
 // "Who had what?" — which the person checks, corrects and confirms before anything is saved. The
@@ -37,9 +38,7 @@ test.describe("desktop", () => {
     consoleGuard.allow(/Failed to load resource: .*404/, "the free AI relay is not deployed in this test: its /ai/health answers 404");
     const sent = await prepare(page);
     await page.goto("/?user=split");
-    const lisbon = page.getByRole("button", { name: /^Lisbon weekend/ });
-    await expect(lisbon.first()).toBeVisible({ timeout: 30_000 });
-    await lisbon.first().click();
+    await pickScope(page, /^Lisbon weekend/, 30_000);
     await expect(page.locator(".k-list-row", { hasText: "Tasca da Esquina" })).toBeVisible({ timeout: 30_000 });
 
     await page.getByRole("button", { name: /Split a receipt/ }).click();

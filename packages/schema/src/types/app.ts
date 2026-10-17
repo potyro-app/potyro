@@ -319,6 +319,8 @@ export interface ChecklistView {
   filters?: FilterChip[];
   /** `true`: done rows disappear. `"collapse"`: they fold into a "Done (n)" section. Default: listed under "Done". */
   hideDone?: boolean | "collapse";
+  /** The folded section's heading ("In the basket"). Default "Done". */
+  doneLabel?: Words;
   /** Where a ticked row goes. `"stay"` (default) leaves it exactly where it is. `"sink"` moves it to
    *  the bottom of its own group, so what is left to do stays together — at the cost of the row you
    *  just touched leaving from under your finger. `hideDone` still wins. */
@@ -352,6 +354,8 @@ export interface ChecklistQuickAdd {
   remember?: string[];
   /** The new item's other fields, from what was typed. */
   defaults?: (text: string, ctx: Ctx) => Record<string, unknown> | Promise<Record<string, unknown>>;
+  /** Texts the empty box offers as one-tap chips, most likely first; ones on the list are skipped. */
+  usuals?: (rows: Resolved[], ctx: Ctx) => string[] | Promise<string[]>;
 }
 
 /** Records in columns by an enum field; dragging a card, or its Move to, patches that field (#107). */
@@ -599,16 +603,18 @@ export interface PageAction {
   /** One emoji or short glyph, shown before the label. */
   icon?: string;
   run: (ctx: Ctx) => void | Promise<void>;
+  /** Whether it applies now, from the page's rows ("Done shopping" once something is ticked). */
+  when?: (rows: Resolved[], ctx: Ctx) => boolean | Promise<boolean>;
 }
 
 export interface Page {
   id: string;
   /** The tab label. A function of ctx can name the selection: `(ctx) => \`Places in ${ctx.scope.trip?.city ?? "…"}\``. */
   title: Dynamic<Words>;
-  /** One line under the page's title. */
+  /** What the page is for, in a sentence: shown where pages are listed, not on the page. */
   description?: Words;
-  /** A big button in the page's header ("Start workout"): a quick action's `id`, or the index of one
-   *  of its `actions`. The page then has no floating Add. */
+  /** The page's frequent action ("Done shopping"), a bar at the bottom: a quick action's `id`, or an
+   *  index into `actions`. No floating Add then. Name an Add here only if adding is what the page is for. */
   primaryAction?: string | number;
   /** This page's ground; overrides `theme.background`. */
   background?: Backdrop;
@@ -671,6 +677,8 @@ export type MigrationStep =
   | { op: "renameEntity"; from: string; to: string }
   | { op: "setDefaultForExisting"; entity: string; field: string; value: unknown }
   | { op: "addRelation"; entity: string; field: string; to: string; many?: boolean }
+  /** A record existing ones can point at (a new `list` for old items), under a fixed `id`. */
+  | { op: "addRecord"; entity: string; id: string; values: Record<string, unknown> }
   | { transform: (record: PotyroRecord, ctx: Ctx) => PotyroRecord };
 
 export interface Migration {

@@ -10,6 +10,7 @@ import { replayCase, type ActivityItem, type Case, type PotyroRuntime, type Repl
 import type { Provenance } from "@potyro/host";
 import { LayoutHost, PageCountContext, RecordForm, TRUST_REQUEST, ViewHost, backdropKind, backdropOf, byPeople, createDefaults, usePageTitles } from "@potyro/views";
 import { PageHeader, type PageCta } from "./page-header.js";
+import { PrimaryBar } from "./page-primary.js";
 import { FilterChrome } from "./filter-chrome.js";
 import { SummaryStrip } from "./summary-strip.js";
 import { Studio } from "./studio.js";
@@ -47,6 +48,7 @@ import type { NavHost } from "./nav-host.js";
 import { ViewErrorBoundary } from "./view-error-boundary.js";
 
 import { chooseScope } from "./scope.js";
+import { ScopeEmpty, ScopeSwitcher, useOpeningScope } from "./scope-switcher.js";
 import { appKey, recordSignals } from "./launcher-store.js";
 import { PeoplePanel } from "./people-panel.js";
 import { ClaimPrompt } from "./guests-panel.js";
@@ -311,28 +313,13 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   useEffect(() => runtime.core.onInvalidate(() => bumpScope((n) => n + 1)), [runtime]);
   const scopeAppId = appId ?? def.id;
   const scoped = scopeDef ? runtime.scope[scopeDef.entity] : undefined;
-  const scopeEntity = scopeDef ? def.entities[scopeDef.entity] : undefined;
-  const scopeLabel = scopeDef?.label ?? scopeEntity?.label ?? scopeDef?.entity ?? "";
-  const scopeName = (r: Resolved): string => String(r[scopeEntity?.displayField ?? "id"] ?? r.id);
-  const pickScope = async (): Promise<void> => {
-    if (!scopeDef) return;
-    const NEW = { __new: true as const };
-    const rows = await runtime.ctx.query(scopeDef.entity);
-    const picked = await runtime.ctx.ui.pick<Resolved | typeof NEW>(byPeople(runtime, scopeDef.entity) ? [...rows, NEW] : rows, {
-      label: (r) => ("__new" in r ? `＋ ${addLabel(scopeEntity?.label ?? scopeDef.entity)}` : scopeName(r)),
-    });
-    if (!picked || Array.isArray(picked)) return;
-    if ("__new" in picked) {
-      setEditor({ entity: scopeDef.entity, openAfter: false, onCreated: (id) => void chooseScope(runtime, scopeAppId, id) });
-      return;
-    }
-    await chooseScope(runtime, scopeAppId, picked.id);
+  // A new one, from the switcher or because there is none yet: the form, then it is the selection.
+  const newScope = (): void => {
+    if (scopeDef) setEditor({ entity: scopeDef.entity, openAfter: false, onCreated: (id) => void chooseScope(runtime, scopeAppId, id) });
   };
-  // A required scope is asked for as the app opens, once; the chip stays there to ask again.
-  useEffect(() => {
-    if (scopeDef?.required && !scoped) void pickScope();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // An app that needs a selection opens on one (scope-switcher.tsx), never on a question; with none
+  // at all, its pages offer the first one in place.
+  const noScopeYet = useOpeningScope(runtime, scopeAppId);
 
   // Holds the case being recorded, if any. One per mounted app instance — see case-recorder.ts for
   // why `navigate` below, and not `createNavBridge`, is where it has to be wrapped.
@@ -874,7 +861,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // the person goes to another page (or asks for it back from the tools).
   const [leftFullscreen, setLeftFullscreen] = useState<string | null>(null);
   // How many records the page's view shows, for its header — told by the view (PageCountContext).
-  const [pageCount, setPageCount] = useState<number | undefined>(undefined);
+  const [, setPageCount] = useState<number | undefined>(undefined);
   const [ctaBusy, setCtaBusy] = useState(false);
   const fullscreen = Boolean(currentPage?.fullscreen) && leftFullscreen !== pageId;
   const exitFullscreen = useCallback(() => setLeftFullscreen(pageId), [pageId]);
@@ -909,7 +896,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     !fullscreen &&
     (Boolean(currentPage?.layout) || !["detail", "map", "custom"].includes(pageView?.type ?? ""));
   // The page's ONE primary action (`primaryAction`): a quick action by id, or one of its own actions
-  // by index. It is the big button in the header, and the floating Add stands down for it.
+  // by index. It is the bar at the bottom of the page (page-primary.tsx), and the floating Add stands
+  // down for it.
   const primaryRef = (currentPage as { primaryAction?: string | number } | undefined)?.primaryAction;
   const ctaQuick = typeof primaryRef === "string" ? quickActions.find((qa) => qa.id === primaryRef) : undefined;
   const ctaAction = typeof primaryRef === "number" ? currentPage?.actions?.[primaryRef] : undefined;
@@ -1004,7 +992,6 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       }
     : undefined;
 
-  const scopedName = scoped ? scopeName(scoped) : "";
   const engineName = engineLabel(engineCfg);
 
   return (
@@ -1034,21 +1021,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       <AppChrome
         name={appLabel}
         icon={def.icon ?? "◆"}
-        scope={
-          scopeDef ? (
-            <button
-              type="button"
-              className="k-scope"
-              data-empty={!scoped || undefined}
-              aria-label={scoped ? t({ message: `${scopeLabel}: ${scopedName} — change`, comment: "The scope picker: which one the app shows, e.g. which trip" }) : t({ message: `${scopeLabel}: none chosen — change`, comment: "The scope picker, nothing chosen yet" })}
-              title={t({ message: `${scopeLabel}: which one the app is showing`, comment: "The scope picker; scopeLabel is the app's word, e.g. Trip (docs/20 Q3: it goes first)" })}
-              onClick={() => void pickScope()}
-            >
-              <span className="k-scope-label">{scopeLabel}</span>
-              {scoped ? scopedName : t`Choose…`} ▾
-            </button>
-          ) : null
-        }
+        scope={scopeDef ? <ScopeSwitcher runtime={runtime} appId={scopeAppId} onNew={newScope} /> : null}
         status={
           <>
             {/* Provenance is shown only when it is unusual (#87): an app that runs in the sandbox
@@ -1108,7 +1081,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
           ) : null
         }
         onBack={isSubPage ? backTo : undefined}
-        pageTitle={pageId === HOME || showHero ? undefined : titles[pageId] ?? pageId}
+        // Which page this is, on a wide screen, when there is more than one to be on.
+        // A record's own page always has one: its way back sits beside it.
+        pageTitle={pageId === HOME || (visiblePages.length < 2 && !currentPage?.hidden) ? undefined : titles[pageId] ?? pageId}
         pageKey={pageId === HOME ? undefined : pageId}
         showQuick={!isSubPage && !ownsScreen && !cta}
         // A map fills the page: it is the thing you came to look at, and every phone map app shows
@@ -1180,22 +1155,14 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
         // a clean boundary for wherever you land, instead of carrying yesterday's error state into a
         // page that never had a problem.
         <ViewErrorBoundary key={`${pageId}:${scoped?.id ?? ""}`} pageLabel={currentPageLabel} onRecover={() => setPageId(landingPage())}>
-          {showHero ? (
-            <PageHeader
-              runtime={runtime}
-              pageId={pageId}
-              params={params}
-              title={shownTitle}
-              icon={currentPage ? pageIcon(currentPage) : "◇"}
-              count={pageCount || undefined}
-              cta={cta}
-            />
-          ) : null}
+          {showHero ? <PageHeader runtime={runtime} pageId={pageId} params={params} /> : null}
           <FilterChrome runtime={runtime} pageId={pageId} params={params} setParam={setParam} />
           {showHero ? null : <SummaryStrip runtime={runtime} pageId={pageId} params={params} />}
           <main className="k-main">
             <PageCountContext.Provider value={setPageCount}>
-            {currentPage?.layout ? (
+            {noScopeYet ? (
+              <ScopeEmpty runtime={runtime} onNew={newScope} />
+            ) : currentPage?.layout ? (
               // Several views on one page (#105); each item is a view under its own page ref.
               <LayoutHost
                 runtime={runtime}
@@ -1234,6 +1201,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
               />
             ) : null}
           </main>
+          {showHero && cta ? (
+            <PrimaryBar runtime={runtime} pageId={pageId} params={params} cta={cta} actionIndex={typeof primaryRef === "number" ? primaryRef : undefined} />
+          ) : null}
         </ViewErrorBoundary>
       )}
 

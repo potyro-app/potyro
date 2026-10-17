@@ -64,23 +64,31 @@ small (240 px) before keeping it.
 
 ### How it looks — presentation options (all optional)
 
-`theme.background` / a page's `background` (`"wash"` default · `"dots"` · `"grain"` · `"plain"` · `{ image: "<path in ctx.files>" }`),
-a page's `description` and `primaryAction` (a quick action `id`, or the index of one of its `actions`: a big
-button in the page's header, no floating Add on that page), a list's `display.lead` (`"monogram"` ·
+`theme.background` / a page's `background` (`"wash"` default · `"dots"` · `"grain"` · `"plain"` · `{ image: "<path in ctx.files>" }`
+— a picture is the page's ground, faded behind the top of the page under its content, never a block
+above it), a page's `description` (where pages are listed, not on the page) and `primaryAction` (a quick
+action `id`, or the index of one of its `actions`: a bar at the bottom of the screen, no floating Add on
+that page; a page action's `when: (rows, ctx) => boolean` shows it only when it applies), a list's `display.lead` (`"monogram"` ·
 `"icon"` · `"none"`), a gallery's `aspect` (`"landscape"` · `"square"` · `"portrait"`), a detail view's
 `cover` (`"banner"` · `"full"` · `"band"` · `"none"`), `media` (a photo field, or a computed returning a
 path in `ctx.files`), `facts` (fields as chips on the cover) and `primaryAction` (the one big button), and
 an `ActionDef`'s `icon`. They are data — the shell draws them, at either provenance — and an app that
-sets none still gets a page header, rows led by their photo or a tinted initial, and a cover on every
+sets none still gets its content first — above a page's view there is only its `summary`, as one line
+("11 to buy · 2 in the basket") — rows led by their photo or a tinted initial, and a cover on every
 record page (docs/03 §How a page looks). Additive: no app bumps `schemaVersion` for them.
 
 ### Related records, tappable rows, a remembering checklist (all optional)
 
 A detail section may be `related: { entity, via, view: "list" | "timeline" | "chart", … }` instead of
 `fields`; an `AggregateRow` may carry `record`, `open` and `action`; a checklist's `quickAdd` may be
-`{ suggest, remember, defaults: (text, ctx) => fields }`, with `icon` and `layout: "tiles"`; and
-`display.icon` gives a record its own glyph. `defaults` and any function binding in a related section
-run through the host like a stats fold (`callFold` at their path), so a shared app behaves the same
+`{ suggest, remember, defaults: (text, ctx) => fields, usuals: (rows, ctx) => texts }` (`usuals`: what
+the empty box offers as one-tap chips), with `icon`, `layout: "tiles"` and `doneLabel` (the folded
+section's words under `hideDone: "collapse"`). A tap anywhere on a checklist row ticks it; dragging and
+renaming wait behind its Arrange control. An app with a `scope` gets a title that switches it, with New,
+Rename, Duplicate and Delete done by the shell (a copy or a delete takes the records whose single
+relation points at it), and opens on the first one rather than asking; and
+`display.icon` gives a record its own glyph. `defaults`, `usuals`, a page action's `when` (path `page.actions.<i>.when`) and any function binding
+in a related section run through the host like a stats fold (`callFold` at their path), so a shared app behaves the same
 (docs/03). The Studio reads these with `ctx.views`; the core prompt does not carry them. Additive: no
 app bumps `schemaVersion`.
 

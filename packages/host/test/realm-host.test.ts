@@ -133,6 +133,17 @@ describe("the watchdog", () => {
     loaded.dispose();
   }, 15000);
 
+  it("answering many calls at once is not a flood: a big list's rows, each asked for, are answered", async () => {
+    // A page of a few hundred records asks the app for each row's filter and computed values at
+    // once; on a fast machine thousands of answers land inside one check. Each answers a call the
+    // host made, so none of them is the app posting on its own.
+    const { loaded, ctx, row, kills } = await setup(app(`n: function(r){ return r.t.length; }`));
+    const answers = await Promise.all(Array.from({ length: 5000 }, () => loaded.callComputed("n", "n", row, ctx)));
+    expect(answers.every((a) => a === 2)).toBe(true);
+    expect(kills).toEqual([]);
+    loaded.dispose();
+  }, 15000);
+
   it("stops a realm that floods the host with messages, though it keeps beating", async () => {
     const { loaded, ctx, row, kills } = await setup(
       app(`flood: function(){ var MP = MessagePort.prototype.postMessage; var port;

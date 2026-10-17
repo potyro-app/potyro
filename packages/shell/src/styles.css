@@ -4222,7 +4222,8 @@ button.k-prov:focus-visible {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-align: center;
-  line-height: 1.15;
+  /* Room for a descender: at 1.15 the clamp's overflow cut the tail off a "g" ("Shoppinq"). */
+  line-height: 1.3;
   overflow-wrap: anywhere;
   hyphens: auto;
 }
@@ -15251,6 +15252,27 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-check-suggestion {
   min-height: 2.25rem;
 }
+/* Using the list, a row is one big target: a tap anywhere on it ticks it. */
+.k-checklist:not([data-arranging]) .k-check-row {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* The add box stays reachable above whatever the chrome keeps at the bottom (the tab bar, a timer). */
+.k-check-add {
+  bottom: calc(var(--k-chrome-bottom, 0px) + var(--space-2));
+  z-index: 2;
+}
+/* Arrange: a quiet control at the end of the list — arranging is occasional, using is constant. */
+.k-check-arrange {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+.k-check-arrange .k-add[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
 
 /* A record pinned by its own glyph: a round badge in its colour, with a point. */
 .k-map-pin {
@@ -15285,3 +15307,187 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   }
 }
 /* tokens-only: end — views 2 */
+
+/* ---- Content first (page-header.tsx, page-primary.tsx, scope-switcher.tsx) -----------------------
+   What is above a page's view is one line of figures; the page's frequent action is a bar at the
+   bottom, where the thumb is; a picture is the ground behind the top of the page, not a block. */
+.k-page-figures:empty {
+  display: none;
+}
+.k-page-figures {
+  padding: var(--space-1) var(--space-1) var(--space-2);
+}
+/* The figures as a sentence: "8 left · 5 in the basket" — the number, then what it counts. */
+.k-page-figures .k-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 1.1rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+.k-page-figures .k-summary-figure {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 0.3em;
+}
+.k-page-figures .k-summary-value {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.k-page-figures .k-summary-label {
+  font-size: 0.95rem;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-soft);
+}
+/* A page's picture: the ground at the top of the page, fading into the paper, under everything. */
+.k-page-ground {
+  position: absolute;
+  inset: 0 0 auto;
+  height: min(420px, 60vh);
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, var(--ink) 20%, transparent);
+  mask-image: linear-gradient(to bottom, var(--ink) 20%, transparent);
+}
+.k-page-ground img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.2;
+  display: block;
+}
+/* The page's frequent action: a band above the tab bar and any timer, in the thumb's reach. Solid,
+   so the list ends at its edge instead of showing through between it and the add box. */
+.k-app {
+  --k-primary-h: calc(3.6rem + 2 * var(--space-2));
+}
+.k-primary-bar {
+  position: sticky;
+  bottom: var(--k-chrome-bottom, 0px);
+  /* Above the views' own sticky headings (a list's date heading), which would otherwise slide over it. */
+  z-index: 6;
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-1);
+  background: var(--paper);
+  box-shadow: 0 -10px 18px -14px color-mix(in oklab, var(--ink) 30%, transparent);
+  animation: k-rise var(--dur) var(--ease) both;
+}
+.k-primary-bar .k-cta {
+  margin: 0;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  max-width: none;
+}
+/* On a wide screen, the band lines up with what it acts on: the reading-width column. */
+@media (min-width: 760px) {
+  .k-primary-bar {
+    max-width: 46rem;
+    padding-inline: 0;
+  }
+}
+/* A checklist's add box sits above the bar, not under it. */
+.k-app:has(.k-primary-bar) .k-check-add {
+  bottom: calc(var(--k-chrome-bottom, 0px) + var(--k-primary-h));
+}
+/* A list to work down reads best at a reading width, not stretched across a desktop. */
+.k-checklist:not([data-layout="tiles"]) {
+  max-width: 46rem;
+  width: 100%;
+}
+.k-page-figures {
+  padding-bottom: 0;
+}
+/* The selection is the page's title: "Weekly shop ▾". On a phone it takes the app's name's place;
+   the app's icon still says whose list it is. */
+.k-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  max-width: 100%;
+  border: 0;
+  background: none;
+  padding: 0.2em 0.4em;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.k-scope:hover,
+.k-scope:focus-visible {
+  background: var(--accent-tint);
+  border: 0;
+}
+.k-scope-name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.k-scope-name[data-empty] {
+  color: var(--ink-soft);
+}
+.k-scope-caret {
+  flex: none;
+  font-size: 0.8em;
+  color: var(--ink-soft);
+}
+/* Still the page's first heading for a screen reader — only the eye reads the switcher instead. */
+.k-topbar:has(.k-scope) .k-topbar-name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.k-topbar .k-scope {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+  justify-content: flex-start;
+}
+/* Over a page's picture, the content's surfaces let it through a little: the picture is the place,
+   the rows stay readable. */
+.k-app:has(.k-page-ground) :is(.k-list-row, .k-check-row, .k-card, .k-check-add) {
+  background: color-mix(in oklab, var(--surface) 84%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+/* A page that needs a list (a trip, a group) while there is none: the way to the first, in place. */
+.k-scope-empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  margin: var(--space-6) auto;
+  max-width: 24rem;
+  text-align: center;
+}
+.k-scope-empty-icon {
+  font-size: 2.6rem;
+  line-height: 1;
+}
+.k-scope-empty-text {
+  margin: 0;
+  color: var(--ink-soft);
+}
+/* A group's sticky heading over a page's picture: clear where it rests, frosted only once content
+   scrolls under it — not a pale band laid across the picture. */
+.k-app:has(.k-page-ground) .k-fold-group > .k-fold-head {
+  background: color-mix(in oklab, var(--bg) 55%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-radius: var(--radius-sm);
+}

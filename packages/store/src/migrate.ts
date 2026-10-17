@@ -67,6 +67,17 @@ export function applyMigrationStep(step: MigrationStep, records: EntityRecords, 
       affected.add(step.entity);
       break;
     }
+    case "addRecord": {
+      // A fixed id, so the step is the same on every device and a second run (or a synced copy that
+      // already has it) changes nothing.
+      const m = entityMap(records, step.entity);
+      if (!m.has(step.id)) {
+        const at = now();
+        m.set(step.id, { ...step.values, id: step.id, createdAt: at, updatedAt: at } as PotyroRecord);
+        affected.add(step.entity);
+      }
+      break;
+    }
     case "setDefaultForExisting": {
       for (const r of entityMap(records, step.entity).values()) {
         if (r[step.field] === undefined) r[step.field] = step.value;
