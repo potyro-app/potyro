@@ -3124,18 +3124,19 @@ th.k-data-raw {
   padding: 0.65rem 0.8rem 0.8rem;
   min-width: 0;
 }
-/* With a photo the words sit on it, at the bottom, over a shade. */
-.k-gallery > .k-card[data-photo] .k-card-caption {
+/* `caption: "over"`: with a photo the words sit on it, at the bottom, over a shade. By default they
+   sit under it, where a light photo cannot wash them out. */
+.k-gallery[data-caption="over"] > .k-card[data-photo] .k-card-caption {
   position: absolute;
   inset: auto 0 0;
   padding: 2.6rem 0.85rem 0.75rem;
   background: var(--cover-shade);
   color: var(--tile-ink);
 }
-.k-gallery > .k-card[data-photo] .k-secondary {
+.k-gallery[data-caption="over"] > .k-card[data-photo] .k-secondary {
   color: var(--tile-ink-soft);
 }
-.k-gallery > .k-card[data-photo] .k-badge {
+.k-gallery[data-caption="over"] > .k-card[data-photo] .k-badge {
   background: color-mix(in oklab, var(--tile-ink) 22%, transparent);
   border-color: transparent;
   color: var(--tile-ink);
@@ -15490,4 +15491,128 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border-radius: var(--radius-sm);
+}
+/* `cover: "background"`: the record's picture behind the whole page, held in view as it scrolls; the
+   title and facts on it near the top, the sections read over it in frosted panels. The information
+   comes first and the picture is still the place. */
+.k-detail[data-cover="background"] {
+  position: relative;
+  isolation: isolate;
+}
+.k-detail-backdrop {
+  position: sticky;
+  top: 0;
+  display: block;
+  height: 100dvh;
+  margin-bottom: -100dvh;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.k-app-phone .k-detail-backdrop {
+  margin-inline: calc(-1 * var(--space-3));
+  margin-top: calc(-1 * var(--space-3));
+}
+.k-detail-backdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  animation: k-cover-in 700ms var(--ease) both;
+}
+.k-detail-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, color-mix(in oklab, var(--tile-shade) 70%, transparent), color-mix(in oklab, var(--tile-shade) 35%, transparent) 40%, color-mix(in oklab, var(--tile-shade) 55%, transparent));
+}
+.k-detail[data-cover="background"] .k-detail-hero {
+  overflow: visible;
+  padding: clamp(3.5rem, 11vh, 7rem) var(--space-1) 0;
+  color: var(--tile-ink);
+}
+.k-detail[data-cover="background"] .k-detail-title {
+  font-size: clamp(2.1rem, 1.6rem + 2.2vw, 3.2rem);
+  text-shadow: 0 2px 18px var(--tile-shade);
+}
+.k-detail[data-cover="background"] .k-detail-kicker,
+.k-detail[data-cover="background"] .k-fact-label {
+  color: var(--tile-ink-soft);
+}
+.k-detail[data-cover="background"] .k-fact {
+  background: color-mix(in oklab, var(--tile-ink) 20%, transparent);
+  border-color: color-mix(in oklab, var(--tile-ink) 30%, transparent);
+  color: var(--tile-ink);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.k-detail[data-cover="background"] .k-section,
+.k-detail[data-cover="background"] .k-detail-actions .k-add,
+.k-detail[data-cover="background"] .k-detail-actions .k-menu-btn {
+  background: color-mix(in oklab, var(--surface) 86%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-color: color-mix(in oklab, var(--line) 60%, transparent);
+}
+/* On a record page the bottom bar floats over the page: a band would cover the picture behind. */
+.k-detail .k-primary-bar {
+  background: none;
+  box-shadow: none;
+  margin-top: 0;
+}
+/* A list read as lines ("350 g flour"): one line each, like a recipe card. */
+.k-row-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.k-row-lines li {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
+  font-size: 1.02rem;
+}
+.k-row-lines li:last-child {
+  border-bottom: 0;
+}
+/* The page's chrome: a search box across the width, then one row of chips — sideways-scrolling on a
+   phone, so choices nobody has made yet take one line, not three. */
+.k-chrome > .k-value-chip {
+  flex: 1 1 100%;
+}
+.k-chrome > .k-value-chip .k-chip-input {
+  width: 100%;
+}
+.k-chrome-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.k-chrome-row:empty {
+  display: none;
+}
+.k-app-phone .k-chrome-row {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-inline: calc(-1 * var(--space-3));
+  padding-inline: var(--space-3);
+  -webkit-mask-image: linear-gradient(to right, var(--ink) 88%, transparent);
+  mask-image: linear-gradient(to right, var(--ink) 88%, transparent);
+}
+.k-app-phone .k-chrome-row::-webkit-scrollbar {
+  display: none;
+}
+.k-chrome-row > * {
+  flex: none;
+}
+/* On a wide screen a background-covered record reads like a recipe card: its first two sections
+   side by side (ingredients beside the steps), the rest under them. */
+@container (min-width: 760px) {
+  .k-detail[data-cover="background"] .k-detail-sections > .k-section:has(.k-field[data-wide]) {
+    grid-column: auto;
+  }
 }

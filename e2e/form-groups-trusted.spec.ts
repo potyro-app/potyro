@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "./console-guard";
 
-// Entity groups drive both the form and the detail page (#100): Recipes declares five, and the
-// person who edits a recipe under "Nutrition & cost" reads it back under "Nutrition & cost". A
+// Entity groups drive the form (#100), and the record page unless the page names its own `sections`:
+// Recipes declares five groups for its form, and its record page reads ingredients and steps first. A
 // required field left empty is told so under the field and gets the focus; two `width: "half"`
 // neighbours share a row on a wide screen and stack on a phone.
 
@@ -25,26 +25,25 @@ async function settled(page: Page): Promise<void> {
 test.describe("desktop", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("Recipes: the form and the detail page show the same groups; an empty name is refused under the field", async ({ page }) => {
+  test("Recipes: the page's own sections on the record, the entity's groups in its form; an empty name is refused under the field", async ({ page }) => {
     await openApp(page, "recipes", "Recipes");
 
-    // The detail page: the entity's groups, no page `sections` needed.
+    // The record page: the page's own `sections` — what is read at the stove first.
     await page.locator(".k-card").first().click();
     const detail = page.locator("article.k-detail");
     await expect(detail).toBeVisible();
-    // Headings are plain for a group that does not fold and a button for one that does (#108).
-    await expect(detail.locator(".k-section h3, .k-section .k-fold-title")).toHaveText(["Overview", "Ingredients", "Steps", "Nutrition & cost", "Your notes"]);
-    // The folded group is closed until opened, and opens.
-    const steps = detail.getByRole("button", { name: /^Steps/ });
-    await expect(steps).toHaveAttribute("aria-expanded", "false");
-    await steps.click();
-    await expect(steps).toHaveAttribute("aria-expanded", "true");
-    // A computed value in a group shows on the detail page, under its own label (#310).
+    // Headings are plain for a section that does not fold and a button for one that does (#108).
+    await expect(detail.locator(".k-section h3, .k-section .k-fold-title")).toHaveText(["Ingredients", "Steps", "Your notes", "Nutrition & cost"]);
+    const nutrition = detail.getByRole("button", { name: /^Nutrition & cost/ });
+    await expect(nutrition).toHaveAttribute("aria-expanded", "false");
+    await nutrition.click();
+    await expect(nutrition).toHaveAttribute("aria-expanded", "true");
+    // A computed value in a section shows under its own label (#310).
     await expect(detail.locator(".k-field dt", { hasText: "Calories per serving" })).toBeVisible();
 
-    // The form: the same five groups, the computed-only fields skipped, Steps folded.
-    await page.getByRole("button", { name: /Recipes/ }).first().click();
-    await page.locator(".k-quickbar").getByRole("button", { name: /Add: Recipe/ }).click();
+    // The form: the entity's five groups, the computed-only fields skipped, Steps folded.
+    await detail.getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Edit" }).click();
     const form = page.locator(".k-modal .k-form");
     await expect(form).toBeVisible();
     await expect(form.locator(".k-form-group-title")).toHaveText(["Overview", "Ingredients", "Steps", "Nutrition & cost", "Your notes"]);
@@ -53,18 +52,20 @@ test.describe("desktop", () => {
     await expect(name).toHaveAttribute("placeholder", "Shakshuka");
     await expect(form.getByText("The per-serving figures divide by this")).toBeVisible();
 
-    // Submit with nothing: the complaint is under the field, the field is marked, and focused.
-    await form.getByRole("button", { name: "Create" }).click();
+    // Saved with no name: the complaint is under the field, the field is marked, and focused.
+    await name.fill("");
+    await form.getByRole("button", { name: "Save changes" }).click();
     await expect(form.locator(".k-form-field-error")).toHaveText(["Required"]);
     await expect(name).toHaveAttribute("aria-invalid", "true");
     await expect(name).toBeFocused();
     await expect(form.getByText(/^Required:/)).toHaveCount(0);
     await expect(page.locator(".k-modal")).toHaveCount(1);
-    // Typing clears it; the create goes through.
+    // Typing clears it; the save goes through.
     await name.fill("E2E Grouped Dish");
     await expect(name).not.toHaveAttribute("aria-invalid", "true");
-    await form.getByRole("button", { name: "Create" }).click();
-    await expect(page.locator("article.k-detail")).toBeVisible();
+    await form.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.locator(".k-modal")).toHaveCount(0);
+    await expect(detail.locator(".k-detail-title")).toHaveText("E2E Grouped Dish");
   });
 
   test("Plants: two half-width fields share a row", async ({ page }) => {

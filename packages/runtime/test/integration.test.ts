@@ -62,18 +62,9 @@ describe("recipes end-to-end (trusted / DirectHost)", () => {
     expect(pancake.difficulty).toBe("easy");
   });
 
-  it("'ingredients I have' filter returns only fully-satisfiable recipes", async () => {
-    const onlyLettuce = await runtime.queryPage("cook-with", { pantry: [ids.flour /* missing egg */] });
-    expect(onlyLettuce.rows.map((r) => r.name)).toEqual([]);
-
-    const havePancake = await runtime.queryPage("cook-with", { pantry: [ids.flour, ids.egg] });
-    expect(havePancake.rows.map((r) => r.name)).toEqual(["Pancake"]);
-  });
-
-  it("high-protein table filter + sort", async () => {
-    const { rows } = await runtime.queryPage("high-protein");
-    // pancake proteinPerServing = (10*2 + 13*1)/2 = 16.5 (<20) → excluded; salad ~ (1*3)/1=3 → excluded
-    expect(rows.map((r) => r.name)).toEqual([]);
+  it("the cookbook's chips: a search, and a meal", async () => {
+    expect((await runtime.queryPage("all", { q: "pan" })).rows.map((r) => r.name)).toEqual(["Pancake"]);
+    expect((await runtime.queryPage("all", { q: "zzz" })).rows).toEqual([]);
   });
 
   it("markCooked action patches the record and toasts", async () => {

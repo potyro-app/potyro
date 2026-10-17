@@ -123,8 +123,7 @@ export interface ListView {
   group?: Binding;
   /** Headings fold their groups, remembered per device. Needs `group`. */
   collapsible?: boolean;
-  /** The `money` field shown down each row with the total underneath — the entity's first by
-   *  default (KA-26). Name another, or `false` for none. */
+  /** The `money` field shown per row and totalled (default: the first); `false`: none. */
   money?: string | false;
 }
 
@@ -133,15 +132,18 @@ export interface GalleryView {
   entity: string;
   filter?: FilterFn;
   sort?: SortFn;
+  filters?: FilterChip[];
   display?: ListDisplay;
   onOpen?: OnOpen;
   emptyText?: Dynamic<Words>;
-  /** Rows under a heading per value: a field key (enum, tag, relation) or `(r) => …` (#108). */
+  /** A heading per value: a field key or `(r) => …`. */
   group?: Binding;
-  /** Headings fold their groups, remembered per device. Needs `group`. */
+  /** Headings fold their groups. */
   collapsible?: boolean;
-  /** The cards' shape; default `"landscape"` (4:3). */
+  /** Default `"landscape"` (4:3). */
   aspect?: "square" | "portrait" | "landscape";
+  /** Words under the picture, or "over" it. */
+  caption?: "below" | "over";
 }
 
 export interface TableView {
@@ -193,18 +195,16 @@ export interface DetailView {
   type: "detail";
   entity: string;
   param?: string;
-  /** Overrides the entity's `groups` for this page only. Without it the page shows the groups. */
+  /** Overrides the entity's `groups` on this page. */
   sections?: DetailSection[];
   actions?: DetailAction[];
-  /** The cover's picture: a photo field, or a computed returning a path in `ctx.files`
-   *  (`"art/squat.jpg"`). Default: the entity's first photo field; `false`: none. */
+  /** The cover's picture: a photo field, or a computed returning a `ctx.files` path; `false`: none. */
   media?: string | false;
-  /** `"banner"` (picture across the top; default with one), `"full"` (fills the first screen), `"band"`
-   *  (the app's colour; default without), `"none"`. No record photo: the page's `background` image. */
-  cover?: "banner" | "full" | "band" | "none";
+  /** Picture across the top (default), filling the screen, behind the page, a colour band, or none. */
+  cover?: "banner" | "full" | "background" | "band" | "none";
   /** Fields as chips on the cover. Default: its enum fields. */
   facts?: string[];
-  /** The ONE thing this page is for ("Start"): a big button on the cover. */
+  /** The ONE thing this page is for ("Start cooking"): a bottom bar. */
   primaryAction?: DetailAction;
 }
 
