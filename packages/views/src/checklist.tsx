@@ -224,6 +224,9 @@ export function ChecklistView(props: BuiltinViewProps) {
    * stays where it is unless an app asks for `donePlacement: "sink"`.
    */
   const sinks = view.donePlacement === "sink" && view.hideDone !== "collapse";
+  /** A ticked row leaves its place — sinking, or folding into the done section — after a beat in
+   *  which it is seen struck through where it was touched. */
+  const moves = sinks || view.hideDone === "collapse";
   /**
    * What a tick means RIGHT NOW, before the store has said anything back.
    *
@@ -277,12 +280,12 @@ export function ChecklistView(props: BuiltinViewProps) {
     const was = isDone(row);
     let next: unknown = !was;
     if (field?.type === "enum") next = was ? (field.options.find((o) => o !== view.doneValue) ?? null) : view.doneValue;
-    if (sinks) setHeld((h) => new Map(h).set(id, was));
+    if (moves) setHeld((h) => new Map(h).set(id, was));
     // The tick is true on screen immediately; the store confirms it in its own time.
     setJustTicked((t) => new Map(t).set(id, next));
     const old = timers.current.get(id);
     if (old) clearTimeout(old);
-    if (sinks)
+    if (moves)
       timers.current.set(
       id,
       setTimeout(() => {

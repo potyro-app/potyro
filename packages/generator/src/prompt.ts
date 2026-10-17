@@ -278,6 +278,7 @@ migrations: [
    - \`{ op: "renameEntity", from, to }\`
    - \`{ op: "setDefaultForExisting", entity, field, value }\`
    - \`{ op: "addRelation", entity, field, to, many? }\`
+   - \`{ op: "addRecord", entity, id, values }\` — a record old ones can point at (a default group)
    - \`{ transform: (record, ctx) => record }\` for anything the ops above cannot express
 4. A NEW entity needs NO step. It has no records yet. What needs a step is a change to an entity
    that already exists — a new field or relation on it, or a rename.
