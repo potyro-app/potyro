@@ -188,9 +188,17 @@ export class SealedViewController implements SealedView {
     };
 
     // ---- size: as wide as its place, as tall as the room below it ----
+    // `--k-chrome-bottom` is a calc() (the tab bar, a running timer's chips), so it is measured as a
+    // length — a probe as tall as it — and measured again whenever it changes: a rest starting puts
+    // the shell's timer above the bottom edge, and the view's own bottom bar must end above it.
+    const probe = doc.createElement("div");
+    probe.setAttribute("aria-hidden", "true");
+    probe.style.cssText = "position:absolute;top:0;left:0;visibility:hidden;pointer-events:none;width:0;height:var(--k-chrome-bottom, 0px)";
+    el.appendChild(probe);
+    offs.push(() => probe.remove());
     const room = (): number => {
       const top = el.getBoundingClientRect().top + win.scrollY;
-      const bottom = parseFloat(win.getComputedStyle(el).getPropertyValue("--k-chrome-bottom")) || 0;
+      const bottom = probe.isConnected ? probe.getBoundingClientRect().height : 0;
       return Math.max(VIEW_MIN_HEIGHT, Math.floor(win.innerHeight - top - bottom));
     };
     const size = (): void => {
@@ -199,6 +207,11 @@ export class SealedViewController implements SealedView {
     size();
     win.addEventListener("resize", size);
     offs.push(() => win.removeEventListener("resize", size));
+    if (typeof ResizeObserver !== "undefined") {
+      const chrome = new ResizeObserver(size);
+      chrome.observe(probe);
+      offs.push(() => chrome.disconnect());
+    }
 
     // ---- the theme, again whenever it changes ----
     const retheme = (): void => post({ t: "tokens", tokens: frameTokens(el) });
@@ -226,6 +239,39 @@ export class SealedViewController implements SealedView {
     win.addEventListener("pagehide", onPageHide);
     offs.push(() => win.removeEventListener("pagehide", onPageHide));
 
+    // ---- the ctx's plain data, again whenever it changed ----
+    // `ctx.scope` is the selected record as it is now (docs/04 §Scope): renamed, a guest added, it is
+    // the new one — and so are `ctx.people` and `ctx.space`. The frame reads them synchronously from
+    // the base it holds, so a new one goes in before the rows that changed with it: everything that
+    // changes them re-runs the watchers, and each watcher's answer checks first.
+    let sentBase = "";
+    const liveOf = (b: CtxBase): string => {
+      const { nowIso: _now, ...live } = b;
+      try {
+        return JSON.stringify(live);
+      } catch {
+        return "";
+      }
+    };
+    const rebase = (): void => {
+      if (!frame || over) return;
+      let base: CtxBase;
+      try {
+        base = d.baseOf(props.runtime.ctx, viewCtxId);
+      } catch (e) {
+        console.warn(`[potyro] a sealed screen's ctx could not be read again (${d.pageRef}):`, e);
+        return;
+      }
+      const live = liveOf(base);
+      if (!live || live === sentBase) return;
+      sentBase = live;
+      try {
+        post({ t: "base", base });
+      } catch (e) {
+        console.warn(`[potyro] a sealed screen's ctx could not be sent (${d.pageRef}):`, e);
+      }
+    };
+
     const viewOp = async (op: ViewOp, a: unknown[]): Promise<unknown> => {
       const s = (i: number) => String(a[i]);
       switch (op) {
@@ -236,6 +282,7 @@ export class SealedViewController implements SealedView {
           if (watches.size >= MAX_WATCHES) throw new Error(`a screen may watch at most ${MAX_WATCHES} queries at once`);
           const send = (state: unknown): void => {
             if (!watches.has(wid)) return;
+            rebase();
             try {
               post({ t: "watch", wid, state });
             } catch (e) {
@@ -313,6 +360,8 @@ export class SealedViewController implements SealedView {
       if (over) return;
       const ctx = props.runtime.ctx;
       const language = props.runtime.language;
+      const base = d.baseOf(ctx, viewCtxId);
+      sentBase = liveOf(base);
       const spawned = await spawnViewFrame({
         el,
         runtimeSource,
@@ -320,7 +369,7 @@ export class SealedViewController implements SealedView {
         init: {
           code,
           pageRef: d.pageRef,
-          base: d.baseOf(ctx, viewCtxId),
+          base,
           definition: definitionJson(props.runtime.definition),
           language: { current: language?.current, default: language?.default, available: [...(language?.available ?? [])] },
           entity: props.entity,

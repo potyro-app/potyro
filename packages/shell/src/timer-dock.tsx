@@ -5,7 +5,7 @@
 // app's chip names that app and opens it when tapped. A chip that has rung stays, loud, until the
 // person says Done — a kitchen timer that rang while you were at the sink is no use if it has gone.
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { useLingui } from "@lingui/react/macro";
 import { timerHub, type KeptTimer } from "./timer-hub.js";
 import { getUserApp } from "./user-apps.js";
@@ -49,6 +49,48 @@ function useTick(active: boolean): number {
   return now;
 }
 
+/** Set on the root while chips show in an app: how much of the bottom of the screen they take. */
+const ROOM_VAR = "--k-timer-room";
+/** Room left above the chips before an app's own things. */
+const CLEARANCE_PX = 8;
+/** Looked at again this often while chips show: the dock moves when the tab bar comes or goes. */
+const RECHECK_MS = 700;
+
+/**
+ * Say how much of the bottom of the screen the chips take — from the bottom edge to just above the
+ * top one — as `--k-timer-room`, which `--k-chrome-bottom` takes in (styles.css, chrome.tsx). Like
+ * `--k-chrome-top` for the camera sign: an app's own bottom bar or floating button keeps clear of
+ * it, so a rest running never covers the workout's Finish. Nothing at home: there is no app there.
+ */
+function useTimerRoom(dock: RefObject<HTMLDivElement | null>, inApp: boolean, shown: boolean): void {
+  const measure = (): void => {
+    const root = document.documentElement;
+    const el = dock.current;
+    const top = el && inApp && shown ? el.getBoundingClientRect().top : null;
+    const room = top === null ? null : `${Math.max(0, Math.round(window.innerHeight - top + CLEARANCE_PX))}px`;
+    if (room === null) {
+      if (root.style.getPropertyValue(ROOM_VAR)) root.style.removeProperty(ROOM_VAR);
+    } else if (root.style.getPropertyValue(ROOM_VAR) !== room) root.style.setProperty(ROOM_VAR, room);
+  };
+  // Every render: a chip came, went or rang.
+  useLayoutEffect(measure);
+  useEffect(() => {
+    if (!inApp || !shown) return;
+    const el = dock.current;
+    const size = el && typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    if (el) size?.observe(el);
+    window.addEventListener("resize", measure);
+    const again = setInterval(measure, RECHECK_MS);
+    return () => {
+      size?.disconnect();
+      window.removeEventListener("resize", measure);
+      clearInterval(again);
+      document.documentElement.style.removeProperty(ROOM_VAR);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `measure` reads the ref and these two only
+  }, [inApp, shown]);
+}
+
 const RING_R = 15;
 const RING_C = 2 * Math.PI * RING_R;
 
@@ -56,10 +98,12 @@ export function TimerDock({ onOpenApp }: { onOpenApp: (app: string) => void }) {
   const kept = useSyncExternalStore(timerHub.subscribe, timerHub.snapshot, timerHub.snapshot);
   const app = useSyncExternalStore(subscribeFocus, () => focused, () => focused);
   useTick(kept.some((k) => k.endsAt !== null && !k.ringing));
+  const dock = useRef<HTMLDivElement | null>(null);
+  useTimerRoom(dock, app !== null, kept.length > 0);
   if (!kept.length) return null;
   const ordered = timerHub.all().sort((a, b) => Number(b.app === app) - Number(a.app === app));
   return (
-    <div className="k-timer-dock" data-home={app === null || undefined}>
+    <div ref={dock} className="k-timer-dock" data-home={app === null || undefined}>
       {ordered.map((k) => (
         <TimerChip key={`${k.app}\u0000${k.id}`} k={k} here={k.app === app} onOpenApp={onOpenApp} />
       ))}

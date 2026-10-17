@@ -154,6 +154,8 @@ export type HostToView =
   /** A watched query or record changed (`runtime.watchQuery` / `runtime.watchRecord`). */
   | { t: "watch"; wid: number; state: unknown }
   | { t: "tokens"; tokens: Record<string, string> }
+  /** The ctx's plain data changed — the selected record (`ctx.scope`) edited, someone joined: the view's ctx reads this one now. */
+  | { t: "base"; base: CtxBase }
   | { t: "sock"; ev: RealmSocketEvent }
   /** The host is about to remove the frame: unmount now, as a courtesy. */
   | { t: "stop" };

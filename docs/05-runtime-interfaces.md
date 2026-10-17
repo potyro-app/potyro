@@ -358,8 +358,9 @@ never run in the shell's realm.
 - **Where.** One sandboxed frame per mounted view (`sandbox="allow-scripts"`, srcdoc, the realm CSP,
   WebRTC deleted first), in the place the shell gives the view: the shell keeps the chrome and the
   navigation, the frame is as wide as the content area and exactly as tall as the room below it,
-  down to the shell's bottom bar (a taller view scrolls inside it, so a bar the view fixes to its
-  bottom stays on screen). It is its own frame, not the logic's,
+  down to the shell's bottom chrome — `--k-chrome-bottom`, measured as a length and again whenever it
+  changes (a running timer's chips take it in) — so a taller view scrolls inside it, and a bar the
+  view fixes to its bottom stays on screen and clear of the shell's. It is its own frame, not the logic's,
   so a stuck view goes without the app's logic, a second view is not frozen with it, and its
   document goes with every unmount.
 - **What runs.** `RealmLoadedApp.sealedView(pageRef)` → `SealedView` (`state`, `retry`, `mount`).
@@ -380,6 +381,10 @@ never run in the shell's realm.
   (`caps.speech.listen`) is the logic's alone for now: what it hears goes to the logic's port.
 - **Theme.** Every custom property where the view sits, its colour scheme, font and ink, sent at
   mount and again when the theme changes.
+- **Live ctx data.** The frame reads `ctx.scope`, `ctx.people` and `ctx.space` synchronously from
+  the plain data it was given at mount; when they change (the selected record edited — `ctx.scope`
+  is live, docs/04 — someone joining), the host sends the new data (`{ t: "base" }`) before the rows
+  that changed with it, so the re-render reads the new selection.
 - **Freezes.** A watchdog pings the view every 250 ms: unanswered for **2 s** (a frame out of
   process — desktop Chromium) or the page's own check **2 s** late while the view shows (a frame
   sharing the page's thread — Firefox, WebKit, Chromium without site isolation) takes the view down;
