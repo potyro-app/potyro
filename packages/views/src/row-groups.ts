@@ -7,7 +7,7 @@
 // regroups a moment later (the checklist view learned that the hard way, #106).
 
 import { useEffect, useState } from "react";
-import type { PotyroRuntime } from "@potyro/runtime";
+import { FN_SENTINEL, type PotyroRuntime } from "@potyro/runtime";
 import { computedInfo, type EntityDef, type Resolved } from "potyro";
 import { optionLabel, type ShownField as Field } from "./shown.js";
 import { displayFieldFor, formatValue } from "./format.js";
@@ -89,18 +89,25 @@ export function groupRows(runtime: PotyroRuntime, view: GroupedView, rows: Resol
 
 /** `null` while a function binding is still being resolved; the groups once every row has one. */
 export function useRowGroups(runtime: PotyroRuntime, pageId: string, rows: Resolved[], view: GroupedView): RowGroup[] | null {
-  const byField = typeof view.group === "string";
+  // A sealed app's function reaches here as the sentinel string: it is a function, not a field key.
+  const byField = typeof view.group === "string" && view.group !== FN_SENTINEL;
   const [resolved, setResolved] = useState<{ rows: Resolved[]; groups: RowGroup[] } | null>(null);
 
   useEffect(() => {
     if (view.group === undefined || byField) return;
     let alive = true;
     const ctx = runtime.ctx;
-    void Promise.all(rows.map((row) => runtime.resolveBinding({ kind: "view", page: pageId, path: "group" }, row, ctx))).then((values) => {
-      if (!alive) return;
-      const memberships = values.map((v) => membershipsOf(runtime, undefined, v));
-      setResolved({ rows, groups: groupRows(runtime, view, rows, memberships) });
-    });
+    void Promise.all(rows.map((row) => runtime.resolveBinding({ kind: "view", page: pageId, path: "group" }, row, ctx)))
+      .then((values) => {
+        if (!alive) return;
+        const memberships = values.map((v) => membershipsOf(runtime, undefined, v));
+        setResolved({ rows, groups: groupRows(runtime, view, rows, memberships) });
+      })
+      .catch((e: unknown) => {
+        // The app's `group` failed: the rows still show, under no headings — and it says why.
+        console.warn(`[potyro] group on page "${pageId}" failed:`, e);
+        if (alive) setResolved({ rows, groups: [{ key: "", label: "", rows }] });
+      });
     return () => {
       alive = false;
     };

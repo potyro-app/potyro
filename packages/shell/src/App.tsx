@@ -1053,6 +1053,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
         pages={chromePages}
         quick={chromeQuick}
         pageAdd={pageAdd}
+        // One loud button per page: when the page has its own, the sidebar's are plain.
+        quietQuick={Boolean(cta || pageAdd)}
         currentEntity={currentEntity}
         tools={chromeTools}
         report={chromeReport}
