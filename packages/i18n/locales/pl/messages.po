@@ -5130,10 +5130,6 @@ msgstr "Włóż z powrotem do zamkniętego pudełka"
 msgid "Putting places at their address ({placedNow} of {placedOf})…"
 msgstr "Umieszczanie miejsc pod ich adresami ({placedNow} z {placedOf})…"
 
-#: ../shell/src/chrome.tsx
-msgid "Quick actions"
-msgstr "Szybkie akcje"
-
 #: ../shell/src/app-lock.tsx
 msgid "Read-only"
 msgstr "Tylko do odczytu"
@@ -5852,6 +5848,11 @@ msgstr "Skróty"
 #: ../shell/src/remix-suggestions.ts
 msgid "Show “{label}” on a calendar"
 msgstr "Pokaż w kalendarzu: {label}"
+
+#. Scope menu: no list/trip chosen, so every record shows
+#: ../shell/src/scope-switcher.tsx
+msgid "Show all"
+msgstr "Pokaż wszystko"
 
 #: ../shell/src/share-page.tsx
 msgid "Show all of it"

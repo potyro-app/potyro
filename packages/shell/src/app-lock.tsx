@@ -74,7 +74,7 @@ const noState = (): null => null;
  * the shell's business. A write control this misses still cannot write — the store refuses it and
  * the refusal says the same thing — it just does not look inactive first.
  */
-export const WRITE_CONTROLS = ".k-quick, .k-fab-other, .k-action";
+export const WRITE_CONTROLS = ".k-quick, .k-action";
 
 export function LockBanner({ state }: { state: LockState }) {
   const { t } = useLingui();

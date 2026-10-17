@@ -10,7 +10,7 @@
 // never sit above the app's content again: they were what a phone scrolled past before the first
 // row, and none of them is what someone opened a recipe list to do.
 
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { t as tr } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ActionMenu, usePhone, type MenuEntry } from "@potyro/views";
@@ -77,6 +77,8 @@ export interface ChromeTool {
 export interface AppChromeProps {
   name: string;
   icon: string;
+  /** The page's own add (`Page.add`), which the phone's "+" runs instead of its kind's quick action. */
+  pageAdd?: ChromeQuick;
   /** The app-wide selection chip, when the app declares a scope. */
   scope?: ReactNode;
   /** Quiet marks: sync state, "sandbox". */
@@ -113,7 +115,6 @@ export interface AppChromeProps {
 }
 
 const TAB_SLOTS = 4;
-const HOLD_MS = 450;
 
 /** The quick action for this page: the one whose entity the page is about, else the first. */
 /**
@@ -191,40 +192,10 @@ function toolEntry(tool: ChromeTool): MenuEntry {
   };
 }
 
-function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, tools, report, recording, trust, onApps, extras, onBack, showQuick = true, fullBleed, locked, children }: AppChromeProps) {
-  const primary = primaryQuick(quick, currentEntity);
+function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, currentEntity, tools, report, recording, trust, onApps, extras, onBack, showQuick = true, fullBleed, locked, children }: AppChromeProps) {
+  const primary = pageAdd ?? primaryQuick(quick, currentEntity);
   const others = quick.filter((q) => q !== primary);
-  const [dial, setDial] = useState(false);
   const { t } = useLingui();
-
-  // The floating button runs the page's quick action on a tap; held, it shows the others above it.
-  const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const held = useRef(false);
-  const fabHandlers = {
-    onPointerDown: (e: ReactPointerEvent<HTMLButtonElement>) => {
-      if (e.button !== 0 || others.length === 0) return;
-      held.current = false;
-      hold.current = setTimeout(() => {
-        held.current = true;
-        setDial(true);
-      }, HOLD_MS);
-    },
-    onPointerUp: () => {
-      if (hold.current) clearTimeout(hold.current);
-      hold.current = null;
-    },
-    onPointerCancel: () => {
-      if (hold.current) clearTimeout(hold.current);
-      hold.current = null;
-    },
-    onClick: () => {
-      if (held.current) {
-        held.current = false;
-        return;
-      }
-      primary?.onRun();
-    },
-  };
 
   const menu: MenuEntry[] = [
     ...others.map((q): MenuEntry => ({ key: `quick-${q.id}`, label: q.label, icon: q.icon, onSelect: q.onRun })),
@@ -268,6 +239,15 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
         {scope}
         {status}
         {extras}
+        {/* Adding: a "+" in the top bar, for what the page shows. It used to float over the list as a
+            labelled pill — on every page, over the very rows people came to read, for something done
+            far less often than reading them. A page whose adding IS the point says so with its
+            `primaryAction`, a bar at the bottom; the other kinds are in the ⋯ menu. */}
+        {primary && showQuick ? (
+          <button type="button" className="k-topbar-btn k-topbar-add k-quick" aria-label={primary.label} title={primary.label} aria-disabled={locked || undefined} onClick={primary.onRun}>
+            ＋
+          </button>
+        ) : null}
         {menu.length ? (
           <ActionMenu label={news ? t`More — something new` : t({ message: "More", comment: "The app's ⋯ menu of tools" })} title={name} entries={menu} buttonClassName={`k-topbar-btn${news ? " k-has-news" : ""}`} />
         ) : null}
@@ -286,38 +266,6 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, currentEntity, t
       <div className="k-page" data-full={fullBleed || undefined}>
         {children}
       </div>
-
-      {primary && showQuick ? (
-        <>
-          {dial ? (
-            <>
-              <div className="k-fab-scrim" onClick={() => setDial(false)} />
-              <div className="k-fab-dial" role="group" aria-label={t`Quick actions`}>
-                {others.map((q) => (
-                  <button
-                    key={q.id}
-                    type="button"
-                    className="k-fab-other"
-                    aria-disabled={locked || undefined}
-                    onClick={() => {
-                      setDial(false);
-                      q.onRun();
-                    }}
-                  >
-                    <span aria-hidden>{q.icon}</span> {q.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : null}
-          <button type="button" className="k-fab k-quick" data-open={dial || undefined} aria-disabled={locked || undefined} {...fabHandlers}>
-            <span className="k-fab-plus" aria-hidden>
-              ＋
-            </span>
-            {primary.label}
-          </button>
-        </>
-      ) : null}
 
       {/* A tab bar with one tab is a label for where you already are, and it takes a phone-sized
           bite out of the list above it. One page, no bar: the top bar already carries the name. */}

@@ -1,15 +1,14 @@
 import { test, expect, type Page } from "./console-guard";
 import { installGridApp } from "./grid-fixture.js";
-import { NEEDS_CDP } from "./engines";
 
-// The app's chrome (#111, #87). On a phone: a compact top bar, the page, a floating quick action,
-// a bottom tab bar with More; the shell's tools behind one ⋯ menu; no TRUSTED pill. On a wide
-// screen: a sidebar with the pages, the quick actions and the tools. A page with a primary action
-// shows it as a bar at the bottom instead of the floating one. A detail page has one filled action
-// and keeps Edit / Delete behind "More actions".
+// The app's chrome (#111, #87). On a phone: a compact top bar with a "+" for adding what the page
+// shows, the page, a bottom tab bar with More; the other kinds of record and the shell's tools behind
+// one ⋯ menu; no TRUSTED pill. On a wide screen: a sidebar with the pages, the quick actions and the
+// tools. A page's primary action is a bar at the bottom. A detail page has one filled action and
+// keeps Edit / Delete behind "More actions".
 //
-// Recipes is the vehicle: its cookbook (a gallery with "Add a recipe" as its primary action), "What
-// can I cook?" (a list with the floating quick action), and a recipe's page.
+// Recipes is the vehicle: its cookbook (a gallery, with "Add a recipe" a quiet chip), its Pantry (whose
+// "+" adds an ingredient), and a recipe's page.
 
 async function openRecipes(page: Page): Promise<void> {
   await page.goto("/?user=recipes");
@@ -17,7 +16,7 @@ async function openRecipes(page: Page): Promise<void> {
   await expect(page.locator(".k-card").first()).toBeVisible();
 }
 
-/** Two kinds of record, each with its quick action: what the floating button and its hold need. */
+/** Two kinds of record, each with its quick action: one in the top bar, the other in the menu. */
 const TWO_QUICK = `import { defineApp } from "potyro";
 export default defineApp({
   id: "jotter", name: "Jotter", version: "1.0.0", schemaVersion: 1,
@@ -49,9 +48,15 @@ test.describe("phone", () => {
     await expect(page.locator(".k-page-hero")).toHaveCount(0);
     const card = (await page.locator(".k-card").first().boundingBox())!;
     expect(card.y).toBeLessThan(260);
-    // Adding a recipe is not what the cookbook is for: no bottom bar, no floating button for it.
+    // Adding a recipe is not what the cookbook is for: no bottom bar. It is the top bar's "+", which
+    // runs the app's own way in (a photo, pasted text, or typing) — and not a chip as well.
     await expect(page.locator(".k-primary-bar")).toHaveCount(0);
-    await expect(page.locator(".k-fab")).toHaveCount(0);
+    const add = page.locator(".k-topbar .k-topbar-add");
+    await expect(add).toHaveAccessibleName("Add a recipe");
+    await expect(page.locator(".k-chrome").getByRole("button", { name: "Add a recipe" })).toBeHidden();
+    await add.tap();
+    await expect(page.getByRole("menuitem", { name: /Type it in/ })).toBeVisible();
+    await page.keyboard.press("Escape");
     // No provenance pill, and no shell tool above the content.
     await expect(page.locator(".k-prov")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Studio" })).toHaveCount(0);
@@ -72,37 +77,36 @@ test.describe("phone", () => {
     await expect(bar.locator(".k-tab .k-tab-label")).toHaveText(["Recipes", "This week", "Shopping", "Pantry"]);
     await bar.locator(".k-tab", { hasText: "Pantry" }).tap();
     await expect(page.locator(".k-check-row").first()).toContainText(/./);
-    // On the Pantry the floating action is the ingredient's: it adds what the page shows.
-    await expect(page.locator(".k-fab")).toHaveText(/Add: Ingredient/);
+    // On the Pantry the top bar's "+" is the ingredient's: it adds what the page shows.
+    await expect(page.locator(".k-topbar .k-topbar-add")).toHaveAccessibleName("Add: Ingredient");
   });
 
-  test("the floating action runs the page's quick action; held, it offers the others", async ({ page, browserName }) => {
-    test.skip(browserName !== "chromium", NEEDS_CDP);
-    // An app that adds notes and tasks: its notes page floats the note's, and holds the task's.
+  test("adding is a + in the top bar for what the page shows; the other kinds are in the ⋯ menu", async ({ page }) => {
+    // An app that adds notes and tasks: its notes page's "+" adds a note.
     await page.addInitScript((source) => {
       if (localStorage.getItem("potyro:user-apps")) return;
       localStorage.setItem("potyro:user-apps", JSON.stringify([{ id: "jotter", name: "Jotter", source, trusted: true, updatedAt: new Date(0).toISOString() }]));
     }, TWO_QUICK);
     await page.goto("/?user=jotter");
-    const fab = page.locator(".k-fab");
-    await expect(fab).toHaveText(/New note/, { timeout: 30_000 });
-    const box = (await fab.boundingBox())!;
-    expect(box.y + box.height).toBeLessThan(812 - 60); // above the tab bar
+    const add = page.locator(".k-topbar .k-topbar-add");
+    await expect(add).toHaveAccessibleName("New note", { timeout: 30_000 });
+    // In the top bar, a full-size target; nothing floats over the list.
+    const box = (await add.boundingBox())!;
+    const bar = (await page.locator(".k-topbar").boundingBox())!;
+    expect(box.y + box.height).toBeLessThanOrEqual(bar.y + bar.height + 1);
     expect(box.height).toBeGreaterThanOrEqual(44);
-    await fab.tap();
+    await expect(page.locator(".k-fab")).toHaveCount(0);
+    await add.tap();
     await expect(page.getByRole("dialog", { name: "Add: Note" })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    // Hold: the other quick action rises above it.
-    const b = (await fab.boundingBox())!;
-    const cdp = await page.context().newCDPSession(page);
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: b.x + b.width / 2, y: b.y + b.height / 2 }] });
-    await page.waitForTimeout(600);
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-    const dial = page.getByRole("group", { name: "Quick actions" });
-    await expect(dial).toBeVisible();
-    await dial.getByRole("button", { name: /New task/ }).tap();
+    // The other kind is one tap away in the ⋯ menu — and the "+" follows the page.
+    await page.getByRole("button", { name: "More", exact: true }).tap();
+    await page.getByRole("menu", { name: "More" }).getByRole("menuitem", { name: /New task/ }).tap();
     await expect(page.getByRole("dialog", { name: "Add: Task" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.locator(".k-tabbar .k-tab", { hasText: "Tasks" }).tap();
+    await expect(add).toHaveAccessibleName("New task");
   });
 
   test("a detail page: back in the top bar, one big button at the bottom, Delete last in More actions", async ({ page }) => {
@@ -110,7 +114,7 @@ test.describe("phone", () => {
     await page.locator(".k-card").first().tap();
     const detail = page.locator("article.k-detail");
     await expect(detail).toBeVisible();
-    await expect(page.locator(".k-fab")).toHaveCount(0);
+    await expect(page.locator(".k-topbar-add")).toHaveCount(0);
     // The page's primary action is the one loud button, at the bottom; the bar's actions are all quiet.
     await expect(detail.locator(".k-cta")).toHaveText(/Start cooking/);
     await expect(detail.locator(".k-cta")).toHaveCount(1);

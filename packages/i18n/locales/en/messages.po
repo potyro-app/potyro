@@ -5130,10 +5130,6 @@ msgstr "Put it back in the sealed box"
 msgid "Putting places at their address ({placedNow} of {placedOf})…"
 msgstr "Putting places at their address ({placedNow} of {placedOf})…"
 
-#: ../shell/src/chrome.tsx
-msgid "Quick actions"
-msgstr "Quick actions"
-
 #: ../shell/src/app-lock.tsx
 msgid "Read-only"
 msgstr "Read-only"
@@ -5852,6 +5848,11 @@ msgstr "Shortcuts"
 #: ../shell/src/remix-suggestions.ts
 msgid "Show “{label}” on a calendar"
 msgstr "Show “{label}” on a calendar"
+
+#. Scope menu: no list/trip chosen, so every record shows
+#: ../shell/src/scope-switcher.tsx
+msgid "Show all"
+msgstr "Show all"
 
 #: ../shell/src/share-page.tsx
 msgid "Show all of it"
