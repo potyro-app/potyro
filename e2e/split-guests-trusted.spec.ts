@@ -11,18 +11,18 @@ test.use({ viewport: { width: 1280, height: 900 } });
 
 const balances = (page: Page) => page.locator(".k-aggregate");
 
-/** Pick a group: the app asks on its first open; after that, through the header's chip. */
-async function chooseGroup(page: Page, name: RegExp, viaChip = true): Promise<void> {
+/** Pick a group from the title's switcher (the app opens on the first one by itself). */
+async function chooseGroup(page: Page, name: RegExp): Promise<void> {
   const scope = page.locator(".k-scope");
-  if (viaChip) await scope.click();
-  await page.getByRole("dialog").getByRole("button", { name }).first().click();
+  await scope.click();
+  await page.getByRole("menu").getByRole("menuitem", { name }).first().click();
   await expect(scope).toHaveAttribute("aria-label", new RegExp(`Group: ${name.source.replace("^", "")}`));
 }
 
 test("guests make a group lively before anyone joins, and Invite names more", async ({ page }) => {
   await page.goto("/?user=split");
-  await expect(page.getByRole("button", { name: /^Lisbon weekend/ }).first()).toBeVisible({ timeout: 30_000 });
-  await chooseGroup(page, /^Lisbon weekend/, false);
+  // It opens on the first group, without asking.
+  await expect(page.locator(".k-scope")).toHaveAttribute("aria-label", /Group: Lisbon weekend/, { timeout: 30_000 });
 
   // The first run, alone: the guests are in the balances, and the way out names them.
   for (const who of ["Ana", "Tom", "Inês"]) await expect(balances(page)).toContainText(who, { timeout: 30_000 });

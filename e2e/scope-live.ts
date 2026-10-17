@@ -23,10 +23,9 @@ export async function seedLiveScope(page: Page, trusted: boolean): Promise<void>
 /** The app's own screen: the page itself, or — sealed — its frame. */
 export async function liveScopeJourney(page: Page, view: Page | FrameLocator, shots?: string, name = "scope-live"): Promise<void> {
   const chip = page.locator(".k-scope");
-  const picker = page.getByRole("dialog", { name: "Choose" });
-  await expect(picker).toBeVisible({ timeout: 30_000 });
-  await picker.getByRole("button", { name: /Add: Trip/ }).click();
+  // No trip yet: the app opens on the form for a first one.
   const form = page.locator(".k-form");
+  await expect(form).toBeVisible({ timeout: 30_000 });
   await form.getByLabel(/City/).fill("Lisbon");
   await form.getByRole("button", { name: "Create" }).click();
   await expect(chip).toContainText("Lisbon");
