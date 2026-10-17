@@ -34,9 +34,14 @@ describe("the gallery's data", () => {
 
   it("publishes only apps that work sealed today; the rest are coming soon, with what they wait for", () => {
     const g = readGallery(real);
-    expect(publishable(g).map((a) => a.id)).toEqual(["groceries", "recipes", "plants", "places", "split", "workout", "receipt-split", "markdown-notes"]);
+    // The apps drawn as their own screens lead (they run sealed since #267, live ones since #356); the
+    // examples follow.
+    expect(publishable(g).map((a) => a.id)).toEqual([
+      "mood-sleep", "photo-garden", "draw-guess", "mirror-monsters", "piano", "earthquakes", "word-watch", "ticker",
+      "recipes", "groceries", "plants", "places", "split", "workout", "receipt-split", "markdown-notes",
+    ]);
     const soon = g.apps.filter((a) => a.status === "coming-soon");
-    for (const id of ["daily", "palette-catcher", "photo-puzzle", "piano", "mood-sleep", "photo-garden", "draw-guess", "pantry", "plant-doctor", "poster-event", "earthquakes", "word-watch", "ticker"]) {
+    for (const id of ["daily", "palette-catcher", "photo-puzzle", "pantry", "plant-doctor", "poster-event"]) {
       expect(soon.map((a) => a.id)).toContain(id);
     }
     expect(soon.every((a) => a.waitsFor && !a.link)).toBe(true);
@@ -107,7 +112,7 @@ describe("the page", () => {
     expect(page).toContain('aria-label="Try Groceries en"');
     expect(page).toContain('aria-label="Make Groceries en mine"');
     expect(page).toContain('width="412" height="860"');
-    expect(shownApps(published()).soon.length).toBeGreaterThan(10);
+    expect(shownApps(published()).soon.length).toBeGreaterThan(4);
     expect(page).toContain("On the workbench");
   });
 
