@@ -2,8 +2,12 @@
 // the basket, and a memory of about two months of shopping — so "Usuals" is full on the first open and
 // the app can show what it is for: the things you buy every week are one tap away.
 //
-// Fixtures for the browser specs too: the aisles start Produce, Bakery, Dairy; Dairy holds Milk then
-// Yoghurt then Eggs; Spinach and Rice are ticked; Apples has a quantity.
+// Two lists, so the switcher has something to switch: "Weekly shop" (opened first) and a small
+// "Party" one. Remembered items have no list of their own to speak of — they are the memory every
+// list's add box offers.
+//
+// Fixtures for the browser specs too: the aisles start Produce, Bakery, Dairy; on Weekly shop, Dairy
+// holds Milk then Yoghurt then Eggs; Spinach and Rice are ticked; Apples has a quantity.
 import type { Store } from "@potyro/store";
 import type { SeedPhoto } from "../seed.js";
 
@@ -11,6 +15,8 @@ const DAY = 86_400_000;
 
 export async function seedGroceries(store: Store, _me: string | undefined, _photo: SeedPhoto): Promise<void> {
   if ((await store.all("item")).length > 0) return;
+  const weekly = String((await store.insert("list", { name: "Weekly shop" })).id);
+  const party = String((await store.insert("list", { name: "Party" })).id);
   // Aisles are records, in the order you walk the shop — renamed, reordered and deleted from the
   // list itself. These are a place to start, not the app's opinion of a supermarket.
   const aisle = async (name: string, order: number): Promise<string> => String((await store.insert("aisle", { name, order })).id);
@@ -23,10 +29,11 @@ export async function seedGroceries(store: Store, _me: string | undefined, _phot
 
   const now = Date.now();
   const seen = new Map<string, number>();
-  const onList = (name: string, at: string, over: Record<string, unknown> = {}) => {
-    const position = seen.get(at) ?? 0;
-    seen.set(at, position + 1);
-    return store.insert("item", { name, aisle: at, position, bought: false, quantity: "", note: "", onList: true, timesBought: 0, ...over });
+  const onList = (name: string, at: string, over: Record<string, unknown> = {}, list = weekly) => {
+    const key = `${list}:${at}`;
+    const position = seen.get(key) ?? 0;
+    seen.set(key, position + 1);
+    return store.insert("item", { name, aisle: at, list, position, bought: false, quantity: "", note: "", onList: true, timesBought: 0, ...over });
   };
   // What you bought before, and how often: the memory Usuals is made from.
   const before = (times: number, daysAgo: number) => ({ timesBought: times, lastBought: new Date(now - daysAgo * DAY) });
@@ -46,9 +53,16 @@ export async function seedGroceries(store: Store, _me: string | undefined, _phot
   await onList("Frozen peas", frozen);
   await onList("Dish soap", household, before(2, 41));
 
+  // ---- Saturday's party ----
+  await onList("Limes", produce, { quantity: "6" }, party);
+  await onList("Tortilla chips", pantry, { quantity: "3 bags" }, party);
+  await onList("Sparkling water", pantry, { quantity: "6 × 1.5 l" }, party);
+  await onList("Ice", frozen, { quantity: "2 bags" }, party);
+  await onList("Napkins", household, {}, party);
+
   // ---- remembered, not on the list: the usuals ----
   const usual = (name: string, at: string, times: number, daysAgo: number, quantity = "") =>
-    store.insert("item", { name, aisle: at, position: 0, bought: false, quantity, note: "", onList: false, ...before(times, daysAgo) });
+    store.insert("item", { name, aisle: at, list: weekly, position: 0, bought: false, quantity, note: "", onList: false, ...before(times, daysAgo) });
   await usual("Coffee beans", pantry, 8, 6, "500 g");
   await usual("Oats", pantry, 6, 13);
   await usual("Lemons", produce, 6, 6, "3");

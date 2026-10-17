@@ -42,7 +42,7 @@ export function ActionMenu({ label, trigger, title, entries, className, buttonCl
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [anchor, setAnchor] = useState<{ top: number; right: number } | null>(null);
+  const [anchor, setAnchor] = useState<{ top: number; right?: number; left?: number } | null>(null);
 
   const close = (refocus: boolean): void => {
     setOpen(false);
@@ -53,7 +53,14 @@ export function ActionMenu({ label, trigger, title, entries, className, buttonCl
   useEffect(() => {
     if (!open) return;
     const rect = buttonRef.current?.getBoundingClientRect();
-    if (rect) setAnchor({ top: rect.bottom + 6, right: Math.max(8, window.innerWidth - rect.right) });
+    // Hung from the side of the screen the button is on: a button at the left (a title that is a
+    // switcher) opens rightwards, so the menu never runs off the screen's left edge.
+    if (rect)
+      setAnchor(
+        rect.left + rect.width / 2 < window.innerWidth / 2
+          ? { top: rect.bottom + 6, left: Math.max(8, rect.left) }
+          : { top: rect.bottom + 6, right: Math.max(8, window.innerWidth - rect.right) },
+      );
     menuRef.current?.querySelector<HTMLButtonElement>("[role=menuitem]:not(:disabled)")?.focus();
   }, [open]);
 
@@ -94,7 +101,7 @@ export function ActionMenu({ label, trigger, title, entries, className, buttonCl
                 className={`k-menu${className ? ` ${className}` : ""}`}
                 role="menu"
                 aria-label={label}
-                style={anchor ? { top: anchor.top, right: anchor.right } : undefined}
+                style={anchor ? { top: anchor.top, right: anchor.right, left: anchor.left } : undefined}
                 onKeyDown={onMenuKey}
               >
                 <div className="k-menu-grip" aria-hidden />

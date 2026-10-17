@@ -5,12 +5,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// A page that sits on a picture (`background: { image }`) SHOWS the picture, behind its words.
+// A page that sits on a picture (`background: { image }`) SHOWS the picture: as the page's ground,
+// faded behind the top of the page under its content — never a block that pushes the content down.
 //
 // The bug (#368): the picture was asked for again on every render — the hook was keyed by `ctx`,
-// which is a new object each time — so its `src` changed faster than it could load and the header
-// showed only its shade on beige, with white words on near-white. This reads the header's pixels:
-// a photo behind it varies; a shade over a plain ground does not.
+// which is a new object each time — so its `src` changed faster than it could load. This reads the
+// ground's pixels: a photo there varies; the plain paper does not.
 
 const PACK = fileURLToPath(new URL("../scripts/pack-app.mjs", import.meta.url));
 const FIXTURES = fileURLToPath(new URL("./fixtures", import.meta.url));
@@ -62,29 +62,55 @@ async function spread(page: Page, png: Buffer): Promise<number> {
   }, png.toString("base64"));
 }
 
+/** How far apart two same-sized screenshots are: the mean absolute difference per channel (0–255). */
+async function difference(page: Page, a: Buffer, b: Buffer): Promise<number> {
+  return page.evaluate(
+    async ([a64, b64]) => {
+      const read = async (b: string) => {
+        const bmp = await createImageBitmap(new Blob([Uint8Array.from(atob(b), (c) => c.charCodeAt(0))], { type: "image/png" }));
+        const c = new OffscreenCanvas(bmp.width, bmp.height);
+        const g = c.getContext("2d")!;
+        g.drawImage(bmp, 0, 0);
+        return g.getImageData(0, 0, bmp.width, bmp.height).data;
+      };
+      const [x, y] = [await read(a64!), await read(b64!)];
+      let sum = 0;
+      let n = 0;
+      for (let i = 0; i < x.length; i += 4) for (let ch = 0; ch < 3; ch++, n++) sum += Math.abs(x[i + ch]! - y[i + ch]!);
+      return sum / n;
+    },
+    [a.toString("base64"), b.toString("base64")] as const,
+  );
+}
+
 for (const scheme of ["light", "dark"] as const) {
-  test(`a page's background picture shows behind its header, its words over a shade (${scheme})`, async ({ page }) => {
+  test(`a page's background picture is the ground behind its content (${scheme})`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
     await page.setViewportSize({ width: 412, height: 915 });
     await addMine(page, pack());
-    const hero = page.locator(".k-page-hero");
-    await expect(hero).toHaveAttribute("data-backdrop", "image");
-    await expect(hero.locator(".k-page-title")).toHaveText("Flowers");
-    const img = hero.locator(".k-page-hero-photo img");
+    const ground = page.locator(".k-page-ground");
+    const img = ground.locator("img");
     await expect.poll(() => img.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth), { timeout: 15_000 }).toBeGreaterThan(0);
     // The src holds still: the picture is not asked for over and over.
     const src = await img.getAttribute("src");
     await page.waitForTimeout(1_000);
     await expect(img).toHaveAttribute("src", src!);
-    // Let the cover's fade-in finish, then read the header's pixels.
+    // The content is not pushed below the picture: it starts at the top, over it.
+    const groundBox = (await ground.boundingBox())!;
+    const content = (await page.locator(".k-main").boundingBox())!;
+    expect(content.y).toBeLessThan(groundBox.y + groundBox.height / 2);
     await page.waitForTimeout(800);
-    // A patch of the header with no words on it: its right side, below the top edge.
-    const box = (await hero.boundingBox())!;
-    const clip = { x: box.x + box.width * 0.62, y: box.y + box.height * 0.08, width: box.width * 0.34, height: box.height * 0.3 };
-    const withPhoto = await spread(page, await page.screenshot({ clip, animations: "disabled" }));
-    // The same patch with the photo taken out: the shade on the plain ground.
+    // The ground itself, read with the content set aside: its top band, before it fades to paper.
+    await page.locator(".k-main").evaluate((m: HTMLElement) => (m.style.visibility = "hidden"));
+    const box = groundBox;
+    const clip = { x: box.x + box.width * 0.05, y: box.y + box.height * 0.02, width: box.width * 0.9, height: box.height * 0.2 };
+    const withPhoto = await page.screenshot({ clip, animations: "disabled" });
+    // The same patch with the photo taken out: the plain ground.
     await img.evaluate((i: HTMLImageElement) => (i.style.visibility = "hidden"));
-    const without = await spread(page, await page.screenshot({ clip, animations: "disabled" }));
-    expect(withPhoto).toBeGreaterThan(without + 8);
+    const without = await page.screenshot({ clip, animations: "disabled" });
+    // Faded to a ground, the picture is still plainly there: the patch differs from bare paper, and
+    // varies more than it.
+    expect(await difference(page, withPhoto, without)).toBeGreaterThan(6);
+    expect(await spread(page, withPhoto)).toBeGreaterThan(await spread(page, without));
   });
 }

@@ -1,44 +1,57 @@
-import { test, expect } from "./console-guard";
+import { test, expect, type Page } from "./console-guard";
 
-// The checklist view (#106) in the Groceries example, after a week of using it on a phone: a tick
-// buys the item and SINKS it to the bottom of its own aisle — what is left to buy stays together —
-// instead of moving it to a Done section at the end. The aisles are records now, so the seed walks
-// the shop in order: Produce, Bakery, Dairy, Pantry, Frozen, Household. Type an item and press Enter
-// and it is on the list with the input still focused for the next one, in the aisle the app knows it
-// from. "Done shopping" puts what was ticked away into memory, and Usuals brings it back in one tap.
+// Groceries as it is used most: in a shop, phone in one hand. The list opens on its items — the first
+// one right under the app bar, not under a header card — in the aisles' walking order. A tap anywhere
+// on a row ticks it, and the ticked thing folds into "In the basket" so what is left stays on screen.
+// "Done shopping" is a bar at the bottom that is only there once something is in the basket. The
+// usuals are what the add box offers when you tap it. Several lists, switched from the title, where
+// the shell also makes, renames, copies and deletes them.
+
+const scope = (page: Page) => page.locator(".k-scope");
+/** One of the figures above the list: its number and what it counts ("11" "to buy"). */
+async function expectFigure(page: Page, n: number, value: string, label: string): Promise<void> {
+  const figure = page.locator(".k-page-figures .k-summary-figure").nth(n);
+  await expect(figure.locator(".k-summary-value")).toHaveText(value);
+  await expect(figure.locator(".k-summary-label")).toHaveText(label);
+}
+
+async function openList(page: Page): Promise<void> {
+  await page.goto("/?user=groceries");
+  await expect(scope(page)).toContainText("Weekly shop", { timeout: 30_000 });
+  await expect(page.locator(".k-check-row").first()).toBeVisible();
+}
 
 test.describe("phone", () => {
   test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
 
-  test("ticking an item patches the record and leaves it where it is; quick add keeps the focus", async ({ page }) => {
-    await page.goto("/?user=groceries");
-    await expect(page.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
-
+  test("the list is the first thing on screen; a tap on a row ticks it and it folds into the basket", async ({ page }) => {
+    await openList(page);
     const list = page.locator(".k-checklist");
-    // Aisles in walking order, not an enum in alphabetical order.
+    // Content first: the first item sits right under the app bar and the one line of figures.
+    const first = (await list.locator(".k-check-row").first().boundingBox())!;
+    expect(first.y).toBeLessThan(220);
+    await expectFigure(page, 0, "11", "to buy");
+    await expectFigure(page, 1, "2", "in the basket");
+    // Aisles in walking order.
     await expect(list.locator(".k-check-heading").first()).toHaveText("Produce");
-    const milk = list.getByRole("checkbox", { name: "Milk" });
-    await expect(milk).toHaveAttribute("aria-checked", "false");
-    const box = (await milk.boundingBox())!;
-    expect(Math.round(Math.min(box.width, box.height))).toBeGreaterThanOrEqual(44);
 
     const dairy = page.locator("section", { has: page.getByRole("heading", { name: "Dairy" }) });
     await expect(dairy.locator(".k-check-label")).toHaveText(["Milk", "Yoghurt", "Eggs"]);
-
-    await milk.tap();
-    await expect(milk).toHaveAttribute("aria-checked", "true");
-    // Struck through WHERE IT IS. It used to sink to the bottom of its aisle, which moved the line
-    // under the finger that had just touched it; that is opt-in now (`donePlacement: "sink"`).
-    await expect(milk.locator("xpath=ancestor::li")).toHaveAttribute("data-done", "true");
-    await page.waitForTimeout(1_000);
-    await expect(dairy.locator(".k-check-label")).toHaveText(["Milk", "Yoghurt", "Eggs"]);
+    // The whole row is the target, not only the circle.
+    await dairy.locator(".k-check-row", { hasText: "Milk" }).locator(".k-check-label").tap();
+    await expect(dairy.locator(".k-check-label")).toHaveText(["Yoghurt", "Eggs"]);
+    const basket = page.locator(".k-check-done");
+    await expect(basket.locator("summary")).toHaveText("In the basket (3)");
+    await basket.locator("summary").tap();
+    await expect(basket.getByRole("checkbox", { name: "Milk" })).toHaveAttribute("aria-checked", "true");
+    await expectFigure(page, 1, "3", "in the basket");
 
     // Persisted: still bought after a reload.
     await page.reload();
-    await expect(page.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
-    await expect(page.getByRole("checkbox", { name: "Milk" })).toHaveAttribute("aria-checked", "true");
+    await expect(scope(page)).toContainText("Weekly shop", { timeout: 30_000 });
+    await expect(page.locator(".k-check-done summary")).toHaveText("In the basket (3)");
 
-    // Quick add: type, Enter, next.
+    // Quick add: type, Enter, next — into the aisle the app knows it from.
     const input = page.getByRole("textbox", { name: "Add an item" });
     await input.tap();
     await input.fill("Coffee");
@@ -47,28 +60,68 @@ test.describe("phone", () => {
     await expect(coffee).toBeVisible();
     await expect(input).toHaveValue("");
     await expect(input).toBeFocused();
-    // The app knows where coffee lives (its own small dictionary, against YOUR aisle names).
     await expect(coffee.locator("xpath=ancestor::section")).toHaveAttribute("aria-label", "Pantry");
-    // A name it does not know has no aisle yet: the app ASKS which, rather than guessing one.
+    // A name it does not know has no aisle yet: every aisle shows, and the app asks which.
     await input.fill("Birthday candles");
     await page.keyboard.press("Enter");
     await expect(page.locator(".k-check-hint")).toContainText("Birthday candles");
     await page.getByRole("button", { name: /Put Birthday candles in Household/ }).tap();
     await expect(page.getByRole("checkbox", { name: "Birthday candles" }).locator("xpath=ancestor::section")).toHaveAttribute("aria-label", "Household");
   });
+
+  test("the empty add box offers the usuals; one tap puts one on the list, in its aisle", async ({ page }) => {
+    await openList(page);
+    const input = page.getByRole("textbox", { name: "Add an item" });
+    await expect(page.getByRole("list", { name: "Usual items" })).toHaveCount(0);
+    await input.tap();
+    const usuals = page.getByRole("list", { name: "Usual items" });
+    await expect(usuals.getByRole("button").first()).toHaveText("＋ Coffee beans");
+    // What is on the list already is not offered.
+    await expect(usuals.getByRole("button", { name: /Milk/ })).toHaveCount(0);
+    await usuals.getByRole("button", { name: "＋ Lemons" }).tap();
+    const lemons = page.getByRole("checkbox", { name: "Lemons", exact: true });
+    await expect(lemons).toHaveAttribute("aria-checked", "false");
+    await expect(lemons.locator("xpath=ancestor::section")).toHaveAttribute("aria-label", "Produce");
+    await expect(usuals.getByRole("button", { name: "＋ Lemons" })).toHaveCount(0);
+  });
+
+  test("dragging and renaming wait behind Arrange", async ({ page }) => {
+    await openList(page);
+    await expect(page.locator(".k-check-grip")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Rename / })).toHaveCount(0);
+    await page.getByRole("button", { name: "Arrange" }).tap();
+    await expect(page.locator(".k-check-grip").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Rename Produce" })).toBeVisible();
+    // Every aisle shows while arranging, the empty ones too, and a new one can be made.
+    await expect(page.getByRole("button", { name: "+ Aisle" })).toBeVisible();
+    await page.getByRole("button", { name: "Done arranging" }).tap();
+    await expect(page.locator(".k-check-grip")).toHaveCount(0);
+  });
 });
 
 test.describe("desktop", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("the row's chevron opens the item, and un-ticking lifts it back up its aisle", async ({ page }) => {
-    await page.goto("/?user=groceries");
-    await expect(page.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
+  test("Done shopping is there only once something is in the basket, and puts it away", async ({ page }) => {
+    await openList(page);
+    const done = page.locator(".k-primary-bar").getByRole("button", { name: /Done shopping/ });
+    await expect(done).toBeVisible();
+    await done.click();
+    await expect(page.locator(".k-toast")).toContainText("Put 2 things away");
+    await expect(page.getByRole("checkbox", { name: "Spinach" })).toHaveCount(0);
+    await expect(page.getByRole("checkbox", { name: "Rice" })).toHaveCount(0);
+    // Nothing in the basket: nothing to finish.
+    await expect(page.locator(".k-primary-bar")).toHaveCount(0);
+    await page.getByRole("checkbox", { name: "Apples" }).click();
+    await expect(page.locator(".k-primary-bar")).toBeVisible();
+  });
+
+  test("the row's chevron opens the item, and un-ticking brings it back to its aisle", async ({ page }) => {
+    await openList(page);
     await page.getByRole("button", { name: "Open Apples" }).click();
-    await expect(page.locator("article.k-detail")).toBeVisible();
     await expect(page.locator("article.k-detail")).toContainText("Apples");
     await page.getByRole("button", { name: "Back" }).first().click();
-    // Rice is bought, so it sits at the bottom of Pantry — there is no Done section to unfold.
+    await page.locator(".k-check-done summary").click();
     const rice = page.getByRole("checkbox", { name: "Rice" });
     await expect(rice).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
     await rice.click();
@@ -76,27 +129,43 @@ test.describe("desktop", () => {
     await expect(rice.locator("xpath=ancestor::section")).toHaveAttribute("aria-label", "Pantry");
   });
 
-  test("Done shopping puts the basket away, and a Usuals tile brings a thing back to its aisle in one tap", async ({ page }) => {
-    await page.goto("/?user=groceries");
-    await expect(page.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
-    // Spinach and Rice are in the basket on a first run.
-    await expect(page.getByRole("checkbox", { name: "Spinach" })).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
-    await page.getByRole("button", { name: /Done shopping/ }).first().click();
-    await expect(page.locator(".k-toast")).toContainText("Put 2 things away");
-    await expect(page.getByRole("checkbox", { name: "Spinach" })).toHaveCount(0);
-    await expect(page.getByRole("checkbox", { name: "Rice" })).toHaveCount(0);
+  test("lists: switch from the title, make one, copy one with its items, delete one", async ({ page }) => {
+    await openList(page);
+    const menu = page.getByRole("menu");
+    await scope(page).click();
+    await menu.getByRole("menuitem", { name: "Party", exact: true }).click();
+    await expect(scope(page)).toContainText("Party");
+    await expect(page.getByRole("checkbox", { name: "Limes" })).toBeVisible();
+    await expect(page.getByRole("checkbox", { name: "Apples" })).toHaveCount(0);
 
-    // Remembered, and one tap from the list: a tile, until it is back on it.
-    await page.locator(".k-sidenav .k-tab", { hasText: "Usuals" }).click();
-    const tile = page.locator(".k-checklist").getByRole("checkbox", { name: "Spinach", exact: true });
-    await expect(tile).toHaveAttribute("aria-checked", "false");
-    // What is on the list already is not offered: Milk is on it.
-    await expect(page.locator(".k-checklist").getByRole("checkbox", { name: "Milk", exact: true })).toHaveCount(0);
-    await tile.click();
-    await expect(tile).toHaveCount(0);
-    await page.locator(".k-sidenav .k-tab", { hasText: "List" }).click();
-    const back = page.getByRole("checkbox", { name: "Spinach" });
-    await expect(back).toHaveAttribute("aria-checked", "false");
-    await expect(back.locator("xpath=ancestor::section")).toHaveAttribute("aria-label", "Produce");
+    // A copy, with its items, under the name asked for.
+    await scope(page).click();
+    await menu.getByRole("menuitem", { name: "Duplicate…" }).click();
+    const ask = page.getByRole("dialog");
+    await ask.getByRole("textbox").fill("Next party");
+    await ask.getByRole("button", { name: "OK" }).click();
+    await expect(scope(page)).toContainText("Next party");
+    await expect(page.getByRole("checkbox", { name: "Limes" })).toBeVisible();
+
+    // A new one, from the form; it is the one shown, and empty.
+    await scope(page).click();
+    await menu.getByRole("menuitem", { name: "New List" }).click();
+    const form = page.locator(".k-form");
+    await form.getByLabel(/Name/).fill("Hardware store");
+    await form.getByRole("button", { name: "Create" }).click();
+    await expect(scope(page)).toContainText("Hardware store");
+    await expect(page.locator(".k-check-row")).toHaveCount(0);
+
+    // Deleted, asked first, with what is in it; another list is shown.
+    await scope(page).click();
+    await menu.getByRole("menuitem", { name: "Party", exact: true }).click();
+    await scope(page).click();
+    await menu.getByRole("menuitem", { name: "Delete…" }).click();
+    await expect(page.getByRole("dialog")).toContainText("Delete “Party”?");
+    await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
+    await expect(scope(page)).not.toContainText("Party", { timeout: 10_000 });
+    await scope(page).click();
+    await expect(menu.getByRole("menuitem", { name: "Party", exact: true })).toHaveCount(0);
+    await expect(menu.getByRole("menuitem", { name: "Next party" })).toBeVisible();
   });
 });

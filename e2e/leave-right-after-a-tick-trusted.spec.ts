@@ -1,4 +1,12 @@
-import { test, expect } from "./console-guard";
+import { test, expect, type Page } from "./console-guard";
+
+/** Milk is in the basket: the folded section holds it, ticked. */
+async function expectMilkInBasket(page: Page): Promise<void> {
+  const basket = page.locator(".k-check-done");
+  await expect(basket.locator("summary")).toHaveText("In the basket (3)", { timeout: 30_000 });
+  if (!(await basket.evaluate((d: HTMLDetailsElement) => d.open))) await basket.locator("summary").click();
+  await expect(basket.getByRole("checkbox", { name: "Milk" })).toHaveAttribute("aria-checked", "true");
+}
 
 // A tick is kept even when you leave the app the moment you make it.
 //
@@ -15,14 +23,15 @@ test("a tick made just before going home is still there when the app is opened a
   await expect(milk).toHaveAttribute("aria-checked", "false", { timeout: 30_000 });
 
   await milk.click();
-  await expect(milk).toHaveAttribute("aria-checked", "true");
+  // Ticked, it folds into the basket.
+  await expect(page.locator(".k-check-done summary")).toHaveText("In the basket (3)");
   await page.goBack(); // straight home, in place — no pause
 
   await expect(tile).toBeVisible({ timeout: 30_000 });
   await tile.click();
-  await expect(page.getByRole("checkbox", { name: "Milk" })).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
+  await expectMilkInBasket(page);
 
   // And across a full reload, which is how most people come back.
   await page.reload();
-  await expect(page.getByRole("checkbox", { name: "Milk" })).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
+  await expectMilkInBasket(page);
 });

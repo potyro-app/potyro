@@ -95,7 +95,9 @@ migrations: [
 ```
 
 Op set: `addField`, `dropField`, `renameField`, `changeType` (with a `via` transform —
-a value-mapping **function**), `renameEntity`, `setDefaultForExisting`, `addRelation`. For
+a value-mapping **function**), `renameEntity`, `setDefaultForExisting`, `addRelation`, `addRecord`
+(`{ entity, id, values }` — a record under a fixed id that existing records can then point at: the
+first list when items start belonging to lists; nothing happens if it is there already). For
 anything the ops don't cover, a migration step may be a plain function
 `transform: (record, ctx) => record` run per record. (This is safe: migrations run in the same
 trust context as the app whose data they migrate.)

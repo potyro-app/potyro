@@ -20,6 +20,11 @@
 //   groupOrder   when `group` names a relation, the groups are records: their headings rename in
 //                place, drag into order, and delete — asking first what becomes of their rows
 //
+// Using a list and arranging it are two different moments. In a shop, a row is a target for one
+// thing — a tap anywhere on it ticks it — and a heading with nothing left under it is noise. Dragging,
+// renaming, adding and deleting groups wait behind Arrange, at the end of the list, so a thumb on a
+// moving trolley never starts a drag or a rename by accident.
+//
 // One consequence worth stating: with groups as records, a new item has nowhere to go until someone
 // says where. So it is added ungrouped and the view asks — "Tap the aisle for Milk" — rather than
 // guessing, or making the person open a form to answer a question one tap can.
@@ -38,6 +43,7 @@ import { createDefaults } from "./record-form.js";
 import { useRowGroups } from "./row-groups.js";
 import { useReorder } from "./reorder.js";
 import { byPeople } from "./edit-lock.js";
+import { UsualChips, useUsuals } from "./checklist-usuals.js";
 
 /**
  * How long a ticked row stays where it is before it sinks.
@@ -63,8 +69,9 @@ interface ChecklistDef {
   detail?: unknown;
   group?: unknown;
   hideDone?: boolean | "collapse";
+  doneLabel?: string;
   donePlacement?: "sink" | "stay";
-  quickAdd?: boolean | { suggest?: boolean; remember?: string[]; defaults?: unknown };
+  quickAdd?: boolean | { suggest?: boolean; remember?: string[]; defaults?: unknown; usuals?: unknown };
   icon?: unknown;
   layout?: "rows" | "tiles";
   editText?: boolean;
@@ -217,6 +224,9 @@ export function ChecklistView(props: BuiltinViewProps) {
    * stays where it is unless an app asks for `donePlacement: "sink"`.
    */
   const sinks = view.donePlacement === "sink" && view.hideDone !== "collapse";
+  /** A ticked row leaves its place — sinking, or folding into the done section — after a beat in
+   *  which it is seen struck through where it was touched. */
+  const moves = sinks || view.hideDone === "collapse";
   /**
    * What a tick means RIGHT NOW, before the store has said anything back.
    *
@@ -242,6 +252,8 @@ export function ChecklistView(props: BuiltinViewProps) {
   }, [rows]);
 
   const [editingRow, setEditingRow] = useState<string | null>(null);
+  /** Arranging: grips, renames, and the groups' own controls. Otherwise a row is a tick. */
+  const [arranging, setArranging] = useState(false);
   const [editingGroup, setEditingGroup] = useState<string | null>(null);
   const [newGroup, setNewGroup] = useState(false);
   /** An item added with nowhere to put it, waiting for someone to tap a heading. */
@@ -268,12 +280,12 @@ export function ChecklistView(props: BuiltinViewProps) {
     const was = isDone(row);
     let next: unknown = !was;
     if (field?.type === "enum") next = was ? (field.options.find((o) => o !== view.doneValue) ?? null) : view.doneValue;
-    if (sinks) setHeld((h) => new Map(h).set(id, was));
+    if (moves) setHeld((h) => new Map(h).set(id, was));
     // The tick is true on screen immediately; the store confirms it in its own time.
     setJustTicked((t) => new Map(t).set(id, next));
     const old = timers.current.get(id);
     if (old) clearTimeout(old);
-    if (sinks)
+    if (moves)
       timers.current.set(
       id,
       setTimeout(() => {
@@ -356,13 +368,15 @@ export function ChecklistView(props: BuiltinViewProps) {
     }
   };
 
-  const add = async (): Promise<void> => {
-    const text = draft.trim();
+  const add = (): Promise<void> => addText(draft.trim());
+  const addText = async (text: string): Promise<void> => {
     if (!text || !people) return;
     // Typed again, word for word, while it is still on the list ticked: it comes back, not twice.
+    // "On the list" is what this page shows: the same words kept elsewhere (a remembered item, another
+    // list's) are not this list's, and must not stop the one here from coming back.
     if (quick && quick.suggest !== false) {
-      const back = newestFirst(everything.rows).find((r) => sameText(r, text) && isDone(r));
-      if (back && !everything.rows.some((r) => sameText(r, text) && !isDone(r))) {
+      const back = newestFirst(rows).find((r) => sameText(r, text) && isDone(r));
+      if (back && !rows.some((r) => sameText(r, text) && !isDone(r))) {
         setDraft("");
         return toggle(back);
       }
@@ -440,8 +454,8 @@ export function ChecklistView(props: BuiltinViewProps) {
 
   // ---- dragging ----------------------------------------------------------------------------
 
-  const canDragRows = Boolean(view.reorder);
-  const canDragGroups = Boolean(managed && view.groupOrder);
+  const canDragRows = Boolean(view.reorder) && arranging;
+  const canDragGroups = Boolean(managed && view.groupOrder) && arranging;
 
   // One flat sequence of everything on screen, headings included: a heading is a drop target even
   // when it cannot itself be dragged, because "put this in that aisle" is a drop onto its heading.
@@ -617,6 +631,17 @@ export function ChecklistView(props: BuiltinViewProps) {
     }
   };
 
+  // The usuals show while the box is in use and empty: planning at home, not ticking in the shop.
+  const [boxFocused, setBoxFocused] = useState(false);
+  const usuals = useUsuals(
+    runtime,
+    pageId,
+    rows,
+    Boolean(quick && (quick as { usuals?: unknown }).usuals !== undefined),
+    boxFocused && draft.trim() === "",
+    (text) => rows.some((r) => sameText(r, text)),
+  );
+
   if (loading || texts === null || rowGroups === null)
     return (
       <p className="k-loading">
@@ -640,6 +665,11 @@ export function ChecklistView(props: BuiltinViewProps) {
       <li
         key={id}
         className="k-check-row"
+        // The whole row is the target while shopping: a thumb need not find the circle. Its own
+        // controls (the circle, the chevron, an action) answer for themselves.
+        onClick={arranging || editing ? undefined : (e) => {
+          if (!(e.target as Element).closest("button, a, input, textarea, select")) void toggle(r);
+        }}
         data-done={ticked || undefined}
         data-held={held.has(id) || undefined}
         data-landed={landed.has(id) || undefined}
@@ -663,7 +693,7 @@ export function ChecklistView(props: BuiltinViewProps) {
         ) : null}
         {editing ? (
           <InlineText value={rt.text} label={t`Rename ${name}`} onSave={(text) => void renameRow(r, text)} onCancel={() => setEditingRow(null)} />
-        ) : view.editText ? (
+        ) : view.editText && arranging ? (
           <button type="button" className="k-check-text k-check-rename" onClick={() => setEditingRow(id)} aria-label={t`Rename ${name}`}>
             {rt.icon ? <span className="k-check-icon" aria-hidden>{rt.icon}</span> : null}
             <span className="k-check-label">{rt.text}</span>
@@ -700,9 +730,10 @@ export function ChecklistView(props: BuiltinViewProps) {
       const low = text.toLocaleLowerCase();
       if (!text || seen.has(low) || !low.includes(q) || low === q) continue;
       seen.add(low);
-      const open = everything.rows.some((x) => sameText(x, text) && !isDone(x));
+      const open = rows.some((x) => sameText(x, text) && !isDone(x));
       if (open) continue;
-      out.push({ text, again: isDone(r) ? r : undefined });
+      // Only a row on THIS list comes back by a tap; the same words elsewhere are added afresh.
+      out.push({ text, again: isDone(r) && rows.some((x) => x.id === r.id) ? r : undefined });
       if (out.length >= SUGGESTIONS) break;
     }
     return out;
@@ -738,7 +769,7 @@ export function ChecklistView(props: BuiltinViewProps) {
               <Trans>Delete</Trans>
             </button>
           </>
-        ) : pending || (managed && s.record) ? (
+        ) : pending || (managed && s.record && arranging) ? (
           <button
             type="button"
             className="k-check-heading-name"
@@ -755,23 +786,27 @@ export function ChecklistView(props: BuiltinViewProps) {
   };
 
   const anyVisible = sections.some((s) => visible(s.rows).length > 0);
+  /** Anything to arrange: rows that drag, groups that are records, rows that rename. */
+  const canArrange = Boolean(view.reorder || managed || view.editText);
   const doneCount = fmt.number(doneRows.length);
   const pendingKind = (groupEntity ? runtime.definition.entities[groupEntity]?.label : undefined) ?? t`Group`;
   const pendingText = pending?.text ?? "";
 
   return (
-    <div className="k-checklist" data-layout={view.layout === "tiles" ? "tiles" : undefined}>
+    <div className="k-checklist" data-layout={view.layout === "tiles" ? "tiles" : undefined} data-arranging={arranging || undefined}>
       {rows.length === 0 && !managed ? <p className="k-empty" data-k-wording>{emptyText}</p> : null}
       {rows.length > 0 && !anyVisible && !collapsedDone ? <p className="k-check-clear">
           <Trans>All done.</Trans>
         </p> : null}
-      {sections.map((s) => (
+      {/* A heading with nothing left under it is noise in a shop. Arranging, or finding a home for a
+          new item, shows every one: that is when an empty aisle is a place to put something. */}
+      {sections.filter((s) => arranging || pending || visible(s.rows).length > 0).map((s) => (
         <section key={s.key || "—"} className="k-check-section" aria-label={s.label || undefined}>
           {renderHeading(s)}
           <ul className="k-check-list">{visible(s.rows).map(renderRow)}</ul>
         </section>
       ))}
-      {managed ? (
+      {managed && arranging ? (
         <div className="k-check-newgroup">
           {newGroup ? (
             <InlineText value="" label={t`New group name`} onSave={(text) => void addGroup(text)} onCancel={() => setNewGroup(false)} />
@@ -784,9 +819,27 @@ export function ChecklistView(props: BuiltinViewProps) {
       ) : null}
       {doneRows.length ? (
         <details className="k-check-done">
-          <summary className="k-check-heading">{t({ message: `Done (${doneCount})`, comment: "Checklist: the folded section of ticked items, and how many" })}</summary>
+          <summary className="k-check-heading">
+            {view.doneLabel
+              ? `${view.doneLabel} (${doneCount})`
+              : t({ message: `Done (${doneCount})`, comment: "Checklist: the folded section of ticked items, and how many" })}
+          </summary>
           <ul className="k-check-list">{doneRows.map(renderRow)}</ul>
         </details>
+      ) : null}
+      {people && (canArrange || arranging) ? (
+        <div className="k-check-arrange">
+          <button type="button" className="k-add" aria-pressed={arranging} onClick={() => {
+            setArranging((a) => !a);
+            setEditingRow(null);
+            setEditingGroup(null);
+            setNewGroup(false);
+          }}>
+            {arranging
+              ? t({ message: "Done arranging", comment: "Checklist: leave the mode where rows drag and rename" })
+              : t({ message: "Arrange", comment: "Checklist: drag, rename and group the items (a mode)" })}
+          </button>
+        </div>
       ) : null}
       {pending ? (
         <p className="k-check-hint" role="status">
@@ -814,10 +867,13 @@ export function ChecklistView(props: BuiltinViewProps) {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onDraftKey}
+            onFocus={() => setBoxFocused(true)}
+            onBlur={() => setBoxFocused(false)}
           />
           <button type="submit" className="k-add k-primary-action" disabled={adding || !draft.trim()}>
             <Trans comment="Checklist: add the typed item">Add</Trans>
           </button>
+          <UsualChips texts={usuals} onPick={(text) => void addText(text)} />
           {suggestions.length ? (
             <ul className="k-check-suggest" aria-label={t({ message: "Earlier items", comment: "Checklist: what was added before, offered while typing" })}>
               {suggestions.map((sug) => (

@@ -20,9 +20,12 @@ const tab = (page: Page, words: string) => page.locator(".k-tab, .k-sidenav .k-t
 
 test("groceries reads in Polish", async ({ page }) => {
   await open(page, "groceries", "Zakupy");
-  // The quick-add for an aisle is the entity's own label; the aisles and items are records.
-  await expect(page.getByText("+ Dział", { exact: true })).toBeVisible();
+  // The app's own words: its figures ("do kupienia") and, arranging, the add for an aisle — the
+  // entity's own label. The aisles and items are records.
+  await expect(page.locator(".k-page-figures")).toContainText("do kupienia");
   await expect(page.getByText("Milk", { exact: true })).toBeVisible();
+  await page.locator(".k-check-arrange button").click();
+  await expect(page.getByText("+ Dział", { exact: true })).toBeVisible();
 });
 
 test("plants reads in Polish, with a Polish plural and a Polish relative date", async ({ page }) => {
