@@ -1,10 +1,12 @@
 import { test, expect } from "./console-guard";
+import { skipWithoutMaps } from "./engines";
 
 // M3 DoD, sandbox path: the places app runs UNTRUSTED in the QuickJS-WASM isolate. The All-places
 // list and the Map (markers resolved via the isolate's `geo` binding + computed) both render,
 // proving the map view works across the marshalling boundary.
 
 test("places app runs untrusted in the QuickJS-WASM isolate (list + map)", async ({ page }) => {
+  await skipWithoutMaps(page);
   await page.goto("/?app=places");
   await expect(page.locator("h1")).toHaveText("Places");
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted");

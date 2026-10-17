@@ -1,6 +1,7 @@
 import { test, expect } from "../console-guard";
 import { tileAction } from "../launcher-actions.js";
 import { SEED, expectTappable, openApp, openHome, openSwitcher, seed } from "./fixture.js";
+import { socketRefused } from "../engines";
 
 // The launcher on a phone (#94): every journey a person does with a thumb, on a 375×812 touch
 // device, with every control they tap measured against 44px. This is the harness that would have
@@ -121,7 +122,7 @@ test("an app opened from the switcher keeps the switcher reachable", async ({ pa
 });
 
 test("offline, a synced app's header still fits the phone, and still says it is offline", async ({ page, consoleGuard }) => {
-  consoleGuard.allow(/^WebSocket connection to 'ws:\/\/127\.0\.0\.1:9\/' failed/, "the relay is pointed at a port nothing can answer on, on purpose: this is the offline case");
+  consoleGuard.allow(socketRefused("ws://127.0.0.1:9/"), "the relay is pointed at a port nothing can answer on, on purpose: this is the offline case");
   // The relay cannot be reached — a train, a dead router. The status then says the most it ever
   // says ("Offline · changes saved here"), and on a 375-pixel phone that pushed the ⋯ menu past the
   // edge: the page scrolled sideways and the app's name was squeezed to nothing.

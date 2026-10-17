@@ -1368,6 +1368,11 @@ msgstr "Aggiungi video"
 msgid "add with AI"
 msgstr "aggiungi con l’IA"
 
+#. A map page where no map can be drawn: add a new record; entityLabel is the app's word for it
+#: ../views/src/map.tsx
+msgid "Add: {entityLabel}"
+msgstr "Aggiungi: {entityLabel}"
+
 #. A quick action that makes a new record; noun is the app's word for it
 #. Add a row to a list field; noun is the field's word for one
 #. Form title for a new record; {noun} is the app's own name for the kind of record. Keep the form that needs no gender agreement
@@ -4379,6 +4384,7 @@ msgid "no page \"{0}\" is written literally here"
 msgstr "qui non c’è nessuna pagina “{0}” scritta letteralmente"
 
 #: ../views/src/map.tsx
+#: ../views/src/map.tsx
 msgid "No places to show."
 msgstr "Nessun luogo da mostrare."
 
@@ -6628,6 +6634,14 @@ msgstr "La schermata di questa app ha smesso di rispondere, quindi Potyro ne mos
 msgid "This board needs an enum field for its columns."
 msgstr "Questa bacheca ha bisogno di un campo a scelta per le sue colonne."
 
+#: ../views/src/map.tsx
+msgid "This browser can’t draw maps, so the places are listed instead."
+msgstr "Questo browser non riesce a disegnare mappe, quindi i luoghi sono elencati qui."
+
+#: ../views/src/field-input.tsx
+msgid "This browser can’t draw maps. Use your location, or type the coordinates."
+msgstr "Questo browser non riesce a disegnare mappe. Usa la tua posizione o scrivi le coordinate."
+
 #. Detail of the question before voice input in a browser without speech recognition (Firefox); {service} is the AI service
 #: ../shell/src/app-speech.ts
 msgid "This browser can’t turn speech into words itself, so the recording is sent to an AI service ({service}) to be written down — it leaves your device. Only the text reaches the app."
@@ -7043,6 +7057,10 @@ msgstr "Sciogli il gruppo"
 #: ../shell/src/launcher.tsx
 msgid "Unpin"
 msgstr "Stacca"
+
+#: ../views/src/map.tsx
+msgid "Untitled"
+msgstr "Senza titolo"
 
 #. The name an app gets when it was given none
 #: ../shell/src/studio.tsx

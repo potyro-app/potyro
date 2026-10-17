@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "./console-guard";
 import { openSource } from "./studio-helpers.js";
+import { skipWithoutMaps } from "./engines";
 
 // Three things that were true but unproven in a real browser:
 //
@@ -79,6 +80,7 @@ const SPOTS = [
 ];
 
 test('camera "fit" frames the markers instead of restoring a position', async ({ page }) => {
+  await skipWithoutMaps(page);
   const tiles = await captureTiles(page);
   await seed(page, mapApp('"fit"'), SPOTS);
   await page.goto("/?user=cam");
@@ -108,6 +110,7 @@ test('camera "fit" frames the markers instead of restoring a position', async ({
 });
 
 test("a fixed camera opens at its own spot and stays there", async ({ page }) => {
+  await skipWithoutMaps(page);
   const tiles = await captureTiles(page);
   // Paris — nowhere near the Berlin markers, so the tiles prove which framing won.
   await seed(page, mapApp("{ center: [2.35, 48.85], zoom: 11 }"), SPOTS);
@@ -218,6 +221,7 @@ export default defineApp({
 `;
 
 test("a tap on the map does nothing until placing is armed", async ({ page }) => {
+  await skipWithoutMaps(page);
   // It used to create a record on ANY empty-map tap: panning or just looking around made records by
   // accident, and there was no way to interact with the map at all without creating something.
   await captureTiles(page);
@@ -241,6 +245,7 @@ test("a tap on the map does nothing until placing is armed", async ({ page }) =>
 });
 
 test("tapping a pin shows which place it is, with a way in", async ({ page }) => {
+  await skipWithoutMaps(page);
   // Navigating straight off the tap meant every touch left the page — you could never just look.
   await captureTiles(page);
   await seed(page, PLACES_APP, SPOTS);

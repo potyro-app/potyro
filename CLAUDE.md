@@ -93,13 +93,18 @@ pnpm dev:sandbox    # same, but the examples are seeded UNTRUSTED to exercise th
 pnpm dev:sandbox:quickjs   # the same, with shared apps in the QuickJS fallback (or, on one device,
                            # localStorage["potyro:sandbox"] = "quickjs"; a build: VITE_POTYRO_SANDBOX=quickjs)
 pnpm e2e            # browser suite, ONE worker (shared OPFS/relay — see playwright.config.ts)
+pnpm test:e2e:firefox      # the same specs in Firefox (POTYRO_FIREFOX=1), console guard on; engine
+                           # differences live in e2e/engines.ts, never in a weaker assertion
 pnpm conformance    # web vs native capability parity (docs/09)
 pnpm lint:boundaries
 
 # local CI — the same checks as GitHub's ci.yml, per commit, resumable; the merge gate while
 # GitHub Actions is unavailable. `status --post` puts a `local-ci` check on the commit.
-pnpm ci:local all              # every step (run in a terminal; ~15 min)
-pnpm ci:local e2e:3            # one step: install build unit typecheck lint e2e:1..5
+pnpm ci:local all              # every step (run in a terminal; ~8 min on vazio, ~6 of it the browser shards)
+pnpm ci:local e2e:3            # one step: install build unit typecheck lint e2e:1..8
+pnpm ci:local e2e              # the 8 browser shards at once, each on its own ports (docs/16 §8)
+pnpm ci:local e2e:firefox      # the same specs in Firefox, 8 shards (~5 min) — NOT in the gate (too
+                               # slow beside Chromium's on vazio); run it before merging UI work
 pnpm ci:local status --post    # all green for HEAD? mark it on GitHub
 pnpm ci:local deploy           # green origin/main → apps.vaz.io (automatic from vazio's cron; docs/16 §8)
 pnpm ship <pr>                 # merge a PR through vazio: CI first, then GitHub's main + apps.vaz.io

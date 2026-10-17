@@ -1,5 +1,6 @@
 import { test, expect } from "./console-guard";
 import { installQuestions } from "./ui-questions.js";
+import { grantClipboard } from "./engines";
 
 // The structured questions cross the isolate (#112): an untrusted app's form, menu and progress are
 // plain data out and plain data back, with no permission prompt.
@@ -28,8 +29,8 @@ test("an untrusted app asks with a form, a menu and a progress bar", async ({ pa
   await expect(page.locator(".k-toast").last()).toHaveText("Stopped");
 });
 
-test("an untrusted app hands words and a link to the share dialog, and hears whether they left", async ({ page, context }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+test("an untrusted app hands words and a link to the share dialog, and hears whether they left", async ({ page, context, browserName }) => {
+  await grantClipboard(context, browserName);
   await installQuestions(page, false);
   await page.getByRole("button", { name: "Share it" }).click();
   const dialog = page.getByRole("dialog", { name: "Send this note" });

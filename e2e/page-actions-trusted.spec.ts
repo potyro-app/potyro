@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "./console-guard";
+import { skipWithoutMaps } from "./engines";
 
 // A button the APP put on the page, running app code that moves a view (#216).
 //
@@ -27,6 +28,7 @@ async function captureZooms(page: Page): Promise<number[]> {
 }
 
 test("an app's own button on a page can move the map", async ({ page }) => {
+  await skipWithoutMaps(page);
   const zooms = await captureZooms(page);
   await page.goto("/?app=places");
   await expect(page.locator("h1")).toHaveText("Places");

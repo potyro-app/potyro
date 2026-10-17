@@ -25,7 +25,8 @@ Tests are per-WP and ship in the same PR as the code. Two things need special di
   assert resolved relations, memoized computed values, and reminder scheduling. Run at least one
   example a second time sealed to prove parity between trusted and untrusted execution; the
   `*-sandbox.spec.ts` e2e specs run every example untrusted in the realm (`POTYRO_QUICKJS=1` runs
-  them on the QuickJS fallback, `POTYRO_REALM_BROWSERS=1` the realm's own specs in Firefox and WebKit).
+  them on the QuickJS fallback, `POTYRO_FIREFOX=1` every spec in Firefox, `POTYRO_REALM_BROWSERS=1` the
+  realm's own specs in WebKit).
 - **View tests** (`views`): render each view against a fixture runtime; assert bindings and,
   for `steps`, the transient done-state behavior.
 - **Conformance suite** (`pnpm conformance`): the same behavioural spec run against **both**

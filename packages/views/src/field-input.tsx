@@ -18,7 +18,7 @@ import { MediaInput } from "./media-input.js";
 import { FileInput } from "./file-input.js";
 import { MoneyInput } from "./money-input.js";
 import { RelationInput } from "./relation-input.js";
-import { loadMapLibre } from "./maplibre.js";
+import { canDrawMaps, loadMapLibre, mapDraws, removeMap } from "./maplibre.js";
 
 export interface FieldInputProps {
   runtime: PotyroRuntime;
@@ -175,7 +175,7 @@ function FreeTags({ selected, onChange }: { selected: string[]; onChange: (v: un
 }
 
 /** A tiny MapLibre map you click to drop the point. Same tiles as the map view. */
-function GeoPicker({ value, onChange, onTileError }: { value: Geo; onChange: (v: Geo) => void; onTileError: () => void }) {
+function GeoPicker({ value, onChange, onTileError, onNoMap }: { value: Geo; onChange: (v: Geo) => void; onTileError: () => void; onNoMap: () => void }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<{ remove?: () => void; setCenter?: (c: [number, number]) => void } | null>(null);
   const markerRef = useRef<{ setLngLat: (c: [number, number]) => void; remove: () => void } | null>(null);
@@ -187,6 +187,8 @@ function GeoPicker({ value, onChange, onTileError }: { value: Geo; onChange: (v:
     let disposed = false;
     const el = ref.current;
     if (!el) return;
+    // No WebGL2: no map, said as much, and the coordinates instead (maplibre.ts).
+    if (!canDrawMaps()) return onNoMap();
     void (async () => {
       try {
       const maplibre = await loadMapLibre();
@@ -198,6 +200,13 @@ function GeoPicker({ value, onChange, onTileError }: { value: Geo; onChange: (v:
         center: [value.lng, value.lat],
         zoom: hasPoint ? 14 : 2,
       });
+      if (!mapDraws(map)) {
+        // Its context refused after all — most often a map view already on screen behind this form
+        // has spent the browser's budget. Let it go; the coordinates still work.
+        removeMap(map as never);
+        onTileError();
+        return;
+      }
       mapRef.current = map as unknown as typeof mapRef.current;
       // Tiles are a third-party host: a VPN, an ad blocker or being offline can block them, and
       // MapLibre just renders an empty canvas. Surface it instead of showing a blank rectangle.
@@ -229,7 +238,7 @@ function GeoPicker({ value, onChange, onTileError }: { value: Geo; onChange: (v:
     })();
     return () => {
       disposed = true;
-      mapRef.current?.remove?.();
+      removeMap(mapRef.current);
       mapRef.current = null;
       markerRef.current = null;
     };
@@ -244,7 +253,7 @@ function GeoPicker({ value, onChange, onTileError }: { value: Geo; onChange: (v:
     mapRef.current?.setCenter?.([value.lng, value.lat]);
   }, [value.lat, value.lng]);
 
-  return <div ref={ref} className="k-geo-map" aria-label={t`Pick a point on the map`} />;
+  return <div ref={ref} className="k-geo-map" aria-label={t`Pick a point on the map`} hidden={!canDrawMaps()} />;
 }
 
 /** A coordinate as the language writes a number, always to five places (about a metre). */
@@ -260,6 +269,7 @@ function GeoInput({ runtime, value, onChange }: { runtime: PotyroRuntime; value:
   // the escape hatch.
   const [showCoords, setShowCoords] = useState(false);
   const [tilesFailed, setTilesFailed] = useState(false);
+  const [noMap, setNoMap] = useState(false);
 
   const useMyLocation = async (): Promise<void> => {
     if (!geo) return;
@@ -284,8 +294,16 @@ function GeoInput({ runtime, value, onChange }: { runtime: PotyroRuntime; value:
           setTilesFailed(true);
           setShowCoords(true); // keep the field usable — don't strand them on a blank map
         }}
+        onNoMap={() => {
+          setNoMap(true);
+          setShowCoords(true);
+        }}
       />
-      {tilesFailed ? (
+      {noMap ? (
+        <p className="k-muted k-geo-no-map">
+          <Trans>This browser can’t draw maps. Use your location, or type the coordinates.</Trans>
+        </p>
+      ) : tilesFailed ? (
         <p className="k-form-error">
           <Trans>
             Map unavailable here — the browser could not open a second map (or the tile host is
@@ -298,7 +316,7 @@ function GeoInput({ runtime, value, onChange }: { runtime: PotyroRuntime; value:
           {busy ? t`Locating…` : t`📍 Use my location`}
         </button>
         <span className="k-muted">
-          {placed ? `${coord(g.lat)}, ${coord(g.lng)}` : t`Tap the map to place a point`}
+          {placed ? `${coord(g.lat)}, ${coord(g.lng)}` : noMap ? null : t`Tap the map to place a point`}
         </span>
         <button type="button" className="k-add" onClick={() => setShowCoords((v) => !v)}>
           {showCoords ? t`Hide coordinates` : t`Enter coordinates`}

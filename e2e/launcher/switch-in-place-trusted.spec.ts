@@ -16,7 +16,8 @@ test.use({ viewport: { width: 1280, height: 800 } });
 
 test("home → Recipes → Plants → home → Recipes loads the page once, and Back walks it", async ({ page }) => {
   let loads = 0;
-  page.on("load", () => void (loads += 1));
+  // The app's own loads: Firefox also reports the new tab's about:blank, which Chromium does not.
+  page.on("load", (p) => void (p.url().startsWith("about:") || (loads += 1)));
   await page.goto("/");
   await expect(page.locator(".k-launch-tile", { hasText: "Recipes" })).toBeVisible({ timeout: 30_000 });
 

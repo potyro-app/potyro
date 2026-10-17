@@ -106,6 +106,33 @@ describe("the watchdog", () => {
     loaded.dispose();
   });
 
+  it("does not hold the shell's own busy thread against a call's budget", async () => {
+    // The page busy a few hundred milliseconds at a time (the Studio opening, in Firefox): each of the
+    // call's reads waits for the shell like the watchdog's own tick does. None of that is the app's.
+    const { loaded, ctx, row, kills } = await setup(
+      app(`reads: async function(r, ctx){ for (var i = 0; i < 4; i++) { await new Promise(function(res){ setTimeout(res, 20); }); await ctx.query("n"); } return "read"; }`),
+      { timeoutMs: 400 },
+    );
+    let busy = true;
+    const stalls = (async () => {
+      while (busy) {
+        const until = performance.now() + 250;
+        while (performance.now() < until) {
+          /* the shell's thread, busy */
+        }
+        await new Promise((r) => setTimeout(r, 5));
+      }
+    })();
+    try {
+      expect(await loaded.callComputed("n", "reads", row, ctx)).toBe("read");
+    } finally {
+      busy = false;
+      await stalls;
+    }
+    expect(kills).toEqual([]);
+    loaded.dispose();
+  }, 15000);
+
   it("stops a realm that floods the host with messages, though it keeps beating", async () => {
     const { loaded, ctx, row, kills } = await setup(
       app(`flood: function(){ var MP = MessagePort.prototype.postMessage; var port;
