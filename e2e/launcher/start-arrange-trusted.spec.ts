@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from "../console-guard";
 import { openHome, seed, useStart } from "./fixture.js";
+import { NEEDS_CDP } from "../engines";
 
 // The Tiles home screen (the Start style), chosen in Look; Classic is the default (#96).
 test.beforeEach(async ({ page }) => {
@@ -47,7 +48,8 @@ test.beforeEach(async ({ page }) => {
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
 
-  test("a hold is edit mode; a size and a move by finger survive a reload; a flick only scrolls", async ({ page }) => {
+  test("a hold is edit mode; a size and a move by finger survive a reload; a flick only scrolls", async ({ page, browserName }) => {
+    test.skip(browserName !== "chromium", NEEDS_CDP);
     await openHome(page);
     await expect(tile(page, "user:trips")).toBeVisible({ timeout: 30_000 });
     const before = await keys(page);

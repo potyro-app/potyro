@@ -4,6 +4,7 @@ import { answerNamePrompt } from "./name-prompt.js";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { createConnection } from "node:net";
 import { PORTS } from "./ports";
+import { socketRefused } from "./engines";
 
 // Sync must survive losing the relay.
 //
@@ -141,6 +142,7 @@ const add = async (page: Page, title: string): Promise<void> => {
 
 test("two peers keep syncing after the relay dies and comes back", async ({ browser, consoleGuard }) => {
   consoleGuard.allow(/^WebSocket connection to 'ws:\/\/localhost:\d+\/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED$/, "the relay is killed on purpose while the peers keep trying");
+  consoleGuard.allow(socketRefused(`${RELAY}/`), "the same, in Firefox's words");
   test.slow();
   await startRelay();
 

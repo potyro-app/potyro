@@ -35,6 +35,10 @@ async function makeRuntime(caps: FakeCapabilities): Promise<PotyroRuntime> {
 
 const GEO_FIELD = { type: "geo" } as Field;
 
+// happy-dom has no WebGL; these are the field in a browser that can draw its map (map-no-webgl.test.tsx
+// is the one that cannot).
+HTMLCanvasElement.prototype.getContext = ((kind: string) => (kind === "webgl2" ? { getExtension: () => null } : null)) as never;
+
 afterEach(cleanup);
 
 describe("geo field input", () => {

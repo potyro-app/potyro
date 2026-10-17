@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "./console-guard";
 import { addAsMine, changed, count, packApp, pixelsOf } from "./library-demos";
+import { FIREFOX_PREFS } from "./engines";
 
 // The live camera (docs/25), through apps/mirror-monsters added as the person's own app, on Chromium's
 // fake camera: a moving test pattern that the browser hands to getUserMedia without asking. Every
@@ -15,8 +16,13 @@ import { addAsMine, changed, count, packApp, pixelsOf } from "./library-demos";
 test.use({
   viewport: { width: 1280, height: 900 },
   colorScheme: "light",
-  permissions: ["camera"],
-  launchOptions: { args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] },
+  // Each engine's fake camera: Chromium's flags, Firefox's prefs (e2e/engines.ts).
+  permissions: async ({ browserName }, use) => use(browserName === "chromium" ? ["camera"] : []),
+  launchOptions: [
+    async ({ browserName }, use) =>
+      use(browserName === "firefox" ? { firefoxUserPrefs: FIREFOX_PREFS } : { args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] }),
+    { scope: "worker" },
+  ],
 });
 
 const canvas = (page: Page) => page.locator(".mm-stage canvas");

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "./console-guard";
+import { skipWithoutMaps } from "./engines";
 
 // "I want to add a small button on the map that centers the map in my current location."
 //
@@ -52,6 +53,7 @@ async function openMap(page: Page): Promise<void> {
 }
 
 test("the map has a button that centres it on where you are", async ({ page }) => {
+  await skipWithoutMaps(page);
   const tiles = await captureTiles(page);
   await openMap(page);
   // The seeded places are in Berlin; the device says Reykjavík. Nothing near it is on screen yet.

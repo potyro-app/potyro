@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "./console-guard";
+import { NEEDS_CDP } from "./engines";
 
 // Nested rows as cards (#104). A recipe's steps are a sequence — order is the content — so an
 // ordered list gets a grip you can drag with a mouse or a finger, and arrow keys when it has focus.
@@ -100,7 +101,8 @@ test.describe("desktop", () => {
 test.describe("phone", () => {
   test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
 
-  test("a finger swipes a card aside to reveal Remove; a mouse does not", async ({ page }) => {
+  test("a finger swipes a card aside to reveal Remove; a mouse does not", async ({ page, browserName }) => {
+    test.skip(browserName !== "chromium", NEEDS_CDP);
     await openRecipeForm(page);
     // From the grip: a hold there starts a reorder, a quick sideways flick is a swipe.
     const grip = page.locator(".k-row-grip").first();

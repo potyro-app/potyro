@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { E2E_RELAY } from "./ports";
+import { grantClipboard } from "./engines";
 
 // The share dialog (#79). It used to copy the link silently before opening, swallow the failure,
 // and offer a generic prompt with an OK button. Now: the link read-only, a Copy button that says
@@ -47,8 +48,8 @@ async function reachShareDialog(page: Page): Promise<void> {
   await expect(shareDialog.getByRole("textbox", { name: "Share link" })).toHaveValue(/#join=/);
 }
 
-test("Copy puts the link on the clipboard and says so", async ({ page, context }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+test("Copy puts the link on the clipboard and says so", async ({ page, context, browserName }) => {
+  await grantClipboard(context, browserName);
   await openLauncher(page);
   await reachShareDialog(page);
 

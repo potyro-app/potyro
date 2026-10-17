@@ -412,7 +412,9 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
             ✕
           </button>
         </header>
-        <div className="k-form-body">
+        {/* Not a tab stop of its own: Firefox makes a scrolling box focusable, so Shift+Tab from the
+            first field landed on the box instead of Close. Its fields are how a keyboard scrolls it. */}
+        <div className="k-form-body" tabIndex={-1}>
           {saveError ? (
             <p className="k-form-error" role="alert">
               <Trans>Couldn't save: {saveError}</Trans>
@@ -502,7 +504,7 @@ export function ValuesForm({ runtime, title, fields, initial, submit, onSubmit, 
             ✕
           </button>
         </header>
-        <div className="k-form-body">
+        <div className="k-form-body" tabIndex={-1}>
           <div className="k-form-group">
             <div className="k-form-fields">
               {keys.map((key) => (

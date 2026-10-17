@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "./console-guard";
 import AxeBuilder from "@axe-core/playwright";
+import { NEEDS_CDP } from "./engines";
 
 // The form's surface (#101). On a phone it is a full-screen sheet with the actions in a footer that
 // stays put while the fields scroll — the Save button of a tall form used to be 400px below the
@@ -73,7 +74,8 @@ test.describe("phone", () => {
     expect(Math.round(Math.min(close.width, close.height))).toBeGreaterThanOrEqual(44);
   });
 
-  test("a swipe down on the header closes an untouched form", async ({ page }) => {
+  test("a swipe down on the header closes an untouched form", async ({ page, browserName }) => {
+    test.skip(browserName !== "chromium", NEEDS_CDP);
     await page.goto("/?user=plants");
     await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
     // Today's one big button is "Add a plant"; the Plants list has the floating form button.

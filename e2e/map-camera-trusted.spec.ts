@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "./console-guard";
+import { skipWithoutMaps } from "./engines";
 
 // Two map regressions that no amount of editing an app module could fix, because both live in the
 // built-in map view (packages/views/src/map.tsx):
@@ -36,6 +37,7 @@ async function openMap(page: Page): Promise<void> {
 }
 
 test("map shows its pins on first open, before any filter is touched", async ({ page }) => {
+  await skipWithoutMaps(page);
   await captureTileZooms(page);
   await openMap(page);
 
@@ -45,6 +47,7 @@ test("map shows its pins on first open, before any filter is touched", async ({ 
 });
 
 test("map reopens where the user left it", async ({ page }) => {
+  await skipWithoutMaps(page);
   const zooms = await captureTileZooms(page);
   await openMap(page);
   await expect(page.locator(".maplibregl-marker")).toHaveCount(13);

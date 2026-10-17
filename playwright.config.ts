@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import { E2E_RELAY, PORTS } from "./e2e/ports";
+import { FIREFOX_PREFS } from "./e2e/firefox-prefs";
 
 // M1 e2e smoke (issue #15): verifies the recipes DoD in a real browser — both the TRUSTED path
 // (`pnpm dev`) and the SANDBOX path (`pnpm dev:sandbox`, same app untrusted, its logic in the browser
@@ -134,23 +135,21 @@ export default defineConfig<{ guardConsole: boolean }>({
       testMatch: /.*trusted\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${TRUSTED_PORT}`, guardConsole: true },
     },
-    // Firefox, for the trusted app surface only. The geo picker rendered fine in Chromium and blank
-    // in the user's Firefox — a Chrome-only suite could not see it.
-    //
-    // OPT-IN (`pnpm test:e2e:firefox`), and that is a statement about this suite rather than about
-    // Firefox. The project was added on 30 July and has never once run in CI: the suite died at
-    // collection from that day until now, so nobody saw what it does here. Switched on, it fails 11
-    // map specs — not by failing to launch, but by rendering ONE marker where three are expected,
-    // which is the marker-sync race `map-camera-trusted.spec.ts` was written to catch, surfacing on
-    // a slower browser. That is a real finding and it has an issue; it is not something to discover
-    // inside the change that puts CI back on its feet, and turning it on now would leave main red
-    // for a defect nothing on main introduced.
+    // Firefox, the whole suite — the owner's browser. The geo picker rendered fine in Chromium and
+    // blank in Firefox, and a Chrome-only suite could not see it. `POTYRO_FIREFOX=1` adds the trusted
+    // AND the sandbox specs in Firefox, console guard on (`pnpm test:e2e:firefox`; ci-local runs
+    // them as shards of their own, docs/16 §8).
     ...(process.env.POTYRO_FIREFOX
       ? [
           {
             name: "trusted-firefox",
             testMatch: /.*trusted\.spec\.ts/,
-            use: { ...devices["Desktop Firefox"], baseURL: `http://localhost:${TRUSTED_PORT}` },
+            use: { ...devices["Desktop Firefox"], baseURL: `http://localhost:${TRUSTED_PORT}`, guardConsole: true, launchOptions: { firefoxUserPrefs: FIREFOX_PREFS } },
+          },
+          {
+            name: "sandbox-firefox",
+            testMatch: /.*sandbox\.spec\.ts/,
+            use: { ...devices["Desktop Firefox"], baseURL: `http://localhost:${SANDBOX_PORT}`, guardConsole: true, launchOptions: { firefoxUserPrefs: FIREFOX_PREFS } },
           },
         ]
       : []),
@@ -159,21 +158,18 @@ export default defineConfig<{ guardConsole: boolean }>({
       testMatch: /.*sandbox\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${SANDBOX_PORT}`, guardConsole: true },
     },
-    // The browser realm's own specs in Firefox and WebKit (#272): its containment, its watchdog and the
-    // shell's frame-src are properties of each engine, measured in all three (docs/22). OPT-IN
-    // (`POTYRO_REALM_BROWSERS=1 pnpm e2e --project=sandbox-firefox --project=sandbox-webkit`) for the
-    // reason trusted-firefox is: the rest of the sandbox suite has never run on these engines.
+    // The browser realm's own specs in WebKit (#272): its containment, its watchdog and the shell's
+    // frame-src are properties of each engine, measured in all three (docs/22). OPT-IN
+    // (`POTYRO_REALM_BROWSERS=1 pnpm e2e --project=sandbox-webkit`): the rest of the sandbox suite
+    // has never run on WebKit. Firefox runs the whole sandbox suite under POTYRO_FIREFOX, above.
     ...(process.env.POTYRO_REALM_BROWSERS
-      ? (
-          [
-            ["sandbox-firefox", devices["Desktop Firefox"]],
-            ["sandbox-webkit", devices["Desktop Safari"]],
-          ] as const
-        ).map(([name, device]) => ({
-          name,
-          testMatch: /(realm|realm-escape|shell-csp)-sandbox\.spec\.ts/,
-          use: { ...device, baseURL: `http://localhost:${SANDBOX_PORT}` },
-        }))
+      ? [
+          {
+            name: "sandbox-webkit",
+            testMatch: /(realm|realm-escape|shell-csp)-sandbox\.spec\.ts/,
+            use: { ...devices["Desktop Safari"], baseURL: `http://localhost:${SANDBOX_PORT}` },
+          },
+        ]
       : []),
     // One tab owns the storage (storage-owner.ts), in the other two engines: the two-tab errors were
     // reported from Firefox, and Web Locks, OPFS and sync access handles are each engine's own. OPT-IN

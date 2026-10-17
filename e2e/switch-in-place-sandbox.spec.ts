@@ -6,7 +6,8 @@ import { test, expect } from "./console-guard";
 test("untrusted apps switch in place, each in its own fresh isolate", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   let loads = 0;
-  page.on("load", () => void (loads += 1));
+  // The app's own loads: Firefox also reports the new tab's about:blank, which Chromium does not.
+  page.on("load", (p) => void (p.url().startsWith("about:") || (loads += 1)));
   await page.goto("/?app=recipes");
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
   await page.getByRole("button", { name: "Switch app" }).click();

@@ -24,7 +24,7 @@
 // The allow-list below is for noise that is no fault of ours and nothing a test could do about.
 // Every entry says why; an entry without a reason is a bug being hidden.
 
-import { test as base, type BrowserContext, type Page } from "@playwright/test";
+import { test as base, type BrowserContext, type ConsoleMessage, type Page } from "@playwright/test";
 
 export * from "@playwright/test";
 
@@ -69,6 +69,29 @@ function sparedSealedFrames(target: BrowserContext | Page): void {
   };
 }
 
+/**
+ * A console message's text, with the message of every Error it was handed.
+ *
+ * `console.error("[potyro] view crashed:", error)` reads "…crashed: Error: page nowhere not found"
+ * in Chromium's text and "…crashed: Error" in Firefox's — Playwright's Firefox renders an Error
+ * argument by its class alone. Without the message an `allow` for it could never match there, and an
+ * unexpected one would say nothing about itself. The arguments are read back from the page; one that
+ * cannot be (its page has gone) leaves the text as it was.
+ */
+async function withErrorMessages(m: ConsoleMessage): Promise<string> {
+  const text = m.text();
+  const said = await Promise.all(
+    m.args().map((h) =>
+      Promise.race([
+        h.evaluate((v) => (v instanceof Error ? `${v.name}: ${v.message}` : null)).catch(() => null),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2_000)),
+      ]),
+    ),
+  );
+  const missing = said.filter((s): s is string => !!s && !text.includes(s));
+  return missing.length ? `${text} (${missing.join("; ")})` : text;
+}
+
 export interface ConsoleGuard {
   /** Expect messages matching `pattern` in this test, for `why`. Say why. */
   allow(pattern: RegExp, why: string): void;
@@ -89,6 +112,7 @@ export const test = base.extend<GuardFixtures & GuardOptions>({
   consoleGuard: [
     async ({ context, browser, guardConsole }, use, testInfo) => {
       const seen: string[] = [];
+      const pending: Promise<void>[] = [];
       const allowed: Allowed[] = [];
       const watched = new WeakSet<Page>();
       const watch = (page: Page) => {
@@ -99,7 +123,9 @@ export const test = base.extend<GuardFixtures & GuardOptions>({
           // Full Chromium (`channel: "chromium"`, which the sealed-view specs use for out-of-process
           // frames) asks for /favicon.ico by itself, and the dev server has none: the browser's own
           // request, not the page's.
-          if (m.type() === "error" && !/\/favicon\.ico$/.test(m.location().url)) seen.push(m.text());
+          if (m.type() !== "error" || /\/favicon\.ico$/.test(m.location().url)) return;
+          const at = seen.push(m.text()) - 1;
+          pending.push(withErrorMessages(m).then((text) => void (seen[at] = text)));
         });
         page.on("pageerror", (e) => seen.push(`${e.name}: ${e.message}`));
       };
@@ -129,6 +155,7 @@ export const test = base.extend<GuardFixtures & GuardOptions>({
 
       browser.newContext = newContext;
       if (!guardConsole) return;
+      await Promise.all(pending);
       // A test that already failed has said what is wrong; piling the console on top would bury it.
       if (testInfo.status !== testInfo.expectedStatus) return;
       const unexpected = seen.filter((text) => ![...ALLOWED, ...allowed].some((a) => a.pattern.test(text)));
