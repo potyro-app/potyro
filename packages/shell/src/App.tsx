@@ -48,7 +48,7 @@ import type { NavHost } from "./nav-host.js";
 import { ViewErrorBoundary } from "./view-error-boundary.js";
 
 import { chooseScope } from "./scope.js";
-import { ScopeSwitcher, useOpeningScope } from "./scope-switcher.js";
+import { ScopeEmpty, ScopeSwitcher, useOpeningScope } from "./scope-switcher.js";
 import { appKey, recordSignals } from "./launcher-store.js";
 import { PeoplePanel } from "./people-panel.js";
 import { ClaimPrompt } from "./guests-panel.js";
@@ -317,8 +317,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const newScope = (): void => {
     if (scopeDef) setEditor({ entity: scopeDef.entity, openAfter: false, onCreated: (id) => void chooseScope(runtime, scopeAppId, id) });
   };
-  // An app that needs a selection opens on one (scope-switcher.tsx), never on a question.
-  useOpeningScope(runtime, scopeAppId, newScope);
+  // An app that needs a selection opens on one (scope-switcher.tsx), never on a question; with none
+  // at all, its pages offer the first one in place.
+  const noScopeYet = useOpeningScope(runtime, scopeAppId);
 
   // Holds the case being recorded, if any. One per mounted app instance — see case-recorder.ts for
   // why `navigate` below, and not `createNavBridge`, is where it has to be wrapped.
@@ -1158,7 +1159,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
           {showHero ? null : <SummaryStrip runtime={runtime} pageId={pageId} params={params} />}
           <main className="k-main">
             <PageCountContext.Provider value={setPageCount}>
-            {currentPage?.layout ? (
+            {noScopeYet ? (
+              <ScopeEmpty runtime={runtime} onNew={newScope} />
+            ) : currentPage?.layout ? (
               // Several views on one page (#105); each item is a view under its own page ref.
               <LayoutHost
                 runtime={runtime}

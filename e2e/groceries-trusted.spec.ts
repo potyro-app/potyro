@@ -24,8 +24,8 @@ test.describe("phone", () => {
     // Content first: the first item sits right under the app bar and the one line of figures.
     const first = (await list.locator(".k-check-row").first().boundingBox())!;
     expect(first.y).toBeLessThan(220);
-    await expect(page.locator(".k-page-head .k-summary")).toContainText("11 to buy");
-    await expect(page.locator(".k-page-head .k-summary")).toContainText("2 in the basket");
+    await expect(page.locator(".k-page-figures .k-summary")).toContainText("11 to buy");
+    await expect(page.locator(".k-page-figures .k-summary")).toContainText("2 in the basket");
     // Aisles in walking order.
     await expect(list.locator(".k-check-heading").first()).toHaveText("Produce");
 
@@ -38,7 +38,7 @@ test.describe("phone", () => {
     await expect(basket.locator("summary")).toHaveText("In the basket (3)");
     await basket.locator("summary").tap();
     await expect(basket.getByRole("checkbox", { name: "Milk" })).toHaveAttribute("aria-checked", "true");
-    await expect(page.locator(".k-page-head .k-summary")).toContainText("3 in the basket");
+    await expect(page.locator(".k-page-figures .k-summary")).toContainText("3 in the basket");
 
     // Persisted: still bought after a reload.
     await page.reload();

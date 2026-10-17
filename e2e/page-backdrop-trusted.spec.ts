@@ -5,12 +5,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// A page that sits on a picture (`background: { image }`) SHOWS the picture, behind its words.
+// A page that sits on a picture (`background: { image }`) SHOWS the picture: as the page's ground,
+// faded behind the top of the page under its content — never a block that pushes the content down.
 //
 // The bug (#368): the picture was asked for again on every render — the hook was keyed by `ctx`,
-// which is a new object each time — so its `src` changed faster than it could load and the header
-// showed only its shade on beige, with white words on near-white. This reads the header's pixels:
-// a photo behind it varies; a shade over a plain ground does not.
+// which is a new object each time — so its `src` changed faster than it could load. This reads the
+// ground's pixels: a photo there varies; the plain paper does not.
 
 const PACK = fileURLToPath(new URL("../scripts/pack-app.mjs", import.meta.url));
 const FIXTURES = fileURLToPath(new URL("./fixtures", import.meta.url));
@@ -63,23 +63,25 @@ async function spread(page: Page, png: Buffer): Promise<number> {
 }
 
 for (const scheme of ["light", "dark"] as const) {
-  test(`a page's background picture shows behind its header, its words over a shade (${scheme})`, async ({ page }) => {
+  test(`a page's background picture is the ground behind its content (${scheme})`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
     await page.setViewportSize({ width: 412, height: 915 });
     await addMine(page, pack());
-    const hero = page.locator(".k-page-hero");
-    await expect(hero).toHaveAttribute("data-backdrop", "image");
-    await expect(hero.locator(".k-page-title")).toHaveText("Flowers");
-    const img = hero.locator(".k-page-hero-photo img");
+    const ground = page.locator(".k-page-ground");
+    const img = ground.locator("img");
     await expect.poll(() => img.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth), { timeout: 15_000 }).toBeGreaterThan(0);
     // The src holds still: the picture is not asked for over and over.
     const src = await img.getAttribute("src");
     await page.waitForTimeout(1_000);
     await expect(img).toHaveAttribute("src", src!);
-    // Let the cover's fade-in finish, then read the header's pixels.
+    // The content is not pushed below the picture: it starts at the top, over it.
+    const groundBox = (await ground.boundingBox())!;
+    const content = (await page.locator(".k-main").boundingBox())!;
+    expect(content.y).toBeLessThan(groundBox.y + groundBox.height / 2);
     await page.waitForTimeout(800);
-    // A patch of the header with no words on it: its right side, below the top edge.
-    const box = (await hero.boundingBox())!;
+    // The ground itself, read with the content set aside: a patch near its top, at the right.
+    await page.locator(".k-main").evaluate((m: HTMLElement) => (m.style.visibility = "hidden"));
+    const box = groundBox;
     const clip = { x: box.x + box.width * 0.62, y: box.y + box.height * 0.08, width: box.width * 0.34, height: box.height * 0.3 };
     const withPhoto = await spread(page, await page.screenshot({ clip, animations: "disabled" }));
     // The same patch with the photo taken out: the shade on the plain ground.

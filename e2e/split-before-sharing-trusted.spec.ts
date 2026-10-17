@@ -1,4 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "./console-guard";
+import { pickScope } from "./scope-pick.js";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 import { notOnTheList } from "./claim-prompt.js";
@@ -29,9 +30,7 @@ async function device(context: BrowserContext): Promise<Page> {
 
 const openSplit = async (page: Page): Promise<void> => {
   await page.goto("/?user=split");
-  const flat = page.getByRole("button", { name: /^Flat/ });
-  await expect(flat.first()).toBeVisible({ timeout: 30_000 });
-  await flat.first().click();
+  await pickScope(page, /^Flat/, 30_000);
 };
 
 const addExpense = async (page: Page, description: string, amount: string): Promise<void> => {
@@ -74,9 +73,7 @@ test("expenses written before sharing still split with the person you share with
   await bo.goto(link);
   await bo.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click();
   await answerNamePrompt(bo, "Bo");
-  const boFlat = bo.getByRole("button", { name: /^Flat/ });
-  await expect(boFlat.first()).toBeVisible({ timeout: 60_000 });
-  await boFlat.first().click();
+  await pickScope(bo, /^Flat/, 60_000);
   await addExpense(bo, "Expense B", "200");
 
   // Every expense in the app is between the two of them now — including the two it came with and

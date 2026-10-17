@@ -5,7 +5,7 @@ import { NEEDS_CDP } from "./engines";
 // The app's chrome (#111, #87). On a phone: a compact top bar, the page, a floating quick action,
 // a bottom tab bar with More; the shell's tools behind one ⋯ menu; no TRUSTED pill. On a wide
 // screen: a sidebar with the pages, the quick actions and the tools. A page with a primary action
-// shows it as its one big button instead of the floating one. A detail page has one filled action
+// shows it as a bar at the bottom instead of the floating one. A detail page has one filled action
 // and keeps Edit / Delete behind "More actions".
 //
 // Recipes is the vehicle: its cookbook (a gallery with "Add a recipe" as its primary action), "What
@@ -25,13 +25,15 @@ test.describe("phone", () => {
 
   test("the page's one button and first card are on the first screen; the tools are behind one menu; every page is reachable", async ({ page }) => {
     await openRecipes(page);
-    // The page's header (its title, figures and its one button) sits between the top bar and the
-    // cards: the button in the top half, the first card still on the first screen.
-    await expect(page.locator(".k-page-hero .k-page-title")).toHaveText("Recipes");
-    const cta = (await page.locator(".k-page-hero .k-cta").boundingBox())!;
-    expect(cta.y).toBeLessThanOrEqual(812 / 2);
+    // Content first: no header card between the top bar and the cards — the first card starts near
+    // the top — and the page's one button is a bar at the bottom, above the tab bar.
+    await expect(page.locator(".k-page-hero")).toHaveCount(0);
     const card = (await page.locator(".k-card").first().boundingBox())!;
-    expect(card.y).toBeLessThan(812 - 80);
+    expect(card.y).toBeLessThan(260);
+    const cta = (await page.locator(".k-primary-bar .k-cta").boundingBox())!;
+    const tabs = (await page.locator(".k-tabbar").boundingBox())!;
+    expect(cta.y + cta.height).toBeLessThanOrEqual(tabs.y + 1);
+    expect(cta.y).toBeGreaterThan(812 / 2);
     // A page with a primary action has no floating one.
     await expect(page.locator(".k-fab")).toHaveCount(0);
     // No provenance pill, and no shell tool above the content.
