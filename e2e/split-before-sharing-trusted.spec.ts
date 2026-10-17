@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { notOnTheList } from "./claim-prompt.js";
 import { E2E_RELAY } from "./ports";
 
 // What happens to an expense written BEFORE the other person was there.
@@ -20,7 +21,10 @@ import { E2E_RELAY } from "./ports";
 
 async function device(context: BrowserContext): Promise<Page> {
   await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
-  return context.newPage();
+  const page = await context.newPage();
+  // The sample Lisbon weekend names guests: a joiner is asked whether they are one, and here is not.
+  await notOnTheList(page);
+  return page;
 }
 
 const openSplit = async (page: Page): Promise<void> => {

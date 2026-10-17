@@ -16,6 +16,9 @@ const nav: NavBridge = { navigate: () => {} };
 const ANA = { id: "co_ana", name: "Ana" };
 const BO = { id: "co_bo", name: "Bo" };
 const CY = { id: "co_cy", name: "Cy" };
+const ME = { id: "co_me", name: "Me" };
+/** The guest book reads its log once a tick after opening, and again after each write. */
+const settled = () => new Promise((r) => setTimeout(r, 20));
 
 function quietUi(over: Partial<UiBridge> = {}): UiBridge & { toasts: string[] } {
   const toasts: string[] = [];
@@ -106,17 +109,47 @@ describe("Split", () => {
     expect(await balancesOf(runtime)).toEqual([]);
   });
 
-  it("first run: a Lisbon weekend with an itemized dinner, and the flat; alone, nobody owes anybody", async () => {
-    const { runtime } = await open(split as unknown as AppDefinition, "split", { seed: (s) => seedIfEmpty(s, "split", "local", async () => undefined) });
+  it("first run: Lisbon names its three guests and everyone owes something; the flat, alone, owes nobody", async () => {
+    const { runtime } = await open(split as unknown as AppDefinition, "split", { me: ME, seed: (s) => seedIfEmpty(s, "split", ME.id, async () => undefined) });
+    await settled();
+    expect(runtime.ctx.people.map((p) => p.name)).toEqual(["Me", "Ana", "Tom", "Inês"]);
     const groups = await runtime.ctx.query("group");
     expect(groups.map((g) => g.name)).toEqual(["Lisbon weekend", "Flat"]);
     await runtime.setScope("group", groups[0]!.id);
     const tasca = (await runtime.ctx.query("expense")).find((e) => e.description === "Tasca da Esquina")!;
     expect(tasca.split).toBe("items");
     expect(tasca.check).toMatch(/to the cent/);
+    // Tom paid the taxi and Ana the fado; you paid the flat — so the guests owe you, and the way out names them.
+    const lisbon = await balancesOf(runtime);
+    expect(lisbon).toEqual(expect.arrayContaining(["You", "Ana", "Tom", "Inês"]));
+    expect(lisbon.some((l) => / → You$/.test(l))).toBe(true);
+    // The guests are Lisbon's: the flat's bills are still nobody's business but yours.
+    await runtime.setScope("group", groups[1]!.id);
     expect(await balancesOf(runtime)).toEqual([]);
     const flat = (await runtime.ctx.query("expense")).filter((e) => (e.group as { id?: string })?.id === groups[1]!.id).map((e) => e.description);
     expect(flat).toEqual(expect.arrayContaining(["Groceries", "Internet"]));
+  });
+
+  it("Invite names the others now: each is a guest the group lists, and shares its costs", async () => {
+    const ui = quietUi({ sheet: async () => "names" as never, form: async () => ({ names: "Ana, Tom and Inês, ana" }) });
+    const { runtime } = await open(split as unknown as AppDefinition, "split", { me: ME, ui });
+    const group = await runtime.ctx.create("group", { name: "Porto" });
+    await runtime.setScope("group", group.id);
+    await runtime.ctx.create("expense", { description: "Dinner", amount: 4000, paidBy: ME.id, group: group.id });
+    expect(await balancesOf(runtime)).toEqual([]);
+    const invite = runtime.definition.pages.find((p) => p.id === "group")!.actions!.findIndex((a) => a.label === "Invite");
+    await runtime.runPageAction("group", invite);
+    await settled();
+    // Three guests, not four: "ana" is Ana.
+    expect(runtime.ctx.people.filter((p) => p.guest).map((p) => p.name)).toEqual(["Ana", "Tom", "Inês"]);
+    expect(ui.toasts.at(-1)).toBe("Ana, Tom, and Inês can be in expenses now");
+    // The dinner was written before they were named, with nobody listed: it is everyone's now.
+    const lines = await balancesOf(runtime);
+    expect(lines).toEqual(expect.arrayContaining(["You", "Ana", "Tom", "Inês"]));
+    // A new expense's "Between" starts with all four of them.
+    const between = await (split.entities.expense.fields.between as unknown as { default: (c: unknown) => Promise<string[]> }).default(runtime.ctx);
+    const named = new Map(runtime.ctx.people.map((p) => [p.id, p.name]));
+    expect(between.map((id) => named.get(id)).sort()).toEqual(["Ana", "Inês", "Me", "Tom"].sort());
   });
 
   it("a demo link's records name nobody, and still read as yours rather than as nobody's", async () => {
