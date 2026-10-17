@@ -80,6 +80,8 @@ async function boot(port: MessagePort, init: ViewInit): Promise<void> {
   let wseq = 0;
   let teardown: (() => void) | null = null;
   let root: Root | null = null;
+  /** The ctx's plain data: the host sends a new one when the selection, the people or the space change. */
+  let base = init.base;
 
   port.onmessage = (ev: MessageEvent) => {
     const msg = ev.data as HostToView;
@@ -88,6 +90,8 @@ async function boot(port: MessagePort, init: ViewInit): Promise<void> {
     if (tx.onReply(msg as never)) return;
     if (msg.t === "watch") return watchers.get(msg.wid)?.(msg.state);
     if (msg.t === "tokens") return applyTokens(msg.tokens);
+    // Kept to its id: the view's ctx is the view's, whatever the message says.
+    if (msg.t === "base") return void (base = { ...msg.base, ctxId: init.base.ctxId });
     if (msg.t === "sock") return dispatchSocketEvent(msg.ev);
     if (msg.t === "stop") {
       // A courtesy before the frame is removed: a view that replaced this handler cannot be made to.
@@ -107,7 +111,7 @@ async function boot(port: MessagePort, init: ViewInit): Promise<void> {
   const viewSend = (op: ViewOp, ...args: unknown[]): void => tx.send(init.base.ctxId, op as never, args);
   // A fresh ctx per access, as a trusted view's `runtime.ctx` is: its time is now, deterministic
   // within the access. The id is the view's alone; the host answers it with a fresh mediated ctx too.
-  const ctxNow = (): Ctx => makeRealmCtx({ ...init.base, nowIso: new Date().toISOString() }, tx, { progressPrefix: "v" });
+  const ctxNow = (): Ctx => makeRealmCtx({ ...base, nowIso: new Date().toISOString() }, tx, { progressPrefix: "v" });
 
   function watch(op: "runtime.watchQuery" | "runtime.watchRecord", args: unknown[], cb: (state: unknown) => void): () => void {
     const wid = ++wseq;
