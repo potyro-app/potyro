@@ -253,11 +253,14 @@ If sync never connects, check the relay URL first: **⌾ You → Sync relay** sh
 
 ```bash
 pnpm ci:local all --post     # the gate; `deploy` refuses anything that has not passed it
-pnpm ci:local deploy         # build, rsync to e@vaz.io:/var/www/karta/, write version.json
+pnpm ci:local deploy         # build, rsync to potyro-deploy: (potyro.app), write version.json
 ```
 
 `deploy` refuses a commit that is not `origin/main` or has not passed every step, so what is live is
-always something the gate passed. `https://apps.vaz.io/version.json` names the live commit.
+always something the gate passed. `https://potyro.app/version.json` names the live commit.
+
+**Only potyro.app is deployed.** Since 2026-10-17 the gate no longer updates apps.vaz.io: it stays on
+the last commit it was given, and this section's setup of it is history.
 
 No restart, no reload. The relay only needs touching when `cojson` changes version, in
 which case bump the pin in `/opt/potyro-relay/package.json`, re-run the `npm install` container, and
@@ -292,8 +295,8 @@ The pieces on `vazio`:
 | Checkout | `~/appinator-deploy`, the watcher's own. It is checked out detached at whatever is being judged, so nothing is ever edited there. |
 | Lock | `~/.karta-ci.lock`, shared by the hook and cron, so the watcher judges one commit at a time. (Ports no longer need it: every shard claims its own block, below.) |
 | Key | `~/.ssh/potyro_deploy`. It is authorized on the server as `command="/usr/bin/rrsync /var/www/karta",restrict …`, so it can rsync into the web root and do nothing else: no shell, no other path. |
-| ssh aliases | `Host karta-deploy` in `~/.ssh/config` → `e@vaz.io` (apps.vaz.io), and `Host potyro-deploy` → `deploy@65.109.228.5` (potyro.app, web root `/srv/potyro/site`), each with its own key locked by `rrsync` to its web root. |
-| cron | `*/5 * * * * cd ~/appinator-deploy && PATH=$HOME/.npm-global/bin:/usr/bin:/bin POTYRO_DEPLOY_TARGET="karta-deploy:,potyro-deploy:" flock -n ~/.karta-ci.lock node scripts/ci-watch.mjs >> ~/ci-watch.log 2>&1` |
+| ssh alias | `Host potyro-deploy` in `~/.ssh/config` → `deploy@65.109.228.5` (potyro.app, web root `/srv/potyro/site`), its key locked by `rrsync` to the web root. (`Host karta-deploy` → `e@vaz.io`, apps.vaz.io, is no longer a target.) |
+| cron | `*/5 * * * * cd ~/appinator-deploy && PATH=$HOME/.npm-global/bin:/usr/bin:/bin POTYRO_DEPLOY_TARGET="potyro-deploy:" flock -n ~/.karta-ci.lock node scripts/ci-watch.mjs >> ~/ci-watch.log 2>&1` |
 
 ### The browser suite runs as parallel shards
 
@@ -355,7 +358,7 @@ the files it ran before.
 The hook and the crontab installed on vazio before the rename still say `KARTA_DEPLOY_TARGET`;
 `ci-local.mjs` reads either name, so they keep working until they are reinstalled from `deploy/`.
 
-`POTYRO_DEPLOY_TARGET=karta-deploy:` is relative to the web root, because `rrsync` anchors every path
+`POTYRO_DEPLOY_TARGET=potyro-deploy:` is relative to the web root, because `rrsync` anchors every path
 there. After changing a hook in `deploy/vazio-hooks/`, copy it to `~/appinator.git/hooks/` on vazio.
 
 ## The agent
