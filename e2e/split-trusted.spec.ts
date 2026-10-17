@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Locator, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { notOnTheList } from "./claim-prompt.js";
 import { E2E_RELAY } from "./ports";
 
 // The Split example: what two people owe each other, agreed to the cent on both devices.
@@ -12,7 +13,10 @@ import { E2E_RELAY } from "./ports";
 
 async function device(context: BrowserContext): Promise<Page> {
   await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
-  return context.newPage();
+  const page = await context.newPage();
+  // The sample Lisbon weekend names guests: a joiner is asked whether they are one, and here is not.
+  await notOnTheList(page);
+  return page;
 }
 
 /** Add an expense the quick way: description, amount, and whatever the form already defaults to. */

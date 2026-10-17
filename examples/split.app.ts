@@ -2,8 +2,9 @@
 // Splitting costs with the people you share a flat, a trip or a dinner with — the answer first ("you
 // are owed €42.85"), then what it is made of, then the shortest way to square it.
 //
-// Stresses: money in whole minor units (KA-26), `member` fields — the people in the shared space,
-// not a table of names the app maintains (KA-19) — the app-wide selection (`ctx.scope`), an
+// Stresses: money in whole minor units (KA-26), `member` fields — the people in the shared space and
+// the guests named before they join (`ctx.people`, `ctx.guests`), not a table of names the app
+// maintains (KA-19) — the app-wide selection (`ctx.scope`), an
 // `aggregate` view folding every expense into what each person is owed, and `ctx.caps.ai` reading a
 // receipt into lines that the person then checks and assigns in one form (docs/23): the AI fills the
 // form, the person decides.
@@ -13,11 +14,15 @@
 // the app has failed. So the money never leaves whole minor units, the split helpers hand out the
 // remainder in a fixed order (`splitEvenly`, `splitByShares` — every device lands on the same
 // cents), and who is in it comes from the space's membership rather than typed names that drift.
+// A trip is planned before everyone has the app, so a group can name its guests — "Ana", "Tom" — and
+// expenses name them like anyone else; whoever joins says which guest they are, and every expense that
+// named the guest names them from then on. A guest is in the groups that name them: the flat's bills
+// are not the Lisbon friends' business.
 //
 // In six languages (#303); every language but English is a model's draft (#297). Amounts go through
 // `ctx.format.money`, so a Pole reads "12,50 €" whichever box the app runs in — and the QuickJS
-// fallback, which has no `Intl`, can format them at all. The names are the space's people, so they
-// are never translated: "You" is the app's.
+// fallback, which has no `Intl`, can format them at all. The names are people's, so they are never
+// translated: "You" is the app's.
 import { defineApp, splitByShares, splitEvenly, type AiValue, type Ctx, type Resolved } from "potyro";
 
 /** A member value arrives resolved (a person) or as the account id it is stored as. */
@@ -29,28 +34,52 @@ const idOf = (v: unknown): string => {
 
 const nameOf = (id: string, ctx: Ctx): string => {
   if (id === ctx.me?.id) return ctx.t({ en: "You", "pt-BR": "Você", de: "Du", es: "Tú", pl: "Ty", it: "Tu" });
-  const person = ctx.space?.members.find((m) => m.id === id);
+  const person = ctx.people.find((p) => p.id === id) ?? ctx.space?.members.find((m) => m.id === id);
   return person?.name ?? ctx.t({ en: "Someone", "pt-BR": "Alguém", de: "Jemand", es: "Alguien", pl: "Ktoś", it: "Qualcuno" });
 };
 
 const money = (minor: number, ctx: Ctx): string => ctx.format.money(minor, "EUR");
 const minorOf = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : 0);
 
-/** Everyone in the group right now — the app's people are the space's people (KA-19). */
-const everyone = (ctx: Ctx): string[] => {
-  const members = (ctx.space?.members ?? []).map((m) => m.id).filter(Boolean);
-  return members.length ? members : [ctx.me?.id ?? ""].filter(Boolean);
+/** A record's group as a record: read with it, or the selected one when only its id came. */
+const groupOf = (v: unknown, ctx: Ctx): Resolved | undefined => {
+  if (v && typeof v === "object" && "people" in v) return v as unknown as Resolved;
+  const id = idOf(v);
+  return id && id === String(ctx.scope.group?.id ?? "") ? ctx.scope.group : undefined;
+};
+
+/**
+ * Everyone in a group right now: the space's people (just you, solo — KA-19), and the guests the group
+ * names who have not joined yet. A guest someone claimed reads as them, so they are counted once; a
+ * guest taken off the list is not counted at all.
+ */
+const everyone = (ctx: Ctx, group?: unknown): string[] => {
+  const members = ctx.people.filter((p) => !p.guest).map((p) => p.id);
+  const open = new Set(ctx.people.filter((p) => p.guest).map((p) => p.id));
+  const named = (Array.isArray(groupOf(group, ctx)?.people) ? (groupOf(group, ctx)!.people as unknown[]) : []).map(idOf).filter((id) => open.has(id));
+  const out = [...new Set([...members, ...named].filter(Boolean))];
+  return out.length ? out : [ctx.me?.id ?? ""].filter(Boolean);
+};
+
+/**
+ * Everyone in the selected group, read fresh: `ctx.scope.group` is the group as it was when it was
+ * chosen, and naming guests changes it while it stays chosen.
+ */
+const everyoneHere = async (ctx: Ctx): Promise<string[]> => {
+  const id = ctx.scope.group?.id;
+  return everyone(ctx, (id ? await ctx.get("group", String(id)) : null) ?? ctx.scope.group);
 };
 
 /**
  * Who paid. Said by the expense; else whoever wrote it down, which is who paid nine times out of ten;
- * else — for sample records nobody wrote, alone in a group of one — you. Without the last two, a
- * sample expense would be paid by nobody and owed by everybody.
+ * else — for sample records nobody wrote, in an app nobody else is in (a demo) or a group of one —
+ * you. Without the last two, a sample expense would be paid by nobody and owed by everybody.
  */
 function payerOf(expense: Resolved, ctx: Ctx): string {
   const said = idOf(expense.paidBy) || (typeof expense.createdBy === "string" ? expense.createdBy : "");
   if (said) return said;
-  const here = everyone(ctx);
+  if (!ctx.space && ctx.me?.id) return ctx.me.id;
+  const here = everyone(ctx, expense.group);
   return here.length === 1 ? here[0]! : "";
 }
 
@@ -59,7 +88,7 @@ function itemShares(expense: Resolved, ctx: Ctx): Map<string, number> {
   const owes = new Map<string, number>();
   for (const line of (Array.isArray(expense.items) ? expense.items : []) as { price?: unknown; people?: unknown }[]) {
     const named = (Array.isArray(line.people) ? line.people : []).map(idOf).filter(Boolean);
-    const people = named.length ? named : everyone(ctx);
+    const people = named.length ? named : everyone(ctx, expense.group);
     splitEvenly(minorOf(line.price), people.length).forEach((cents, i) => owes.set(people[i]!, (owes.get(people[i]!) ?? 0) + cents));
   }
   return owes;
@@ -87,7 +116,7 @@ function sharesOf(expense: Resolved, ctx: Ctx): { id: string; owes: number }[] {
     // in the same fixed order, so the shares always add up to what was paid.
     const rest = amount - [...owes.values()].reduce((a, b) => a + b, 0);
     if (rest !== 0) {
-      const people = everyone(ctx);
+      const people = everyone(ctx, expense.group);
       splitEvenly(Math.abs(rest), people.length).forEach((cents, i) => owes.set(people[i]!, (owes.get(people[i]!) ?? 0) + Math.sign(rest) * cents));
     }
     return [...owes.entries()].map(([id, cents]) => ({ id, owes: cents }));
@@ -98,7 +127,7 @@ function sharesOf(expense: Resolved, ctx: Ctx): { id: string; owes: number }[] {
   // (Expenses written before the form filled this in for you have an empty list; so does one whose
   // list was cleared by hand.) A listed set always wins, so an expense that names its people keeps
   // them even as the group grows.
-  const people = listed.length ? listed : everyone(ctx);
+  const people = listed.length ? listed : everyone(ctx, expense.group);
   return splitEvenly(amount, people.length).map((owes, i) => ({ id: people[i]!, owes }));
 }
 
@@ -353,12 +382,96 @@ async function settleUp(ctx: Ctx, direct = false): Promise<void> {
 }
 
 /**
- * Bring people in — the first thing a split needs. Inviting is the shell's (an app could otherwise
- * hand its data to someone silently), so this asks it for a link and hands that on; no account is
- * needed to open it. Where the shell has not offered one yet — the app has never been shared — it
- * says where to start.
+ * Bring people in — the first thing a split needs. Two ways, because the trip is often planned before
+ * everyone has the app: name them now ("Ana, Tom") so expenses can name them from the first coffee,
+ * or send the link. Whoever joins later says which name is theirs (the shell asks), so the two meet.
  */
 async function invite(ctx: Ctx): Promise<void> {
+  const how = await ctx.ui.sheet<string>({
+    title: ctx.t({ en: "Who's coming?", "pt-BR": "Quem vem?", de: "Wer ist dabei?", es: "¿Quién viene?", pl: "Kto jedzie?", it: "Chi viene?" }),
+    items: [
+      {
+        id: "names",
+        icon: "✍",
+        label: ctx.t({ en: "Name them now", "pt-BR": "Dizer os nomes agora", de: "Jetzt mit Namen eintragen", es: "Escribir sus nombres ya", pl: "Wpisz ich imiona teraz", it: "Scrivi ora i nomi" }),
+        detail: ctx.t({
+          en: "Ana, Tom… they can join later and say which one they are",
+          "pt-BR": "Ana, Tom… eles podem entrar depois e dizer quem são",
+          de: "Ana, Tom… sie können später dazukommen und sagen, wer sie sind",
+          es: "Ana, Tom… pueden unirse después y decir quién es quién",
+          pl: "Ana, Tom… mogą dołączyć później i wskazać, kim są",
+          it: "Ana, Tom… possono unirsi dopo e dire chi sono",
+        }),
+      },
+      {
+        id: "link",
+        icon: "🔗",
+        label: ctx.t({ en: "Send a link", "pt-BR": "Mandar um link", de: "Einen Link schicken", es: "Mandar un enlace", pl: "Wyślij link", it: "Manda un link" }),
+        detail: ctx.t({ en: "Whoever opens it is in, no account needed", "pt-BR": "Quem abrir entra, sem conta", de: "Wer ihn öffnet, ist dabei, ohne Konto", es: "Quien lo abra entra, sin cuenta", pl: "Kto go otworzy, dołącza, bez konta", it: "Chi lo apre è dentro, senza account" }),
+      },
+    ],
+  });
+  if (how === "names") await nameGuests(ctx);
+  else if (how === "link") await sendInvite(ctx);
+}
+
+/**
+ * The others by name, before they join (`ctx.guests`): each becomes someone an expense can name, and
+ * the group lists them, so they share its costs — and only its costs. A name already here is reused,
+ * so typing "Ana" twice is one Ana.
+ */
+async function nameGuests(ctx: Ctx): Promise<void> {
+  const group = ctx.scope.group;
+  if (!group) return;
+  const filled = await ctx.ui.form<{ names: string }>({
+    title: ctx.t({ en: "Who's coming?", "pt-BR": "Quem vem?", de: "Wer ist dabei?", es: "¿Quién viene?", pl: "Kto jedzie?", it: "Chi viene?" }),
+    submit: ctx.t({ en: "Add them", "pt-BR": "Adicionar", de: "Hinzufügen", es: "Añadir", pl: "Dodaj", it: "Aggiungi" }),
+    fields: {
+      names: {
+        type: "text",
+        required: true,
+        label: ctx.t({ en: "Names", "pt-BR": "Nomes", de: "Namen", es: "Nombres", pl: "Imiona", it: "Nomi" }),
+        placeholder: "Ana, Tom…",
+        help: ctx.t({ en: "Separate them with commas", "pt-BR": "Separe com vírgulas", de: "Mit Kommas getrennt", es: "Sepáralos con comas", pl: "Oddziel je przecinkami", it: "Separali con virgole" }),
+      },
+    },
+  });
+  if (!filled?.names) return;
+  // Commas, and the language's own "and": "Ana, Tom and Inês" is three people.
+  const and = ctx.t({ en: "and", "pt-BR": "e", de: "und", es: "y", pl: "i", it: "e" });
+  const typed = String(filled.names)
+    .split(new RegExp(`[,;\\n]+|\\s+(?:${and}|&|\\+)\\s+`, "i"))
+    .map((n) => n.trim())
+    .filter(Boolean);
+  // "Ana" and "ana" are one Ana: the first spelling stands.
+  const seen = new Set<string>();
+  const names = typed.filter((n) => !seen.has(n.toLocaleLowerCase()) && Boolean(seen.add(n.toLocaleLowerCase())));
+  if (!names.length) return;
+  const known = new Map(ctx.people.map((p) => [p.name.toLocaleLowerCase(), p.id] as const));
+  const ids: string[] = [];
+  try {
+    for (const name of names) ids.push(known.get(name.toLocaleLowerCase()) ?? (await ctx.guests.add(name)).id);
+  } catch (e) {
+    ctx.ui.toast(e instanceof Error ? e.message : String(e));
+    if (!ids.length) return;
+  }
+  const fresh = (await ctx.get("group", String(group.id))) ?? group;
+  const before = (Array.isArray(fresh.people) ? fresh.people : []).map(idOf).filter(Boolean);
+  await ctx.patch("group", String(group.id), { people: [...new Set([...before, ...ids])] });
+  ctx.ui.toast(
+    ctx.t(
+      { en: "{names} can be in expenses now", "pt-BR": "{names} já podem entrar nas despesas", de: "{names} können jetzt in Ausgaben stehen", es: "{names} ya pueden estar en los gastos", pl: "{names} mogą już być w wydatkach", it: "{names} possono già stare nelle spese" },
+      { names: ctx.format.list(names) },
+    ),
+  );
+}
+
+/**
+ * The link. Inviting is the shell's (an app could otherwise hand its data to someone silently), so
+ * this asks it for one and hands that on; no account is needed to open it. Where the shell has not
+ * offered one yet — the app has never been shared — it says where to start.
+ */
+async function sendInvite(ctx: Ctx): Promise<void> {
   const link = ctx.space?.invite ? await ctx.space.invite().catch(() => "") : "";
   if (!link) {
     ctx.ui.toast(
@@ -468,6 +581,22 @@ export default defineApp({
             it: "A cosa serve questo gruppo",
           },
         },
+        // The others before they have the app (docs/04 §Guests): names that expenses can name, and
+        // that share this group's costs. Whoever joins says which one they are, and every expense that
+        // named them names them from then on. Members are always in; a guest is in the groups that list them.
+        people: {
+          type: "member",
+          many: true,
+          label: { en: "Not joined yet", "pt-BR": "Ainda não entraram", de: "Noch nicht dabei", es: "Aún no se han unido", pl: "Jeszcze nie dołączyli", it: "Non ancora entrati" },
+          help: {
+            en: "Name the others with Invite; whoever joins later says which one they are",
+            "pt-BR": "Diga os nomes dos outros em Convidar; quem entrar depois diz quem é",
+            de: "Trag die anderen über Einladen ein; wer später dazukommt, sagt, wer er ist",
+            es: "Escribe a los demás con Invitar; quien se una después dice quién es",
+            pl: "Wpisz pozostałych przez Zaproś; kto dołączy później, wskaże, kim jest",
+            it: "Scrivi gli altri con Invita; chi si unisce dopo dice chi è",
+          },
+        },
       },
       actions: {
         // What a row under "To settle up" runs (the row cannot say which transfer it is, so with one
@@ -498,7 +627,7 @@ export default defineApp({
           min: 0,
           label: { en: "Amount", "pt-BR": "Valor", de: "Betrag", es: "Importe", pl: "Kwota", it: "Importo" },
         },
-        // The space's members, so the list is who is actually here — no names to keep in step.
+        // The group's people — members, and the guests named before they joined — never typed names.
         paidBy: {
           type: "member",
           label: { en: "Paid by", "pt-BR": "Pago por", de: "Bezahlt von", es: "Pagado por", pl: "Kto zapłacił", it: "Pagato da" },
@@ -559,7 +688,7 @@ export default defineApp({
           label: { en: "Between", "pt-BR": "Entre", de: "Geteilt unter", es: "Entre", pl: "Między", it: "Tra" },
           many: true,
           help: { en: "Who was in on it", "pt-BR": "Quem participou", de: "Wer dabei war", es: "Quién participó", pl: "Kto brał udział", it: "Chi c'era" },
-          // Everyone in the group, because that is what "split equally" means nine times out of ten
+          // Everyone in the group — its guests too — because that is what "split equally" means nine times out of ten
           // — and an expense that starts with nobody in it credits whoever paid and charges no one,
           // which is how two people who each paid for dinner end up both being "owed" in full.
           // Captured at creation: someone who joins next month was not at this dinner.
@@ -569,8 +698,8 @@ export default defineApp({
           // is when the maths runs". Otherwise every expense written before you shared the app is
           // invisible to the person you shared it with: they see it in the list with a share of
           // €0.00, which reads as a broken app rather than as a decision about who was there.
-          default: (ctx) => {
-            const ids = (ctx.space?.members ?? []).map((m) => m.id).filter(Boolean);
+          default: async (ctx) => {
+            const ids = await everyoneHere(ctx);
             return ids.length > 1 ? ids : [];
           },
         },
@@ -777,16 +906,16 @@ export default defineApp({
               entity: "expense",
               title: { en: "Balances", "pt-BR": "Saldos", de: "Salden", es: "Saldos", pl: "Salda", it: "Saldi" },
               // Alone, there is nobody to owe: the empty balances are where the group starts — ask the others in.
-              emptyText: (ctx) =>
-                (ctx.space?.members.length ?? 1) > 1
+              emptyText: async (ctx) =>
+                (await everyoneHere(ctx)).some((id) => id !== ctx.me?.id)
                   ? ctx.t({ en: "Nobody owes anybody. 🎉", "pt-BR": "Ninguém deve nada a ninguém. 🎉", de: "Niemand schuldet jemandem etwas. 🎉", es: "Nadie le debe nada a nadie. 🎉", pl: "Nikt nikomu nic nie jest winien. 🎉", it: "Nessuno deve niente a nessuno. 🎉" })
                   : ctx.t({
-                      en: "Just you so far. Tap Invite and send the link: whoever opens it is in, no account needed.",
-                      "pt-BR": "Por enquanto só você. Toque em Convidar e mande o link: quem abrir entra, sem conta.",
-                      de: "Bisher nur du. Tippe auf Einladen und schick den Link: Wer ihn öffnet, ist dabei, ohne Konto.",
-                      es: "De momento solo tú. Toca Invitar y manda el enlace: quien lo abra entra, sin cuenta.",
-                      pl: "Na razie tylko ty. Stuknij Zaproś i wyślij link: kto go otworzy, dołącza, bez konta.",
-                      it: "Per ora solo tu. Tocca Invita e manda il link: chi lo apre è dentro, senza account.",
+                      en: "Just you so far. Tap Invite to name who's coming, or send them the link: no account needed.",
+                      "pt-BR": "Por enquanto só você. Toque em Convidar para dizer quem vem, ou mande o link: sem conta.",
+                      de: "Bisher nur du. Tippe auf Einladen, um einzutragen, wer dabei ist, oder schick den Link: ohne Konto.",
+                      es: "De momento solo tú. Toca Invitar para decir quién viene, o manda el enlace: sin cuenta.",
+                      pl: "Na razie tylko ty. Stuknij Zaproś, by wpisać, kto jedzie, albo wyślij link: bez konta.",
+                      it: "Per ora solo tu. Tocca Invita per dire chi viene, o manda il link: senza account.",
                     }),
               // An aggregate has no `filter` of its own: the fold IS the filter, and it is handed
               // every expense the app holds — including the other groups'.

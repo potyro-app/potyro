@@ -29,8 +29,20 @@ test("recipes app runs the full M1 flow in the browser (trusted)", async ({ page
   // Custom view (full React component): one step at a time, and every step's tick underneath.
   await expect(page.locator("#cook-heading")).toContainText("Cooking:");
   await expect(page.getByText(/Step 1 of \d+/).first()).toBeVisible();
+  // Cook mode holds the screen on (`ctx.ui.keepAwake`), and a step's timer is the shell's: its chip.
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("data-k-awake", "");
+  const stepTimer = page.locator(".ck-timer");
+  await stepTimer.click();
+  await expect(stepTimer).toHaveAttribute("data-running", "true");
+  await expect(stepTimer).toContainText(/\d+:\d\d · stop/);
+  const chip = page.locator(".k-timer-chip", { hasText: ", step 1" });
+  await expect(chip).toHaveCount(1);
   await page.getByRole("button", { name: "Next step" }).click();
   await expect(page.getByText(/Step 2 of \d+/).first()).toBeVisible();
+  // Step 2 has a timer of its own, not running; step 1's keeps counting on its chip.
+  await expect(stepTimer).toHaveAttribute("data-running", "false");
+  await expect(chip).toBeVisible();
   const firstStep = page.locator("ol li input[type=checkbox]").first();
   await expect(firstStep).toBeChecked(); // "Next step" ticked the step it left
   const secondStep = page.locator("ol li input[type=checkbox]").nth(1);
@@ -39,6 +51,11 @@ test("recipes app runs the full M1 flow in the browser (trusted)", async ({ page
 
   // Add a recipe from the cookbook's own button — "Type it in" — and confirm it appears there.
   await page.getByRole("button", { name: /Recipes/ }).first().click(); // back to the cookbook tab
+  // Out of cook mode the screen may sleep, and the step's timer is still in sight; stop it there.
+  await expect(html).not.toHaveAttribute("data-k-awake", "");
+  await expect(chip).toBeVisible();
+  await chip.getByRole("button", { name: "Stop timer" }).click();
+  await expect(chip).toHaveCount(0);
   const unique = `E2E Test Dish ${Date.now()}`;
   await page.getByRole("button", { name: /Add a recipe/ }).first().click();
   await page.getByRole("menuitem", { name: /Type it in/ }).click();

@@ -72,10 +72,23 @@ test("a sealed screen asks with the shell's sheet, and its answer reaches the sc
   await expect(el).toHaveCount(1, { timeout: 30_000 });
   const frame = page.frameLocator(".k-sealed-view iframe");
   await frame.getByRole("button", { name: /Start Pull A/ }).click({ timeout: 30_000 });
+  // The workout under way holds the screen on, and a ticked set's rest is the shell's timer — its chip
+  // in the shell's page, its countdown drawn in the frame (docs/04 §Timers, §Keeping the screen on).
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("data-k-awake", "");
+  await frame.locator(".wk-ex", { hasText: "Barbell Row" }).getByRole("button", { name: "Complete set" }).first().click();
+  const chip = page.locator(".k-timer-chip", { hasText: "Rest" });
+  await expect(chip).toHaveCount(1);
+  await expect(frame.getByRole("timer", { name: "Rest" })).toBeVisible();
+  // Skipped in the frame: the shell's timer stops, not just its drawing.
+  await frame.getByRole("button", { name: "skip" }).click();
+  await expect(chip).toHaveCount(0);
   await frame.getByRole("button", { name: "Finish" }).click();
   const sheet = page.getByRole("menu", { name: "Finish workout?" });
   await expect(sheet).toBeVisible();
   await expect(sheet.getByRole("menuitem")).toHaveText([/Save and finish/, /Keep training/, /Discard workout/]);
   await sheet.getByRole("menuitem", { name: /Discard workout/ }).click();
   await expect(frame.getByRole("button", { name: /Start Pull A/ })).toBeVisible();
+  // Thrown away: the screen may sleep.
+  await expect(html).not.toHaveAttribute("data-k-awake", "");
 });
