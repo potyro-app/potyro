@@ -1,5 +1,6 @@
 import { chooseFilter } from "./filters.js";
 import { test, expect, type Page } from "./console-guard";
+import { expectMapPage } from "./engines";
 
 // Summary figures — the shape no built-in view could express. `computed` is per-record and every
 // view renders rows, so a number derived from many records had nowhere to go; three of the
@@ -62,6 +63,6 @@ test("pages without a summary render no strip", async ({ page }) => {
   await page.goto("/?app=places");
   await expect(page.locator("h1")).toHaveText("Places");
   await page.locator(".k-tab", { hasText: "Map" }).click();
-  await expect(page.locator(".k-map-canvas")).toBeVisible();
+  await expectMapPage(page);
   await expect(page.locator(".k-summary")).toHaveCount(0);
 });

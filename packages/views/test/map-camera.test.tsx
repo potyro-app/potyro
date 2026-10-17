@@ -41,6 +41,8 @@ vi.mock("maplibre-gl/dist/maplibre-gl.css", () => ({}));
 vi.mock("maplibre-gl", async () => {
   await gate.opened;
   class FakeMap {
+    // What MapLibre leaves out when it has no WebGL2 context (map-no-webgl.test.tsx).
+    painter = {};
     constructor(opts: { center: unknown; zoom: unknown }) {
       spies.built.push({ center: opts.center, zoom: opts.zoom });
     }
@@ -97,6 +99,9 @@ vi.mock("maplibre-gl", async () => {
   // `loadMapLibre` points the library at its built worker before anything else.
   return { Map: FakeMap, Marker: FakeMarker, Popup: FakePopup, LngLatBounds: FakeBounds, setWorkerUrl: () => {} };
 });
+
+// happy-dom has no WebGL: this browser has WebGL2 (map-no-webgl.test.tsx is the one without).
+HTMLCanvasElement.prototype.getContext = ((kind: string) => (kind === "webgl2" ? { getExtension: () => null } : null)) as never;
 
 const { MapView } = await import("../src/map.js");
 

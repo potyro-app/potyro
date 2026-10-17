@@ -81,11 +81,19 @@ export function useDisplayCells(runtime: PotyroRuntime, pageId: string, rows: Re
         }
         return cell;
       }),
-    ).then((cs) => {
-      // Overtaken by newer rows: these cells will never be shown, so their URLs are freed now.
-      if (alive) setShown({ cells: cs, minted });
-      else minted.forEach(releaseMediaUrl);
-    });
+    )
+      .then((cs) => {
+        // Overtaken by newer rows: these cells will never be shown, so their URLs are freed now.
+        if (alive) setShown({ cells: cs, minted });
+        else minted.forEach(releaseMediaUrl);
+      })
+      .catch((e: unknown) => {
+        // A display function that failed, or a sealed app put away while its rows were being read
+        // ("this app was closed", switching apps in place): the rows keep what they showed. It
+        // used to be an uncaught rejection — in Firefox, on every switch back to a shared app.
+        minted.forEach(releaseMediaUrl);
+        if (alive) console.warn("[potyro] could not work out what the rows show:", e);
+      });
 
     return () => {
       alive = false;

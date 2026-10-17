@@ -15,9 +15,13 @@ export function startReminderSync(runtime: PotyroRuntime, store: Store): () => v
 
   const entities = [...new Set(reminders.map((r) => r.entity))];
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let alive = true;
 
   const reconcile = (): void => {
-    void runtime.reconcileReminders();
+    runtime.reconcileReminders().catch((e: unknown) => {
+      // Put away mid-way (its store is closed): nothing left to schedule for.
+      if (alive) console.warn("[potyro] could not schedule the app's reminders:", e);
+    });
   };
   const scheduleReconcile = (): void => {
     if (timer) clearTimeout(timer);
@@ -28,6 +32,7 @@ export function startReminderSync(runtime: PotyroRuntime, store: Store): () => v
   const unsubscribers = entities.map((entity) => store.subscribe(entity, scheduleReconcile));
 
   return () => {
+    alive = false;
     if (timer) clearTimeout(timer);
     for (const unsub of unsubscribers) unsub();
   };
@@ -51,6 +56,7 @@ export function watchReminderTimes(runtime: PotyroRuntime, store: Store, onTimes
   const collect = async (): Promise<void> => {
     const times: number[] = [];
     for (const rem of reminders) {
+      if (!alive) return;
       const rows = await runtime.ctx.query(rem.entity);
       for (const row of rows) {
         try {
@@ -64,12 +70,19 @@ export function watchReminderTimes(runtime: PotyroRuntime, store: Store, onTimes
     if (!alive) return;
     onTimes(times.sort((a, b) => a - b).slice(0, MAX_DUE).map((t) => new Date(t).toISOString()));
   };
+  // The app can be put away while this reads — switching apps closes its store under it, and an
+  // uncaught "the database … is not open" was the result, in Firefox on every switch back.
+  const run = (): void => {
+    collect().catch((e: unknown) => {
+      if (alive) console.warn("[potyro] could not work out when the app's reminders fall due:", e);
+    });
+  };
   const schedule = (): void => {
     if (timer) clearTimeout(timer);
-    timer = setTimeout(() => void collect(), DEBOUNCE_MS);
+    timer = setTimeout(run, DEBOUNCE_MS);
   };
 
-  void collect();
+  run();
   const unsubscribers = entities.map((entity) => store.subscribe(entity, schedule));
   return () => {
     alive = false;

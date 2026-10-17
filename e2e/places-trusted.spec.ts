@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "./console-guard";
+import { skipWithoutMaps } from "./engines";
 
 // M3 DoD, trusted path: browse places, open a detail + run an action, see the map render markers,
 // toggle the "Open now" filter chip, and use "Near me" (mocked geolocation) to filter by distance.
@@ -11,6 +12,7 @@ async function openPlaces(page: Page): Promise<void> {
 }
 
 test("places app runs the M3 flow in the browser (trusted)", async ({ page }) => {
+  await skipWithoutMaps(page);
   await openPlaces(page);
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "trusted");
 
