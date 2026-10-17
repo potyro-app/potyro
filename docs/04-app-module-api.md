@@ -91,7 +91,9 @@ A detail section may be `related: { entity, via, view: "list" | "timeline" | "ch
 `fields`; an `AggregateRow` may carry `record`, `open` and `action` — whose `input` (plain values) is
 what the row hands the action, so a row's Settle records THAT row's payment; a fold re-runs on a write
 to any of the app's entities, since it may `ctx.query` the others; a `summary` figure whose value is its
-own sentence ("You're owed €42") leaves out `label`; a checklist's `quickAdd` may be
+own sentence ("You're owed €42") leaves out `label`; a map's `strip: true` shows the records in view as
+cards along the bottom (from its `display`, nearest the middle first) — a pin brings its card instead of
+a popup, a swipe moves the map, a card opens the record; a checklist's `quickAdd` may be
 `{ suggest, remember, defaults: (text, ctx) => fields, usuals: (rows, ctx) => texts }` (`usuals`: what
 the empty box offers as one-tap chips), with `icon`, `layout: "tiles"` and `doneLabel` (the folded
 section's words under `hideDone: "collapse"`). A tap anywhere on a checklist row ticks it; dragging and
