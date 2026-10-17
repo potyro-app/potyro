@@ -4,6 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TimerHub, type KeptTimer, type TimerNotifier } from "../src/timer-hub.js";
 import { ScreenAwake } from "../src/keep-awake.js";
+import { secondsLeft } from "@potyro/host";
 
 function memoryStorage() {
   const m = new Map<string, string>();
@@ -112,6 +113,74 @@ describe("TimerHub", () => {
     await a.control("rest", "cancel");
     await Promise.resolve();
     expect(scheduled.size).toBe(0);
+  });
+
+  // `ctx.ui.drawsTimer`: a page that draws a countdown itself says so, and its chip stays out of the
+  // way while it does — the timer still counts and rings, and the chip is back when the page goes.
+  it("leaves out the chip of a timer a page draws itself, until it lets go or the app is left", async () => {
+    const rang: string[] = [];
+    const hub = make({ ring: (k) => void rang.push(k.label) });
+    const w = hub.bridgeFor("w", "Workout");
+    const r = hub.bridgeFor("r", "Recipes");
+    await w.start({ label: "Rest", seconds: 90, id: "rest" });
+    await r.start({ label: "Eggs", seconds: 420, id: "rest" });
+    const heard = vi.fn();
+    hub.subscribe(heard);
+    const labels = (app: string | null) => hub.chips(app).map((k) => k.label);
+    expect(labels("w")).toEqual(["Rest", "Eggs"]);
+
+    const letGo = w.draw!("rest");
+    expect(heard).toHaveBeenCalled();
+    // Only that app's timer of that id: another app's "rest" keeps its chip.
+    expect(labels("w")).toEqual(["Eggs"]);
+    // Twice is two holds: the chip comes back with the last.
+    const again = w.draw!("rest");
+    letGo();
+    letGo(); // once is once
+    expect(labels("w")).toEqual(["Eggs"]);
+    again();
+    expect(labels("w")).toEqual(["Rest", "Eggs"]);
+
+    // Forgotten, and the app is left: the chip is back.
+    w.draw!("rest");
+    expect(labels("w")).toEqual(["Eggs"]);
+    hub.releaseDraws("w");
+    expect(labels(null)).toEqual(["Rest", "Eggs"]);
+
+    // Drawn by the page, it still rings, and a rung timer's chip shows: someone has to say Done.
+    w.draw!("rest");
+    now += 90_000;
+    vi.advanceTimersByTime(90_100);
+    expect(rang).toEqual(["Rest"]);
+    expect(labels("w")).toEqual(["Rest", "Eggs"]);
+  });
+
+  it("the open app's chips go first", async () => {
+    const hub = make();
+    await hub.bridgeFor("a", "A").start({ label: "Soon", seconds: 10 });
+    await hub.bridgeFor("b", "B").start({ label: "Later", seconds: 600 });
+    expect(hub.chips(null).map((k) => k.label)).toEqual(["Soon", "Later"]);
+    expect(hub.chips("b").map((k) => k.label)).toEqual(["Later", "Soon"]);
+  });
+
+  // One rounding everywhere: what a timer handle says is left, and what the chip shows, change at the
+  // same moment — and the chip draws again exactly then, not up to a second late.
+  it("counts whole seconds up, and wakes the chip the moment the second changes", async () => {
+    const hub = make();
+    const w = hub.bridgeFor("w", "W");
+    await w.start({ label: "Rest", seconds: 90, id: "rest" });
+    expect(secondsLeft(90_000)).toBe(90);
+    expect(secondsLeft(89_001)).toBe(90);
+    expect(secondsLeft(89_000)).toBe(89);
+    expect(secondsLeft(-5)).toBe(0);
+    now += 400;
+    expect((await w.list())[0]!.left).toBe(90);
+    expect(hub.nextChangeIn()).toBe(600);
+    now += 600;
+    expect((await w.list())[0]!.left).toBe(89);
+    expect(hub.nextChangeIn()).toBe(1000);
+    await w.control("rest", "pause");
+    expect(hub.nextChangeIn()).toBeNull(); // nothing counts: no need to draw again
   });
 });
 

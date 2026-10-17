@@ -13,11 +13,12 @@ import { makeFormat, translate, type WordsContext } from "../format.js";
 import type { Transport } from "./port-transport.js";
 import type { CtxBase, FetchAnswer, Op } from "./protocol.js";
 import { realmSocket, type RealmSocketInfo } from "./realm-sockets.js";
-import { plainTimer, timerHandle, type TimerVerb } from "../timers.js";
+import { plainTimer, timerHandle, TIMER_LIMITS, type TimerVerb } from "../timers.js";
 import { realmSpeech, type RealmSpeechInfo } from "./realm-speech.js";
 
 let progressSeq = 0;
 let awakeSeq = 0;
+let drawnSeq = 0;
 
 /** A file argument as plain data: a path, or a FileRef's own fields (never a getter or a method). */
 const fileArg = (f: string | FileRef): string | FileRef =>
@@ -251,6 +252,20 @@ export function makeRealmCtx(base: CtxBase, tx: Transport, opts: RealmCtxOptions
       },
       timer: async (o) => timerHandle(plainTimer(await call("ui.timer", o ? { label: o.label, seconds: o.seconds, id: o.id } : o)), timerControl),
       timers: async () => ((await call<unknown[]>("ui.timers")) ?? []).map((t) => timerHandle(plainTimer(t), timerControl)),
+      drawsTimer: (id) => {
+        const tid = String(id ?? "");
+        if (!tid || tid.length > TIMER_LIMITS.id) throw new Error(`ui.drawsTimer: the timer's \`id\` is 1 to ${TIMER_LIMITS.id} characters`);
+        const hid = `d${++drawnSeq}`;
+        send("ui.drawsTimer", hid, "hold", tid);
+        let released = false;
+        return {
+          release: () => {
+            if (released) return;
+            released = true;
+            send("ui.drawsTimer", hid, "release");
+          },
+        };
+      },
       progress: (label): UiProgress => {
         const pid = `${opts.progressPrefix ?? "p"}${++progressSeq}`;
         send("ui.progress", pid, "open", label);

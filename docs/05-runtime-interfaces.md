@@ -323,6 +323,7 @@ interface TimerBridge {
   start(o: { label: string; seconds: number; id?: string }): Promise<TimerData>;   // label already in the app's language
   list(): Promise<TimerData[]>;        // this app's, counting or paused, soonest first
   control(id: string, verb: "cancel" | "pause" | "resume"): Promise<void>;
+  draw?(id: string): () => void;       // ctx.ui.drawsTimer: a page draws timer `id` itself; call the result once to let go
 }
 interface TimerData { id: string; label: string; seconds: number; endsAt: string | null; left: number; paused: boolean }
 ```
@@ -331,7 +332,13 @@ interface TimerData { id: string; label: string; seconds: number; endsAt: string
 frozen `UiTimer` built from `TimerData` with `cancel/pause/resume` calling `control` — the same three
 methods are rebuilt from the data inside the realm and the isolate, which carry timers as plain data
 (ops `ui.timer`, `ui.timers`, `ui.timer.control`) and a keep-awake as a number per hold
-(`ui.keepAwake` hold/release, let go when the box goes). Headless, `keepAwake` holds nothing and a
+(`ui.keepAwake` hold/release, let go when the box goes). `ctx.ui.drawsTimer(id)` crosses the same way
+(`ui.drawsTimer` hold + id / release, under the asking port's names, so a sealed view that goes or is
+stopped lets go of its own); the shell's `TimerHub` counts holds per app and id, leaves those timers
+out of the chips unless they have rung, and drops an app's holds when it is left (`releaseDraws`).
+One rounding for every countdown, `secondsLeft(ms)` in `@potyro/host` (whole seconds, up): the
+chip, `TimerData.left` and `UiTimer.secondsLeft()`; the chips draw again the moment a second changes
+(`TimerHub.nextChangeIn`), not on a beat of their own. Headless, `keepAwake` holds nothing and a
 timer is answered but not kept. The shell keeps timers in this device's storage, schedules a
 notification for each one's end through the device's `NotificationCap` (exact on Android/iOS, the
 same path reminders take) and cancels it on pause and stop; on the web there is none, and the hub

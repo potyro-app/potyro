@@ -566,6 +566,21 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
         return timerHandle(plainTimer(await ui.timers.start(asked)), timerControl);
       },
       timers: async () => (ui.timers ? (await ui.timers.list()).map((t) => timerHandle(plainTimer(t), timerControl)) : []),
+      // Harmless as keepAwake: it only leaves a chip out while the page draws that countdown itself,
+      // and the shell lets go when the app is left (docs/04 §Timers).
+      drawsTimer: (id) => {
+        const tid = String(id ?? "");
+        if (!tid || tid.length > TIMER_LIMITS.id) throw new Error(`ui.drawsTimer: the timer's \`id\` is 1 to ${TIMER_LIMITS.id} characters`);
+        const letGo = ui.timers?.draw?.(tid);
+        let released = false;
+        return {
+          release: () => {
+            if (released) return;
+            released = true;
+            letGo?.();
+          },
+        };
+      },
     },
 
     // `camera` says where a map OPENS; this is the only thing that can move one afterwards, which is

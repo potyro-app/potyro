@@ -6,7 +6,9 @@ import { test, expect } from "./console-guard";
 // finishing saves the session and opens on what was broken: a heavier row than ever is a record.
 //
 // The rest is the shell's timer (`ctx.ui.timer`, docs/04): its chip is in sight on the app's other
-// pages and the screen stays on (`ctx.ui.keepAwake`) only while a workout is under way.
+// pages and the screen stays on (`ctx.ui.keepAwake`) only while a workout is under way. Train draws
+// the rest itself (its bar, with +30s and skip) and says so (`ctx.ui.drawsTimer`), so there the
+// chip stays out of the way: one countdown on screen, not two a line apart.
 
 const shots = process.env.POTYRO_SHOTS;
 const seconds = (mmss: string | null): number => {
@@ -41,36 +43,41 @@ test.describe("phone", () => {
     const rest = page.getByRole("timer", { name: "Rest" });
     await expect(rest).toBeVisible();
     await expect(rest.locator(".wk-rest-n")).toHaveText(/^[12]:\d\d$/); // Barbell Row rests 120 s
-    // The rest is the shell's timer: one chip, the same countdown.
+    // The rest is the shell's timer, and Train draws it: its chip is not shown under the bar too, and
+    // takes no room from the bottom of the screen.
     const chip = page.locator(".k-timer-chip", { hasText: "Rest" });
-    await expect(chip).toHaveCount(1);
-    await expect(chip.getByRole("timer")).toHaveText(/^[12]:\d\d$/);
-    // +30 s restarts that same timer, longer: still one chip.
+    const chips = page.locator(".k-timer-chip");
+    await expect(chips).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue("--k-timer-room"))).toBe("");
+    // +30 s restarts that same timer, longer.
     const before = seconds(await rest.locator(".wk-rest-n").textContent());
     await rest.getByRole("button", { name: "+30s" }).tap();
-    await expect.poll(async () => seconds(await chip.getByRole("timer").textContent())).toBeGreaterThan(before + 20);
-    await expect(chip).toHaveCount(1);
-    // The chip is shell chrome, on the tab bar: the workout's own bottom bar sits above it, Finish in reach.
-    const [chipBox, barBox] = [await chip.boundingBox(), await page.locator(".wk-bar").boundingBox()];
-    expect(chipBox && barBox && barBox.y + barBox.height <= chipBox.y).toBe(true);
-    if (shots) await page.screenshot({ path: `${shots}/workout-rest-bar-clear-phone.png` });
+    await expect.poll(async () => seconds(await rest.locator(".wk-rest-n").textContent())).toBeGreaterThan(before + 20);
+    await expect(chips).toHaveCount(0);
+    if (shots) await page.screenshot({ path: `${shots}/workout-rest-bar-only-phone.png` });
 
-    // Another page: the rest is still counting, in sight; the screen may sleep (the workout is off-screen).
+    // Another page: the rest is still counting, and its chip is in sight there — one, the +30s one;
+    // the screen may sleep (the workout is off-screen).
     await page.locator(".k-tabbar .k-tab", { hasText: "History" }).first().tap();
     await expect(page.locator(".k-tl-item").first()).toBeVisible();
     await expect(chip).toBeVisible();
-    await expect(chip.getByRole("timer")).toHaveText(/^2:\d\d$/);
+    await expect(chip).toHaveCount(1);
+    await expect.poll(async () => seconds(await chip.getByRole("timer").textContent())).toBeGreaterThan(before + 15);
     await expect(html).not.toHaveAttribute("data-k-awake", "");
     if (shots) await page.screenshot({ path: `${shots}/workout-rest-chip-history.png` });
 
-    // Back on Train: the screen reads the shell's timer, and holds the screen on again.
+    // Back on Train: the bar draws the rest again, the chip steps aside again, the screen is held on.
     await page.locator(".k-tabbar .k-tab", { hasText: "Train" }).first().tap();
     await expect(rest).toBeVisible();
+    await expect(chips).toHaveCount(0);
     await expect(html).toHaveAttribute("data-k-awake", "");
-    // Skip stops the shell's timer, not just the drawing of it.
+    // Skip stops the shell's timer, not just the drawing of it: History has no chip either.
     await rest.getByRole("button", { name: "skip" }).tap();
     await expect(rest).toHaveCount(0);
-    await expect(chip).toHaveCount(0);
+    await page.locator(".k-tabbar .k-tab", { hasText: "History" }).first().tap();
+    await expect(page.locator(".k-tl-item").first()).toBeVisible();
+    await expect(chips).toHaveCount(0);
+    await page.locator(".k-tabbar .k-tab", { hasText: "Train" }).first().tap();
 
     await page.getByRole("button", { name: "Finish" }).tap();
     await page.getByRole("menuitem", { name: /Save and finish/ }).tap();

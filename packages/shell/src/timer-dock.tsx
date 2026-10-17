@@ -4,15 +4,18 @@
 // Mounted once, around every route (main.tsx `mount`). The open app's timers come first; another
 // app's chip names that app and opens it when tapped. A chip that has rung stays, loud, until the
 // person says Done — a kitchen timer that rang while you were at the sink is no use if it has gone.
+// A page that draws a countdown itself says so (`ctx.ui.drawsTimer`), and while it is on screen that
+// timer's chip is left out: the rest is not shown twice, a line apart (timer-hub.ts `chips`).
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { useLingui } from "@lingui/react/macro";
+import { secondsLeft } from "@potyro/host";
 import { timerHub, type KeptTimer } from "./timer-hub.js";
 import { getUserApp } from "./user-apps.js";
 
-/** "1:05", "12:00", "1:02:03" — how a countdown reads. */
+/** "1:05", "12:00", "1:02:03" — how a countdown reads, in the one rounding every countdown uses. */
 export function clock(ms: number): string {
-  const total = Math.max(0, Math.ceil(ms / 1000));
+  const total = secondsLeft(ms);
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
@@ -37,15 +40,22 @@ const subscribeFocus = (cb: () => void): (() => void) => {
   return () => focusListeners.delete(cb);
 };
 
-/** Re-render once a second while something counts down; not at all otherwise. */
-function useTick(active: boolean): number {
+/** A few ms past the change: a timeout may fire a hair early, and then it would draw the old second. */
+const TICK_SLACK_MS = 4;
+
+/**
+ * Re-render the moment a countdown's second changes (`timerHub.nextChangeIn`), not on a free-running
+ * second of its own: a chip on its own beat lagged up to a second behind a page drawing the same
+ * timer. Not at all while nothing counts.
+ */
+function useTick(): number {
   const [now, setNow] = useState(() => Date.now());
+  const wait = timerHub.nextChangeIn();
   useEffect(() => {
-    if (!active) return;
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [active]);
+    if (wait === null) return;
+    const id = setTimeout(() => setNow(Date.now()), wait + TICK_SLACK_MS);
+    return () => clearTimeout(id);
+  }, [now, wait]);
   return now;
 }
 
@@ -95,13 +105,15 @@ const RING_R = 15;
 const RING_C = 2 * Math.PI * RING_R;
 
 export function TimerDock({ onOpenApp }: { onOpenApp: (app: string) => void }) {
-  const kept = useSyncExternalStore(timerHub.subscribe, timerHub.snapshot, timerHub.snapshot);
+  useSyncExternalStore(timerHub.subscribe, timerHub.snapshot, timerHub.snapshot);
+  useSyncExternalStore(timerHub.subscribe, timerHub.drawnSnapshot, timerHub.drawnSnapshot);
   const app = useSyncExternalStore(subscribeFocus, () => focused, () => focused);
-  useTick(kept.some((k) => k.endsAt !== null && !k.ringing));
+  useTick();
   const dock = useRef<HTMLDivElement | null>(null);
-  useTimerRoom(dock, app !== null, kept.length > 0);
-  if (!kept.length) return null;
-  const ordered = timerHub.all().sort((a, b) => Number(b.app === app) - Number(a.app === app));
+  const ordered = timerHub.chips(app);
+  // Room only for chips that show: with the page drawing its one timer, its own bar comes back down.
+  useTimerRoom(dock, app !== null, ordered.length > 0);
+  if (!ordered.length) return null;
   return (
     <div ref={dock} className="k-timer-dock" data-home={app === null || undefined}>
       {ordered.map((k) => (

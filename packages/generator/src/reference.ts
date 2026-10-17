@@ -314,19 +314,22 @@ export const CAPABILITIES: readonly Capability[] = [
     key: "ctx.ui.timer",
     summary:
       "`await ctx.ui.timer({ label, seconds, id? })`: a countdown the shell keeps on a chip across pages, ringing with the screen locked; `ctx.ui.timers()` lists this app's; `pause()`/`resume()`/`cancel()`; no permission",
-    declarations: ["UiTimerOptions", "UiTimer"],
+    declarations: ["UiTimerOptions", "UiTimer", "UiDrawnTimer"],
     members: [
       { of: "CtxUi", name: "timer" },
       { of: "CtxUi", name: "timers" },
+      { of: "CtxUi", name: "drawsTimer" },
     ],
-    also: ["ctx.ui.timers"],
+    also: ["ctx.ui.timers", "ctx.ui.drawsTimer"],
     notes: [
       "A countdown a person waits on (a rest between sets, a step in a recipe) is `ctx.ui.timer`, never setInterval in a view:",
       "a view's state is gone when the page changes, and the shell's timer goes on with the screen locked. Give a repeating one an",
       "`id` (\"rest\") so starting it again restarts it; read `ctx.ui.timers()` again for what is running.",
+      "A custom view that draws the countdown itself shows `t.secondsLeft()` (the chip's own second) and holds",
+      "`ctx.ui.drawsTimer(id)` while it is on screen (release in the effect's cleanup), so the chip is not shown twice.",
     ].join("\n"),
-    cues: /ui\.timers?\(|\b(timers?|countdown|count down|rest (?:timer|between)|stopwatch|minutes? left|egg timer|cronômetro|temporizador|minutnik\w*|stoper\w*|conto alla rovescia|zeitschaltuhr)\b/i,
-    uses: /ui\.timers?\(/,
+    cues: /ui\.timers?\(|drawsTimer|\b(timers?|countdown|count down|rest (?:timer|between)|stopwatch|minutes? left|egg timer|cronômetro|temporizador|minutnik\w*|stoper\w*|conto alla rovescia|zeitschaltuhr)\b/i,
+    uses: /ui\.timers?\(|\.drawsTimer\(/,
   },
   {
     key: "ctx.guests",

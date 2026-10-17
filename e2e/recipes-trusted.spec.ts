@@ -36,13 +36,16 @@ test("recipes app runs the full M1 flow in the browser (trusted)", async ({ page
   await stepTimer.click();
   await expect(stepTimer).toHaveAttribute("data-running", "true");
   await expect(stepTimer).toContainText(/\d+:\d\d · stop/);
+  // The step draws its own countdown (`ctx.ui.drawsTimer`): its chip is not shown under it too.
   const chip = page.locator(".k-timer-chip", { hasText: ", step 1" });
-  await expect(chip).toHaveCount(1);
+  await expect(page.locator(".k-timer-chip")).toHaveCount(0);
   await page.getByRole("button", { name: "Next step" }).click();
   await expect(page.getByText(/Step 2 of \d+/).first()).toBeVisible();
-  // Step 2 has a timer of its own, not running; step 1's keeps counting on its chip.
+  // Step 2 has a timer of its own, not running; step 1's keeps counting — on its chip, now that
+  // nothing else on screen shows it.
   await expect(stepTimer).toHaveAttribute("data-running", "false");
   await expect(chip).toBeVisible();
+  await expect(chip).toHaveCount(1);
   const firstStep = page.locator("ol li input[type=checkbox]").first();
   await expect(firstStep).toBeChecked(); // "Next step" ticked the step it left
   const secondStep = page.locator("ol li input[type=checkbox]").nth(1);
