@@ -135,6 +135,7 @@ export const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
     type: z.literal("list"),
     of: ofSchema,
     ordered: z.boolean().optional(),
+    lines: z.array(z.string().min(1)).optional(),
     ...common,
   });
 
@@ -257,12 +258,14 @@ const galleryView = z.object({
   entity: z.string(),
   filter: zFn.optional(),
   sort: zFn.optional(),
+  filters: z.array(filterChipSchema).optional(),
   display: listDisplaySchema.optional(),
   onOpen: onOpenSchema.optional(),
   emptyText: zDynamicWords.optional(),
   group: zBinding.optional(),
   collapsible: z.boolean().optional(),
   aspect: z.enum(["square", "portrait", "landscape"]).optional(),
+  caption: z.enum(["below", "over"]).optional(),
 });
 
 const tableView = z.object({
@@ -321,7 +324,7 @@ const detailView = z.object({
     .optional(),
   actions: z.array(detailActionSchema).optional(),
   media: z.union([z.string(), z.literal(false)]).optional(),
-  cover: z.enum(["banner", "full", "band", "none"]).optional(),
+  cover: z.enum(["banner", "full", "background", "band", "none"]).optional(),
   facts: z.array(z.string()).optional(),
   primaryAction: detailActionSchema.optional(),
 });
@@ -401,6 +404,7 @@ const checklistView = z.object({
   filters: z.array(filterChipSchema).optional(),
   hideDone: z.union([z.boolean(), z.literal("collapse")]).optional(),
   doneLabel: zWords.optional(),
+  strike: z.boolean().optional(),
   donePlacement: z.enum(["sink", "stay"]).optional(),
   quickAdd: z
     .union([z.boolean(), z.object({ suggest: z.boolean().optional(), remember: z.array(z.string()).optional(), defaults: zFn.optional(), usuals: zFn.optional() }).strict()])

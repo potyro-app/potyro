@@ -94,7 +94,7 @@ describe("sandbox parity — trusted vs untrusted give identical results", () =>
     untrusted.runtime.core.app.dispose();
   }, 30000);
 
-  it("'ingredients I have' filter matches across runners", async () => {
+  it("the cookbook's search and “Can cook now” work the same sealed", async () => {
     const { ui, nav } = bridges();
     const untrustedStore = await freshStore();
     const loadIsolated = await createSandboxLoader(untrustedStore);
@@ -108,15 +108,12 @@ describe("sandbox parity — trusted vs untrusted give identical results", () =>
       nav,
       loadIsolated,
     });
-    // Build the pantry from THIS store's resolved recipe (ids are per-store ULIDs).
-    const all = (await untrusted.runtime.queryPage("all")).rows;
-    const pancake = all.find((r) => r.name === "Fluffy Pancakes")!;
-    const pantry = (pancake.ingredients as { ingredient: { id: string } }[]).map((i) => i.ingredient.id);
-
-    const cookable = (await untrusted.runtime.queryPage("cook-with", { pantry })).rows;
-    expect(cookable.map((r) => r.name)).toContain("Fluffy Pancakes");
-    // Chicken Caesar needs chicken/lettuce not in the pantry → excluded.
-    expect(cookable.map((r) => r.name)).not.toContain("Chicken Caesar");
+    const found = (await untrusted.runtime.queryPage("all", { q: "pancake" })).rows.map((r) => r.name);
+    expect(found).toEqual(["Fluffy Pancakes"]);
+    // Only what the pantry covers, decided by the sealed app's own filter.
+    const ready = (await untrusted.runtime.queryPage("all", { ready: true })).rows;
+    expect(ready.length).toBeGreaterThan(0);
+    expect(ready.every((r) => r.canCook === true)).toBe(true);
     untrusted.runtime.core.app.dispose();
   }, 30000);
 });

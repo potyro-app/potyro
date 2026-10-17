@@ -3,8 +3,7 @@ import { test, expect, type Page } from "./console-guard";
 // Choosing one of a set (#98). Recipes' "Diet" has three options, so the form shows all three as a
 // row of buttons. Places' "Kind" has six, so it opens a searchable list — a popover on a wide
 // screen, a bottom sheet on a phone. Neither is a browser `<select>`, which was the last unstyled
-// control in the form. A chosen value wears the same tint in the form, in a row badge and on the
-// record page.
+// control in the form. A chosen value wears the same tint in the form and on the record page.
 
 async function openApp(page: Page, app: string, title: string): Promise<void> {
   await page.goto(`/?user=${app}`);
@@ -50,11 +49,9 @@ test.describe("desktop", () => {
     await expect(pill).toBeVisible();
     expect(await pill.getAttribute("style")).toBe(formTint);
 
-    // And so does the row badge back in the list.
+    // Back on the pantry — a list you tick — it is there to tick.
     await page.getByRole("button", { name: "Back" }).click();
-    const badge = page.locator(".k-list-row", { hasText: "E2E Tofu" }).locator(".k-badge", { hasText: "vegan" });
-    await expect(badge).toHaveAttribute("data-tinted", "true");
-    expect(await badge.getAttribute("style")).toBe(formTint);
+    await expect(page.getByRole("checkbox", { name: "E2E Tofu" })).toBeVisible();
   });
 
   test("many options open a searchable list in a popover", async ({ page }) => {

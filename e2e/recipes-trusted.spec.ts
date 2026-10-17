@@ -75,26 +75,60 @@ test("recipes app runs the full M1 flow in the browser (trusted)", async ({ page
   await page.reload();
   await expect(page.locator(".k-card", { hasText: unique })).toBeVisible();
 
-  // "Ingredients I have" JS predicate filter: the pantry chrome + chips drive an app filter fn.
-  // The options sit behind one Filter button now rather than a row of chips across the page, so the
-  // pantry is reached through the sheet — the chips themselves, and what picking one does, are the
-  // same claim as before.
-  await page.getByRole("button", { name: "What can I cook?" }).click();
+  // Choosing what to cook is the cookbook's own job: its search and chips drive the app's filter fn.
+  const names = async () => (await page.locator(".k-card .k-primary").allTextContents()).map((t) => t.trim());
+  const all = (await names()).length;
+  await page.getByRole("searchbox", { name: "Search" }).fill("pancake");
+  await expect.poll(names).toEqual(["Fluffy Pancakes"]);
+  await page.getByRole("searchbox", { name: "Search" }).fill("");
+  await expect.poll(async () => (await names()).length).toBe(all);
+  // "Can cook now" keeps what the pantry covers.
+  await page.getByRole("switch", { name: "Can cook now" }).click();
+  await expect.poll(async () => (await names()).length).toBeLessThan(all);
+  await page.getByRole("switch", { name: "Can cook now" }).click();
+  // The meal is behind the one Filter button; what was chosen stays as a chip beside it.
   await page.getByRole("button", { name: /Filter/ }).first().click();
   const sheet = page.locator(".k-filter-sheet");
-  await expect(sheet.getByText("In my pantry:")).toBeVisible();
-  const chips = sheet.locator(".k-chip");
-  // Waited for, not counted on the spot: the pantry chips are built from records, and a store that
-  // answers asynchronously (SQLite in a worker) has them a moment after the sheet is on screen.
-  await expect(chips.first()).toBeVisible();
-  const ingredient = ((await chips.first().textContent()) ?? "").trim();
-  await chips.first().click();
-  await expect(sheet.locator(".k-chip[data-on='true']").first()).toBeVisible(); // filter state applied
-  // …and it is still applied once the sheet is out of the way: the page keeps the chosen ingredient
-  // as a chip beside the Filter button, which is how you can tell the list you are looking at is
-  // narrowed rather than empty.
+  await sheet.getByRole("button", { name: "breakfast" }).click();
   await sheet.getByRole("button", { name: "Done" }).click();
-  await expect(chosenFilter(page, ingredient)).toBeVisible();
+  await expect(chosenFilter(page, "breakfast")).toBeVisible();
+  await expect(page.locator(".k-card", { hasText: "Fluffy Pancakes" })).toBeVisible();
+  await expect(page.locator(".k-card", { hasText: "Chickpea Curry" })).toHaveCount(0);
+});
+
+test.describe("phone", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test("a recipe opens on its ingredients, over its photo, with Start cooking at the bottom", async ({ page }) => {
+    await openRecipes(page);
+    // The cookbook: no floating Add, and the first cards right under the search and its chips.
+    await expect(page.locator(".k-fab")).toHaveCount(0);
+    expect((await page.locator(".k-card").first().boundingBox())!.y).toBeLessThan(260);
+    // A card's name is under its photo, not on it.
+    const card = page.locator(".k-card", { hasText: "Shakshuka" }).first();
+    const photo = (await card.locator(".k-card-media").boundingBox())!;
+    const name = (await card.locator(".k-primary").boundingBox())!;
+    expect(name.y).toBeGreaterThanOrEqual(photo.y + photo.height - 1);
+
+    await card.tap();
+    const detail = page.locator("article.k-detail");
+    await expect(detail).toHaveAttribute("data-cover", "background");
+    // The ingredients are on the first screen, as lines: "20 ml Olive oil", not a table.
+    const ingredients = detail.locator(".k-section", { has: page.getByRole("heading", { name: "Ingredients" }) });
+    await expect(ingredients.locator(".k-row-lines li").first()).toHaveText(/^\d+ \S+ \S/);
+    expect((await ingredients.boundingBox())!.y).toBeLessThan(500);
+    await expect(ingredients.locator("table")).toHaveCount(0);
+    // A step's time reads as minutes.
+    await expect(detail.locator(".k-row-list li").first()).toContainText(/· \d+ min/);
+    // Start cooking is the bar at the bottom; Plan it / Cooked it wait after the sections.
+    const start = page.locator(".k-primary-bar").getByRole("button", { name: /Start cooking/ });
+    await expect(start).toBeVisible();
+    const actions = (await detail.locator(".k-detail-actions").boundingBox())!;
+    const lastSection = (await detail.locator(".k-section").last().boundingBox())!;
+    expect(actions.y).toBeGreaterThan(lastSection.y);
+    await start.tap();
+    await expect(page.locator("#cook-heading")).toContainText("Cooking:");
+  });
 });
 
 test("edits an existing record in place from the list (universal edit)", async ({ page }) => {
@@ -131,17 +165,44 @@ test("captures responsive screenshots of the recipes list", async ({ page }) => 
   }
 });
 
+// A table is the one thing an app can declare that is wider than a phone: an app of its own here, with
+// more columns than fit, since no example keeps a wide table now.
+const WIDE_TABLE_APP = `import { defineApp } from "potyro";
+export default defineApp({
+  id: "nutrition", name: "Nutrition", version: "1.0.0", schemaVersion: 1,
+  entities: { food: { label: "Food", displayField: "name", fields: {
+    name: { type: "text", required: true },
+    caloriesPerServing: { type: "number", label: "Calories per serving" },
+    proteinPerServing: { type: "number", label: "Protein per serving" },
+    fatPerServing: { type: "number", label: "Fat per serving" },
+    carbsPerServing: { type: "number", label: "Carbohydrates per serving" },
+    servings: { type: "number", label: "Servings" },
+  } } },
+  pages: [
+    { id: "table", title: "Table", view: { type: "table", entity: "food", display: { columns: ["name", "caloriesPerServing", "proteinPerServing", "fatPerServing", "carbsPerServing", "servings"] } } },
+    { id: "other", title: "Other", view: { type: "list", entity: "food" } },
+  ],
+});
+`;
+
 test("a table wider than the phone scrolls itself, and the page does not", async ({ page }) => {
   // "Why on the app recipe when I click high protein the bottom menu disappear": the table's columns
   // made the PAGE wider than the screen, so the whole app slid sideways — the header off the top,
-  // and with it, on Firefox for Android, the bottom bar. A table is the one thing an app can declare
-  // that is wider than a phone; it has to scroll inside itself.
+  // and with it, on Firefox for Android, the bottom bar. A table has to scroll inside itself.
   await page.setViewportSize({ width: 390, height: 780 });
-  await openRecipes(page);
-  // Four pages fit the phone's bar; High protein is behind More.
-  await page.locator(".k-tabbar").getByRole("button", { name: "More pages" }).click();
-  await page.getByRole("menuitem", { name: /High protein/ }).click();
-  await expect(page.locator(".k-table")).toBeVisible();
+  await page.addInitScript((source) => {
+    if (localStorage.getItem("potyro:user-apps")) return;
+    localStorage.setItem("potyro:user-apps", JSON.stringify([{ id: "nutrition", name: "Nutrition", source, trusted: true, updatedAt: new Date(0).toISOString() }]));
+  }, WIDE_TABLE_APP);
+  await page.goto("/?user=nutrition");
+  await expect(page.locator(".k-app")).toBeVisible({ timeout: 30_000 });
+  await page.evaluate(async () => {
+    const { openStore } = await import("/src/open-store.ts");
+    const store = await openStore("user:nutrition");
+    if (!(await store.all("food")).length) await store.insert("food", { name: "Shakshuka", caloriesPerServing: 321, proteinPerServing: 18, fatPerServing: 20, carbsPerServing: 14, servings: 2 });
+  });
+  await page.reload();
+  await expect(page.locator(".k-table")).toBeVisible({ timeout: 30_000 });
 
   const overflow = await page.evaluate(() => ({
     page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -160,7 +221,6 @@ test("a table wider than the phone scrolls itself, and the page does not", async
   expect(Math.round(box.y + box.height)).toBeLessThanOrEqual(780);
   expect(box.x).toBe(0);
 
-  // The columns are named, not keyed: "Calories per serving" (its label, #310), not "caloriesPerServing" — which is
-  // also a twenty-character word that cannot wrap, and half of why this was ever too wide.
-  await expect(page.locator(".k-table th").nth(2)).toHaveText("Calories per serving");
+  // The columns are named, not keyed: "Calories per serving" (its label, #310), not "caloriesPerServing".
+  await expect(page.locator(".k-table th").nth(1)).toHaveText("Calories per serving");
 });

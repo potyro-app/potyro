@@ -2,7 +2,8 @@ import { test, expect, type Page } from "./console-guard";
 
 // Rows under headings and sections that fold (#108). Places' "All places" shows every category at
 // once, in the enum's order, each heading with a count and folding its group away; the fold is
-// remembered on this device. A recipe's Ingredients section folds on its record page, remembered too.
+// remembered on this device. A recipe's Nutrition section starts folded on its record page, and opening
+// it is remembered too.
 
 async function openPlaces(page: Page): Promise<void> {
   await page.goto("/?user=places");
@@ -37,21 +38,20 @@ test.describe("desktop", () => {
     await expect(page.locator(".k-fold-group").first().locator(".k-fold-head")).toHaveAttribute("aria-expanded", "false");
   });
 
-  test("a recipe's Ingredients section folds with its count, remembered across a reload", async ({ page }) => {
+  test("a recipe's Nutrition section starts folded, and opening it is remembered across a reload", async ({ page }) => {
     await page.goto("/?user=recipes");
     await expect(page.locator("h1").first()).toHaveText("Recipes", { timeout: 30_000 });
     await page.locator(".k-card").first().click();
     const detail = page.locator("article.k-detail");
-    const ingredients = detail.getByRole("button", { name: /^Ingredients/ });
-    await expect(ingredients).toHaveAttribute("aria-expanded", "true");
-    await expect(ingredients.locator(".k-fold-count")).toHaveText(/^\d+$/);
-    await ingredients.click();
-    await expect(ingredients).toHaveAttribute("aria-expanded", "false");
+    const nutrition = detail.getByRole("button", { name: /^Nutrition & cost/ });
+    await expect(nutrition).toHaveAttribute("aria-expanded", "false");
+    await nutrition.click();
+    await expect(nutrition).toHaveAttribute("aria-expanded", "true");
     // A record page is not in the URL, so pick the recipe again.
     await page.reload();
     await expect(page.locator("h1").first()).toHaveText("Recipes", { timeout: 30_000 });
     await page.locator(".k-card").first().click();
-    await expect(page.locator("article.k-detail").getByRole("button", { name: /^Ingredients/ })).toHaveAttribute("aria-expanded", "false");
+    await expect(page.locator("article.k-detail").getByRole("button", { name: /^Nutrition & cost/ })).toHaveAttribute("aria-expanded", "true");
   });
 });
 

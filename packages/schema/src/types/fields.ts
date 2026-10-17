@@ -157,6 +157,8 @@ export interface ListField extends FieldCommon {
   type: "list";
   of: Record<string, Field>;
   ordered?: boolean;
+  /** Rows as lines of these parts: "350 g flour". */
+  lines?: string[];
 }
 
 /** The discriminated union of all field variants. */

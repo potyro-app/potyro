@@ -2,10 +2,12 @@
 //
 // The cover is what makes a record feel like itself rather than a form read back. With a picture —
 // the record's photo, a computed's path in the app's files, or the page's background image — the
-// picture fills the top of the screen (`cover: "banner"`) or all of it (`"full"`), and the title, the
-// key facts and the page's ONE primary action sit over it, on a scrim dark enough for white words in
-// either theme. Without one, a band of the app's own colour carries the same things. The sections
-// below show only what the record has: an empty field is a dash nobody came to read.
+// picture fills the top of the screen (`cover: "banner"`), all of it (`"full"`), or sits behind the
+// whole page with the sections over it (`"background"` — the record's information first, its picture
+// still the place), and the title and key facts sit on it, on a scrim dark enough for white words in
+// either theme. Without one, a band of the app's own colour carries the same things. The page's ONE
+// primary action is a bar at the bottom of the screen, where the thumb is. The sections below show
+// only what the record has: an empty field is a dash nobody came to read.
 
 import { Trans, useLingui } from "@lingui/react/macro";
 import { actionInfo, type Resolved } from "potyro";
@@ -34,7 +36,7 @@ interface DetailViewDef {
   sections?: { title?: string; fields?: string[]; related?: RelatedSpec; collapsible?: boolean; collapsed?: boolean }[];
   actions?: DetailAction[];
   media?: string | false;
-  cover?: "banner" | "full" | "band" | "none";
+  cover?: "banner" | "full" | "background" | "band" | "none";
   facts?: string[];
   primaryAction?: DetailAction;
 }
@@ -83,7 +85,8 @@ export function DetailView(props: BuiltinViewProps) {
   };
   const hasPicture = Boolean(own ?? fallback);
   const cover = view.cover ?? (hasPicture ? "banner" : "band");
-  const pictured = (cover === "banner" || cover === "full") && hasPicture;
+  const pictured = (cover === "banner" || cover === "full" || cover === "background") && hasPicture;
+  const behind = pictured && cover === "background";
 
   // The page's own `sections` override; otherwise the entity's `groups`, the same arrangement the
   // form uses (#100), so what was edited under "Nutrition" is read back under "Nutrition".
@@ -117,7 +120,7 @@ export function DetailView(props: BuiltinViewProps) {
     return def && typeof def === "object" && typeof def.icon === "string" ? def.icon : undefined;
   };
   const actions = view.actions ?? [];
-  // With a primary action on the cover, the bar's actions are all quiet: one loud button per page.
+  // With a primary action at the bottom, the bar's actions are all quiet: one loud button per page.
   const fillFirst = !view.primaryAction;
 
   const fieldsOf = (group: DetailGroup) =>
@@ -158,38 +161,10 @@ export function DetailView(props: BuiltinViewProps) {
     </dl>
   );
 
-  return (
-    <article className="k-detail" data-cover={cover === "none" ? "none" : pictured ? cover : "band"}>
-      <header className="k-detail-hero">
-        {pictured ? (
-          <span className="k-detail-photo" aria-hidden>
-            {coverUrl ? <img src={coverUrl} alt="" decoding="async" draggable={false} /> : null}
-          </span>
-        ) : null}
-        <div className="k-detail-hero-body">
-          {cover === "none" ? null : (
-            <span className="k-detail-kicker" data-k-wording>
-              {entityDef?.icon ? <span aria-hidden>{entityDef.icon} </span> : null}
-              {entityDef?.label ?? humanizeKey(view.entity)}
-            </span>
-          )}
-          <h2 className="k-detail-title">{label}</h2>
-          <Facts runtime={runtime} entity={view.entity} record={record} keys={view.facts ?? defaultFacts(entityDef, record)} />
-          {view.primaryAction ? (
-            <button type="button" className="k-cta" onClick={() => runDetailAction(view.primaryAction!)} data-k-wording={typeof view.primaryAction === "string" ? undefined : true}>
-              {actionGlyph(view.primaryAction) ? (
-                <span className="k-cta-icon" aria-hidden>
-                  {actionGlyph(view.primaryAction)}
-                </span>
-              ) : null}
-              <span>{actionLabel(view.primaryAction)}</span>
-              <span className="k-cta-arrow" aria-hidden>
-                →
-              </span>
-            </button>
-          ) : null}
-        </div>
-      </header>
+  // The other actions. With a primary action at the bottom they are secondary — "Plan it", "Cooked
+  // it" — and wait after the record's sections, so what the page is read for comes first.
+  const actionBar = (
+    <>
       {/* The app's first action is the one filled button (unless a primary action is on the cover);
           its other actions sit beside it, plain. Edit and Delete are behind "More actions", Delete
           last and styled as the one thing you might regret — never inline next to the thing you came
@@ -237,6 +212,35 @@ export function DetailView(props: BuiltinViewProps) {
           />
         )}
       </div>
+    </>
+  );
+
+  return (
+    <article className="k-detail" data-cover={cover === "none" ? "none" : pictured ? cover : "band"}>
+      {behind ? (
+        // Behind the whole page, held in view while it scrolls: the sections read over it.
+        <span className="k-detail-backdrop" aria-hidden>
+          {coverUrl ? <img src={coverUrl} alt="" decoding="async" draggable={false} /> : null}
+        </span>
+      ) : null}
+      <header className="k-detail-hero">
+        {pictured && !behind ? (
+          <span className="k-detail-photo" aria-hidden>
+            {coverUrl ? <img src={coverUrl} alt="" decoding="async" draggable={false} /> : null}
+          </span>
+        ) : null}
+        <div className="k-detail-hero-body">
+          {cover === "none" ? null : (
+            <span className="k-detail-kicker" data-k-wording>
+              {entityDef?.icon ? <span aria-hidden>{entityDef.icon} </span> : null}
+              {entityDef?.label ?? humanizeKey(view.entity)}
+            </span>
+          )}
+          <h2 className="k-detail-title">{label}</h2>
+          <Facts runtime={runtime} entity={view.entity} record={record} keys={view.facts ?? defaultFacts(entityDef, record)} />
+        </div>
+      </header>
+      {view.primaryAction ? null : actionBar}
       <div className="k-detail-sections">
         {visibleGroups.map((group, si) =>
           (group.collapsible || group.collapsed) && group.title ? (
@@ -262,6 +266,19 @@ export function DetailView(props: BuiltinViewProps) {
           ),
         )}
       </div>
+      {view.primaryAction ? actionBar : null}
+      {view.primaryAction ? (
+        <div className="k-primary-bar">
+          <button type="button" className="k-cta" onClick={() => runDetailAction(view.primaryAction!)} data-k-wording={typeof view.primaryAction === "string" ? undefined : true}>
+            {actionGlyph(view.primaryAction) ? (
+              <span className="k-cta-icon" aria-hidden>
+                {actionGlyph(view.primaryAction)}
+              </span>
+            ) : null}
+            <span>{actionLabel(view.primaryAction)}</span>
+          </button>
+        </div>
+      ) : null}
     </article>
   );
 }
