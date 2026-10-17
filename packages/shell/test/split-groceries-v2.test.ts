@@ -59,7 +59,7 @@ describe("Split", () => {
     expect(row.check).toMatch(/not on any line/);
     expect(String(row.breakdown).split(" · ").sort()).toEqual(["Bo €28.49", "Cy €17.74", "You €17.77"].sort());
     const balances = await balancesOf(runtime);
-    expect(balances).toContain("Bo → You");
+    expect(balances).toContain("Bo owes you");
   });
 
   it("splits by exact amounts, and what they leave over is everyone's", async () => {
@@ -82,7 +82,8 @@ describe("Split", () => {
     const group = await runtime.ctx.create("group", { name: "Dinner" });
     await runtime.setScope("group", group.id);
     await runtime.ctx.create("expense", { description: "Dinner", amount: 9000, paidBy: ANA.id, split: "equally", between: [ANA.id, BO.id, CY.id], group: group.id });
-    const page = runtime.definition.pages.find((p) => p.id === "group")!;
+    // Payments' own Settle up: a sheet of the suggested transfers to choose from.
+    const page = runtime.definition.pages.find((p) => p.id === "history")!;
     await page.actions![0]!.run(runtime.ctx);
     expect(form).toMatchObject({ from: BO.id, to: ANA.id, amount: 3000 });
     await page.actions![0]!.run(runtime.ctx);
@@ -100,13 +101,29 @@ describe("Split", () => {
     const group = await runtime.ctx.create("group", { name: "Taxi" });
     await runtime.setScope("group", group.id);
     await runtime.ctx.create("expense", { description: "Taxi", amount: 2000, paidBy: ANA.id, split: "equally", between: [ANA.id, BO.id], group: group.id });
-    const view = runtime.definition.pages.find((p) => p.id === "group")!.layout!.items[0]!.view as unknown as { rows: (r: unknown[], c: unknown) => Promise<{ label: string; action?: { key: string; id: string } }[]> };
-    const row = (await view.rows(await runtime.ctx.query("expense"), runtime.ctx)).find((r) => r.label === "Bo → You")!;
-    expect(row.action).toMatchObject({ key: "settle", id: group.id });
-    await runtime.runAction("group", row.action!.key, row.action!.id);
+    const view = runtime.definition.pages.find((p) => p.id === "group")!.layout!.items[0]!.view as unknown as { rows: (r: unknown[], c: unknown) => Promise<{ label: string; action?: { key: string; id: string; input?: unknown } }[]> };
+    const row = (await view.rows(await runtime.ctx.query("expense"), runtime.ctx)).find((r) => r.label === "Bo owes you")!;
+    expect(row.action).toMatchObject({ key: "settle", id: group.id, input: { from: BO.id, to: ANA.id } });
+    await runtime.runAction("group", row.action!.key, row.action!.id, row.action!.input);
     expect(sheets).toBe(0);
     expect(await runtime.ctx.query("payment")).toMatchObject([{ amount: 1000 }]);
     expect(await balancesOf(runtime)).toEqual([]);
+  });
+
+  it("with several transfers, a row's Settle records that row's payment, with no sheet to choose from", async () => {
+    let sheets = 0;
+    const ui = quietUi({ sheet: async () => ((sheets += 1), null), form: async (o) => o.initial ?? null });
+    const { runtime } = await open(split as unknown as AppDefinition, "split", { me: ANA, space: threeOfUs, ui });
+    const group = await runtime.ctx.create("group", { name: "Dinner" });
+    await runtime.setScope("group", group.id);
+    await runtime.ctx.create("expense", { description: "Dinner", amount: 9000, paidBy: ANA.id, split: "equally", between: [ANA.id, BO.id, CY.id], group: group.id });
+    const view = runtime.definition.pages.find((p) => p.id === "group")!.layout!.items[0]!.view as unknown as { rows: (r: unknown[], c: unknown) => Promise<{ label: string; action?: { key: string; id: string; input?: unknown } }[]> };
+    const cy = (await view.rows(await runtime.ctx.query("expense"), runtime.ctx)).find((r) => r.label === "Cy owes you")!;
+    await runtime.runAction("group", cy.action!.key, cy.action!.id, cy.action!.input);
+    expect(sheets).toBe(0);
+    expect(await runtime.ctx.query("payment")).toMatchObject([{ amount: 3000 }]);
+    expect(idOfFrom(await runtime.ctx.query("payment"))).toBe(CY.id);
+    expect(await balancesOf(runtime)).toEqual(["Bo owes you"]);
   });
 
   it("first run: Lisbon names its three guests and everyone owes something; the flat, alone, owes nobody", async () => {
@@ -121,8 +138,7 @@ describe("Split", () => {
     expect(tasca.check).toMatch(/to the cent/);
     // Tom paid the taxi and Ana the fado; you paid the flat — so the guests owe you, and the way out names them.
     const lisbon = await balancesOf(runtime);
-    expect(lisbon).toEqual(expect.arrayContaining(["You", "Ana", "Tom", "Inês"]));
-    expect(lisbon.some((l) => / → You$/.test(l))).toBe(true);
+    expect(lisbon).toEqual(expect.arrayContaining(["Ana owes you", "Tom owes you", "Inês owes you"]));
     // The guests are Lisbon's: the flat's bills are still nobody's business but yours.
     await runtime.setScope("group", groups[1]!.id);
     expect(await balancesOf(runtime)).toEqual([]);
@@ -145,7 +161,7 @@ describe("Split", () => {
     expect(ui.toasts.at(-1)).toBe("Ana, Tom, and Inês can be in expenses now");
     // The dinner was written before they were named, with nobody listed: it is everyone's now.
     const lines = await balancesOf(runtime);
-    expect(lines).toEqual(expect.arrayContaining(["You", "Ana", "Tom", "Inês"]));
+    expect(lines).toEqual(expect.arrayContaining(["Ana owes you", "Tom owes you", "Inês owes you"]));
     // A new expense's "Between" starts with all four of them.
     const between = await (split.entities.expense.fields.between as unknown as { default: (c: unknown) => Promise<string[]> }).default(runtime.ctx);
     const named = new Map(runtime.ctx.people.map((p) => [p.id, p.name]));
@@ -175,6 +191,11 @@ describe("Split", () => {
 });
 
 /** The balances page's rows, as labels. */
+const idOfFrom = (payments: { from?: unknown }[]): string => {
+  const from = payments[0]?.from;
+  return typeof from === "string" ? from : String((from as { id?: unknown } | undefined)?.id ?? "");
+};
+
 async function balancesOf(runtime: Awaited<ReturnType<typeof open>>["runtime"]): Promise<string[]> {
   const view = runtime.definition.pages.find((p) => p.id === "group")!.layout!.items[0]!.view as unknown as { rows: (r: unknown[], c: unknown) => Promise<{ label: string }[]> };
   return (await view.rows(await runtime.ctx.query("expense"), runtime.ctx)).map((r) => r.label);

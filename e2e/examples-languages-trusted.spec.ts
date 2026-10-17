@@ -107,7 +107,9 @@ test("an exercise's rolling best reads as kg × reps, not as an object", async (
 
 test("split reads in Polish", async ({ page }) => {
   await open(page, "split", "Podział");
-  await expect(page.getByText("Salda", { exact: true }).first()).toBeVisible();
+  // The balances' heading, and a row said in Polish ("Tom ma ci oddać"): names are records.
+  await expect(page.getByText("Do rozliczenia", { exact: true }).first()).toBeVisible();
+  await expect(page.locator(".k-aggregate")).toContainText("ma ci oddać");
   await expect(page.getByRole("button", { name: /Dodaj wydatek/ }).first()).toBeVisible();
   await expect(tab(page, "Płatności")).toBeVisible();
 });
