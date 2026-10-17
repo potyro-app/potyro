@@ -108,32 +108,220 @@
   },
   "apps": [
     {
-      "id": "groceries",
+      "id": "mood-sleep",
       "status": "ready",
       "from": {
-        "example": "groceries"
+        "package": [
+          "apps/mood-sleep/mood-sleep.app.ts"
+        ]
       },
-      "category": "home",
-      "icon": "🛒",
+      "category": "wellbeing",
+      "icon": "🌙",
       "name": {
-        "en": "Groceries",
-        "pt-BR": "Compras",
-        "de": "Einkäufe",
-        "es": "Compras",
-        "pl": "Zakupy",
-        "it": "Spesa"
+        "en": "Sleep & Mood",
+        "pt-BR": "Sono e humor",
+        "de": "Schlaf & Stimmung",
+        "es": "Sueño y ánimo",
+        "pl": "Sen i nastrój",
+        "it": "Sonno e umore"
       },
       "line": {
-        "en": "A shopping list in the order you walk the shop. Tick, drag, done.",
-        "pt-BR": "Uma lista de compras na ordem em que você anda pelo mercado. Marque, arraste, pronto.",
-        "de": "Eine Einkaufsliste in der Reihenfolge, in der du durch den Laden gehst. Abhaken, ziehen, fertig.",
-        "es": "Una lista de la compra en el orden en que recorres la tienda. Marca, arrastra, listo.",
-        "pl": "Lista zakupów w kolejności, w jakiej chodzisz po sklepie. Odhacz, przeciągnij, gotowe.",
-        "it": "Una lista della spesa nell’ordine in cui giri il negozio. Spunta, trascina, fatto."
+        "en": "How you slept and how you felt, and what the mornings add up to.",
+        "pt-BR": "Como você dormiu e como se sentiu, e o que as manhãs mostram juntas.",
+        "de": "Wie du geschlafen und dich gefühlt hast, und was die Morgen zusammen ergeben.",
+        "es": "Cómo dormiste y cómo te sentiste, y lo que suman las mañanas.",
+        "pl": "Jak spałeś i jak się czułeś, i co z tych poranków wynika.",
+        "it": "Come hai dormito e come ti sei sentito, e cosa dicono le mattine messe insieme."
+      }
+    },
+    {
+      "id": "photo-garden",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/photo-garden/photo-garden.app.ts"
+        ]
       },
-      "link": "https://potyro.app/s/oED3SuuJiC5LUmt6hYhaMw#k=OuglhT87vfcL5VkOvWd-Ig",
-      "screenshot": "shots/groceries.jpg",
-      "publishedAt": "2026-10-16T15:54:28.953Z"
+      "category": "creative",
+      "icon": "🌸",
+      "name": {
+        "en": "Photo Garden",
+        "pt-BR": "Jardim de fotos",
+        "de": "Fotogarten",
+        "es": "Jardín de fotos",
+        "pl": "Ogród zdjęć",
+        "it": "Giardino di foto"
+      },
+      "line": {
+        "en": "A photo turns into thousands of drifting specks that scatter at your touch.",
+        "pt-BR": "Uma foto vira milhares de pontinhos que flutuam e se espalham ao seu toque.",
+        "de": "Ein Foto wird zu tausenden treibenden Punkten, die bei Berührung auseinanderstieben.",
+        "es": "Una foto se vuelve miles de motas a la deriva que se dispersan al tocarlas.",
+        "pl": "Zdjęcie zmienia się w tysiące dryfujących drobinek, które pierzchają pod palcem.",
+        "it": "Una foto diventa migliaia di granelli alla deriva che si disperdono al tocco."
+      }
+    },
+    {
+      "id": "draw-guess",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/draw-guess/draw-guess.app.ts"
+        ]
+      },
+      "category": "play",
+      "icon": "✏️",
+      "name": {
+        "en": "Draw & Guess",
+        "pt-BR": "Desenhe e adivinhe",
+        "de": "Malen & Raten",
+        "es": "Dibuja y adivina",
+        "pl": "Rysuj i zgaduj",
+        "it": "Disegna e indovina"
+      },
+      "line": {
+        "en": "A party game: one person draws, everyone else guesses, live.",
+        "pt-BR": "Um jogo para a turma: uma pessoa desenha, o resto adivinha, ao vivo.",
+        "de": "Ein Partyspiel: eine Person malt, alle anderen raten, live.",
+        "es": "Un juego para fiestas: una persona dibuja, el resto adivina, en vivo.",
+        "pl": "Gra na imprezę: jedna osoba rysuje, reszta zgaduje, na żywo.",
+        "it": "Un gioco di gruppo: una persona disegna, tutti gli altri indovinano, in tempo reale."
+      }
+    },
+    {
+      "id": "mirror-monsters",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/mirror-monsters/mirror-monsters.app.ts"
+        ]
+      },
+      "category": "play",
+      "icon": "👹",
+      "name": {
+        "en": "Mirror Monsters",
+        "pt-BR": "Monstros no Espelho",
+        "de": "Spiegelmonster",
+        "es": "Monstruos del Espejo",
+        "pl": "Lustrzane Potwory",
+        "it": "Mostri allo Specchio"
+      },
+      "line": {
+        "en": "Your selfie camera with a monster in it: googly eyes and fangs that follow your face.",
+        "pt-BR": "A câmera frontal com um monstro dentro: olhos esbugalhados e presas que seguem o seu rosto.",
+        "de": "Deine Selfie-Kamera mit einem Monster darin: Kulleraugen und Reißzähne, die deinem Gesicht folgen.",
+        "es": "Tu cámara frontal con un monstruo dentro: ojos saltones y colmillos que siguen tu cara.",
+        "pl": "Przedni aparat z potworem w środku: wyłupiaste oczy i kły, które podążają za twoją twarzą.",
+        "it": "La fotocamera frontale con un mostro dentro: occhi strabuzzati e zanne che seguono il tuo viso."
+      }
+    },
+    {
+      "id": "piano",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/piano/piano.app.tsx"
+        ]
+      },
+      "category": "music",
+      "icon": "🎹",
+      "name": {
+        "en": "Piano",
+        "pt-BR": "Piano",
+        "de": "Klavier",
+        "es": "Piano",
+        "pl": "Pianino",
+        "it": "Pianoforte"
+      },
+      "line": {
+        "en": "A practice plan for the piano, a little every day, week by week.",
+        "pt-BR": "Um plano de estudo de piano, um pouco por dia, semana a semana.",
+        "de": "Ein Übungsplan fürs Klavier, jeden Tag ein bisschen, Woche für Woche.",
+        "es": "Un plan de práctica de piano, un poco cada día, semana a semana.",
+        "pl": "Plan ćwiczeń na pianinie, codziennie trochę, tydzień po tygodniu.",
+        "it": "Un piano di studio per il pianoforte, un po’ ogni giorno, settimana dopo settimana."
+      }
+    },
+    {
+      "id": "earthquakes",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/earthquakes/earthquakes.app.ts"
+        ]
+      },
+      "category": "world",
+      "icon": "🌋",
+      "name": {
+        "en": "Earthquakes",
+        "pt-BR": "Terremotos",
+        "de": "Erdbeben",
+        "es": "Terremotos",
+        "pl": "Trzęsienia ziemi",
+        "it": "Terremoti"
+      },
+      "line": {
+        "en": "Earthquakes around the world, on a map, as they happen.",
+        "pt-BR": "Terremotos pelo mundo, num mapa, enquanto acontecem.",
+        "de": "Erdbeben auf der ganzen Welt, auf einer Karte, während sie passieren.",
+        "es": "Terremotos de todo el mundo, en un mapa, mientras ocurren.",
+        "pl": "Trzęsienia ziemi na całym świecie, na mapie, na bieżąco.",
+        "it": "Terremoti in tutto il mondo, su una mappa, mentre accadono."
+      }
+    },
+    {
+      "id": "word-watch",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/word-watch/word-watch.app.ts"
+        ]
+      },
+      "category": "world",
+      "icon": "💬",
+      "name": {
+        "en": "Word Watch",
+        "pt-BR": "De olho na palavra",
+        "de": "Wortwache",
+        "es": "Vigía de palabras",
+        "pl": "Na tropie słowa",
+        "it": "Occhio alla parola"
+      },
+      "line": {
+        "en": "Pick a word and watch it go by on Bluesky, live.",
+        "pt-BR": "Escolha uma palavra e veja ela passar no Bluesky, ao vivo.",
+        "de": "Wähle ein Wort und sieh live zu, wie es auf Bluesky vorbeizieht.",
+        "es": "Elige una palabra y mírala pasar en Bluesky, en vivo.",
+        "pl": "Wybierz słowo i patrz, jak pojawia się na Bluesky, na żywo.",
+        "it": "Scegli una parola e guardala passare su Bluesky, in tempo reale."
+      }
+    },
+    {
+      "id": "ticker",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/ticker/ticker.app.ts"
+        ]
+      },
+      "category": "world",
+      "icon": "📈",
+      "name": {
+        "en": "Ticker",
+        "pt-BR": "Cotações",
+        "de": "Kurse",
+        "es": "Cotizaciones",
+        "pl": "Notowania",
+        "it": "Quotazioni"
+      },
+      "line": {
+        "en": "Live prices of a few cryptocurrencies, beside the day’s euro rates.",
+        "pt-BR": "Preços ao vivo de algumas criptomoedas, ao lado das cotações do euro do dia.",
+        "de": "Live-Kurse einiger Kryptowährungen, neben den Euro-Kursen des Tages.",
+        "es": "Precios en vivo de algunas criptomonedas, junto al cambio del euro del día.",
+        "pl": "Ceny kilku kryptowalut na żywo, obok dzisiejszych kursów euro.",
+        "it": "Prezzi in tempo reale di alcune criptovalute, accanto ai cambi dell’euro del giorno."
+      }
     },
     {
       "id": "recipes",
@@ -162,6 +350,34 @@
       "link": "https://potyro.app/s/VcqvUs0Nz_OrMtT0K5Rctg#k=11XcSDkPMDvjmm8thEO24A",
       "screenshot": "shots/recipes.jpg",
       "publishedAt": "2026-10-16T15:55:34.992Z"
+    },
+    {
+      "id": "groceries",
+      "status": "ready",
+      "from": {
+        "example": "groceries"
+      },
+      "category": "home",
+      "icon": "🛒",
+      "name": {
+        "en": "Groceries",
+        "pt-BR": "Compras",
+        "de": "Einkäufe",
+        "es": "Compras",
+        "pl": "Zakupy",
+        "it": "Spesa"
+      },
+      "line": {
+        "en": "A shopping list in the order you walk the shop. Tick, drag, done.",
+        "pt-BR": "Uma lista de compras na ordem em que você anda pelo mercado. Marque, arraste, pronto.",
+        "de": "Eine Einkaufsliste in der Reihenfolge, in der du durch den Laden gehst. Abhaken, ziehen, fertig.",
+        "es": "Una lista de la compra en el orden en que recorres la tienda. Marca, arrastra, listo.",
+        "pl": "Lista zakupów w kolejności, w jakiej chodzisz po sklepie. Odhacz, przeciągnij, gotowe.",
+        "it": "Una lista della spesa nell’ordine in cui giri il negozio. Spunta, trascina, fatto."
+      },
+      "link": "https://potyro.app/s/oED3SuuJiC5LUmt6hYhaMw#k=OuglhT87vfcL5VkOvWd-Ig",
+      "screenshot": "shots/groceries.jpg",
+      "publishedAt": "2026-10-16T15:54:28.953Z"
     },
     {
       "id": "plants",
@@ -405,75 +621,6 @@
       }
     },
     {
-      "id": "earthquakes",
-      "status": "coming-soon",
-      "waitsFor": "#356",
-      "category": "world",
-      "icon": "🌋",
-      "name": {
-        "en": "Earthquakes",
-        "pt-BR": "Terremotos",
-        "de": "Erdbeben",
-        "es": "Terremotos",
-        "pl": "Trzęsienia ziemi",
-        "it": "Terremoti"
-      },
-      "line": {
-        "en": "Earthquakes around the world, on a map, as they happen.",
-        "pt-BR": "Terremotos pelo mundo, num mapa, enquanto acontecem.",
-        "de": "Erdbeben auf der ganzen Welt, auf einer Karte, während sie passieren.",
-        "es": "Terremotos de todo el mundo, en un mapa, mientras ocurren.",
-        "pl": "Trzęsienia ziemi na całym świecie, na mapie, na bieżąco.",
-        "it": "Terremoti in tutto il mondo, su una mappa, mentre accadono."
-      }
-    },
-    {
-      "id": "word-watch",
-      "status": "coming-soon",
-      "waitsFor": "#356",
-      "category": "world",
-      "icon": "💬",
-      "name": {
-        "en": "Word Watch",
-        "pt-BR": "De olho na palavra",
-        "de": "Wortwache",
-        "es": "Vigía de palabras",
-        "pl": "Na tropie słowa",
-        "it": "Occhio alla parola"
-      },
-      "line": {
-        "en": "Pick a word and watch it go by on Bluesky, live.",
-        "pt-BR": "Escolha uma palavra e veja ela passar no Bluesky, ao vivo.",
-        "de": "Wähle ein Wort und sieh live zu, wie es auf Bluesky vorbeizieht.",
-        "es": "Elige una palabra y mírala pasar en Bluesky, en vivo.",
-        "pl": "Wybierz słowo i patrz, jak pojawia się na Bluesky, na żywo.",
-        "it": "Scegli una parola e guardala passare su Bluesky, in tempo reale."
-      }
-    },
-    {
-      "id": "ticker",
-      "status": "coming-soon",
-      "waitsFor": "#356",
-      "category": "world",
-      "icon": "📈",
-      "name": {
-        "en": "Ticker",
-        "pt-BR": "Cotações",
-        "de": "Kurse",
-        "es": "Cotizaciones",
-        "pl": "Notowania",
-        "it": "Quotazioni"
-      },
-      "line": {
-        "en": "Live prices of a few cryptocurrencies, beside the day’s euro rates.",
-        "pt-BR": "Preços ao vivo de algumas criptomoedas, ao lado das cotações do euro do dia.",
-        "de": "Live-Kurse einiger Kryptowährungen, neben den Euro-Kursen des Tages.",
-        "es": "Precios en vivo de algunas criptomonedas, junto al cambio del euro del día.",
-        "pl": "Ceny kilku kryptowalut na żywo, obok dzisiejszych kursów euro.",
-        "it": "Prezzi in tempo reale di alcune criptovalute, accanto ai cambi dell’euro del giorno."
-      }
-    },
-    {
       "id": "daily",
       "status": "coming-soon",
       "waitsFor": "#267",
@@ -540,98 +687,6 @@
         "es": "Cualquier foto se convierte en un puzle que puedes mandar a un amigo.",
         "pl": "Każde zdjęcie staje się układanką, którą wyślesz znajomemu.",
         "it": "Qualsiasi foto diventa un puzzle da mandare a un amico."
-      }
-    },
-    {
-      "id": "piano",
-      "status": "coming-soon",
-      "waitsFor": "#267",
-      "category": "music",
-      "icon": "🎹",
-      "name": {
-        "en": "Piano",
-        "pt-BR": "Piano",
-        "de": "Klavier",
-        "es": "Piano",
-        "pl": "Pianino",
-        "it": "Pianoforte"
-      },
-      "line": {
-        "en": "A practice plan for the piano, a little every day, week by week.",
-        "pt-BR": "Um plano de estudo de piano, um pouco por dia, semana a semana.",
-        "de": "Ein Übungsplan fürs Klavier, jeden Tag ein bisschen, Woche für Woche.",
-        "es": "Un plan de práctica de piano, un poco cada día, semana a semana.",
-        "pl": "Plan ćwiczeń na pianinie, codziennie trochę, tydzień po tygodniu.",
-        "it": "Un piano di studio per il pianoforte, un po’ ogni giorno, settimana dopo settimana."
-      }
-    },
-    {
-      "id": "mood-sleep",
-      "status": "coming-soon",
-      "waitsFor": "#267",
-      "category": "wellbeing",
-      "icon": "🌙",
-      "name": {
-        "en": "Sleep & Mood",
-        "pt-BR": "Sono e humor",
-        "de": "Schlaf & Stimmung",
-        "es": "Sueño y ánimo",
-        "pl": "Sen i nastrój",
-        "it": "Sonno e umore"
-      },
-      "line": {
-        "en": "How you slept and how you felt, and what the mornings add up to.",
-        "pt-BR": "Como você dormiu e como se sentiu, e o que as manhãs mostram juntas.",
-        "de": "Wie du geschlafen und dich gefühlt hast, und was die Morgen zusammen ergeben.",
-        "es": "Cómo dormiste y cómo te sentiste, y lo que suman las mañanas.",
-        "pl": "Jak spałeś i jak się czułeś, i co z tych poranków wynika.",
-        "it": "Come hai dormito e come ti sei sentito, e cosa dicono le mattine messe insieme."
-      }
-    },
-    {
-      "id": "photo-garden",
-      "status": "coming-soon",
-      "waitsFor": "#267",
-      "category": "creative",
-      "icon": "🌸",
-      "name": {
-        "en": "Photo Garden",
-        "pt-BR": "Jardim de fotos",
-        "de": "Fotogarten",
-        "es": "Jardín de fotos",
-        "pl": "Ogród zdjęć",
-        "it": "Giardino di foto"
-      },
-      "line": {
-        "en": "A photo turns into thousands of drifting specks that scatter at your touch.",
-        "pt-BR": "Uma foto vira milhares de pontinhos que flutuam e se espalham ao seu toque.",
-        "de": "Ein Foto wird zu tausenden treibenden Punkten, die bei Berührung auseinanderstieben.",
-        "es": "Una foto se vuelve miles de motas a la deriva que se dispersan al tocarlas.",
-        "pl": "Zdjęcie zmienia się w tysiące dryfujących drobinek, które pierzchają pod palcem.",
-        "it": "Una foto diventa migliaia di granelli alla deriva che si disperdono al tocco."
-      }
-    },
-    {
-      "id": "draw-guess",
-      "status": "coming-soon",
-      "waitsFor": "#267",
-      "category": "play",
-      "icon": "✏️",
-      "name": {
-        "en": "Draw & Guess",
-        "pt-BR": "Desenhe e adivinhe",
-        "de": "Malen & Raten",
-        "es": "Dibuja y adivina",
-        "pl": "Rysuj i zgaduj",
-        "it": "Disegna e indovina"
-      },
-      "line": {
-        "en": "A party game: one person draws, everyone else guesses, live.",
-        "pt-BR": "Um jogo para a turma: uma pessoa desenha, o resto adivinha, ao vivo.",
-        "de": "Ein Partyspiel: eine Person malt, alle anderen raten, live.",
-        "es": "Un juego para fiestas: una persona dibuja, el resto adivina, en vivo.",
-        "pl": "Gra na imprezę: jedna osoba rysuje, reszta zgaduje, na żywo.",
-        "it": "Un gioco di gruppo: una persona disegna, tutti gli altri indovinano, in tempo reale."
       }
     }
   ]
