@@ -86,9 +86,10 @@ const DEFAULT_LOAD_TIMEOUT = 5000;
 const DEFAULT_HEARTBEAT_TIMEOUT = 1000;
 const CHECK_MS = 50;
 /**
- * Messages a realm may send between two checks (50 ms). A worker beats twice a second and every op
- * waits for its answer, so thousands means it is posting in a loop — which would keep the heartbeat
- * fed while it starves the shell's thread. It is stopped like a silent one.
+ * Messages a realm may send on its own between two checks (50 ms) — answers to the host's own calls
+ * are not counted. A worker beats twice a second and every op waits for its answer, so thousands
+ * means it is posting in a loop — which would keep the heartbeat fed while it starves the shell's
+ * thread. It is stopped like a silent one.
  */
 const MAX_BURST = 2000;
 /** How many ctxs a realm can still name. Older ones answer "no such ctx": their pass is long over. */
@@ -390,7 +391,10 @@ export class RealmLoadedApp implements LoadedApp {
   // ---------------------------------------------------------------- messages
 
   private onMessage(m: RealmToHost): void {
-    if (++this.burst > MAX_BURST) return this.kill(`it sent more than ${MAX_BURST} messages in ${CHECK_MS} ms`);
+    // An answer to a call the host is waiting on is not the realm posting on its own: the host asked
+    // for each one, and a page of a few hundred rows asks thousands at once. Everything else counts.
+    const answers = Boolean(m && typeof m === "object" && m.t === "result" && this.pending.has(m.id));
+    if (!answers && ++this.burst > MAX_BURST) return this.kill(`it sent more than ${MAX_BURST} messages in ${CHECK_MS} ms`);
     if (!m || typeof m !== "object") return;
     if (m.t === "hb") {
       this.lastBeat = now();
