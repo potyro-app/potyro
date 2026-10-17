@@ -6,14 +6,14 @@
 
 import { t as tr } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { MapCamera, Resolved } from "potyro";
 import type { BuiltinViewProps, DisplayCell } from "./types.js";
 import { getView } from "./format.js";
 import { useDisplayCells } from "./cells.js";
 import { DetailView } from "./detail.js";
-import { loadMapLibre } from "./maplibre.js";
+import { canDrawMaps, loadMapLibre, mapDraws, removeMap } from "./maplibre.js";
 
 /**
  * OpenStreetMap raster tiles — real streets, no API key. The previous default was MapLibre's
@@ -234,6 +234,8 @@ export function MapView(props: BuiltinViewProps) {
   const [mapReady, setMapReady] = useState(0);
   // Armed by the button below; the map only creates on a tap while this is true.
   const [placing, setPlacing] = useState(false);
+  // No map can be drawn here (no WebGL2): the places are listed instead of a blank page.
+  const [noMap, setNoMap] = useState(() => !canDrawMaps());
   const placingRef = useRef(placing);
   placingRef.current = placing;
 
@@ -295,7 +297,7 @@ export function MapView(props: BuiltinViewProps) {
   useEffect(() => {
     let disposed = false;
     const el = containerRef.current;
-    if (!el) return;
+    if (!el || noMap) return;
     void (async () => {
       const maplibre = await loadMapLibre();
       if (disposed || !el) return;
@@ -327,6 +329,12 @@ export function MapView(props: BuiltinViewProps) {
         center: opening?.center ?? [0, 20],
         zoom: opening?.zoom ?? 1,
       });
+      if (!mapDraws(created)) {
+        // Built without a painter: this browser refused its context after all. Let it go.
+        removeMap(created as never);
+        setNoMap(true);
+        return;
+      }
       mapRef.current = created as unknown as typeof mapRef.current;
 
       // What the map shows, for Ask (#213): "restaurants" with no place named means the area on
@@ -393,9 +401,11 @@ export function MapView(props: BuiltinViewProps) {
     return () => {
       disposed = true;
       setShown(null);
-      mapRef.current?.remove?.();
+      removeMap(mapRef.current);
       mapRef.current = null;
     };
+    // Created once; a map that turned out not to draw is not tried again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync markers whenever the resolved set changes.
@@ -556,6 +566,42 @@ export function MapView(props: BuiltinViewProps) {
     }
   };
 
+  /** A pin's way in, without a map: the record over the page, or the app's own page for it. */
+  const openPin = (id: string): void => {
+    if (detailPage) return setOpenId(id);
+    const onOpen = onOpenRef.current;
+    if (onOpen) {
+      const row = rows.find((r) => String(r.id) === id);
+      const param: Record<string, string> = {};
+      for (const [target, sourceKey] of Object.entries(onOpen.param ?? {})) param[target] = String((row?.[sourceKey] as unknown) ?? "");
+      return props.navigate(onOpen.page, param);
+    }
+    onEdit?.(view?.entity ?? "", id);
+  };
+
+  const sheet =
+    openId && detailPage ? (
+      <div className="k-map-sheet-scrim" onClick={() => setOpenId(null)}>
+        <section className="k-map-sheet" role="dialog" aria-label={entityLabel} onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="k-map-sheet-close" aria-label={t`Close`} onClick={() => setOpenId(null)}>
+            ✕
+          </button>
+          {/* The app's OWN record page, with whatever it declares on it — sections, photos,
+              actions — rather than a second rendering of a record that would drift from it. */}
+          <DetailView {...props} pageId={detailPage.id} params={{ ...params, [detailParam]: openId }} />
+        </section>
+      </div>
+    ) : null;
+
+  if (noMap) {
+    const entity = view?.entity;
+    return (
+      <MapList markers={markers} rows={rows} cells={cells} loading={loading} entityLabel={entityLabel} openPin={openPin} onCreate={onCreate && entity ? () => onCreate(entity, {}) : undefined}>
+        {sheet}
+      </MapList>
+    );
+  }
+
   return (
     // The map comes first and its chrome sits ON it. A map is the page — the way it is in every map
     // app on a phone — and a bar above it is a bar taking a bite out of the thing you came to see.
@@ -594,20 +640,79 @@ export function MapView(props: BuiltinViewProps) {
           </button>
         )
       ) : null}
-      {openId && detailPage ? (
-        <div className="k-map-sheet-scrim" onClick={() => setOpenId(null)}>
-          <section className="k-map-sheet" role="dialog" aria-label={entityLabel} onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="k-map-sheet-close" aria-label={t`Close`} onClick={() => setOpenId(null)}>
-              ✕
-            </button>
-            {/* The app's OWN record page, with whatever it declares on it — sections, photos,
-                actions — rather than a second rendering of a record that would drift from it. */}
-            <DetailView {...props} pageId={detailPage.id} params={{ ...params, [detailParam]: openId }} />
-          </section>
-        </div>
-      ) : null}
+      {sheet}
     </div>
   );
+}
+
+/**
+ * The map's places where no map can be drawn (no WebGL2): said once, plainly, and every pinned record
+ * listed with its colour and its way in — so a map page is never a blank one, and adding still works
+ * (its place is set in the form: a location, or coordinates).
+ */
+function MapList({
+  markers,
+  rows,
+  cells,
+  loading,
+  entityLabel,
+  openPin,
+  onCreate,
+  children,
+}: {
+  markers: readonly ListedPin[];
+  rows: readonly { id?: unknown }[];
+  cells: readonly (DisplayCell | undefined)[];
+  loading: boolean;
+  entityLabel: string;
+  openPin: (id: string) => void;
+  onCreate?: () => void;
+  children?: ReactNode;
+}) {
+  const { t } = useLingui();
+  return (
+    <div className="k-map k-map-list" data-no-map="">
+      <p className="k-map-list-note" role="note">
+        <Trans>This browser can’t draw maps, so the places are listed instead.</Trans>
+      </p>
+      {!loading && markers.length === 0 ? <p className="k-empty k-map-empty">{t`No places to show.`}</p> : null}
+      <ul className="k-map-list-rows">
+        {markers.map((mk) => {
+          const cell = cells[rows.findIndex((r) => String(r.id) === mk.id)];
+          return (
+            <li key={mk.id}>
+              <button type="button" className="k-map-list-row" onClick={() => openPin(mk.id)}>
+                <span className="k-map-list-pin" style={{ background: mk.color }} aria-hidden>
+                  {mk.icon ?? ""}
+                </span>
+                <span className="k-map-list-text">
+                  <span className="k-map-list-title">{cell?.primary || mk.title || t`Untitled`}</span>
+                  {cell?.secondary ? <span className="k-map-list-detail">{cell.secondary}</span> : null}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {onCreate ? (
+        <button type="button" className="k-map-add" onClick={onCreate}>
+          <span className="k-fab-plus" aria-hidden>
+            ＋
+          </span>
+          {t({ message: `Add: ${entityLabel}`, comment: "A map page where no map can be drawn: add a new record; entityLabel is the app's word for it" })}
+        </button>
+      ) : null}
+      {children}
+    </div>
+  );
+}
+
+/** What the list needs of a pin. */
+interface ListedPin {
+  id: string;
+  title: string;
+  color?: string;
+  icon?: string;
 }
 
 // ── the area on screen (#213) ───────────────────────────────────────────────

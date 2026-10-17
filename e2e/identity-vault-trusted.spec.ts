@@ -245,7 +245,9 @@ test("a browser from before the rename opens its synced and local apps, with the
   const words = await openYou(page);
 
   // Away from the app, so its worker lets go of the files; then back to the old names.
-  await page.goto("/manifest.webmanifest");
+  // A picture, not the manifest: Firefox downloads a manifest rather than showing it, and a download
+  // is not a page to stand on.
+  await page.goto("/icon-192.png");
   await expect.poll(() => asBeforeTheRename(page).then(() => "done", (e: Error) => e.message), { timeout: 30_000 }).toBe("done");
   const before = await oldVault(page);
   expect(before).toEqual(["__key", "karta:identity:secret", "karta:identity:seed"]);

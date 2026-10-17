@@ -39,6 +39,7 @@ export function shellCspTests(): void {
 
   test("the shell is served with frame-src 'none', and a sandboxed frame cannot navigate itself out", async ({ page, consoleGuard }) => {
     consoleGuard.allow(/^Framing 'http:\/\/127\.0\.0\.1:\d+\/' violates the following Content Security Policy directive: "frame-src 'none'"/, "the test frames a page on purpose to prove the CSP refuses it");
+    consoleGuard.allow(/^\[JavaScript Error: "Content-Security-Policy: The page’s settings blocked the loading of a resource \(frame-src\) at http:\/\/127\.0\.0\.1:\d+\/self-nav/, "the same refusal, in Firefox's words");
     probe.hits.length = 0;
     const res = await page.goto("/");
     if (process.env.POTYRO_CSP_HEADER !== "0") expect(res?.headers()["content-security-policy"]).toBe("frame-src 'none'");

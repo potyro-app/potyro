@@ -19,3 +19,41 @@ export async function loadMapLibre(): Promise<MapLibre> {
   maplibre.setWorkerUrl(workerUrl);
   return maplibre;
 }
+
+let drawable: boolean | undefined;
+
+/**
+ * Can this browser draw a MapLibre map at all? MapLibre 6 needs WebGL2, and a browser without it —
+ * WebGL switched off, a graphics driver Firefox has blocklisted, a hardened profile, a headless
+ * browser — gets no error from `new Map(…)`: the map is built without a painter, and its first
+ * `resize()` or `remove()` throws. Thrown from a React cleanup, that took the whole app down to a
+ * blank page in Firefox. Asked once per page, with a context that is let go straight away.
+ */
+export function canDrawMaps(): boolean {
+  if (drawable !== undefined) return drawable;
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    drawable = gl !== null;
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+  } catch {
+    drawable = false;
+  }
+  return drawable;
+}
+
+/**
+ * Whether a map that was built can draw. The probe above can pass and the map's own context still
+ * be refused (the browser's budget of contexts is spent): then MapLibre leaves out its painter.
+ */
+export function mapDraws(map: unknown): boolean {
+  return Boolean((map as { painter?: unknown } | null)?.painter);
+}
+
+/** Take a map down; one that never could draw throws from `remove()`, and is simply let go. */
+export function removeMap(map: { remove?: () => void } | null | undefined): void {
+  try {
+    map?.remove?.();
+  } catch {
+    // a map without a painter has nothing to take down
+  }
+}

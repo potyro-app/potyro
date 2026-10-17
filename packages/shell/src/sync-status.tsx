@@ -20,6 +20,18 @@ const LABEL: Record<Exclude<State, "off">, MessageDescriptor> = {
 };
 
 /**
+ * Let go of a probe without an error in the console. Firefox writes two ("can't establish a
+ * connection", "interrupted while the page was loading") for every `close()` on a socket still
+ * CONNECTING — the header unmounting mid-probe, or React's dev double mount — although nothing is
+ * wrong. A probe still opening is closed the moment it opens instead; it has no listeners left.
+ */
+export function dropProbe(ws: Pick<WebSocket, "readyState" | "close" | "onopen" | "onerror">): void {
+  ws.onerror = null;
+  if (ws.readyState === 0) ws.onopen = () => ws.close();
+  else (ws.onopen = null), ws.close();
+}
+
+/**
  * Probes the relay with its own short-lived socket rather than reading cojson's peer state.
  *
  * cojson does not surface a stable "is this peer up" signal, and a wrong-but-confident indicator is
@@ -56,8 +68,7 @@ export function SyncStatus({ sync }: { sync?: boolean }) {
     return () => {
       alive = false;
       clearInterval(timer);
-      socket?.close();
-      clearInterval(timer);
+      if (socket) dropProbe(socket);
     };
   }, [sync]);
 

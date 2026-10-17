@@ -1368,6 +1368,11 @@ msgstr "Adicionar vídeo"
 msgid "add with AI"
 msgstr "adicionar com IA"
 
+#. A map page where no map can be drawn: add a new record; entityLabel is the app's word for it
+#: ../views/src/map.tsx
+msgid "Add: {entityLabel}"
+msgstr "Adicionar: {entityLabel}"
+
 #. A quick action that makes a new record; noun is the app's word for it
 #. Add a row to a list field; noun is the field's word for one
 #. Form title for a new record; {noun} is the app's own name for the kind of record. Keep the form that needs no gender agreement
@@ -4379,6 +4384,7 @@ msgid "no page \"{0}\" is written literally here"
 msgstr "nenhuma página “{0}” está escrita literalmente aqui"
 
 #: ../views/src/map.tsx
+#: ../views/src/map.tsx
 msgid "No places to show."
 msgstr "Nenhum lugar para mostrar."
 
@@ -6628,6 +6634,14 @@ msgstr "A tela deste app parou de responder, então o Potyro está mostrando a v
 msgid "This board needs an enum field for its columns."
 msgstr "Este quadro precisa de um campo de opções para as colunas."
 
+#: ../views/src/map.tsx
+msgid "This browser can’t draw maps, so the places are listed instead."
+msgstr "Este navegador não consegue desenhar mapas, então os lugares aparecem em lista."
+
+#: ../views/src/field-input.tsx
+msgid "This browser can’t draw maps. Use your location, or type the coordinates."
+msgstr "Este navegador não consegue desenhar mapas. Use sua localização ou digite as coordenadas."
+
 #. Detail of the question before voice input in a browser without speech recognition (Firefox); {service} is the AI service
 #: ../shell/src/app-speech.ts
 msgid "This browser can’t turn speech into words itself, so the recording is sent to an AI service ({service}) to be written down — it leaves your device. Only the text reaches the app."
@@ -7043,6 +7057,10 @@ msgstr "Desfazer o grupo"
 #: ../shell/src/launcher.tsx
 msgid "Unpin"
 msgstr "Desafixar"
+
+#: ../views/src/map.tsx
+msgid "Untitled"
+msgstr "Sem título"
 
 #. The name an app gets when it was given none
 #: ../shell/src/studio.tsx

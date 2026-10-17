@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { test, expect, type Page } from "./console-guard";
+import { skipWithoutMaps } from "./engines";
 
 // The owner, on apps.vaz.io: Places showed "This part of the app hit a problem: “Open Now” could not
 // be worked out for some records: can't access property "some", hours is undefined" — over the map.
@@ -49,6 +50,7 @@ const BARE = `${FIT}
 const PLACES = readFileSync(fileURLToPath(new URL("../examples/places.app.ts", import.meta.url)), "utf8");
 
 test("Places with a place that has no opening hours still shows the map, with every place on it", async ({ page }) => {
+  await skipWithoutMaps(page);
   expect(PLACES).toContain(FIT);
   await page.addInitScript(
     ([source]) => {
@@ -98,6 +100,7 @@ export default defineApp({
 `;
 
 test("a computed that throws for a record leaves the map, and the list, showing every record", async ({ page }) => {
+  await skipWithoutMaps(page);
   await page.addInitScript(
     ([source]) => {
       if (localStorage.getItem("potyro:user-apps")) return;

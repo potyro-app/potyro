@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "./console-guard";
+import { skipWithoutMaps } from "./engines";
 
 // Ask's conversation and context (#213), with the model stubbed. From the owner's report: on a map of
 // Cuneo, "add vegetarian restaurants" came back as a question. Now the dialog shows what goes with
@@ -77,6 +78,7 @@ async function openAsk(page: Page) {
 }
 
 test("the map's area and web search go with the request, as shown; the sources are listed; nothing is marked visited", async ({ page }) => {
+  await skipWithoutMaps(page);
   const bodies: Array<Record<string, unknown>> = [];
   await page.route("**/openrouter.ai/**", async (route) => {
     bodies.push(JSON.parse(route.request().postData() ?? "{}") as Record<string, unknown>);
@@ -115,6 +117,7 @@ test("the map's area and web search go with the request, as shown; the sources a
 });
 
 test("the area can be left out, and web search turned off, before sending", async ({ page }) => {
+  await skipWithoutMaps(page);
   const bodies: Array<Record<string, unknown>> = [];
   await page.route("**/openrouter.ai/**", async (route) => {
     bodies.push(JSON.parse(route.request().postData() ?? "{}") as Record<string, unknown>);
@@ -143,6 +146,7 @@ test("the area can be left out, and web search turned off, before sending", asyn
 });
 
 test("when the model must ask, the person answers in place and it carries on", async ({ page }) => {
+  await skipWithoutMaps(page);
   const bodies: Array<{ messages: Array<{ role: string; content: string }> }> = [];
   await page.route("**/openrouter.ai/**", async (route) => {
     bodies.push(JSON.parse(route.request().postData() ?? "{}"));
