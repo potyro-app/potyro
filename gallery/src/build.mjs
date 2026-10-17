@@ -76,7 +76,7 @@ export function renderPage(gallery, strings, assets) {
     const shot = assets.shots[app.screenshot ?? ""] ?? { width: 412, height: 860 };
     const no = String(i + 1).padStart(2, "0");
     return `
-      <li class="card" data-category="${e(app.category)}" data-id="${e(app.id)}" style="--i:${i}">
+      <li class="card" data-category="${e(app.category)}" data-id="${e(app.id)}">
         <a class="card-shot" href="${e(app.link ?? "")}" tabindex="-1" aria-hidden="true">
           <img src="${e(app.screenshot ?? "")}" width="${shot.width}" height="${shot.height}" alt="" data-t-alt="shotAlt" data-name-of="${e(app.id)}" ${i < 2 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async" />
         </a>
