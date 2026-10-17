@@ -608,6 +608,10 @@ button {
 }
 .k-map-sheet-close {
   position: absolute;
+  /* Above the record's own cover: a detail page with a banner photo drew over it, and the sheet
+     could only be closed by its scrim. */
+  z-index: 2;
+  box-shadow: var(--shadow);
   top: var(--space-2);
   right: var(--space-2);
   width: 2.5rem;
@@ -9918,6 +9922,87 @@ body:has(.k-tabbar) .k-toasts {
   box-shadow: var(--shadow);
   color: var(--ink);
   pointer-events: none;
+}
+/* A map page where no map can be drawn (no WebGL2): the places as a list, said once. */
+.k-map-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) calc(4.5rem + var(--k-safe-bottom));
+  overflow-y: auto;
+}
+.k-map-list-note {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--accent);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+.k-map-list .k-map-empty {
+  position: static;
+  transform: none;
+  align-self: center;
+}
+.k-map-list-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.k-map-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 3rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.k-map-list-row:hover,
+.k-map-list-row:focus-visible {
+  background: var(--surface-raised);
+  transform: translateY(-1px);
+}
+.k-map-list-row:active {
+  transform: none;
+}
+.k-map-list-pin {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--surface);
+  background: var(--accent);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+.k-map-list-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.k-map-list-title {
+  font-weight: 600;
+}
+.k-map-list-detail {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Calendar view (M2) */
