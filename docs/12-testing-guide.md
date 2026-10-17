@@ -128,7 +128,18 @@ images for every shot that moved.
   deterministic cover for the same path — Studio → save → History → rollback, with the generator
   endpoint stubbed — is `create-modify-rollback-trusted.spec.ts`, which needs no CLI and no money.
 - `deployment-prod.spec.ts` needs a production build: `pnpm test:e2e:prod`.
-- The Firefox project is opt-in: `pnpm test:e2e:firefox`.
+- **Firefox** runs every trusted and sandbox spec (`pnpm test:e2e:firefox`; in the gate as the `ff:<n>`
+  shards), console guard on. What differs between the engines is said once, in `e2e/engines.ts`:
+  - Specs that drive a finger or the CPU through Chromium's DevTools protocol (`newCDPSession`:
+    a hold, a drag, a flick, a throttled CPU) skip in Firefox — Playwright's Firefox can only tap
+    (`NEEDS_CDP`).
+  - Specs of the **drawn** map (its pins, its camera, a tap on it) skip where the browser has no
+    WebGL2 (`skipWithoutMaps`) — Playwright's headless Firefox on Linux has none. What a person
+    sees then — the places listed, the form's coordinates — is `map-no-webgl-trusted.spec.ts`, in
+    every engine.
+  - Permissions Playwright's Firefox does not know by name (`camera`, `clipboard-read`) are its
+    prefs instead (`e2e/firefox-prefs.ts`, `grantClipboard`).
+  - A deliberately refused WebSocket is allowed in each engine's words (`socketRefused`).
 
 ---
 
