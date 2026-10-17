@@ -267,19 +267,15 @@ export interface MapView {
   onOpen?: OnOpen;
   camera?: Dynamic<MapCamera>;
   /**
-   * The "centre on me" button every phone map has, bottom-right of the canvas.
-   *
-   * ON by default wherever the device can answer — an app asking for a map of places almost always
-   * wants "where am I in this?", and `camera` alone could not do it: it is evaluated when the view
-   * OPENS, so nothing could move the map afterwards. Set `false` for a map that is about somewhere
-   * else (a city guide, a route someone else walked) where the button would only ever disappoint.
+   * The "centre on me" button, on by default where the device can answer. `false` for a map about
+   * somewhere else (a city guide, someone else's route), where it would only disappoint.
    */
   locate?: boolean;
+  /** The records in view as cards along the bottom (from `display`), nearest first; a pin brings its card. */
+  strip?: boolean;
   /**
-   * What a pin's popup shows besides its title — the same shape a list row uses: a photo, a second
-   * line, tags. A name on its own rarely answers "is this the one I meant?"; the photo usually does.
-   * The popup also offers the whole record, which opens OVER the map rather than navigating away
-   * from it, so you never lose the place you were looking at.
+   * What a pin's popup (or card) shows besides its title, as a list row does: a photo, a second line,
+   * tags — the photo is what says "this is the one I meant". The record opens OVER the map.
    */
   display?: ListDisplay;
 }

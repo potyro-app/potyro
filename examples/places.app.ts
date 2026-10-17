@@ -4,8 +4,11 @@
 // what you ordered, who you were with — and rank it against the places of its own kind ("better or
 // worse than Ramen Kaido?"), never a café against a bar. Your visits become a timeline to look back on.
 //
-// Stresses: geo field + map view, an optional app-wide scope (the list you are looking at), JS
-// filters for "open now" and "within N km", an interactive ranking that asks questions through
+// Made for "where shall we go?": the map opens with the places in view as cards along the bottom —
+// photo, open or closed, what to order — and All places is every one by kind, with Near me.
+//
+// Stresses: geo field + map view with a strip of cards, an optional app-wide scope (the list you are
+// looking at), JS filters for "open now" and "within 2 km", an interactive ranking that asks questions through
 // `ctx.ui.sheet`, actions with input (a visit), a migration (visited → status) — arbitrary logic, no DSL.
 //
 // In six languages (#303). Every language but English is a model's draft (#297). A function sees an
@@ -427,6 +430,9 @@ export default defineApp({
         type: "map",
         entity: "place",
         geo: "location",
+        // "Where shall we go?" answered on the map itself: the places in view as cards along the
+        // bottom, nearest the middle first, each with its photo, whether it is open and what to order.
+        strip: true,
         title: (p) => p.name,
         // A pin's colour is its kind, so a glance at the map says "coffee here, a bar there".
         color: (p) => KIND_COLOR[String(p.kind)] ?? "#5FB0E4",
@@ -437,7 +443,8 @@ export default defineApp({
           // The pin itself is the kind's emoji: ☕ here, 🍸 there.
           icon: (p) => KIND_GLYPH[String(p.kind)] ?? "📍",
           primary: "name",
-          secondary: (p, ctx) => placeLine(p, ctx),
+          secondary: (p, ctx) =>
+            [placeLine(p, ctx), typeof p.rating === "number" ? `${ctx.format.number(p.rating)}★` : "", p.mustOrder ? `“${p.mustOrder}”` : ""].filter(Boolean).join(" · "),
           media: "photo",
           badges: ["status", "vibes"],
         },
@@ -474,11 +481,6 @@ export default defineApp({
       summary: [
         { label: { en: "Places", "pt-BR": "Lugares", de: "Orte", es: "Lugares", pl: "Miejsca", it: "Luoghi" }, op: "count" },
         {
-          label: { en: "Average rating", "pt-BR": "Nota média", de: "Ø Bewertung", es: "Valoración media", pl: "Średnia ocena", it: "Voto medio" },
-          field: "rating",
-          op: "avg",
-        },
-        {
           label: { en: "Visited", "pt-BR": "Visitados", de: "Besucht", es: "Visitados", pl: "Odwiedzone", it: "Visitati" },
           value: (rows) => rows.filter((p) => visited(p)).length,
         },
@@ -495,11 +497,14 @@ export default defineApp({
               filters: [
                 { label: { en: "Category", "pt-BR": "Categoria", de: "Kategorie", es: "Categoría", pl: "Kategoria", it: "Categoria" }, param: "kind", from: "kind" },
                 { label: { en: "Status", "pt-BR": "Situação", de: "Status", es: "Estado", pl: "Status", it: "Stato" }, param: "status", from: "status" },
+                // "Near me" asks the device where it is (ctx.caps.geo) and keeps what is within 2 km.
+                { label: { en: "Near me", "pt-BR": "Perto de mim", de: "In meiner Nähe", es: "Cerca de mí", pl: "W pobliżu", it: "Vicino a me" }, param: "me", type: "geo" },
               ],
               filter: (p, ctx) => {
-                const { kind, status } = ctx.params as { kind?: string; status?: string };
+                const { kind, status, me } = ctx.params as { kind?: string; status?: string; me?: { lat: number; lng: number } };
                 const list = ctx.scope.collection;
                 if (list && !((p.lists as Array<{ id: string }> | undefined) ?? []).some((l) => l?.id === list.id)) return false;
+                if (me && !(p.location && distanceKm(p.location, me) <= 2)) return false;
                 return (!kind || p.kind === kind) && (!status || p.status === status);
               },
               // Favourites, then by your own ranking, then by rating.
@@ -526,12 +531,12 @@ export default defineApp({
                 media: "photo",
                 badges: ["vibes"],
               },
-              rowActions: ["favourite"],
+              // No button on every row: making a favourite is done on the place's page, now and then.
               onOpen: { page: "detail", param: { placeId: "id" } },
             },
           },
           {
-            view: { type: "detail", entity: "place", param: "placeId", cover: "banner", facts: ["status", "kind", "rankText"], primaryAction: "logVisit", actions: ["rank", "favourite"] },
+            view: { type: "detail", entity: "place", param: "placeId", cover: "background", facts: ["status", "kind", "rankText"], primaryAction: "logVisit", actions: ["rank", "favourite"] },
           },
         ],
       },
@@ -557,79 +562,6 @@ export default defineApp({
       },
     },
     {
-      id: "nearby",
-      title: { en: "Near me", "pt-BR": "Perto de mim", de: "In meiner Nähe", es: "Cerca de mí", pl: "W pobliżu", it: "Vicino a me" },
-      icon: "🧭",
-      view: {
-        type: "list",
-        entity: "place",
-        // the "Near me" chip fills ctx.params.me from ctx.caps.geo (view chrome)
-        filters: [{ label: { en: "Near me", "pt-BR": "Perto de mim", de: "In meiner Nähe", es: "Cerca de mí", pl: "W pobliżu", it: "Vicino a me" }, param: "me", type: "geo" }],
-        filter: (p, ctx) => {
-          const me = ctx.params.me as { lat: number; lng: number } | undefined;
-          return !!me && distanceKm(p.location, me) <= 2;
-        },
-        sort: (a, b) => a.name.localeCompare(b.name),
-        display: {
-          primary: "name",
-          secondary: (p, ctx) => placeLine(p, ctx),
-          media: "photo",
-          badges: ["vibes"],
-        },
-        onOpen: { page: "detail", param: { placeId: "id" } },
-        emptyText: { en: "Tap “Near me” to see what's within 2 km.", "pt-BR": "Toque em “Perto de mim” para ver o que está a até 2 km.", de: "Tippe auf „In meiner Nähe“, um zu sehen, was im Umkreis von 2 km liegt.", es: "Toca «Cerca de mí» para ver lo que hay a menos de 2 km.", pl: "Stuknij „W pobliżu”, by zobaczyć miejsca w promieniu 2 km.", it: "Tocca “Vicino a me” per vedere cosa c'è entro 2 km." },
-      },
-    },
-    {
-      // A screen folded out of the WHOLE set rather than out of each record (KA-24). Counting places
-      // per category is not per-record arithmetic and is not one figure either, so before the
-      // `aggregate` view it could only have been a custom view — and would then have rendered blank
-      // for anyone this app was shared with, because custom views are trusted-only.
-      //
-      // The fold is ordinary TypeScript and runs through the host, so it behaves identically in the
-      // isolate. That is the whole claim, and `places-sandbox.spec.ts` checks it untrusted.
-      id: "by-kind",
-      title: { en: "By category", "pt-BR": "Por categoria", de: "Nach Kategorie", es: "Por categoría", pl: "Według kategorii", it: "Per categoria" },
-      icon: "Σ",
-      view: {
-        type: "aggregate",
-        entity: "place",
-        title: {
-          en: "Places by category",
-          "pt-BR": "Lugares por categoria",
-          de: "Orte nach Kategorie",
-          es: "Lugares por categoría",
-          pl: "Miejsca według kategorii",
-          it: "Luoghi per categoria",
-        },
-        emptyText: { en: "No places yet.", "pt-BR": "Nenhum lugar ainda.", de: "Noch keine Orte.", es: "Aún no hay lugares.", pl: "Jeszcze nie ma miejsc.", it: "Ancora nessun luogo." },
-        rows: (places, ctx) => {
-          const counts = new Map<string, { n: number; rated: number[] }>();
-          for (const p of places) {
-            const kind = String(p.kind ?? "unknown");
-            const bucket = counts.get(kind) ?? { n: 0, rated: [] };
-            bucket.n += 1;
-            if (typeof p.rating === "number") bucket.rated.push(p.rating);
-            counts.set(kind, bucket);
-          }
-          return [...counts.entries()]
-            .sort((a, b) => b[1].n - a[1].n)
-            .map(([kind, { n, rated }]) => ({
-              id: kind,
-              label: `${KIND_GLYPH[kind] ?? "📍"} ${kindName(kind, ctx)}`,
-              value: n,
-              detail: rated.length
-                ? ctx.t(
-                    { en: "avg {r}★", "pt-BR": "média {r}★", de: "Ø {r}★", es: "media {r}★", pl: "średnio {r}★", it: "media {r}★" },
-                    { r: ctx.format.number(rated.reduce((s, r) => s + r, 0) / rated.length, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) },
-                  )
-                : undefined,
-              group: ctx.t({ en: "Categories", "pt-BR": "Categorias", de: "Kategorien", es: "Categorías", pl: "Kategorie", it: "Categorie" }),
-            }));
-        },
-      },
-    },
-    {
       id: "detail",
       title: { en: "Place", "pt-BR": "Lugar", de: "Ort", es: "Lugar", pl: "Miejsce", it: "Luogo" },
       hidden: true,
@@ -637,7 +569,8 @@ export default defineApp({
         type: "detail",
         entity: "place",
         param: "placeId",
-        cover: "banner",
+        // What to order and the notes on the first screen, over the photo; Log a visit at the bottom.
+        cover: "background",
         facts: ["status", "kind", "rankText"],
         primaryAction: "logVisit",
         sections: [

@@ -22,22 +22,21 @@ async function openList(page: Page): Promise<void> {
 test("figures compute over the seeded records", async ({ page }) => {
   await openList(page);
 
-  // Thirteen seeded places, nine of them rated (averaging 4.5), eight been to or favourites.
+  // Thirteen seeded places, eight been to or favourites. (An average's figures, empty sets included,
+  // are views/test/summary.test.ts's: Places no longer shows one.)
   await expect(figure(page, "Places")).toHaveText("13");
-  await expect(figure(page, "Average rating")).toHaveText("4.5");
   await expect(figure(page, "Visited")).toHaveText("8");
 });
 
 test("figures follow the filter chips", async ({ page }) => {
   await openList(page);
 
-  // Narrow to one category. Every figure must move with the rows — the declarative `count`/`avg`
-  // and the `value` function alike.
+  // Narrow to one category. Every figure must move with the rows — the declarative `count` and the
+  // `value` function alike.
   await chooseFilter(page, "cafe");
   await expect(page.locator(".k-list-row")).toHaveCount(2); // Corner Café and Morning Glory
 
   await expect(figure(page, "Places")).toHaveText("2");
-  await expect(figure(page, "Average rating")).toHaveText("4.5");
   await expect(figure(page, "Visited")).toHaveText("2");
 
   // ...and back again when the filter is released.
@@ -46,17 +45,15 @@ test("figures follow the filter chips", async ({ page }) => {
   await expect(figure(page, "Visited")).toHaveText("8");
 });
 
-test("an empty set reports zero for a count but not for an average", async ({ page }) => {
+test("an empty set reports zero", async ({ page }) => {
   await openList(page);
 
-  // A filter matching nothing: "0 places" is true, but "average rating 0" would be a wrong answer
-  // rather than an empty one.
+  // A filter matching nothing: "0 places" is true, and so is "0 visited".
   await chooseFilter(page, "museum");
   await expect(page.locator(".k-list-row")).toHaveCount(0);
 
   await expect(figure(page, "Places")).toHaveText("0");
   await expect(figure(page, "Visited")).toHaveText("0");
-  await expect(figure(page, "Average rating")).toHaveText("–");
 });
 
 test("pages without a summary render no strip", async ({ page }) => {
