@@ -110,6 +110,7 @@ export class RuntimeCore {
     this.me = deps.me;
     this.space = deps.space;
     this.scope = { ...(deps.scope ?? {}) };
+    for (const [entity, record] of Object.entries(this.scope)) if (record) this.followScope(entity);
     this.prefs = deps.languages ?? [];
     this.shownIn = pickLanguage(this.prefs, this.app.definition);
     this.formatLocale = formatLocaleFor(this.prefs[0], this.shownIn);
@@ -163,10 +164,65 @@ export class RuntimeCore {
    * so nothing else would refresh the screen. The shell owns persistence; this owns the value.
    */
   setScope(entity: string, record: Resolved | null): void {
+    this.putScope(entity, record);
+    if (record) this.followScope(entity);
+    else this.unfollowScope(entity);
+    this.invalidate();
+  }
+
+  private putScope(entity: string, record: Resolved | null): void {
     const next = { ...this.scope };
     if (record) next[entity] = record;
     else delete next[entity];
     this.scope = next;
+    this.scopeTurn.set(entity, (this.scopeTurn.get(entity) ?? 0) + 1);
+  }
+
+  /**
+   * The selection is live: the record as it is NOW, not as it was when it was picked. A rename, a
+   * member or guest added, a field edited — by this device, an action, or someone else in the space —
+   * is read back from the store, and every watcher re-runs, as for a new selection. Watched: the
+   * scoped entity and the entities its relations point to (what a resolved record carries). Deleted,
+   * the selection is cleared: nothing is selected rather than a record that no longer exists.
+   */
+  private readonly scopeFollows = new Map<string, Array<() => void>>();
+  /** Bumped by every change of an entity's selection: a re-read that lands after a newer one is dropped. */
+  private readonly scopeTurn = new Map<string, number>();
+  private scopeReads = 0;
+  private readonly scopeLatestRead = new Map<string, number>();
+
+  private followScope(entity: string): void {
+    if (this.scopeFollows.has(entity)) return;
+    const fields = this.app.definition.entities[entity]?.fields ?? {};
+    const watched = new Set([entity]);
+    for (const f of Object.values(fields)) if (f.type === "relation" && typeof f.to === "string") watched.add(f.to);
+    const reread = (): void => void this.rereadScope(entity);
+    this.scopeFollows.set(entity, [...watched].map((e) => this.store.subscribe(e, reread)));
+  }
+
+  private unfollowScope(entity: string): void {
+    for (const off of this.scopeFollows.get(entity) ?? []) off();
+    this.scopeFollows.delete(entity);
+  }
+
+  private async rereadScope(entity: string): Promise<void> {
+    const was = this.scope[entity];
+    if (!was || this.closed) return;
+    const turn = this.scopeTurn.get(entity) ?? 0;
+    const read = ++this.scopeReads;
+    this.scopeLatestRead.set(entity, read);
+    let now: Resolved | null;
+    try {
+      now = await this.getRecord(entity, was.id);
+    } catch (e) {
+      console.warn(`[potyro] the selected ${entity} could not be read again:`, e);
+      return;
+    }
+    // Dropped when the selection changed meanwhile, or a later write's read is already under way.
+    if (this.closed || (this.scopeTurn.get(entity) ?? 0) !== turn || this.scopeLatestRead.get(entity) !== read) return;
+    if (now && sameRecord(was, now)) return;
+    this.putScope(entity, now);
+    if (!now) this.unfollowScope(entity);
     this.invalidate();
   }
 
@@ -280,6 +336,7 @@ export class RuntimeCore {
   /** The app is being put away (see `PotyroRuntime.close`). */
   close(): void {
     this.closed = true;
+    for (const entity of [...this.scopeFollows.keys()]) this.unfollowScope(entity);
     this.guests.dispose();
   }
 
@@ -454,5 +511,14 @@ export class RuntimeCore {
     for (const n of desired.values()) await notif.schedule(n);
 
     await ctx.storage.set(REMINDER_KV_KEY, [...desired.keys()]);
+  }
+}
+
+/** Whether a re-read record says the same as before: no re-render for a write to another record. */
+function sameRecord(a: Resolved, b: Resolved): boolean {
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
   }
 }

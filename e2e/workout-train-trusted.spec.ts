@@ -50,6 +50,10 @@ test.describe("phone", () => {
     await rest.getByRole("button", { name: "+30s" }).tap();
     await expect.poll(async () => seconds(await chip.getByRole("timer").textContent())).toBeGreaterThan(before + 20);
     await expect(chip).toHaveCount(1);
+    // The chip is shell chrome, on the tab bar: the workout's own bottom bar sits above it, Finish in reach.
+    const [chipBox, barBox] = [await chip.boundingBox(), await page.locator(".wk-bar").boundingBox()];
+    expect(chipBox && barBox && barBox.y + barBox.height <= chipBox.y).toBe(true);
+    if (shots) await page.screenshot({ path: `${shots}/workout-rest-bar-clear-phone.png` });
 
     // Another page: the rest is still counting, in sight; the screen may sleep (the workout is off-screen).
     await page.locator(".k-tabbar .k-tab", { hasText: "History" }).first().tap();
