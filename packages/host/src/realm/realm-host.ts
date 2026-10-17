@@ -148,6 +148,8 @@ interface Pending {
   started: number;
   /** Time spent waiting on the person when the call began; the budget pauses while a question is open. */
   waitedBefore: number;
+  /** The shell's own stalls before it started (`stalledMs`): they are not the call's. */
+  stalledBefore: number;
   label: string;
 }
 
@@ -164,7 +166,17 @@ export class RealmLoadedApp implements LoadedApp {
   private seq = 0;
   private pending = new Map<number, Pending>();
   private lastBeat = 0;
+  /** `stalledMs` when the last beat came: a stall since then is not the realm's silence. */
+  private stalledAtBeat = 0;
   private lastCheck = 0;
+  /**
+   * How long the SHELL's own thread has been busy past the watchdog's tick, in all: the time its
+   * checks ran late. A realm's answer waits in the shell's queue behind that work like the check does,
+   * so none of it is the realm's. Only stalls over half the heartbeat used to be forgiven; a page that
+   * stalls a few hundred milliseconds at a time (the Studio opening, in Firefox) added them up against
+   * a call's one-second budget and stopped a healthy app.
+   */
+  private stalledMs = 0;
   private burst = 0;
   private watch: ReturnType<typeof setInterval> | null = null;
   private starting: Promise<void> | null = null;
@@ -266,6 +278,7 @@ export class RealmLoadedApp implements LoadedApp {
       LIVE.add(this);
       port.onmessage = (e: MessageEvent) => this.onMessage(e.data as RealmToHost);
       this.lastBeat = this.lastCheck = now();
+      this.stalledAtBeat = this.stalledMs;
       this.watch = setInterval(() => this.check(), CHECK_MS);
     } catch (e) {
       // Also a realm that started only after the deadline: nothing will ever adopt it.
@@ -356,14 +369,17 @@ export class RealmLoadedApp implements LoadedApp {
     const late = t - this.lastCheck - CHECK_MS;
     this.lastCheck = t;
     this.burst = 0;
+    if (late > 0) this.stalledMs += late;
     if (late > this.o.heartbeatTimeoutMs / 2) {
       this.lastBeat = t;
+      this.stalledAtBeat = this.stalledMs;
       return;
     }
-    if (t - this.lastBeat > this.o.heartbeatTimeoutMs) return this.kill(`its logic stopped answering for ${Math.round(t - this.lastBeat)} ms`);
+    const silent = t - this.lastBeat - (this.stalledMs - this.stalledAtBeat);
+    if (silent > this.o.heartbeatTimeoutMs) return this.kill(`its logic stopped answering for ${Math.round(silent)} ms`);
     const waited = this.waitedOnPeople();
     for (const [, p] of this.pending) {
-      const used = t - p.started - (waited - p.waitedBefore);
+      const used = t - p.started - (waited - p.waitedBefore) - (this.stalledMs - p.stalledBefore);
       if (used > this.o.timeoutMs) return this.kill(`a ${p.label} did not finish within ${this.o.timeoutMs} ms`);
     }
   }
@@ -375,6 +391,7 @@ export class RealmLoadedApp implements LoadedApp {
     if (!m || typeof m !== "object") return;
     if (m.t === "hb") {
       this.lastBeat = now();
+      this.stalledAtBeat = this.stalledMs;
       return;
     }
     if (m.t === "sockack") {
@@ -716,7 +733,7 @@ export class RealmLoadedApp implements LoadedApp {
     const id = ++this.seq;
     const base = this.baseOf(ctx);
     return new Promise<Value>((resolve, reject) => {
-      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, started: now(), waitedBefore: this.waitedOnPeople(), label: `${kind} call` });
+      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, started: now(), waitedBefore: this.waitedOnPeople(), stalledBefore: this.stalledMs, label: `${kind} call` });
       try {
         port.postMessage({ t: "call", id, kind, args, base });
       } catch (e) {
