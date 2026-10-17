@@ -32,6 +32,7 @@ export { StatsView } from "./stats.js";
 export { TimelineView, groupTimeline, whenText, type TimelineGroup } from "./timeline.js";
 export { ChartView, niceMax } from "./chart.js";
 export { computeFigure, computeSummary, figureValue, formatFigure, type SummaryFigure, type CallSummaryValue } from "./summary.js";
+export { useWriteTick } from "./write-tick.js";
 export { DateInput } from "./date-input.js";
 export { EnumInput, EnumPill } from "./enum-input.js";
 export { FileInput, FileValue, matchesAccept, formatSize } from "./file-input.js";

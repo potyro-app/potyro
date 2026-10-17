@@ -407,8 +407,8 @@ export interface AggregateRow {
   record?: { entity: string; id: string };
   /** Tapping the row opens this page. */
   open?: { page: string; params?: Record<string, string> };
-  /** A button on the row that runs an entity action on a record ("Settle", "Water"). */
-  action?: { entity: string; id: string; key: string; label?: string };
+  /** A button on the row that runs an entity action on a record ("Settle", "Water"); `input` is what this row hands it. */
+  action?: { entity: string; id: string; key: string; label?: string; input?: Record<string, string | number | boolean> };
 }
 
 /**
@@ -453,6 +453,7 @@ export interface TimelineView {
 
 /** A stats tile (#109): a summary figure, optionally compared with the same figure for an earlier period. */
 export interface StatItem extends SummaryValue {
+  label: Words;
   /** After the number: "kg", "min". A `field`'s own unit is used when this is left out. */
   unit?: Words;
   /** `value` is the earlier figure; the tile reads "▲ 1 more than {label}" (or "6% less" with `as: "percent"`). */
@@ -558,7 +559,8 @@ export type SummaryOp = "sum" | "count" | "avg" | "max";
  * figure is a plain aggregate; push per-record arithmetic into a `computed` field to keep it there.
  */
 export interface SummaryValue {
-  label: Words;
+  /** Omit when the value is its own sentence ("You're owed €42"). */
+  label?: Words;
   /** The field (or computed) to aggregate. Not used with `value`, not needed for `count`. */
   field?: string;
   op?: SummaryOp;

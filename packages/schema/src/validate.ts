@@ -580,7 +580,7 @@ export const VIEW_WORDS: Readonly<Record<string, readonly string[]>> = Object.fr
  */
 const summaryValueSchema = z
   .object({
-    label: zWordsNonEmpty,
+    label: zWordsNonEmpty.optional(),
     field: z.string().optional(),
     op: z.enum(["sum", "count", "avg", "max"]).optional(),
     value: zFn.optional(),

@@ -117,14 +117,13 @@ test("a bill split by shares lands on the same cents for both people", async ({ 
   const owed = `€${(33.33 + SEEDED_HALF).toFixed(2)}`;
   const balances = ana.locator(".k-aggregate");
   await expect(balances).toContainText(owed, { timeout: 60_000 });
-  await expect(balances).toContainText("you are owed");
+  await expect(balances).toContainText("Bo owes you");
 
   // Bo's copy agrees, without a reload, and says it from his side.
   const boBalances = bo.locator(".k-aggregate");
   await expect(boBalances).toContainText(owed, { timeout: 60_000 });
-  await expect(boBalances).toContainText("you owe");
-  // And the way out of it, in one payment.
-  await expect(boBalances).toContainText(/You → Ana/);
+  // The way out of it, in one payment, said from his side.
+  await expect(boBalances).toContainText("You owe Ana");
 
   // The expense itself shows the arithmetic, the same on both sides.
   await bo.locator(".k-list-row", { hasText: "Dinner" }).click();
@@ -179,10 +178,10 @@ test("two people who each paid for something owe the difference, not the whole",
   const owed = `€${(15 + SEEDED_HALF).toFixed(2)}`;
   const balances = ana.locator(".k-aggregate");
   await expect(balances).toContainText(owed, { timeout: 60_000 });
-  await expect(balances).toContainText("you are owed");
+  await expect(balances).toContainText("Bo owes you");
   await expect(balances).not.toContainText("€65.00");
   await expect(bo.locator(".k-aggregate")).toContainText(owed, { timeout: 60_000 });
-  await expect(bo.locator(".k-aggregate")).toContainText("you owe");
+  await expect(bo.locator(".k-aggregate")).toContainText("You owe Ana");
 
   await ctxA.close();
   await ctxB.close();
@@ -224,9 +223,9 @@ test("an expense with nobody named is still split between the people in the grou
   // Same €15 as above, and the same two seeded halves alongside it.
   const balances = ana.locator(".k-aggregate");
   await expect(balances).toContainText(`€${(15 + SEEDED_HALF).toFixed(2)}`, { timeout: 60_000 });
-  await expect(balances).toContainText("you are owed");
+  await expect(balances).toContainText("Bo owes you");
   await expect(balances).not.toContainText("Nobody owes anybody");
-  await expect(bo.locator(".k-aggregate")).toContainText("you owe", { timeout: 60_000 });
+  await expect(bo.locator(".k-aggregate")).toContainText("You owe Ana", { timeout: 60_000 });
 
   await ctxA.close();
   await ctxB.close();
