@@ -404,6 +404,7 @@ const checklistView = z.object({
   filters: z.array(filterChipSchema).optional(),
   hideDone: z.union([z.boolean(), z.literal("collapse")]).optional(),
   doneLabel: zWords.optional(),
+  strike: z.boolean().optional(),
   donePlacement: z.enum(["sink", "stay"]).optional(),
   quickAdd: z
     .union([z.boolean(), z.object({ suggest: z.boolean().optional(), remember: z.array(z.string()).optional(), defaults: zFn.optional(), usuals: zFn.optional() }).strict()])

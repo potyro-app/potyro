@@ -319,8 +319,10 @@ export interface ChecklistView {
   filters?: FilterChip[];
   /** `true`: done rows disappear. `"collapse"`: they fold into a "Done (n)" section. Default: listed under "Done". */
   hideDone?: boolean | "collapse";
-  /** The folded section's heading ("In the basket"). Default "Done". */
+  /** The folded section's heading ("In the basket"). */
   doneLabel?: Words;
+  /** false: a tick means "have it", not struck through. */
+  strike?: boolean;
   /** Where a ticked row goes. `"stay"` (default) leaves it exactly where it is. `"sink"` moves it to
    *  the bottom of its own group, so what is left to do stays together — at the cost of the row you
    *  just touched leaving from under your finger. `hideDone` still wins. */

@@ -70,6 +70,7 @@ interface ChecklistDef {
   group?: unknown;
   hideDone?: boolean | "collapse";
   doneLabel?: string;
+  strike?: boolean;
   donePlacement?: "sink" | "stay";
   quickAdd?: boolean | { suggest?: boolean; remember?: string[]; defaults?: unknown; usuals?: unknown };
   icon?: unknown;
@@ -793,7 +794,7 @@ export function ChecklistView(props: BuiltinViewProps) {
   const pendingText = pending?.text ?? "";
 
   return (
-    <div className="k-checklist" data-layout={view.layout === "tiles" ? "tiles" : undefined} data-arranging={arranging || undefined}>
+    <div className="k-checklist" data-layout={view.layout === "tiles" ? "tiles" : undefined} data-arranging={arranging || undefined} data-strike={view.strike === false ? "off" : undefined}>
       {rows.length === 0 && !managed ? <p className="k-empty" data-k-wording>{emptyText}</p> : null}
       {rows.length > 0 && !anyVisible && !collapsedDone ? <p className="k-check-clear">
           <Trans>All done.</Trans>

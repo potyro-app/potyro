@@ -15616,3 +15616,11 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
     grid-column: auto;
   }
 }
+/* `strike: false`: a tick means "have it" (a pantry), so a ticked row stays as readable as the rest. */
+.k-checklist[data-strike="off"] .k-check-row[data-done] .k-check-label {
+  color: var(--ink);
+  text-decoration-color: transparent;
+}
+.k-checklist[data-strike="off"] .k-check-row[data-done] {
+  opacity: 1;
+}
