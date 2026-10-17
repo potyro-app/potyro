@@ -1,4 +1,12 @@
-import { test, expect } from "./console-guard";
+import { test, expect, type Page } from "./console-guard";
+
+/** Milk is in the basket: the folded section holds it, ticked. */
+async function expectMilkInBasket(page: Page): Promise<void> {
+  const basket = page.locator(".k-check-done");
+  await expect(basket.locator("summary")).toHaveText("In the basket (3)", { timeout: 30_000 });
+  if (!(await basket.evaluate((d: HTMLDetailsElement) => d.open))) await basket.locator("summary").click();
+  await expect(basket.getByRole("checkbox", { name: "Milk" })).toHaveAttribute("aria-checked", "true");
+}
 
 // Opening an app, going home and opening it again — without a reload — must find the same records.
 //
@@ -20,12 +28,13 @@ test("an edit is still there after going home and opening the app again in place
   const milk = page.getByRole("checkbox", { name: "Milk" });
   await expect(milk).toBeVisible({ timeout: 30_000 });
   await milk.click();
-  await expect(milk).toHaveAttribute("aria-checked", "true");
+  // Ticked, it folds into the basket.
+  await expect(page.locator(".k-check-done summary")).toHaveText("In the basket (3)");
 
   await page.goBack(); // home, in place
   await expect(tile).toBeVisible({ timeout: 30_000 });
   await tile.click(); // the same app, in place
 
-  await expect(page.getByRole("checkbox", { name: "Milk" })).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
+  await expectMilkInBasket(page);
   expect(fellBack).toEqual([]);
 });

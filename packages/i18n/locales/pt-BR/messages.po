@@ -4299,6 +4299,8 @@ msgid "New"
 msgstr "Novo"
 
 #. Scope menu: start a new list/trip/group; the app's word for it
+#. Scope menu: start a new list/trip/group; the app's word for it
+#: ../shell/src/scope-switcher.tsx
 #: ../shell/src/scope-switcher.tsx
 msgid "New {kind}"
 msgstr "Criar: {kind}"
@@ -4587,6 +4589,11 @@ msgstr "Nada aqui"
 #: ../views/src/timeline.tsx
 msgid "Nothing here yet."
 msgstr "Ainda não há nada aqui."
+
+#. An app that works on one list/trip/group at a time, with none yet; kind is the app's word
+#: ../shell/src/scope-switcher.tsx
+msgid "Nothing here yet. Start with a first one: {kind}."
+msgstr "Nada aqui ainda. Comece pelo primeiro: {kind}."
 
 #: ../shell/src/ask-apply.ts
 msgid "Nothing is called exactly “{match}”; tick the ones you meant."

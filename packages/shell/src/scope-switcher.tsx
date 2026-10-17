@@ -79,9 +79,8 @@ export function ScopeSwitcher({ runtime, appId, onNew }: ScopeSwitcherProps) {
       const id = String(scoped.id);
       const next = all.find((r) => String(r.id) !== id);
       await deleteScope(runtime, def.entity, id);
-      // Somewhere to land: the next one, or — with none left — the form for a first one.
+      // Somewhere to land: the next one, or — with none left — the page offers a first one.
       await chooseScope(runtime, appId, next ? String(next.id) : null);
-      if (!next && def.required) onNew();
     });
 
   const entries: MenuEntry[] = [
@@ -131,22 +130,41 @@ export function ScopeSwitcher({ runtime, appId, onNew }: ScopeSwitcherProps) {
 
 /**
  * The selection an app with a required scope opens on, when this device has none: the first there
- * is — never a question before the person has seen the app. With none at all, the form for a first one.
+ * is — never a question before the person has seen the app. Returns whether there is none at all, for
+ * the page to offer the first one in place (`ScopeEmpty`) rather than a form popping up on its own.
  */
-export function useOpeningScope(runtime: PotyroRuntime, appId: string, onNone: () => void): void {
+export function useOpeningScope(runtime: PotyroRuntime, appId: string): boolean {
   const def = runtime.definition.scope;
+  const all = runtime.useQuery(def?.entity ?? "__none__", def ? undefined : { filter: () => false });
+  const scoped = def ? runtime.scope[def.entity] : undefined;
   useEffect(() => {
-    if (!def?.required || runtime.scope[def.entity]) return;
-    let alive = true;
-    void runtime.ctx.query(def.entity).then((rows) => {
-      if (!alive || runtime.scope[def.entity]) return;
-      if (rows[0]) void chooseScope(runtime, appId, String(rows[0].id));
-      else if (byPeople(runtime, def.entity)) onNone();
-    });
-    return () => {
-      alive = false;
-    };
-    // Once, as the app opens.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!def?.required || scoped || all.loading) return;
+    const first = all.rows[0];
+    if (first) void chooseScope(runtime, appId, String(first.id));
+  }, [def, scoped, all.loading, all.rows, runtime, appId]);
+  return Boolean(def?.required && !scoped && !all.loading && all.rows.length === 0);
+}
+
+/** In place of a page that needs a list (a trip, a group) while there is none: the way to the first. */
+export function ScopeEmpty({ runtime, onNew }: { runtime: PotyroRuntime; onNew: () => void }) {
+  const { t } = useLingui();
+  const def = runtime.definition.scope!;
+  const kind = def.label ?? runtime.definition.entities[def.entity]?.label ?? def.entity;
+  const icon = runtime.definition.entities[def.entity]?.icon ?? "＋";
+  return (
+    <section className="k-scope-empty">
+      <span className="k-scope-empty-icon" aria-hidden>
+        {icon}
+      </span>
+      <p className="k-scope-empty-text">{t({ message: `Nothing here yet. Start with a first one: ${kind}.`, comment: "An app that works on one list/trip/group at a time, with none yet; kind is the app's word" })}</p>
+      {byPeople(runtime, def.entity) ? (
+        <button type="button" className="k-cta" onClick={onNew}>
+          <span className="k-cta-icon" aria-hidden>
+            ＋
+          </span>
+          <span>{t({ message: `New ${kind}`, comment: "Scope menu: start a new list/trip/group; the app's word for it" })}</span>
+        </button>
+      ) : null}
+    </section>
+  );
 }

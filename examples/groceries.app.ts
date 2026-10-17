@@ -225,7 +225,13 @@ export default defineApp({
   scope: { entity: "list", required: true },
   // The launcher tile (docs/04 §Tile): what is still to buy, in the order the list has it.
   tile: async (ctx) => {
-    const left = (await ctx.query("item")).filter((i) => onList(i) && !i.bought).sort((a, b) => Number(a.position ?? 0) - Number(b.position ?? 0));
+    // One list's worth: the one being shown when there is one, else the first — the weekly shop, for
+    // most people. Every list summed would be a number nobody shops by.
+    const lists = await ctx.query("list");
+    const list = listId(ctx) || String(lists[0]?.id ?? "");
+    const left = (await ctx.query("item"))
+      .filter((i) => onList(i) && !i.bought && relId(i.list) === list)
+      .sort((a, b) => Number(a.position ?? 0) - Number(b.position ?? 0));
     return {
       count: left.length,
       title: ctx.t(

@@ -15310,14 +15310,14 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 /* ---- Content first (page-header.tsx, page-primary.tsx, scope-switcher.tsx) -----------------------
    What is above a page's view is one line of figures; the page's frequent action is a bar at the
    bottom, where the thumb is; a picture is the ground behind the top of the page, not a block. */
-.k-page-head:empty {
+.k-page-figures:empty {
   display: none;
 }
-.k-page-head {
+.k-page-figures {
   padding: var(--space-1) var(--space-1) var(--space-2);
 }
 /* The figures as a sentence: "8 left · 5 in the basket" — the number, then what it counts. */
-.k-page-head .k-summary {
+.k-page-figures .k-summary {
   display: flex;
   flex-wrap: wrap;
   gap: 0.15rem 0;
@@ -15327,25 +15327,25 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   color: var(--ink-soft);
   font-size: 0.95rem;
 }
-.k-page-head .k-summary-figure {
+.k-page-figures .k-summary-figure {
   flex-direction: row-reverse;
   justify-content: flex-end;
   align-items: baseline;
   gap: 0.3em;
 }
-.k-page-head .k-summary-figure + .k-summary-figure::before {
+.k-page-figures .k-summary-figure + .k-summary-figure::before {
   content: "·";
   order: 1;
   margin: 0 0.55em;
   color: var(--ink-soft);
 }
-.k-page-head .k-summary-value {
+.k-page-figures .k-summary-value {
   font-family: var(--font-ui);
   font-size: 1rem;
   font-weight: 700;
   color: var(--ink);
 }
-.k-page-head .k-summary-label {
+.k-page-figures .k-summary-label {
   font-size: 0.95rem;
   text-transform: none;
   letter-spacing: 0;
@@ -15408,7 +15408,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   max-width: 46rem;
   width: 100%;
 }
-.k-page-head {
+.k-page-figures {
   padding-bottom: 0;
 }
 /* The selection is the page's title: "Weekly shop ▾". On a phone it takes the app's name's place;
@@ -15447,12 +15447,42 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   font-size: 0.8em;
   color: var(--ink-soft);
 }
+/* Still the page's first heading for a screen reader — only the eye reads the switcher instead. */
 .k-topbar:has(.k-scope) .k-topbar-name {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .k-topbar .k-scope {
   flex: 1 1 auto;
   min-width: 0;
   max-width: none;
   justify-content: flex-start;
+}
+/* Over a page's picture, the content's surfaces let it through a little: the picture is the place,
+   the rows stay readable. */
+.k-app:has(.k-page-ground) :is(.k-list-row, .k-check-row, .k-card, .k-check-add, .k-summary) {
+  background: color-mix(in oklab, var(--surface) 84%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+/* A page that needs a list (a trip, a group) while there is none: the way to the first, in place. */
+.k-scope-empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  margin: var(--space-6) auto;
+  max-width: 24rem;
+  text-align: center;
+}
+.k-scope-empty-icon {
+  font-size: 2.6rem;
+  line-height: 1;
+}
+.k-scope-empty-text {
+  margin: 0;
+  color: var(--ink-soft);
 }

@@ -11,7 +11,7 @@ test("groceries runs sealed: the list, a tick folding into the basket, Done shop
   const list = page.locator(".k-checklist");
   // The aisles are RECORDS the sealed app relates to, resolved like any other relation — and in the
   // order the shop is walked.
-  await expect(list.locator(".k-check-heading").first()).toHaveText("Produce");
+  await expect(list.locator(".k-check-heading").first()).toHaveText("Produce", { timeout: 30_000 });
   const dairy = page.locator("section", { has: page.getByRole("heading", { name: "Dairy" }) });
   await list.getByRole("checkbox", { name: "Milk" }).click();
   await expect(dairy.locator(".k-check-label")).toHaveText(["Yoghurt", "Eggs"]);

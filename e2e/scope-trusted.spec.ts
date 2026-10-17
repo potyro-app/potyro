@@ -3,7 +3,7 @@ import { test, expect, type Page } from "./console-guard";
 
 // `scope` (#134): the one record everything else belongs to. This is the journey that opened the
 // issue — "select a trip, then everything shows that trip" — driven as a person would: with no trip
-// yet the app opens on the form for a first one (never on a question), a new place belongs to the trip
+// yet the page offers a first one in place (never a question), a new place belongs to the trip
 // you are in, switching trips from the title changes what every page shows, and the choice survives a
 // reload. Fails without the switcher, the runtime's `setScope`, or the form default.
 
@@ -35,9 +35,11 @@ test("a required scope is asked for on open, scopes every page, and is remembere
   await page.goto("/?user=trips");
   await expect(page.locator("h1").first()).toHaveText("Trips");
 
-  // Nothing to choose from yet: the form for a first trip, not a question.
-  await expect(page.locator(".k-form")).toBeVisible();
+  // Nothing to choose from yet: the page offers a first trip in place — no question, no form
+  // popping up on its own.
   await expect(chip(page)).toContainText("Choose");
+  await expect(page.locator(".k-form")).toHaveCount(0);
+  await page.locator(".k-scope-empty").getByRole("button", { name: "New Trip" }).click();
   await createTrip(page, "Berlin");
 
   // A new place belongs to the trip you are in — the relation defaulted to the scope.

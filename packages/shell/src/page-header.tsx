@@ -39,7 +39,7 @@ export function PageHeader({ runtime, pageId, params }: PageHeaderProps) {
           <img src={photo} alt="" decoding="async" draggable={false} />
         </span>
       ) : null}
-      <div className="k-page-head">
+      <div className="k-page-figures">
         <SummaryStrip runtime={runtime} pageId={pageId} params={params} />
       </div>
     </>
