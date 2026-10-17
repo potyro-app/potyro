@@ -12,7 +12,10 @@ test("deleting an exercise past sessions mention leaves Program and Train workin
   await expect(page.locator("h1").first()).toHaveText("Workout");
   await page.locator(".k-sidenav button", { hasText: "Program" }).first().click();
   const rows = page.locator(".k-list-row");
-  await expect(rows.first()).toBeVisible();
+  // Counted once both of Program's lists are there: the first one alone was counted in Firefox,
+  // which draws them a moment apart.
+  await expect(rows.filter({ hasText: "Bench Press" })).toBeVisible();
+  await expect(page.locator("main")).not.toContainText("Loading…");
   const before = await rows.count();
 
   await rows.filter({ hasText: "Bench Press" }).locator(".k-list-text").click();

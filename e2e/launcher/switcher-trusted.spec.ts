@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "../console-guard";
 import { openApp, openSwitcher, seed } from "./fixture.js";
+import { NEEDS_CDP } from "../engines";
 
 // The in-app switcher on a phone (#88): a bottom sheet with a one-line header and a compact list,
 // so eight or more apps show before scrolling; a row switches; swipe down, a tap on the scrim and
@@ -52,7 +53,8 @@ test("typing filters the list; Enter opens the first match", async ({ page }) =>
   await expect(page.locator("h1").first()).toHaveText("Garden");
 });
 
-test("swipe down, the scrim and Escape each close it", async ({ page }) => {
+test("swipe down, the scrim and Escape each close it", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", NEEDS_CDP);
   await openApp(page, "groceries", "Groceries");
   let overlay = await openSwitcher(page);
   // A finger drags the grip down past the threshold.

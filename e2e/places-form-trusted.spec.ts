@@ -1,4 +1,5 @@
 import { test, expect } from "./console-guard";
+import { skipWithoutMaps } from "./engines";
 
 // The two dead ends a map app hits, driven the way a person hits them:
 //
@@ -75,6 +76,7 @@ async function openBlankForm(page: import("@playwright/test").Page): Promise<voi
 }
 
 test("a geo field is a map you tap, not two number boxes", async ({ page }) => {
+  await skipWithoutMaps(page);
   await page.goto("/?user=places-form");
   await openBlankForm(page);
   const form = page.locator(".k-modal");
@@ -149,6 +151,7 @@ test("a relation to an empty entity can create its first record inline", async (
 // The old behaviour was a silent blank rectangle indistinguishable from a broken app. The field must
 // say so and fall back to coordinates.
 test("a blocked tile host degrades to a visible message, not an empty area", async ({ page, consoleGuard }) => {
+  await skipWithoutMaps(page);
   consoleGuard.allow(/^Failed to load resource: net::ERR_FAILED$|AJAXError: Failed to fetch \(0\): https:\/\/tile\.openstreetmap\.org\//, "the tile host is blocked on purpose; the test asserts the message the person sees instead");
   await page.route("**tile.openstreetmap.org/**", (r) => r.abort());
 
@@ -166,6 +169,7 @@ test("a blocked tile host degrades to a visible message, not an empty area", asy
 // the location already set. Opening a second map inside the form was both redundant and fragile
 // (a second WebGL context can fail when one map is already rendering).
 test("arming placement, then tapping, starts a place at that point", async ({ page }) => {
+  await skipWithoutMaps(page);
   await page.goto("/?user=places-form");
   await expect(page.locator("h1").first()).toHaveText("Places Form", { timeout: 30_000 });
   await page.getByRole("tab", { name: "Map" }).or(page.getByRole("button", { name: "Map" })).first().click();
@@ -193,6 +197,7 @@ test("arming placement, then tapping, starts a place at that point", async ({ pa
 // A marker is an existing place: tapping it must show that place, NOT start a new one. The
 // create-on-tap handler receives marker clicks too, so it has to ignore them.
 test("tapping an existing marker shows which place it is, not a new form", async ({ page }) => {
+  await skipWithoutMaps(page);
   await page.goto("/?user=places-form");
   await expect(page.locator("h1").first()).toHaveText("Places Form", { timeout: 30_000 });
 

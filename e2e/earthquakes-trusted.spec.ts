@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { test, expect, type Page } from "./console-guard";
 import { packApp } from "./library-demos";
 import { action, addPackage, allowLive, allowNetwork, connected, createFake, routeTo, setHidden, tab, type FakeService } from "./live-apps";
+import { expectMapPage } from "./engines";
 
 // apps/earthquakes, packed as its build packs it, against a local fake of EMSC that speaks its real
 // format: the live feed's `{ action, data: Feature }` messages (captured from
@@ -159,7 +160,7 @@ for (const mine of [false, true]) {
     await action(page, "Demo").click();
     await expect(status(page)).toContainText("Demo — a replay");
     // Every quake comes from the feed: the map offers no place to add one by hand.
-    await expect(page.locator(".k-map-canvas")).toBeVisible();
+    await expectMapPage(page);
     await expect(page.locator(".k-map-add")).toHaveCount(0);
     await tab(page, "Latest").click();
     await expect(rows(page).first()).toBeVisible();

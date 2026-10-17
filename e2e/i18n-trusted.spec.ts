@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from "./console-guard";
 import { SEED_NAMES, openApp, openHome, openSwitcher, seed } from "./launcher/fixture.js";
+import { NEEDS_CDP } from "./engines";
 
 const SCREENSHOTS = process.env.I18N_SHOTS; // a folder: the guard also saves what it looked at (#299)
 
@@ -321,7 +322,8 @@ test.describe("guard: the Studio, Add an app, data, forms and the splash in the 
     await shot(page, "form-sheet");
   });
 
-  test("the splash while an app opens", async ({ page }) => {
+  test("the splash while an app opens", async ({ page, browserName }) => {
+    test.skip(browserName !== "chromium", NEEDS_CDP);
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 });
     await page.goto("/?user=plants");

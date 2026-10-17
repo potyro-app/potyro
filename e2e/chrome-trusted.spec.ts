@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "./console-guard";
 import { installGridApp } from "./grid-fixture.js";
+import { NEEDS_CDP } from "./engines";
 
 // The app's chrome (#111, #87). On a phone: a compact top bar, the page, a floating quick action,
 // a bottom tab bar with More; the shell's tools behind one ⋯ menu; no TRUSTED pill. On a wide
@@ -61,7 +62,8 @@ test.describe("phone", () => {
     await expect(page.locator(".k-fab")).toHaveText(/Add: Ingredient/);
   });
 
-  test("the floating action runs the page's quick action; held, it offers the others", async ({ page }) => {
+  test("the floating action runs the page's quick action; held, it offers the others", async ({ page, browserName }) => {
+    test.skip(browserName !== "chromium", NEEDS_CDP);
     await openRecipes(page);
     await page.locator(".k-tabbar .k-tab", { hasText: "What can I cook?" }).tap();
     await expect(page.locator(".k-list-row").first()).toBeVisible();

@@ -1,4 +1,5 @@
 import { test, expect } from "./console-guard";
+import { grantClipboard } from "./engines";
 
 // The sealed-screen device check (#267, docs/22 §5), as the owner runs it on a phone from the APK:
 // no USB, no DevTools. `#probe=realm` or seven taps on "You" opens it; nothing happens otherwise. The
@@ -9,8 +10,8 @@ test.use({ viewport: { width: 412, height: 915 } });
 
 const outOfProcess = (projectName: string) => projectName === "sandbox-chromium-full";
 
-test("#probe=realm runs the check on screen and gives the verdict and the numbers to copy", async ({ page, context }, info) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]).catch(() => {});
+test("#probe=realm runs the check on screen and gives the verdict and the numbers to copy", async ({ page, context, browserName }, info) => {
+  await grantClipboard(context, browserName);
   await page.goto("/#probe=realm");
   const dialog = page.getByRole("dialog", { name: "Sealed screens on this device" });
   await expect(dialog).toBeVisible({ timeout: 30_000 });

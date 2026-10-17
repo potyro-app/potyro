@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from "../console-guard";
 import { tileAction } from "../launcher-actions.js";
 import { openApp, openHome, seed } from "./fixture.js";
+import { NEEDS_CDP } from "../engines";
 
 // The launcher's order (#84). It used to be a tuple, then "last edited first". Now: what you open
 // often and lately comes first; what you pin comes before that, in the order you put it; and you
@@ -73,7 +74,8 @@ test("A–Z orders by name and is remembered", async ({ page }) => {
 test.describe("reordering on a phone", () => {
   test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
 
-  test("two pinned tiles swap by finger, and by Alt+arrow", async ({ page }) => {
+  test("two pinned tiles swap by finger, and by Alt+arrow", async ({ page, browserName }) => {
+    test.skip(browserName !== "chromium", NEEDS_CDP);
     await openHome(page);
     await tileAction(page, "Tasks", "pin");
     await tileAction(page, "Trips", "pin");
@@ -92,7 +94,8 @@ test.describe("reordering on a phone", () => {
     await expect(pinnedSection(page).locator("[aria-live]")).toContainText("Moved Tasks to position 1 of 2");
   });
 
-  test("Manual lets the whole grid be dragged; a scroll is not a drag", async ({ page }) => {
+  test("Manual lets the whole grid be dragged; a scroll is not a drag", async ({ page, browserName }) => {
+    test.skip(browserName !== "chromium", NEEDS_CDP);
     await openHome(page);
     await page.getByRole("button", { name: "Manual" }).click();
     const before = await keysIn(restSection(page));
