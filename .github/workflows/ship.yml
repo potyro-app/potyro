@@ -9,7 +9,7 @@
 name: Ship gate
 on:
   push:
-    branches: [main, ci/benchmark]   # TEMP: ci/benchmark validates the shards; removed before merge
+    branches: [main]
   workflow_dispatch:
     inputs:
       mode:
@@ -22,7 +22,6 @@ concurrency:
 
 env:
   SHARDS: 8
-  SHIP_MODE: full   # TEMP: forces the full suite on this branch; removed before merge
 
 jobs:
   select:
@@ -37,7 +36,7 @@ jobs:
           fetch-depth: 0
       - id: select
         run: |
-          forced="${{ inputs.mode }}"; [ -n "$forced" ] && [ "$forced" != auto ] || forced="${SHIP_MODE:-}"
+          forced="${{ inputs.mode }}"; [ "$forced" != auto ] || forced=""
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "mode=full" >> "$GITHUB_OUTPUT"; echo "files=" >> "$GITHUB_OUTPUT"
             echo "main: the full suite, always"
