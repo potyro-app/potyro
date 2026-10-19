@@ -1,0 +1,1 @@
+{ "host": "laptop i7-9850H (8 other containers running)", "cpu": "Intel(R) Core(TM) i7-9850H CPU @ 2.60GHz", "threads": 12, "memGB": 47, "install": { "s": 2.1, "ok": true }, "build": { "s": 33.9, "ok": true }, "unit": { "s": 103.2, "ok": true }, "e2e_sample": { "s": 287.5, "ok": true }, "e2e_tests": "69 passed ", "commit": "70a7f806" }
