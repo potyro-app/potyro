@@ -107,6 +107,18 @@ msgid "The link lands on the game with the code filled in: they tap Join. Typing
 msgstr "Link otwiera grę z wpisanym kodem: wystarczy stuknąć Dołącz. Wpisanie kodu też działa."
 
 #: msg
+msgid "Join the game"
+msgstr "Dołącz do gry"
+
+#: msg
+msgid "Start your own game instead"
+msgstr "Zacznij własną grę"
+
+#: msg
+msgid "You're invited to play. Say your name and join."
+msgstr "Zaproszono cię do gry. Podaj imię i dołącz."
+
+#: msg
 msgid "You're invited to a game. Say your name and tap Join."
 msgstr "Zaproszono cię do gry. Podaj swoje imię i stuknij Dołącz."
 

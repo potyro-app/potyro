@@ -107,6 +107,18 @@ msgid "The link lands on the game with the code filled in: they tap Join. Typing
 msgstr ""
 
 #: msg
+msgid "Join the game"
+msgstr ""
+
+#: msg
+msgid "Start your own game instead"
+msgstr ""
+
+#: msg
+msgid "You're invited to play. Say your name and join."
+msgstr ""
+
+#: msg
 msgid "You're invited to a game. Say your name and tap Join."
 msgstr ""
 
