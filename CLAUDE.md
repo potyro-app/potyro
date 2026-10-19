@@ -98,16 +98,15 @@ pnpm test:e2e:firefox      # the same specs in Firefox (POTYRO_FIREFOX=1), conso
 pnpm conformance    # web vs native capability parity (docs/09)
 pnpm lint:boundaries
 
-# local CI — the same checks as GitHub's ci.yml, per commit, resumable; the merge gate while
-# GitHub Actions is unavailable. `status --post` puts a `local-ci` check on the commit.
-pnpm ci:local all              # every step (run in a terminal; ~8 min on vazio, ~6 of it the browser shards)
-pnpm ci:local e2e:3            # one step: install build unit typecheck lint e2e:1..8
-pnpm ci:local e2e              # the 8 browser shards at once, each on its own ports (docs/16 §8)
-pnpm ci:local e2e:firefox      # the same specs in Firefox, 8 shards (~5 min) — NOT in the gate (too
-                               # slow beside Chromium's on vazio); run it before merging UI work
-pnpm ci:local status --post    # all green for HEAD? mark it on GitHub
-pnpm ci:local deploy           # green origin/main → potyro.app (automatic from vazio's cron; docs/16 §8)
-pnpm ship <pr>                 # merge a PR through vazio: CI first, then GitHub's main + potyro.app
+# CI is GitHub Actions on Blacksmith's runners (docs/16 §8). Every push to a branch gets the checks
+# and a ten-file browser smoke (~5 min). `pnpm ship` runs the ship gate on the PR's head — the
+# browser specs the change needs, all 202 files as 8 shards when it touches the shell (~9 min) —
+# and merges when green; main then runs everything again and deploys potyro.app.
+pnpm ship <pr>                 # dispatch the gate, wait, merge when green
+node scripts/ci-select.mjs     # which browser specs a change needs (what the gate will run)
+# The same steps on your own machine (slow on a laptop: ~45 min for everything):
+pnpm ci:local all              # every step; `ci:local e2e:3` one shard; `ci:local e2e:firefox` the
+                               # specs in Firefox (not in the gate; run it before merging UI work)
 
 # after ANY change under packages/schema/src/types: the generator's model-facing reference is
 # generated from them, and test/reference.test.ts fails while it is stale (#130). The system prompt
