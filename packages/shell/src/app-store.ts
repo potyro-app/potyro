@@ -37,10 +37,15 @@ export async function openAppStore(app: UserApp, opts: { sync: boolean; me?: str
   if (!app.joined) {
     // An example's files first: its first-run records take their photos from its folder.
     const { ensureExampleFiles } = await import("./example-files.js");
-    await seedOnce(app.id, async () => {
-      await ensureExampleFiles(store, app);
-      await seedIfEmpty(store, app.id, opts.me);
-    });
+    // One transaction: one commit for the whole first run, not one per record and file. It was a
+    // third of opening an example on a new device (~1 s of 2.9 s, measured 2026-10-19), and every
+    // browser test is a new device.
+    await seedOnce(app.id, () =>
+      store.transaction(async () => {
+        await ensureExampleFiles(store, app);
+        await seedIfEmpty(store, app.id, opts.me);
+      }),
+    );
   }
   return store;
 }
