@@ -184,3 +184,70 @@ describe("hostPure — what the box may ask (docs/20 §2.3)", () => {
     expect(await ask({ op: "number", value: 1234.5, locale: "de-DE" })).toEqual({ ok: true, value: "1,234.5" });
   });
 });
+
+// ── catalogs (docs/30): an app written in one language, its translations beside it ──────────────
+
+const CAT_TABLE: Record<string, string> = {
+  plain: 'ctx.t("Due now")',
+  missing: 'ctx.t("Only English")',
+  plural5: 'ctx.t("{n, plural, one {# plant} other {# plants}}", { n: 5 })',
+  withVar: 'ctx.t("Water {name}", { name: r.name })',
+  context: 'ctx.t("Water", undefined)',
+};
+
+const CAT_APP = `({
+  id: "words-po", name: "Plants", version: "1.0.0", schemaVersion: 1, language: "en",
+  entities: { plant: { label: "Plant", fields: { name: { type: "text" } }, computed: { ${Object.entries(CAT_TABLE)
+    .map(([key, body]) => `${key}: function(r, ctx){ return ${body}; }`)
+    .join(",\n")} } } },
+  pages: [{ id: "all", title: "All", view: { type: "list", entity: "plant" } }]
+})`;
+
+const CAT_PL = {
+  Plants: "Rośliny",
+  All: "Wszystkie",
+  "Due now": "Do podlania",
+  "{n, plural, one {# plant} other {# plants}}": "{n, plural, one {# roślina} few {# rośliny} many {# roślin} other {# rośliny}}",
+  "Water {name}": "Podlej: {name}",
+  Water: "",
+};
+
+async function runCatalog(kind: "direct" | Sealed, language: string): Promise<Runner> {
+  const store = new MemoryStore();
+  await store.open("words-po");
+  const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
+  const host = createHost(kind === "direct" ? {} : { loadIsolated: await kind.loader(store) });
+  const catalogs = { pl: CAT_PL };
+  const loaded =
+    kind === "direct"
+      ? await host.load({ kind: "module", app: defineApp(new Function(`return ${CAT_APP};`)() as AppInput), catalogs })
+      : await host.load({ kind: "bundle", code: `globalThis.__potyroApp = ${CAT_APP};`, provenance: "untrusted", catalogs });
+  const base: MakeCtxBase = { store, caps: new FakeCapabilities(), ui, nav: { navigate: () => {} }, now: NOW, language, formatLocale: language === "pl" ? "pl-PL" : "en-GB" };
+  return { loaded, ctx: host.makeCtx(loaded, base), toasts: [] };
+}
+
+describe.each(RUNNERS)("catalogs: ctx.t looks up the app's .po in DirectHost and the $name runner alike (docs/30)", (sealed) => {
+  it("translates through the catalog in Polish, and shows the source where it has nothing", async () => {
+    const direct = await runCatalog("direct", "pl");
+    const boxed = await runCatalog(sealed, "pl");
+    const read = async (r: Runner) => {
+      const out: Record<string, string> = {};
+      for (const key of Object.keys(CAT_TABLE)) out[key] = String(await r.loaded.callComputed("plant", key, RECORD, r.ctx));
+      return out;
+    };
+    const [a, b] = [await read(direct), await read(boxed)];
+    expect(b).toEqual(a);
+    boxed.loaded.dispose();
+    expect(a).toEqual({ plain: "Do podlania", missing: "Only English", plural5: "5 roślin", withVar: "Podlej: Monstera", context: "Water" });
+    // The definition the views read is translated too, in both.
+    expect(String((direct.ctx as unknown as { locale: string }).locale)).toBe("pl");
+  });
+
+  it("in English, the source text is the text", async () => {
+    const direct = await runCatalog("direct", "en");
+    const boxed = await runCatalog(sealed, "en");
+    expect(String(await boxed.loaded.callComputed("plant", "plain", RECORD, boxed.ctx))).toBe("Due now");
+    expect(String(await direct.loaded.callComputed("plant", "withVar", RECORD, direct.ctx))).toBe("Water Monstera");
+    boxed.loaded.dispose();
+  });
+});

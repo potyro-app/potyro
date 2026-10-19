@@ -41,6 +41,8 @@ function boot(port: MessagePort): void {
   port.postMessage({ t: "up" });
   const tx = portTransport(port);
   let app: DirectLoadedApp | null = null;
+  /** The app's translations, by language (docs/30): `ctx.t` reads the shown language's. */
+  let catalogs: Readonly<Record<string, Readonly<Record<string, string>>>> = {};
 
   port.onmessage = (ev: MessageEvent) => {
     const msg = ev.data as HostToRealm;
@@ -49,6 +51,7 @@ function boot(port: MessagePort): void {
     if (msg.t === "speech") return dispatchSpeechEvent(msg.ev);
     if (msg.t === "load") {
       if (app) return; // one app per realm
+      catalogs = msg.catalogs ?? {};
       void load(msg.code).then(
         (loaded) => {
           app = loaded.app;
@@ -63,7 +66,7 @@ function boot(port: MessagePort): void {
       port.postMessage({ t: "result", id: msg.id, ok: false, error: "no app loaded" });
       return;
     }
-    const ctx = makeRealmCtx(msg.base, tx);
+    const ctx = makeRealmCtx(msg.base, tx, { catalog: catalogs[msg.base.locale] });
     run(app, msg.kind, msg.args, ctx as never).then(
       (value) => {
         try {

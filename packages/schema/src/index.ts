@@ -11,6 +11,7 @@ export { structureSchema, checkReferences, checkFormFields, describeIssue, Valid
 
 // ---- an app's words in the person's language (#302, docs/20) ----
 export type { Language, Words, WordsMap } from "./types/words.js";
+export type { Catalog } from "./words.js";
 export type { Localized } from "./types/localized.js";
 export { zWords, zWordsNonEmpty, zLanguage, LANGUAGE_TAG, isWordsMap, plainWords } from "./words-schema.js";
 export {
@@ -20,6 +21,10 @@ export {
   appLanguages,
   pickLanguage,
   word,
+  attachCatalogs,
+  catalogsOf,
+  catalogFor,
+  lookup,
   localize,
   localizeFields,
   checkWords,

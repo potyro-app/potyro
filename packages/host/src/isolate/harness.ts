@@ -133,7 +133,8 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
     var ctx = {
       params: params || {},
       locale: wl.locale || "en",
-      t: function(w, vars){ return (vars === undefined || vars === null) ? pick(w, wl) : pure({op:"t", words:w, vars:vars}); },
+      // A plain string in an app with a catalog for this language is looked up by the host (docs/30).
+      t: function(w, vars){ return (vars === undefined || vars === null) && !(wl.catalog && typeof w === "string") ? pick(w, wl) : pure({op:"t", words:w, vars:vars}); },
       format: {
         locale: wl.formatLocale || wl.locale || "en",
         date: function(d, o){ return pure({op:"date", value:d, opts:o || null}); },

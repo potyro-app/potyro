@@ -115,7 +115,7 @@ async function boot(port: MessagePort, init: ViewInit): Promise<void> {
   const viewSend = (op: ViewOp, ...args: unknown[]): void => tx.send(init.base.ctxId, op as never, args);
   // A fresh ctx per access, as a trusted view's `runtime.ctx` is: its time is now, deterministic
   // within the access. The id is the view's alone; the host answers it with a fresh mediated ctx too.
-  const ctxNow = (): Ctx => makeRealmCtx({ ...base, nowIso: new Date().toISOString() }, tx, { progressPrefix: "v" });
+  const ctxNow = (): Ctx => makeRealmCtx({ ...base, nowIso: new Date().toISOString() }, tx, { progressPrefix: "v", catalog: init.catalog });
 
   function watch(op: "runtime.watchQuery" | "runtime.watchRecord", args: unknown[], cb: (state: unknown) => void): () => void {
     const wid = ++wseq;

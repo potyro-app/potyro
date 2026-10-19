@@ -4,7 +4,7 @@
 // `promote` flips an app to trusted so a subsequent load runs it direct.
 
 import type { Ctx, PotyroApp } from "potyro";
-import { isPotyroApp } from "potyro";
+import { attachCatalogs, isPotyroApp } from "potyro";
 import { DirectLoadedApp } from "./direct-host.js";
 import { buildCtx } from "./make-ctx.js";
 import { loadMessageFormat } from "./format.js";
@@ -16,7 +16,7 @@ export interface CreateHostOptions {
    * (QuickJS-WASM) stays optional and out of the trusted/test path. When absent, loading an
    * untrusted app throws a clear error.
    */
-  loadIsolated?: (args: { code: string; provenance: Provenance }) => Promise<LoadedApp>;
+  loadIsolated?: (args: { code: string; provenance: Provenance; catalogs?: AppSource["catalogs"] }) => Promise<LoadedApp>;
 }
 
 export function createHost(options: CreateHostOptions = {}): Host {
@@ -47,7 +47,10 @@ export function createHost(options: CreateHostOptions = {}): Host {
           // No bundle available for a live module; the shell must supply bundle/url for untrusted.
           throw new Error("load: run an untrusted app from a bundle/url source, not a live module");
         }
-        return new DirectLoadedApp(source.app, "trusted");
+        const direct = new DirectLoadedApp(source.app, "trusted");
+        // Its translations (docs/30): found by `localize()`, `word()` and `ctx.t` through the definition.
+        attachCatalogs(direct.definition, source.catalogs);
+        return direct;
       }
 
       // bundle / url → untrusted by default → isolate runner.
@@ -61,7 +64,10 @@ export function createHost(options: CreateHostOptions = {}): Host {
       if (source.kind === "url") {
         throw new Error("load: url sources must be fetched to a bundle by the shell first");
       }
-      return options.loadIsolated({ code: source.code, provenance });
+      // The box gets them too, for `ctx.t` inside it; the definition read out of it gets them here.
+      const sealed = await options.loadIsolated({ code: source.code, provenance, catalogs: source.catalogs });
+      attachCatalogs(sealed.definition, source.catalogs);
+      return sealed;
     },
 
     makeCtx(app: LoadedApp, base: MakeCtxBase): Ctx {

@@ -5,7 +5,7 @@
 
 import type { AppDefinition, Ctx, KeepWhileHidden, PotyroRecord, PermissionManifest, Resolved, UiProgress, UiTimer, Value, Words } from "potyro";
 import type { TimerData } from "../timers.js";
-import { localize } from "potyro";
+import { catalogFor, localize } from "potyro";
 import { hostPure, PURE_ERROR } from "../format.js";
 import type { Store } from "@potyro/store";
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
@@ -691,7 +691,7 @@ class IsolateLoadedApp implements LoadedApp {
       // The selection is plain resolved data, like `record` — nothing to reach back through.
       scope: ctx.scope,
       // Which language the words are in, so `ctx.locale` and `ctx.t(words)` never leave the box.
-      words: { locale: ctx.locale, language: this.definition.language, languages: this.definition.languages, formatLocale: ctx.format.locale },
+      words: { locale: ctx.locale, language: this.definition.language, languages: this.definition.languages, formatLocale: ctx.format.locale, catalog: Boolean(catalogFor(this.definition, ctx.locale)) },
     };
   }
 
