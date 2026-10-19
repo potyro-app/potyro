@@ -571,7 +571,11 @@ for as long as it spins; the protections below bound what that can cost.
   the page shares one renderer process anyway, so one frame or several costs the same; what matters
   there is freeing that process when a stuck view keeps it busy (§11.3).
 - **The same authority as the logic, no more.** `sandbox="allow-scripts"` only — no
-  `allow-same-origin`, no top navigation, no popups, no forms, no modals; the realm CSP (no network,
+  `allow-same-origin`, no top navigation, no popups, no forms, no modals. A view's own `<form>` still
+  works: without `allow-forms` the browser drops a submission before its `submit` event, so the view
+  runtime turns a submit button's click, Enter in a field and `requestSubmit()` into that event itself
+  (`formSubmitShim`, 2026-10-19 — every sealed Join box and guess field had done nothing). Nothing is
+  ever submitted: the sandbox still refuses it. The realm CSP (no network,
   `connect-src 'none'`); the shell's `frame-src 'none'` stops it navigating itself; WebRTC deleted
   before any app code. `ViewProps.runtime.ctx` is `makeRealmCtx` over the view's port. The host
   answers through `answer`/`route` — the same op list, the same `mediateCaps`, values gate and

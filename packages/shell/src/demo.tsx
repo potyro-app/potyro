@@ -7,7 +7,7 @@
 //
 // "Keep this app" is the Add-an-app card, fed the package the link carried, as a link: sealed, never
 // "I wrote this", promotable later from the app (docs/07).
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { pickLanguage, word, type Person } from "potyro";
@@ -15,6 +15,7 @@ import { languagePrefs } from "./locale.js";
 import { MemoryStore, readAppPackage, type AppPackage } from "@potyro/store";
 import type { Capabilities } from "@potyro/capabilities";
 import { App } from "./App.js";
+import { capsForApp } from "./app-ai-caps.js";
 import { AddAppDialog } from "./add-app-dialog.js";
 import { applySeed, applyShippedFiles } from "./add-app.js";
 import { compose, type Composed } from "./compose.js";
@@ -123,7 +124,11 @@ export async function openDemo(pkg: AppPackage, caps: Capabilities, opts: { link
     provenance: "untrusted",
     bundleCode,
     store,
-    caps,
+    // The same per-app capabilities an installed copy gets (capsForApp): its live connections reach
+    // Potyro's rooms relay and ask in the app's name, its AI and voice are its own. With the page's
+    // bare ones, every room a demo opened failed at once as "unreachable" — no relay address — so a
+    // friend tapping a game invite could never join it (Draw & Guess, 2026-10-19).
+    caps: capsForApp(caps, `demo:${pkg.declared?.id ?? "app"}`),
     // A demo's timers and screen are the shell's, as an installed app's (docs/04); leaving a demo is a
     // page load, which lets go of the screen by itself.
     ui: createUiBridge(toaster.push, picker, shellDialogs, questions, makeLink, {
@@ -155,6 +160,9 @@ export function leaveDemoPath(): void {
  * `startRemix`: the link asked for Make it mine (`&remix=1`, the gallery's second button) — the card is
  * already open over the running app, so the person sees what they are making their own.
  */
+/** How long someone who came by an invitation uses the app before Keep and Make it mine are offered. */
+const INVITE_OFFER_AFTER_MS = 3 * 60_000;
+
 export function DemoScreen({ session, pkg, startRemix, target }: { session: DemoSession; pkg: AppPackage; startRemix?: boolean; target?: AppTarget }) {
   const { t } = useLingui();
   // Keep and Make it mine are the same card (docs/24 §6): a remix is a copy of your own, opened in the Studio.
@@ -163,6 +171,15 @@ export function DemoScreen({ session, pkg, startRemix, target }: { session: Demo
   // first step is keeping it (sealed, docs/07); it can be promoted from the app once kept. A card
   // already open (Make it mine, from the link) stays as it is.
   const keep = useCallback((): void => setAdding((a) => a ?? "keep"), []);
+  // A link to one of its pages is an invitation to DO something there — join a game, look at a list —
+  // not to adopt an app (owner, 2026-10-19: "for the first user going to the link this makes no sense").
+  // So it opens on that page with nothing to decide; Keep and Make it mine come once they have used it.
+  const [offering, setOffering] = useState(!target);
+  useEffect(() => {
+    if (offering) return;
+    const later = setTimeout(() => setOffering(true), INVITE_OFFER_AFTER_MS);
+    return () => clearTimeout(later);
+  }, [offering]);
   const name = demoName(pkg);
   const credit = creditLine(pkg.credit);
   return (
@@ -176,18 +193,22 @@ export function DemoScreen({ session, pkg, startRemix, target }: { session: Demo
         </a>
         <p className="k-demo-note">
           {credit ? <span className="k-demo-credit">{credit}</span> : null}
-          <span>
-            <Trans comment="Demo bar: nothing done in the demo is kept">A demo: nothing you do here is kept</Trans>
-          </span>
+          {offering ? (
+            <span>
+              <Trans comment="Demo bar: nothing done in the demo is kept">A demo: nothing you do here is kept</Trans>
+            </span>
+          ) : null}
         </p>
-        <div className="k-demo-actions">
+        {offering ? (
+          <div className="k-demo-actions">
           <button type="button" className="k-demo-remix" onClick={() => setAdding("remix")}>
             <Trans comment="Demo bar: make your own copy of this app, to change in the Studio">Make it mine</Trans>
           </button>
           <button type="button" className="k-demo-keep" onClick={() => setAdding("keep")}>
             <Trans comment="Demo bar: add this app to your own apps">Keep this app</Trans>
           </button>
-        </div>
+          </div>
+        ) : null}
       </aside>
       <App
         navHost={session.navHost}

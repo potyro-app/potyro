@@ -24,6 +24,7 @@ import { makeRealmCtx } from "./ctx-proxy.js";
 import { portTransport } from "./port-transport.js";
 import { dispatchSocketEvent } from "./realm-sockets.js";
 import type { HostToView, ViewInit, ViewOp } from "./protocol.js";
+import { installFormSubmitShim } from "./form-submit-shim.js";
 
 type Spec = { filter?: (r: Resolved) => boolean; sort?: (a: Resolved, b: Resolved) => number };
 type QueryState = { rows: Resolved[]; loading: boolean; error?: string };
@@ -35,6 +36,9 @@ interface Scope {
   __potyroApp?: unknown;
 }
 const scope = globalThis as unknown as Scope;
+
+// Before any of the view's code: its forms get their `submit` event (form-submit-shim.ts).
+installFormSubmitShim(document);
 
 window.addEventListener("message", function onInit(e: MessageEvent) {
   // Only the parent may start the frame; nothing else can reach a sandboxed srcdoc frame anyway.
