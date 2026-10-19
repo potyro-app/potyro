@@ -270,7 +270,7 @@ export function writeTemplate(messages: readonly Message[]): string {
  * Read as ICU (the words inside a plural's branches are not variables). A message that is not valid ICU
  * says so.
  */
-function holes(text: string): string {
+export function messageHoles(text: string): string {
   const names = new Set<string>();
   const visit = (elements: readonly MessageFormatElement[]): void => {
     for (const el of elements) {
@@ -319,7 +319,7 @@ export async function catalogProblems(opts: {
       if (e.obsolete) continue;
       if (!e.text && !opts.same.test(e.id)) out.push(`${language}: "${e.id}" is not translated`);
       // A translation keeps the message's {holes}: a missing one would show nothing, an extra one fail.
-      else if (e.text && holes(e.text) !== holes(e.id)) out.push(`${language}: "${e.id}" → "${e.text}" has other {placeholders}: ${holes(e.text) || "none"} for ${holes(e.id) || "none"}`);
+      else if (e.text && messageHoles(e.text) !== messageHoles(e.id)) out.push(`${language}: "${e.id}" → "${e.text}" has other {placeholders}: ${messageHoles(e.text) || "none"} for ${messageHoles(e.id) || "none"}`);
     }
   }
   return out;
