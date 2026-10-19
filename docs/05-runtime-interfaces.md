@@ -278,6 +278,15 @@ Runner behavior:
   (`FORMAT_LIMITS`). A realm that cannot start at all is a `RealmStartError`, and the shell falls
   back to QuickJS for that session.
 
+**Catalogs (docs/30).** An app's other languages are `{ msgid → msgstr }` catalogs compiled from its
+`locales/<lang>.po` (`@potyro/i18n/app-catalogs`). The shell reads them from the app's file space
+(`readCatalogs`) and passes them in `AppSource.catalogs`; the host attaches them to the definition
+(`attachCatalogs`, a WeakMap keyed by it), `localize()` looks every slot's string up in the shown
+language's catalog, and `ctx.t` does the same. A sealed app's realm is given only the shown language's
+catalog in its load message, and a sealed view in its `ViewInit`, so `ctx.t` stays local. The QuickJS
+isolate sends a catalog string or `{ text, context }` to the host, which looks it up. A key with a
+context is `context\u0004text`. Missing or fuzzy: the source text shows.
+
 **Words and formats (#302).** `ctx.locale`, `ctx.t` and `ctx.format` are built from one module,
 `packages/host/src/format.ts` — `Intl` with cached formatters, and `intl-messageformat` for ICU
 messages, which interprets a message rather than compiling it to code and is loaded lazily, before
