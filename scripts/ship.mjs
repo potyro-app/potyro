@@ -19,7 +19,7 @@ if (!/^\d+$/.test(pr ?? "")) {
   console.error("usage: pnpm ship <pr-number>");
   process.exit(2);
 }
-const info = JSON.parse(sh(`gh pr view ${pr} --json headRefName,headRefOid,title,state,baseRefName`));
+let info = JSON.parse(sh(`gh pr view ${pr} --json headRefName,headRefOid,title,state,baseRefName`));
 if (info.state !== "OPEN" || info.baseRefName !== "main") {
   console.error(`✘ PR #${pr} is ${info.state.toLowerCase()} against ${info.baseRefName} — only an open PR into main ships`);
   process.exit(2);
@@ -27,8 +27,13 @@ if (info.state !== "OPEN" || info.baseRefName !== "main") {
 sh("git fetch -q origin main");
 sh(`git fetch -q origin ${info.headRefName}`);
 const head = sh(`git rev-parse origin/${info.headRefName}`);
+// Right after a push, GitHub's view of the PR can lag the branch by a few seconds: wait for it.
+for (let tries = 0; head !== info.headRefOid && tries < 10; tries++) {
+  await sleep(3_000);
+  info = JSON.parse(sh(`gh pr view ${pr} --json headRefName,headRefOid,title,state,baseRefName`));
+}
 if (head !== info.headRefOid) {
-  console.error(`✘ origin/${info.headRefName} is not the PR's head — push the branch first`);
+  console.error(`✘ origin/${info.headRefName} (${head.slice(0, 7)}) is not the PR's head (${info.headRefOid.slice(0, 7)}) — push the branch first`);
   process.exit(2);
 }
 if (sh(`git merge-base --is-ancestor origin/main ${head} && echo yes || echo no`) !== "yes") {
