@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./locale": "./src/locale.ts",
     "./format": "./src/format.ts",
-    "./build.mjs": "./build.mjs"
+    "./build.mjs": "./build.mjs",
+    "./app-catalogs": "./src/app-catalogs.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
@@ -17,7 +18,8 @@
   },
   "dependencies": {
     "@lingui/core": "^5.9.5",
-    "@lingui/react": "^5.9.5"
+    "@lingui/react": "^5.9.5",
+    "pofile": "^1.1.4"
   },
   "devDependencies": {
     "@lingui/babel-plugin-lingui-macro": "^5.9.5",

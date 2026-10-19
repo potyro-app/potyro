@@ -264,6 +264,9 @@ importers:
       '@lingui/react':
         specifier: ^5.9.5
         version: 5.9.5(@lingui/babel-plugin-lingui-macro@5.9.5(typescript@5.9.3))(react@18.3.1)
+      pofile:
+        specifier: ^1.1.4
+        version: 1.1.4
     devDependencies:
       '@lingui/babel-plugin-lingui-macro':
         specifier: ^5.9.5
