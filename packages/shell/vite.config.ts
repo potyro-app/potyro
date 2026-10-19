@@ -273,6 +273,9 @@ export default defineConfig({
     port: 5173,
     fs: { allow: [repoRoot] },
     headers: { "Content-Security-Policy": SHELL_CSP },
+    // Transform the shell's module graph as the server starts, not on the first page that asks:
+    // the first test of every e2e server paid ~4 s more than the rest for it (measured 2026-10-19).
+    warmup: { clientFiles: ["./src/main.tsx"] },
   },
   preview: {
     headers: { "Content-Security-Policy": SHELL_CSP },
