@@ -69,6 +69,23 @@ export const W = {
     pl: "Link otwiera grę z wpisanym kodem: wystarczy stuknąć Dołącz. Wpisanie kodu też działa.",
     it: "Il link apre la partita con il codice già inserito: toccano Entra. Anche scrivere il codice funziona.",
   },
+  joinGame: { en: "Join the game", "pt-BR": "Entrar no jogo", de: "Mitspielen", es: "Unirse a la partida", pl: "Dołącz do gry", it: "Entra nella partita" },
+  ownGame: {
+    en: "Start your own game instead",
+    "pt-BR": "Começar um jogo seu",
+    de: "Lieber ein eigenes Spiel starten",
+    es: "Mejor empezar una partida propia",
+    pl: "Zacznij własną grę",
+    it: "Inizia invece una partita tua",
+  },
+  invitedTo: {
+    en: "You're invited to play. Say your name and join.",
+    "pt-BR": "Você foi convidado para jogar. Diga seu nome e entre.",
+    de: "Du bist zum Mitspielen eingeladen. Sag deinen Namen und spiel mit.",
+    es: "Te han invitado a jugar. Di tu nombre y únete.",
+    pl: "Zaproszono cię do gry. Podaj imię i dołącz.",
+    it: "Sei stato invitato a giocare. Di' il tuo nome ed entra.",
+  },
   invited: {
     en: "You're invited to a game. Say your name and tap Join.",
     "pt-BR": "Você foi convidado para um jogo. Diga seu nome e toque em Entrar.",

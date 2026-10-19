@@ -137,6 +137,16 @@ export const STYLES = `
   animation: dg-invite-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .dg-invite-note { margin: 0 0 var(--space-2); font-weight: 800; }
+/* The invited card is the whole start screen: one field, one wide button, the code as a quiet line. */
+.dg-start-card.dg-invited { padding: var(--space-4); border: 2px solid var(--dg-edge); box-shadow: var(--dg-pop-big); }
+.dg-btn-wide { width: 100%; min-height: 56px; font-size: 1.12rem; justify-content: center; margin-top: var(--space-2); }
+.dg-own { text-align: center; margin: var(--space-3) 0 0; }
+.dg-link {
+  background: none; border: 0; padding: var(--space-2) var(--space-3); min-height: 44px;
+  font: inherit; color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.dg-link:hover { color: var(--ink); }
+.dg-link:focus-visible { outline: 3px solid var(--dg-sun); outline-offset: 2px; border-radius: 8px; }
 .dg-invited .dg-code-in { background: var(--dg-cream); color: var(--dg-cream-ink); }
 @keyframes dg-invite-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .dg-invited { animation: none; } }

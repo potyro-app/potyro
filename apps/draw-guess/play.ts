@@ -308,6 +308,51 @@ export function mountPlay(el: HTMLElement, props: ViewProps): () => void {
       else newBtn.click();
     });
 
+    // Invited: one thing to do — say your name and join THIS game. The code is shown, not asked for;
+    // starting a game of your own is still there, below, for whoever wants it instead.
+    if (invited && ctx.caps.network?.room) {
+      const go = h("button", { class: "dg-btn dg-btn-hot dg-btn-wide", type: "button" }, h("span", { "aria-hidden": "true" }, "🎨"), t(W.joinGame));
+      const own = h("button", { class: "dg-link", type: "button" }, t(W.ownGame));
+      on(own, "click", () => {
+        invite = null;
+        showStart();
+      });
+      const joinForm = h(
+        "div",
+        { class: "dg-start-card dg-invited" },
+        h("p", { class: "dg-invite-note" }, t(W.invitedTo)),
+        h("label", { for: "dg-name", class: "dg-label" }, t(W.yourName)),
+        nameIn,
+        go,
+        h("p", { class: "dg-hint" }, `${t(W.codeLabel)}: ${showCode(invited)}`),
+        note,
+      );
+      on(go, "click", () => {
+        const n = takeName();
+        if (n) begin(invited, n, false);
+      });
+      const inviteCard = h(
+        "section",
+        { class: "dg-start", "aria-labelledby": "dg-title" },
+        h("div", { class: "dg-hero" }, h("div", { class: "dg-hero-text" }, h("h2", { id: "dg-title", class: "dg-title" }, t(W.heroTitle)), h("p", { class: "dg-tagline" }, t(W.tagline))), art),
+        joinForm,
+        h("p", { class: "dg-own" }, own),
+      );
+      const roInvite = new ResizeObserver(sizeDoodle);
+      swap(inviteCard, () => {
+        stopDoodle();
+        doodle.destroy();
+        roInvite.disconnect();
+      });
+      roInvite.observe(art);
+      sizeDoodle();
+      setTimeout(() => {
+        const next = nameIn.value ? go : nameIn;
+        if (next.isConnected) next.focus({ preventScroll: true });
+      }, 60);
+      return;
+    }
+
     const how = howFriendsJoin();
     const card = h(
       "section",
@@ -356,7 +401,9 @@ export function mountPlay(el: HTMLElement, props: ViewProps): () => void {
     if (!room) return showStart(W.unavailable);
     current?.leave();
     const s = new Session(code, who, {
-      open: (id, n) => room(id, { name: n }) as Promise<RoomLike>,
+      // A player puts Potyro away to send the invite (Signal, WhatsApp) or to answer a message, and
+      // comes back: the game is still theirs. The most Potyro allows; after that it steps them out.
+      open: (id, n) => room(id, { name: n, keepWhileHidden: "15m" }) as Promise<RoomLike>,
       newId: randomId,
       random: strongRandom,
       lang: myLang,
