@@ -12,7 +12,7 @@ import type { Field } from "./types/fields.js";
 import type { Language, Words } from "./types/words.js";
 import type { Localized } from "./types/localized.js";
 import { fieldSchema, structureSchema } from "./validate.js";
-import { isWordsMap, isWordsSchema } from "./words-schema.js";
+import { isContextWords, isWordsMap, isWordsSchema } from "./words-schema.js";
 
 /** Where a slot sits, as Zod writes paths: `["pages", 0, "title"]`. */
 export type WordsPath = ReadonlyArray<string | number>;
@@ -37,7 +37,7 @@ function unionMember(options: readonly z.ZodTypeAny[], value: unknown): z.ZodTyp
 /** Copy-on-write: `obj` itself when nothing changed, so untouched parts keep their identity. */
 function walk(schema: z.ZodTypeAny, value: unknown, path: (string | number)[], visit: WordsVisitor): unknown {
   if (isWordsSchema(schema)) {
-    if (typeof value !== "string" && !isWordsMap(value)) return value;
+    if (typeof value !== "string" && !isWordsMap(value) && !isContextWords(value)) return value;
     const next = visit(value as Words, path);
     return next === undefined ? value : next;
   }
@@ -196,6 +196,7 @@ export function pickLanguage(prefs: readonly string[], app: Pick<AppDefinition, 
 export function word(w: Words | undefined | null, language: Language | undefined, app?: Pick<AppDefinition, "language" | "languages">, catalog?: Catalog): string {
   if (w == null) return "";
   if (typeof w === "string") return lookup(w, catalog ?? catalogFor(app, language));
+  if (isContextWords(w)) return lookup(w.text, catalog ?? catalogFor(app, language), w.context);
   if (!isWordsMap(w)) return String(w);
   if (language && typeof w[language] === "string") return w[language]!;
   if (app?.language && typeof w[app.language] === "string") return w[app.language]!;
@@ -261,7 +262,7 @@ function labelledFields(def: AppDefinition): Array<{ where: string; options?: re
  */
 export function checkWords(def: AppDefinition): string[] {
   const issues: string[] = [];
-  const maps = wordSlots(def).filter((s) => typeof s.value !== "string");
+  const maps = wordSlots(def).filter((s) => isWordsMap(s.value));
   const languages = appLanguages(def);
   if (def.languages?.length && !def.language) issues.push("`languages` is declared, so the app needs `language:` saying which one is its own");
   if (def.language && def.languages?.length && !def.languages.includes(def.language)) {
@@ -300,7 +301,7 @@ export function wordGaps(def: Pick<AppDefinition, "language" | "languages">): Wo
   if (languages.length < 2) return [];
   const gaps: WordsGap[] = [];
   for (const { path, value } of wordSlots(def)) {
-    if (typeof value === "string") continue;
+    if (!isWordsMap(value)) continue;
     const missing = languages.filter((l) => !(l in value));
     if (missing.length) gaps.push({ path: wordsPathText(path), missing });
   }

@@ -49,9 +49,11 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
   // Words cross as they are — a string, or a map the host resolves in ctx.locale (#302).
   function words(w){ return (w !== null && typeof w === "object") ? w : String(w); }
   // The same choice as schema's word(): the language, the app's own, its languages, anything.
+  function isCtxWords(w){ return w !== null && typeof w === "object" && !Array.isArray(w) && Object.keys(w).length === 2 && typeof w.text === "string" && typeof w.context === "string"; }
   function pick(w, wl){
     if (w === null || w === undefined) return "";
     if (typeof w === "string") return w;
+    if (isCtxWords(w)) return w.text;
     if (typeof w !== "object" || Array.isArray(w) || w instanceof Date) return String(w);
     if (wl.locale && typeof w[wl.locale] === "string") return w[wl.locale];
     if (wl.language && typeof w[wl.language] === "string") return w[wl.language];
@@ -134,7 +136,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       params: params || {},
       locale: wl.locale || "en",
       // A plain string in an app with a catalog for this language is looked up by the host (docs/30).
-      t: function(w, vars){ return (vars === undefined || vars === null) && !(wl.catalog && typeof w === "string") ? pick(w, wl) : pure({op:"t", words:w, vars:vars}); },
+      t: function(w, vars){ return (vars === undefined || vars === null) && !(wl.catalog && (typeof w === "string" || isCtxWords(w))) ? pick(w, wl) : pure({op:"t", words:w, vars:vars}); },
       format: {
         locale: wl.formatLocale || wl.locale || "en",
         date: function(d, o){ return pure({op:"date", value:d, opts:o || null}); },

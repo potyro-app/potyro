@@ -21,7 +21,7 @@ function app(legacy = false) {
         },
       },
     },
-    pages: [{ id: "today", title: "Today", view: { type: "list", entity: "plant", emptyText: legacy ? { en: "Nothing yet", pl: "Jeszcze nic" } : "Nothing yet" } }],
+    pages: [{ id: "today", title: "Today", icon: "☀️", actions: [{ label: { text: "Water", context: "verb" }, run: () => {} }], view: { type: "list", entity: "plant", emptyText: legacy ? { en: "Nothing yet", pl: "Jeszcze nic" } : "Nothing yet" } }],
   } as never);
 }
 
@@ -64,6 +64,16 @@ describe("catalogs", () => {
     expect((localize(def, "pl") as unknown as Record<string, any>).pages[0].title).toBe("Dzisiaj");
     attachCatalogs(def, undefined);
     expect((localize(def, "pl") as unknown as Record<string, any>).pages[0].title).toBe("Today");
+  });
+
+  test("a slot with a context is looked up apart from the same text without one", () => {
+    const def = app();
+    attachCatalogs(def, { pl: { ...PL, Water: "Woda" } });
+    const shown = localize(def, "pl") as unknown as Record<string, any>;
+    expect(shown.pages[0].actions[0].label).toBe("Podlej");
+    expect(word("Water", "pl", def)).toBe("Woda");
+    // Without a catalog it is its text, a plain string for the views.
+    expect((localize(def, "en") as unknown as Record<string, any>).pages[0].actions[0].label).toBe("Water");
   });
 
   test("word() and lookup(): a string through the app's catalog, a context kept apart", () => {

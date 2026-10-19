@@ -9,7 +9,8 @@ import { loadApp } from "../src/score.js";
 import { sameEverywhere, scoreTranslate } from "../src/translate-eval.js";
 import { translateCases } from "../src/translate-cases.js";
 
-const examples = resolve(process.cwd(), "../../examples");
+// The examples as they were with inline maps (fixtures/legacy-examples/README.md): what `translate` splices.
+const examples = resolve(process.cwd(), "test/fixtures/legacy-examples");
 const read = (file: string): string => readFileSync(resolve(examples, file), "utf8");
 const load = async (source: string): Promise<AppDefinition> => (await loadApp(source, examples)) as unknown as AppDefinition;
 

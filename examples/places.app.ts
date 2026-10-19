@@ -11,9 +11,10 @@
 // looking at), JS filters for "open now" and "within 2 km", an interactive ranking that asks questions through
 // `ctx.ui.sheet`, actions with input (a visit), a migration (visited → status) — arbitrary logic, no DSL.
 //
-// In six languages (#303). Every language but English is a model's draft (#297). A function sees an
-// enum's stored value, never its label (docs/20 Q5), so the places that put a category or a status
-// into words say it through `kindName` / `statusName`, beside the fields' own `labels`.
+// Written in English; its translations are catalogs, examples/files/places/locales/<lang>.po (docs/30),
+// every language but English a model's draft (#297). A function sees an enum's stored value, never its
+// label, so the places that put a category or a status into words say it through `kindName` /
+// `statusName`, beside the fields' own `labels`.
 import { defineApp, type Ctx, type MigrationStep, type Resolved } from "potyro";
 
 type HourRow = { day: string; from: string; to: string };
@@ -42,29 +43,29 @@ const KIND_COLOR: Record<string, string> = { restaurant: "#C0574D", bar: "#8E5BB
 const kindName = (kind: unknown, ctx: Ctx): string => {
   switch (kind) {
     case "restaurant":
-      return ctx.t({ en: "restaurant", "pt-BR": "restaurante", de: "Restaurant", es: "restaurante", pl: "restauracja", it: "ristorante" });
+      return ctx.t("restaurant");
     case "bar":
-      return ctx.t({ en: "bar", "pt-BR": "bar", de: "Bar", es: "bar", pl: "bar", it: "bar" });
+      return ctx.t("bar");
     case "cafe":
-      return ctx.t({ en: "cafe", "pt-BR": "café", de: "Café", es: "cafetería", pl: "kawiarnia", it: "caffè" });
+      return ctx.t("cafe");
     case "pizza":
-      return ctx.t({ en: "pizza", "pt-BR": "pizzaria", de: "Pizzeria", es: "pizzería", pl: "pizzeria", it: "pizzeria" });
+      return ctx.t("pizza");
     case "bakery":
-      return ctx.t({ en: "bakery", "pt-BR": "padaria", de: "Bäckerei", es: "panadería", pl: "piekarnia", it: "panetteria" });
+      return ctx.t("bakery");
     case "museum":
-      return ctx.t({ en: "museum", "pt-BR": "museu", de: "Museum", es: "museo", pl: "muzeum", it: "museo" });
+      return ctx.t("museum");
     case "park":
-      return ctx.t({ en: "park", "pt-BR": "parque", de: "Park", es: "parque", pl: "park", it: "parco" });
+      return ctx.t("park");
     case "viewpoint":
-      return ctx.t({ en: "viewpoint", "pt-BR": "mirante", de: "Aussichtspunkt", es: "mirador", pl: "punkt widokowy", it: "belvedere" });
+      return ctx.t("viewpoint");
     case "shop":
-      return ctx.t({ en: "shop", "pt-BR": "loja", de: "Laden", es: "tienda", pl: "sklep", it: "negozio" });
+      return ctx.t("shop");
     case "stay":
-      return ctx.t({ en: "place to stay", "pt-BR": "hospedagem", de: "Unterkunft", es: "alojamiento", pl: "nocleg", it: "alloggio" });
+      return ctx.t("place to stay");
     case "other":
-      return ctx.t({ en: "other", "pt-BR": "outro", de: "Sonstiges", es: "otro", pl: "inne", it: "altro" });
+      return ctx.t("other");
     default:
-      return ctx.t({ en: "unknown", "pt-BR": "sem categoria", de: "ohne Kategorie", es: "sin categoría", pl: "bez kategorii", it: "senza categoria" });
+      return ctx.t("unknown");
   }
 };
 
@@ -72,27 +73,27 @@ const kindName = (kind: unknown, ctx: Ctx): string => {
 const kindPlural = (kind: unknown, ctx: Ctx): string => {
   switch (kind) {
     case "restaurant":
-      return ctx.t({ en: "restaurants", "pt-BR": "restaurantes", de: "Restaurants", es: "restaurantes", pl: "restauracji", it: "ristoranti" });
+      return ctx.t("restaurants");
     case "bar":
-      return ctx.t({ en: "bars", "pt-BR": "bares", de: "Bars", es: "bares", pl: "barów", it: "bar" });
+      return ctx.t("bars");
     case "cafe":
-      return ctx.t({ en: "cafés", "pt-BR": "cafés", de: "Cafés", es: "cafeterías", pl: "kawiarni", it: "caffè" });
+      return ctx.t("cafés");
     case "pizza":
-      return ctx.t({ en: "pizzerias", "pt-BR": "pizzarias", de: "Pizzerien", es: "pizzerías", pl: "pizzerii", it: "pizzerie" });
+      return ctx.t("pizzerias");
     case "bakery":
-      return ctx.t({ en: "bakeries", "pt-BR": "padarias", de: "Bäckereien", es: "panaderías", pl: "piekarni", it: "panetterie" });
+      return ctx.t("bakeries");
     case "park":
-      return ctx.t({ en: "parks", "pt-BR": "parques", de: "Parks", es: "parques", pl: "parków", it: "parchi" });
+      return ctx.t("parks");
     default:
-      return ctx.t({ en: "places like it", "pt-BR": "lugares do tipo", de: "Orte dieser Art", es: "sitios de este tipo", pl: "miejsc tego typu", it: "posti di questo tipo" });
+      return ctx.t("places like it");
   }
 };
 
 /** A status in words: the same as `status`'s labels. */
 const statusName = (s: unknown, ctx: Ctx): string => {
-  if (s === "favourite") return ctx.t({ en: "favourite", "pt-BR": "favorito", de: "Lieblingsort", es: "favorito", pl: "ulubione", it: "preferito" });
-  if (s === "been") return ctx.t({ en: "been", "pt-BR": "já fui", de: "war schon da", es: "ya fui", pl: "byłem", it: "ci sono stato" });
-  return ctx.t({ en: "want to go", "pt-BR": "quero ir", de: "will hin", es: "quiero ir", pl: "chcę iść", it: "voglio andarci" });
+  if (s === "favourite") return ctx.t("favourite");
+  if (s === "been") return ctx.t("been");
+  return ctx.t("want to go");
 };
 
 const visited = (p: Resolved): boolean => p.status === "been" || p.status === "favourite";
@@ -101,10 +102,10 @@ const visited = (p: Resolved): boolean => p.status === "been" || p.status === "f
 function placeLine(p: Resolved, ctx: Ctx): string {
   const hours = (p.openingHours as HourRow[] | undefined) ?? [];
   const open = !hours.length
-    ? ctx.t({ en: "hours unknown", "pt-BR": "horário desconhecido", de: "Öffnungszeiten unbekannt", es: "horario desconocido", pl: "godziny nieznane", it: "orari sconosciuti" })
+    ? ctx.t("hours unknown")
     : p.openNow
-      ? ctx.t({ en: "open now", "pt-BR": "aberto agora", de: "jetzt geöffnet", es: "abierto ahora", pl: "teraz otwarte", it: "aperto ora" })
-      : ctx.t({ en: "closed", "pt-BR": "fechado", de: "geschlossen", es: "cerrado", pl: "zamknięte", it: "chiuso" });
+      ? ctx.t("open now")
+      : ctx.t("closed");
   return `${KIND_GLYPH[String(p.kind)] ?? "📍"} ${kindName(p.kind, ctx)} · ${open}`;
 }
 
@@ -123,10 +124,10 @@ async function rankPlace(p: Resolved, ctx: Ctx): Promise<void> {
     const mid = Math.floor((lo + hi) / 2);
     const other = others[mid]!;
     const answer = await ctx.ui.sheet({
-      title: ctx.t({ en: "{name}: better or worse than {other}?", "pt-BR": "{name}: melhor ou pior que {other}?", de: "{name}: besser oder schlechter als {other}?", es: "{name}: ¿mejor o peor que {other}?", pl: "{name}: lepsze czy gorsze niż {other}?", it: "{name}: meglio o peggio di {other}?" }, { name: String(p.name), other: String(other.name) }),
+      title: ctx.t("{name}: better or worse than {other}?", { name: String(p.name), other: String(other.name) }),
       items: [
-        { id: "better", icon: "👍", label: { en: "Better", "pt-BR": "Melhor", de: "Besser", es: "Mejor", pl: "Lepsze", it: "Meglio" } },
-        { id: "worse", icon: "👎", label: { en: "Worse", "pt-BR": "Pior", de: "Schlechter", es: "Peor", pl: "Gorsze", it: "Peggio" } },
+        { id: "better", icon: "👍", label: ctx.t("Better") },
+        { id: "worse", icon: "👎", label: ctx.t("Worse") },
       ],
     });
     if (!answer) return; // closed: nothing changes
@@ -137,7 +138,7 @@ async function rankPlace(p: Resolved, ctx: Ctx): Promise<void> {
   for (let i = 0; i < order.length; i++) {
     if (order[i]!.rankInKind !== i + 1 || order[i]!.id === p.id) await ctx.patch("place", order[i]!.id, { rankInKind: i + 1 });
   }
-  ctx.ui.toast(ctx.t({ en: "#{n} of your {kinds}", "pt-BR": "#{n} entre seus {kinds}", de: "Platz {n} deiner {kinds}", es: "#{n} de tus {kinds}", pl: "#{n} wśród twoich {kinds}", it: "#{n} tra i tuoi {kinds}" }, { n: lo + 1, kinds: kindPlural(p.kind, ctx) }));
+  ctx.ui.toast(ctx.t("#{n} of your {kinds}", { n: lo + 1, kinds: kindPlural(p.kind, ctx) }));
 }
 
 /** "Save this spot": where you stand, a name and a kind, in one sheet. */
@@ -149,25 +150,25 @@ async function saveHere(ctx: Ctx): Promise<void> {
     here = undefined;
   }
   if (!here) {
-    ctx.ui.toast(ctx.t({ en: "Can't tell where you are. Use “Add here” on the map instead.", "pt-BR": "Não consigo saber onde você está. Use “Adicionar aqui” no mapa.", de: "Dein Standort ist nicht bekannt. Nimm „Hier hinzufügen“ auf der Karte.", es: "No sé dónde estás. Usa «Añadir aquí» en el mapa.", pl: "Nie wiem, gdzie jesteś. Użyj „Dodaj tutaj” na mapie.", it: "Non so dove sei. Usa “Aggiungi qui” sulla mappa." }));
+    ctx.ui.toast(ctx.t("Can't tell where you are. Use “Add here” on the map instead."));
     return;
   }
   const form = await ctx.ui.form<{ name: string; kind: string; status: string; notes: string }>({
-    title: { en: "Save this spot", "pt-BR": "Salvar este lugar", de: "Diesen Ort speichern", es: "Guardar este sitio", pl: "Zapisz to miejsce", it: "Salva questo posto" },
+    title: ctx.t("Save this spot"),
     fields: {
-      name: { type: "text", required: true, label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" } },
-      kind: { type: "enum", options: KINDS, default: "cafe", labels: Object.fromEntries(KINDS.map((k) => [k, kindName(k, ctx)])), label: { en: "Kind", "pt-BR": "Tipo", de: "Art", es: "Tipo", pl: "Rodzaj", it: "Tipo" } },
+      name: { type: "text", required: true, label: ctx.t("Name") },
+      kind: { type: "enum", options: KINDS, default: "cafe", labels: Object.fromEntries(KINDS.map((k) => [k, kindName(k, ctx)])), label: ctx.t("Kind") },
       status: {
         type: "enum",
         options: ["want to go", "been", "favourite"],
         default: "been",
         labels: Object.fromEntries(["want to go", "been", "favourite"].map((s) => [s, statusName(s, ctx)])),
-        label: { en: "Status", "pt-BR": "Situação", de: "Status", es: "Estado", pl: "Status", it: "Stato" },
+        label: ctx.t("Status"),
       },
-      notes: { type: "text", multiline: true, label: { en: "Notes", "pt-BR": "Anotações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" } },
+      notes: { type: "text", multiline: true, label: ctx.t("Notes") },
     },
     initial: { kind: "cafe", status: "been" },
-    submit: { en: "Save", "pt-BR": "Salvar", de: "Speichern", es: "Guardar", pl: "Zapisz", it: "Salva" },
+    submit: ctx.t("Save"),
   });
   if (!form) return;
   const place = await ctx.create("place", { ...form, location: { lat: here.lat, lng: here.lng } });
@@ -185,7 +186,7 @@ const TO_STATUS: MigrationStep[] = [
 
 export default defineApp({
   id: "places",
-  name: { en: "Places", "pt-BR": "Lugares", de: "Orte", es: "Lugares", pl: "Miejsca", it: "Luoghi" },
+  name: "Places",
   icon: "📍",
   version: "2.0.0",
   schemaVersion: 2,
@@ -197,9 +198,9 @@ export default defineApp({
   nav: "tabs",
   // The list you are looking at — "Date night", "Sunday" — or all of them. Choosing one narrows the
   // map and the lists; a new place is filed in it.
-  scope: { entity: "collection", label: { en: "List", "pt-BR": "Lista", de: "Liste", es: "Lista", pl: "Lista", it: "Lista" } },
+  scope: { entity: "collection", label: "List" },
   quickActions: [
-    { id: "add-place", label: { en: "Add: Place", "pt-BR": "Adicionar: Lugar", de: "Hinzufügen: Ort", es: "Añadir: Lugar", pl: "Dodaj: Miejsce", it: "Aggiungi: Luogo" }, icon: "📍", entity: "place", mode: "form" },
+    { id: "add-place", label: "Add: Place", icon: "📍", entity: "place", mode: "form" },
   ],
   // The launcher tile (docs/04 §Tile): the places still to visit.
   tile: async (ctx) => {
@@ -209,14 +210,7 @@ export default defineApp({
     return {
       count: toVisit.length,
       title: ctx.t(
-        {
-          en: "{n, plural, =0 {Everywhere visited} one {# to visit} other {# to visit}}",
-          "pt-BR": "{n, plural, =0 {Tudo visitado} one {# para visitar} other {# para visitar}}",
-          de: "{n, plural, =0 {Überall gewesen} one {# zu besuchen} other {# zu besuchen}}",
-          es: "{n, plural, =0 {Todo visitado} one {# por visitar} other {# por visitar}}",
-          pl: "{n, plural, =0 {Wszędzie byłeś} one {# do odwiedzenia} few {# do odwiedzenia} many {# do odwiedzenia} other {# do odwiedzenia}}",
-          it: "{n, plural, =0 {Visitato tutto} one {# da visitare} other {# da visitare}}",
-        },
+        "{n, plural, =0 {Everywhere visited} one {# to visit} other {# to visit}}",
         { n: toVisit.length },
       ),
       lines: toVisit.slice(0, 3).map((p) => String(p.name)),
@@ -227,72 +221,72 @@ export default defineApp({
   entities: {
     // A list of places you keep together and can share: "Date night", "Lisbon weekend".
     collection: {
-      label: { en: "List", "pt-BR": "Lista", de: "Liste", es: "Lista", pl: "Lista", it: "Lista" },
+      label: "List",
       icon: "🗂️",
       displayField: "name",
       fields: {
-        name: { type: "text", required: true, label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" }, placeholder: { en: "Date night", "pt-BR": "Noite a dois", de: "Date-Abend", es: "Noche de cita", pl: "Randka", it: "Serata a due" } },
+        name: { type: "text", required: true, label: "Name", placeholder: "Date night" },
         emoji: { type: "text", label: "Emoji", placeholder: "🌙" },
-        note: { type: "text", label: { en: "Note", "pt-BR": "Observação", de: "Notiz", es: "Nota", pl: "Notatka", it: "Nota" } },
+        note: { type: "text", label: "Note" },
       },
     },
 
     place: {
-      label: { en: "Place", "pt-BR": "Lugar", de: "Ort", es: "Lugar", pl: "Miejsce", it: "Luogo" },
+      label: "Place",
       icon: "📍",
       displayField: "name",
       fields: {
-        name: { type: "text", required: true, label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" } },
+        name: { type: "text", required: true, label: "Name" },
         location: {
           type: "geo",
           required: true,
-          label: { en: "Location", "pt-BR": "Localização", de: "Standort", es: "Ubicación", pl: "Lokalizacja", it: "Posizione" },
+          label: "Location",
         },
-        photo: { type: "media", accept: "image", multiple: true, label: { en: "Photo", "pt-BR": "Foto", de: "Foto", es: "Foto", pl: "Zdjęcie", it: "Foto" } },
+        photo: { type: "media", accept: "image", multiple: true, label: "Photo" },
         status: {
           type: "enum",
           options: ["want to go", "been", "favourite"],
           default: "been",
           colors: { "want to go": "yellow", been: "teal", favourite: "pink" },
           labels: {
-            "want to go": { en: "want to go", "pt-BR": "quero ir", de: "will hin", es: "quiero ir", pl: "chcę iść", it: "voglio andarci" },
-            been: { en: "been", "pt-BR": "já fui", de: "war schon da", es: "ya fui", pl: "byłem", it: "ci sono stato" },
-            favourite: { en: "favourite", "pt-BR": "favorito", de: "Lieblingsort", es: "favorito", pl: "ulubione", it: "preferito" },
+            "want to go": "want to go",
+            been: "been",
+            favourite: "favourite",
           },
-          label: { en: "Status", "pt-BR": "Situação", de: "Status", es: "Estado", pl: "Status", it: "Stato" },
+          label: "Status",
         },
         kind: {
           type: "enum",
-          label: { en: "Kind", "pt-BR": "Tipo", de: "Art", es: "Tipo", pl: "Rodzaj", it: "Tipo" },
+          label: "Kind",
           options: KINDS,
           labels: {
-            restaurant: { en: "restaurant", "pt-BR": "restaurante", de: "Restaurant", es: "restaurante", pl: "restauracja", it: "ristorante" },
-            bar: { en: "bar", "pt-BR": "bar", de: "Bar", es: "bar", pl: "bar", it: "bar" },
-            cafe: { en: "cafe", "pt-BR": "café", de: "Café", es: "cafetería", pl: "kawiarnia", it: "caffè" },
-            pizza: { en: "pizza", "pt-BR": "pizzaria", de: "Pizzeria", es: "pizzería", pl: "pizzeria", it: "pizzeria" },
-            bakery: { en: "bakery", "pt-BR": "padaria", de: "Bäckerei", es: "panadería", pl: "piekarnia", it: "panetteria" },
-            museum: { en: "museum", "pt-BR": "museu", de: "Museum", es: "museo", pl: "muzeum", it: "museo" },
-            park: { en: "park", "pt-BR": "parque", de: "Park", es: "parque", pl: "park", it: "parco" },
-            viewpoint: { en: "viewpoint", "pt-BR": "mirante", de: "Aussichtspunkt", es: "mirador", pl: "punkt widokowy", it: "belvedere" },
-            shop: { en: "shop", "pt-BR": "loja", de: "Laden", es: "tienda", pl: "sklep", it: "negozio" },
-            stay: { en: "place to stay", "pt-BR": "hospedagem", de: "Unterkunft", es: "alojamiento", pl: "nocleg", it: "alloggio" },
-            other: { en: "other", "pt-BR": "outro", de: "Sonstiges", es: "otro", pl: "inne", it: "altro" },
+            restaurant: "restaurant",
+            bar: "bar",
+            cafe: "cafe",
+            pizza: "pizza",
+            bakery: "bakery",
+            museum: "museum",
+            park: "park",
+            viewpoint: "viewpoint",
+            shop: "shop",
+            stay: "place to stay",
+            other: "other",
           },
         },
-        notes: { type: "text", multiline: true, label: { en: "Notes", "pt-BR": "Anotações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" } },
-        mustOrder: { type: "text", label: { en: "Order this", "pt-BR": "Peça isto", de: "Unbedingt bestellen", es: "Pide esto", pl: "Zamów to", it: "Da ordinare" }, placeholder: { en: "The cardamom bun", "pt-BR": "O pão de cardamomo", de: "Die Kardamomschnecke", es: "El bollo de cardamomo", pl: "Bułka kardamonowa", it: "Il panino al cardamomo" } },
-        lists: { type: "relation", to: "collection", many: true, label: { en: "Lists", "pt-BR": "Listas", de: "Listen", es: "Listas", pl: "Listy", it: "Liste" } },
+        notes: { type: "text", multiline: true, label: "Notes" },
+        mustOrder: { type: "text", label: "Order this", placeholder: "The cardamom bun" },
+        lists: { type: "relation", to: "collection", many: true, label: "Lists" },
         vibes: {
           type: "tags",
-          label: { en: "Vibes", "pt-BR": "Clima", de: "Stimmung", es: "Ambiente", pl: "Klimat", it: "Atmosfera" },
+          label: "Vibes",
           options: ["cheap", "fancy", "outdoor", "quiet", "late-night", "dog-friendly"],
           labels: {
-            cheap: { en: "cheap", "pt-BR": "barato", de: "günstig", es: "barato", pl: "tanie", it: "economico" },
-            fancy: { en: "fancy", "pt-BR": "chique", de: "edel", es: "elegante", pl: "eleganckie", it: "elegante" },
-            outdoor: { en: "outdoor", "pt-BR": "ao ar livre", de: "draußen", es: "al aire libre", pl: "na świeżym powietrzu", it: "all'aperto" },
-            quiet: { en: "quiet", "pt-BR": "tranquilo", de: "ruhig", es: "tranquilo", pl: "ciche", it: "tranquillo" },
-            "late-night": { en: "late-night", "pt-BR": "até tarde", de: "bis spät", es: "hasta tarde", pl: "do późna", it: "fino a tardi" },
-            "dog-friendly": { en: "dog-friendly", "pt-BR": "aceita cachorro", de: "hundefreundlich", es: "admite perros", pl: "przyjazne psom", it: "cani ammessi" },
+            cheap: "cheap",
+            fancy: "fancy",
+            outdoor: "outdoor",
+            quiet: "quiet",
+            "late-night": "late-night",
+            "dog-friendly": "dog-friendly",
           },
         },
         rating: {
@@ -300,36 +294,29 @@ export default defineApp({
           min: 0,
           max: 5,
           step: 0.5,
-          label: { en: "Rating", "pt-BR": "Nota", de: "Bewertung", es: "Valoración", pl: "Ocena", it: "Voto" },
+          label: "Rating",
         },
-        rankInKind: { type: "number", integer: true, hidden: true, label: { en: "Rank among its kind", "pt-BR": "Posição entre os do tipo", de: "Platz unter seinesgleichen", es: "Puesto entre los de su tipo", pl: "Miejsce wśród podobnych", it: "Posto tra quelli del suo tipo" } },
+        rankInKind: { type: "number", integer: true, hidden: true, label: "Rank among its kind" },
         openingHours: {
           type: "list",
-          label: {
-            en: "Opening hours",
-            "pt-BR": "Horário de funcionamento",
-            de: "Öffnungszeiten",
-            es: "Horario",
-            pl: "Godziny otwarcia",
-            it: "Orari di apertura",
-          },
+          label: "Opening hours",
           of: {
             day: {
               type: "enum",
-              label: { en: "Day", "pt-BR": "Dia", de: "Tag", es: "Día", pl: "Dzień", it: "Giorno" },
+              label: "Day",
               options: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
               labels: {
-                mon: { en: "mon", "pt-BR": "seg", de: "Mo", es: "lun", pl: "pon", it: "lun" },
-                tue: { en: "tue", "pt-BR": "ter", de: "Di", es: "mar", pl: "wt", it: "mar" },
-                wed: { en: "wed", "pt-BR": "qua", de: "Mi", es: "mié", pl: "śr", it: "mer" },
-                thu: { en: "thu", "pt-BR": "qui", de: "Do", es: "jue", pl: "czw", it: "gio" },
-                fri: { en: "fri", "pt-BR": "sex", de: "Fr", es: "vie", pl: "pt", it: "ven" },
-                sat: { en: "sat", "pt-BR": "sáb", de: "Sa", es: "sáb", pl: "sob", it: "sab" },
-                sun: { en: "sun", "pt-BR": "dom", de: "So", es: "dom", pl: "niedz", it: "dom" },
+                mon: "mon",
+                tue: "tue",
+                wed: "wed",
+                thu: "thu",
+                fri: "fri",
+                sat: "sat",
+                sun: "sun",
               },
             },
-            from: { type: "text", placeholder: "09:00", label: { en: "Opens", "pt-BR": "Abre", de: "Öffnet", es: "Abre", pl: "Otwarcie", it: "Apre" } },
-            to: { type: "text", placeholder: "18:00", label: { en: "Closes", "pt-BR": "Fecha", de: "Schließt", es: "Cierra", pl: "Zamknięcie", it: "Chiude" } },
+            from: { type: "text", placeholder: "09:00", label: "Opens" },
+            to: { type: "text", placeholder: "18:00", label: "Closes" },
           },
         },
       },
@@ -341,24 +328,24 @@ export default defineApp({
         // The cover's chip "#2 of your cafés", beside its status and kind.
         rankText: {
           label: "🏅",
-          value: (p, ctx) => (typeof p.rankInKind === "number" && visited(p) ? ctx.t({ en: "#{n} of your {kinds}", "pt-BR": "#{n} entre seus {kinds}", de: "Platz {n} deiner {kinds}", es: "#{n} de tus {kinds}", pl: "#{n} wśród twoich {kinds}", it: "#{n} tra i tuoi {kinds}" }, { n: p.rankInKind, kinds: kindPlural(p.kind, ctx) }) : ""),
+          value: (p, ctx) => (typeof p.rankInKind === "number" && visited(p) ? ctx.t("#{n} of your {kinds}", { n: p.rankInKind, kinds: kindPlural(p.kind, ctx) }) : ""),
         },
         // Directions are the map app's job: a link to the spot, not routing of our own.
         directions: {
-          label: { en: "Open in a map", "pt-BR": "Abrir num mapa", de: "In einer Karte öffnen", es: "Abrir en un mapa", pl: "Otwórz na mapie", it: "Apri in una mappa" },
+          label: "Open in a map",
           value: (p) => (p.location ? `https://www.openstreetmap.org/?mlat=${p.location.lat}&mlon=${p.location.lng}#map=17/${p.location.lat}/${p.location.lng}` : ""),
         },
       },
       actions: {
         logVisit: {
-          label: { en: "Log a visit", "pt-BR": "Registrar visita", de: "Besuch eintragen", es: "Anotar visita", pl: "Zapisz wizytę", it: "Annota una visita" },
+          label: "Log a visit",
           icon: "📸",
           description: "Record a visit to this place: when, what you had, who you were with.",
           input: {
-            at: { type: "datetime", required: true, label: { en: "When", "pt-BR": "Quando", de: "Wann", es: "Cuándo", pl: "Kiedy", it: "Quando" } },
-            dish: { type: "text", label: { en: "What you had", "pt-BR": "O que você pediu", de: "Was du hattest", es: "Qué tomaste", pl: "Co jadłeś", it: "Cosa hai preso" } },
-            with: { type: "text", label: { en: "Who with", "pt-BR": "Com quem", de: "Mit wem", es: "Con quién", pl: "Z kim", it: "Con chi" } },
-            note: { type: "text", multiline: true, label: { en: "Note", "pt-BR": "Observação", de: "Notiz", es: "Nota", pl: "Notatka", it: "Nota" } },
+            at: { type: "datetime", required: true, label: "When" },
+            dish: { type: "text", label: "What you had" },
+            with: { type: "text", label: "Who with" },
+            note: { type: "text", multiline: true, label: "Note" },
           },
           run: async (p, ctx, input) => {
             const { at, dish, with: who, note } = (input ?? {}) as { at?: Date | string; dish?: string; with?: string; note?: string };
@@ -369,7 +356,7 @@ export default defineApp({
           },
         },
         rank: {
-          label: { en: "Rank it", "pt-BR": "Classificar", de: "Einordnen", es: "Clasificar", pl: "Oceń na tle innych", it: "Classifica" },
+          label: "Rank it",
           icon: "🏅",
           description: "Place it among the places of its own kind you have been to, by comparing it with them one at a time.",
           run: async (p, ctx) => {
@@ -377,7 +364,7 @@ export default defineApp({
           },
         },
         favourite: {
-          label: { en: "Favourite", "pt-BR": "Favoritar", de: "Lieblingsort", es: "Favorito", pl: "Ulubione", it: "Preferito" },
+          label: "Favourite",
           icon: "♥",
           run: async (p, ctx) => {
             await ctx.patch("place", p.id, { status: p.status === "favourite" ? "been" : "favourite" });
@@ -388,22 +375,22 @@ export default defineApp({
 
     // One time you were there: the memory a place keeps.
     visit: {
-      label: { en: "Visit", "pt-BR": "Visita", de: "Besuch", es: "Visita", pl: "Wizyta", it: "Visita" },
+      label: "Visit",
       icon: "📸",
       displayField: "title",
       fields: {
-        place: { type: "relation", to: "place", required: true, label: { en: "Place", "pt-BR": "Lugar", de: "Ort", es: "Lugar", pl: "Miejsce", it: "Luogo" } },
-        at: { type: "datetime", required: true, label: { en: "When", "pt-BR": "Quando", de: "Wann", es: "Cuándo", pl: "Kiedy", it: "Quando" } },
-        photo: { type: "media", accept: "image", label: { en: "Photo", "pt-BR": "Foto", de: "Foto", es: "Foto", pl: "Zdjęcie", it: "Foto" } },
-        dish: { type: "text", label: { en: "What you had", "pt-BR": "O que você pediu", de: "Was du hattest", es: "Qué tomaste", pl: "Co jadłeś", it: "Cosa hai preso" } },
-        with: { type: "text", label: { en: "Who with", "pt-BR": "Com quem", de: "Mit wem", es: "Con quién", pl: "Z kim", it: "Con chi" } },
-        note: { type: "text", multiline: true, label: { en: "Note", "pt-BR": "Observação", de: "Notiz", es: "Nota", pl: "Notatka", it: "Nota" } },
+        place: { type: "relation", to: "place", required: true, label: "Place" },
+        at: { type: "datetime", required: true, label: "When" },
+        photo: { type: "media", accept: "image", label: "Photo" },
+        dish: { type: "text", label: "What you had" },
+        with: { type: "text", label: "Who with" },
+        note: { type: "text", multiline: true, label: "Note" },
       },
       computed: {
         title: (v) => String(v.place?.name ?? "—"),
         // On the place's own page the place goes without saying: what you had, and who with.
-        what: (v, ctx) => String(v.dish || ctx.t({ en: "A visit", "pt-BR": "Uma visita", de: "Ein Besuch", es: "Una visita", pl: "Wizyta", it: "Una visita" })),
-        company: (v, ctx) => [v.with ? ctx.t({ en: "with {who}", "pt-BR": "com {who}", de: "mit {who}", es: "con {who}", pl: "z: {who}", it: "con {who}" }, { who: String(v.with) }) : "", v.note ?? ""].filter(Boolean).join(" · "),
+        what: (v, ctx) => String(v.dish || ctx.t("A visit")),
+        company: (v, ctx) => [v.with ? ctx.t("with {who}", { who: String(v.with) }) : "", v.note ?? ""].filter(Boolean).join(" · "),
         // The visit's own photo, else the place's.
         picture: (v) => v.photo ?? (Array.isArray(v.place?.photo) ? v.place.photo[0] : v.place?.photo) ?? null,
       },
@@ -413,18 +400,18 @@ export default defineApp({
   pages: [
     {
       id: "map",
-      title: { en: "Map", "pt-BR": "Mapa", de: "Karte", es: "Mapa", pl: "Mapa", it: "Mappa" },
+      title: "Map",
       icon: "🗺️",
       // A button the APP puts on the page, running an ordinary function (#216). "Show me all of
       // them" is the other half of the built-in "where am I" — and it is app code, not a host
       // feature, which is the point: `ctx.views` reaches the map that is on screen.
       actions: [
         {
-          label: { en: "Show all", "pt-BR": "Mostrar todos", de: "Alle zeigen", es: "Ver todos", pl: "Pokaż wszystkie", it: "Mostra tutti" },
+          label: "Show all",
           icon: "⤢",
           run: (ctx) => void ctx.views.map("map").fit(),
         },
-        { label: { en: "Save this spot", "pt-BR": "Salvar este lugar", de: "Diesen Ort speichern", es: "Guardar este sitio", pl: "Zapisz to miejsce", it: "Salva questo posto" }, icon: "📍", run: saveHere },
+        { label: "Save this spot", icon: "📍", run: saveHere },
       ],
       view: {
         type: "map",
@@ -450,11 +437,11 @@ export default defineApp({
         },
         // filter chips in the view chrome write into ctx.params
         filters: [
-          { label: { en: "Category", "pt-BR": "Categoria", de: "Kategorie", es: "Categoría", pl: "Kategoria", it: "Categoria" }, param: "kind", from: "kind" },
-          { label: { en: "Status", "pt-BR": "Situação", de: "Status", es: "Estado", pl: "Status", it: "Stato" }, param: "status", from: "status" },
-          { label: { en: "Vibe", "pt-BR": "Clima", de: "Stimmung", es: "Ambiente", pl: "Klimat", it: "Atmosfera" }, param: "vibe", from: "vibes", multi: true },
+          { label: "Category", param: "kind", from: "kind" },
+          { label: "Status", param: "status", from: "status" },
+          { label: "Vibe", param: "vibe", from: "vibes", multi: true },
           {
-            label: { en: "Open now", "pt-BR": "Aberto agora", de: "Jetzt geöffnet", es: "Abierto ahora", pl: "Teraz otwarte", it: "Aperto ora" },
+            label: "Open now",
             param: "openOnly",
             type: "boolean",
           },
@@ -473,15 +460,15 @@ export default defineApp({
     },
     {
       id: "list",
-      title: { en: "All places", "pt-BR": "Todos os lugares", de: "Alle Orte", es: "Todos los lugares", pl: "Wszystkie miejsca", it: "Tutti i luoghi" },
+      title: "All places",
       icon: "📍",
-      description: { en: "Favourites first, by kind. Rank a place against the others of its kind.", "pt-BR": "Favoritos primeiro, por tipo. Classifique um lugar contra os outros do mesmo tipo.", de: "Lieblingsorte zuerst, nach Art. Ordne einen Ort unter seinesgleichen ein.", es: "Favoritos primero, por tipo. Clasifica un sitio frente a los de su tipo.", pl: "Ulubione na początku, według rodzaju. Porównaj miejsce z innymi tego typu.", it: "Preferiti prima, per tipo. Classifica un posto tra quelli del suo tipo." },
+      description: "Favourites first, by kind. Rank a place against the others of its kind.",
       // Figures over the page's filtered rows. Both forms: `op` for a plain aggregate (declarative,
       // so the structural editor can edit it), a `value` function for the one that needs a rule.
       summary: [
-        { label: { en: "Places", "pt-BR": "Lugares", de: "Orte", es: "Lugares", pl: "Miejsca", it: "Luoghi" }, op: "count" },
+        { label: "Places", op: "count" },
         {
-          label: { en: "Visited", "pt-BR": "Visitados", de: "Besucht", es: "Visitados", pl: "Odwiedzone", it: "Visitati" },
+          label: "Visited",
           value: (rows) => rows.filter((p) => visited(p)).length,
         },
       ],
@@ -495,10 +482,10 @@ export default defineApp({
               type: "list",
               entity: "place",
               filters: [
-                { label: { en: "Category", "pt-BR": "Categoria", de: "Kategorie", es: "Categoría", pl: "Kategoria", it: "Categoria" }, param: "kind", from: "kind" },
-                { label: { en: "Status", "pt-BR": "Situação", de: "Status", es: "Estado", pl: "Status", it: "Stato" }, param: "status", from: "status" },
+                { label: "Category", param: "kind", from: "kind" },
+                { label: "Status", param: "status", from: "status" },
                 // "Near me" asks the device where it is (ctx.caps.geo) and keeps what is within 2 km.
-                { label: { en: "Near me", "pt-BR": "Perto de mim", de: "In meiner Nähe", es: "Cerca de mí", pl: "W pobliżu", it: "Vicino a me" }, param: "me", type: "geo" },
+                { label: "Near me", param: "me", type: "geo" },
               ],
               filter: (p, ctx) => {
                 const { kind, status, me } = ctx.params as { kind?: string; status?: string; me?: { lat: number; lng: number } };
@@ -544,9 +531,9 @@ export default defineApp({
     {
       // Where you have been: every visit on a rail, by month, with its photo.
       id: "memories",
-      title: { en: "Memories", "pt-BR": "Memórias", de: "Erinnerungen", es: "Recuerdos", pl: "Wspomnienia", it: "Ricordi" },
+      title: "Memories",
       icon: "📸",
-      description: { en: "Every visit you logged, what you had and who you were with.", "pt-BR": "Cada visita registrada, o que você pediu e com quem estava.", de: "Jeder Besuch, den du eingetragen hast: was du hattest und mit wem.", es: "Cada visita que anotaste, qué tomaste y con quién.", pl: "Każda zapisana wizyta: co jadłeś i z kim byłeś.", it: "Ogni visita annotata, cosa hai preso e con chi eri." },
+      description: "Every visit you logged, what you had and who you were with.",
       view: {
         type: "timeline",
         entity: "visit",
@@ -555,15 +542,15 @@ export default defineApp({
         display: {
           primary: "title",
           secondary: (v, ctx) =>
-            [v.dish, v.with ? ctx.t({ en: "with {who}", "pt-BR": "com {who}", de: "mit {who}", es: "con {who}", pl: "z: {who}", it: "con {who}" }, { who: String(v.with) }) : "", v.note].filter(Boolean).join(" · "),
+            [v.dish, v.with ? ctx.t("with {who}", { who: String(v.with) }) : "", v.note].filter(Boolean).join(" · "),
           media: "picture",
         },
-        emptyText: { en: "No visits yet. On a place's page, “Log a visit”.", "pt-BR": "Nenhuma visita ainda. Na página de um lugar, “Registrar visita”.", de: "Noch keine Besuche. Auf der Seite eines Orts: „Besuch eintragen“.", es: "Aún no hay visitas. En la página de un sitio, «Anotar visita».", pl: "Brak wizyt. Na stronie miejsca: „Zapisz wizytę”.", it: "Ancora nessuna visita. Nella pagina di un posto, “Annota una visita”." },
+        emptyText: "No visits yet. On a place's page, “Log a visit”.",
       },
     },
     {
       id: "detail",
-      title: { en: "Place", "pt-BR": "Lugar", de: "Ort", es: "Lugar", pl: "Miejsce", it: "Luogo" },
+      title: "Place",
       hidden: true,
       view: {
         type: "detail",
@@ -574,14 +561,14 @@ export default defineApp({
         facts: ["status", "kind", "rankText"],
         primaryAction: "logVisit",
         sections: [
-          { title: { en: "Overview", "pt-BR": "Visão geral", de: "Überblick", es: "Resumen", pl: "Przegląd", it: "Panoramica" }, fields: ["mustOrder", "notes", "vibes", "rating", "lists"] },
+          { title: "Overview", fields: ["mustOrder", "notes", "vibes", "rating", "lists"] },
           {
             // Every time you were there, on the place's own page: what you had, who with.
-            title: { en: "Visits", "pt-BR": "Visitas", de: "Besuche", es: "Visitas", pl: "Wizyty", it: "Visite" },
+            title: "Visits",
             related: { entity: "visit", via: "place", view: "timeline", date: "at", display: { primary: "what", secondary: "company" }, limit: 10 },
           },
-          { title: { en: "Hours", "pt-BR": "Horários", de: "Öffnungszeiten", es: "Horario", pl: "Godziny", it: "Orari" }, fields: ["openingHours"], collapsible: true },
-          { title: { en: "Location", "pt-BR": "Localização", de: "Standort", es: "Ubicación", pl: "Lokalizacja", it: "Posizione" }, fields: ["location", "directions"] },
+          { title: "Hours", fields: ["openingHours"], collapsible: true },
+          { title: "Location", fields: ["location", "directions"] },
         ],
         actions: ["rank", "favourite"],
       },

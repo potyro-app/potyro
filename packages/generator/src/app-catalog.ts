@@ -16,7 +16,7 @@ import { CODE, FN, readSourceWords, sourceSlots, type SourceWords } from "./sour
 export interface Message {
   id: string;
   context?: string;
-  /** Where it is used: a slot's path ("pages.0.title") or "ctx.t:<line>". */
+  /** Where it is used: a slot's path ("pages.0.title"), or "ctx.t". */
   references: string[];
 }
 
@@ -53,19 +53,25 @@ function literalText(node: Node | undefined): string | null {
   return null;
 }
 
-/** `{ context: "verb" }`, the third argument of `ctx.t`. */
-function contextOf(node: Node | undefined): string | undefined {
-  if (node?.type !== "ObjectExpression") return undefined;
-  for (const p of asArray(node.properties)) {
+/** `{ text: "Water", context: "verb" }` written out: its two literals. Null for anything else. */
+function contextWords(node: Node | undefined): { text: string; context: string } | null {
+  if (node?.type !== "ObjectExpression") return null;
+  const props = asArray(node.properties);
+  if (props.length !== 2) return null;
+  const out: Record<string, string> = {};
+  for (const p of props) {
     const key = p.key as { name?: string; value?: string } | undefined;
-    if ((key?.name ?? key?.value) === "context") return literalText(p.value as Node) ?? undefined;
+    const k = key?.name ?? key?.value;
+    const v = literalText(p.value as Node);
+    if ((k !== "text" && k !== "context") || v === null) return null;
+    out[k] = v;
   }
-  return undefined;
+  return out.text !== undefined && out.context !== undefined ? { text: out.text, context: out.context } : null;
 }
 
 /** Every `x.t(…)` call in the source: `ctx.t`, and `runtime.ctx.t` in a custom view. */
-function tCalls(sw: SourceWords): Array<{ line: number; first: Node | undefined; third: Node | undefined; raw: string }> {
-  const out: Array<{ line: number; first: Node | undefined; third: Node | undefined; raw: string }> = [];
+function tCalls(sw: SourceWords): Array<{ line: number; first: Node | undefined; raw: string }> {
+  const out: Array<{ line: number; first: Node | undefined; raw: string }> = [];
   const visit = (n: unknown): void => {
     if (!n || typeof n !== "object") return;
     const node = n as Node;
@@ -75,7 +81,7 @@ function tCalls(sw: SourceWords): Array<{ line: number; first: Node | undefined;
       const name = callee?.type === "MemberExpression" && callee.computed !== true ? ((callee.property as Node)?.name as string | undefined) : undefined;
       if (name === "t") {
         const args = asArray(node.arguments);
-        out.push({ line: node.loc?.start.line ?? 0, first: args[0], third: args[2], raw: sw.source.slice(node.start, node.end).slice(0, 120) });
+        out.push({ line: node.loc?.start.line ?? 0, first: args[0], raw: sw.source.slice(node.start, node.end).slice(0, 120) });
       }
     }
     for (const [k, value] of Object.entries(node)) {
@@ -102,7 +108,9 @@ export async function extractMessages(source: string): Promise<Extracted | null>
     if (!id.trim()) return;
     const key = context ? `${context}\u0004${id}` : id;
     const m = byKey.get(key);
-    if (m) m.references.push(reference);
+    if (m) {
+      if (!m.references.includes(reference)) m.references.push(reference);
+    }
     else byKey.set(key, { id, ...(context ? { context } : {}), references: [reference] });
   };
 
@@ -112,6 +120,8 @@ export async function extractMessages(source: string): Promise<Extracted | null>
     if (typeof v === "string") {
       if (v === CODE) problems.push({ line: sw.nodes.get(slot.path)?.loc?.start.line ?? 0, text: slot.path, why: "behind-code" });
       else if (v !== FN) add(v, slot.path);
+    } else if (v && typeof v === "object" && typeof (v as { text?: unknown }).text === "string" && typeof (v as { context?: unknown }).context === "string" && Object.keys(v).length === 2) {
+      add((v as { text: string }).text, slot.path, (v as { context: string }).context);
     } else if (v && typeof v === "object") {
       // A legacy map: its own language is the message. The codemod moves the rest into catalogs.
       const own = language && typeof (v as Record<string, unknown>)[language] === "string" ? (v as Record<string, string>)[language]! : undefined;
@@ -120,13 +130,19 @@ export async function extractMessages(source: string): Promise<Extracted | null>
   }
 
   for (const call of tCalls(sw)) {
+    const withContext = contextWords(call.first);
+    if (withContext) {
+      add(withContext.text, "ctx.t", withContext.context);
+      continue;
+    }
     const text = literalText(call.first);
     if (text === null) {
       // A map `ctx.t({ en, pl })` is legacy and has its words already; anything else is computed.
       if (call.first?.type !== "ObjectExpression") problems.push({ line: call.line, text: call.raw, why: "not-literal" });
       continue;
     }
-    add(text, `ctx.t:${call.line}`, contextOf(call.third));
+    // No line number: it would change with every edit above it, and churn every catalog (as Lingui's own).
+    add(text, "ctx.t");
   }
   return { ...(language ? { language } : {}), messages: [...byKey.values()], problems };
 }

@@ -10,7 +10,7 @@
 // is loaded, so the shell's first screen does not carry it.
 
 import type { Catalog, Ctx, CtxFormat, FormatDateOptions, FormatNumberOptions, Language, Words } from "potyro";
-import { isWordsMap, minorDigits, word } from "potyro";
+import { isContextWords, isWordsMap, minorDigits, word } from "potyro";
 
 type MessageFormatCtor = typeof import("intl-messageformat").IntlMessageFormat;
 let MessageFormat: MessageFormatCtor | null = null;
@@ -248,7 +248,8 @@ export function makeFormat(locale: string, now: () => Date): CtxFormat {
 
 function checkWordsArg(w: unknown): Words {
   if (typeof w === "string") return text(w, "a message");
-  if (!isWordsMap(w)) throw new FormatError("ctx.t takes words: text, or a map of languages to text");
+  if (isContextWords(w)) return { text: text(w.text, "a message"), context: text(w.context, "a context") };
+  if (!isWordsMap(w)) throw new FormatError("ctx.t takes words: text, { text, context }, or a map of languages to text");
   const entries = Object.entries(w);
   if (entries.length > FORMAT_LIMITS.vars) throw new FormatError("ctx.t: too many languages in one map");
   for (const [, v] of entries) text(v, "a message");

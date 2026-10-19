@@ -109,6 +109,16 @@ describe("textSites", () => {
     expect(texts).toEqual(expect.arrayContaining(["Recipe not found.", "Overview", "Can cook now", "Price per kg"]));
   });
 
+  it("offers the words of ctx.t and the text of { text, context }, never the context (docs/30)", async () => {
+    const src = `export default defineApp({ id: "x", pages: [{ id: "p", title: { text: "Water", context: "verb" }, view: { type: "list", entity: "e",
+      display: { primary: (r, ctx) => ctx.t("Due now"), secondary: (r, ctx) => ctx.t({ text: "Water", context: "noun" }) } } }] });`;
+    const texts = (await textSites(src)).map((s) => s.text);
+    expect(texts).toEqual(expect.arrayContaining(["Water", "Due now"]));
+    expect(texts.filter((t) => t === "Water")).toHaveLength(2);
+    expect(texts).not.toContain("verb");
+    expect(texts).not.toContain("noun");
+  });
+
   it("is empty, not an error, for source it can't parse", async () => {
     expect(await textSites("this is not { valid ts")).toEqual([]);
   });

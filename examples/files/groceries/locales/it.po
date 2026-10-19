@@ -1,0 +1,172 @@
+msgid ""
+msgstr ""
+"Language: it\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Groceries"
+msgstr "Spesa"
+
+#: entities.list.label
+#: entities.item.fields.list.label
+#: pages.0.title
+msgid "List"
+msgstr "Lista"
+
+#: entities.list.fields.name.label
+#: entities.aisle.fields.name.label
+#: entities.item.fields.name.label
+msgid "Name"
+msgstr "Nome"
+
+#: entities.list.fields.name.placeholder
+msgid "Weekly shop"
+msgstr "Spesa settimanale"
+
+#: entities.aisle.label
+#: entities.item.fields.aisle.label
+msgid "Aisle"
+msgstr "Reparto"
+
+#: entities.aisle.fields.name.placeholder
+msgid "Produce"
+msgstr "Frutta e verdura"
+
+#: entities.aisle.fields.order.label
+msgid "Order"
+msgstr "Ordine"
+
+#: entities.item.label
+#: entities.item.groups.0.title
+#: pages.1.title
+#: pages.1.view.sections.0.title
+msgid "Item"
+msgstr "Articolo"
+
+#: entities.item.fields.name.placeholder
+msgid "Milk"
+msgstr "Latte"
+
+#: entities.item.fields.quantity.label
+msgid "Quantity"
+msgstr "Quantità"
+
+#: entities.item.fields.quantity.help
+msgid "How much, in your own words"
+msgstr "Quanto, con parole tue"
+
+#: entities.item.fields.quantity.placeholder
+msgid "2 × 1 l"
+msgstr ""
+
+#: entities.item.fields.for.label
+msgid "For"
+msgstr "Per"
+
+#: entities.item.fields.for.help
+msgid "Whose it is, when it is not the household's"
+msgstr "Di chi è, se non è di tutta la casa"
+
+#: entities.item.fields.bought.label
+#: pages.0.view.doneLabel
+msgid "In the basket"
+msgstr "Nel carrello"
+
+#: entities.item.fields.position.label
+msgid "Position"
+msgstr "Posizione"
+
+#: entities.item.fields.note.label
+#: pages.1.view.sections.2.title
+msgid "Note"
+msgstr "Nota"
+
+#: entities.item.fields.note.placeholder
+msgid "The oat one, not barista"
+msgstr "Quella d'avena, non barista"
+
+#: entities.item.fields.onList.label
+msgid "On the list"
+msgstr "In lista"
+
+#: entities.item.fields.timesBought.label
+msgid "Times bought"
+msgstr "Volte comprato"
+
+#: entities.item.fields.lastBought.label
+msgid "Last bought"
+msgstr "Ultimo acquisto"
+
+#: entities.item.groups.1.title
+msgid "More"
+msgstr "Altro"
+
+#: entities.item.computed.line.label
+msgid "Details"
+msgstr "Dettagli"
+
+#: entities.item.computed.memory.label
+msgid "Bought"
+msgstr "Comprato"
+
+#: entities.item.actions.again.label
+msgid "Add"
+msgstr "Aggiungi"
+
+#: pages.0.description
+msgid "Tick things as they go in the basket. Done shopping puts them away for next time."
+msgstr "Spunta quello che va nel carrello. Spesa fatta lo mette via per la prossima volta."
+
+#: pages.0.summary.0.label
+msgid "to buy"
+msgstr "da comprare"
+
+#: pages.0.summary.1.label
+msgid "in the basket"
+msgstr "nel carrello"
+
+#: pages.0.actions.0.label
+msgid "Done shopping"
+msgstr "Spesa fatta"
+
+#: pages.0.view.emptyText
+msgid "Nothing on the list. Add the first thing below — tap the box for your usuals."
+msgstr "La lista è vuota. Aggiungi la prima cosa qui sotto — tocca la casella per i tuoi soliti."
+
+#: pages.1.view.sections.1.title
+msgid "Memory"
+msgstr "Memoria"
+
+#: ctx.t
+msgid "Tick what went in the basket first."
+msgstr "Prima spunta cosa è nel carrello."
+
+#: ctx.t
+msgid "{n, plural, one {Put # thing away} other {Put # things away}}. Next time, tap the add box to bring them back."
+msgstr "{n, plural, one {# cosa messa via} other {# cose messe via}}. La prossima volta tocca la casella per aggiungere e riprendile."
+
+#: ctx.t
+msgid "{n, plural, =0 {All bought} one {# to buy} other {# to buy}}"
+msgstr "{n, plural, =0 {Tutto comprato} one {# da comprare} other {# da comprare}}"
+
+#: ctx.t
+msgid "Not yet"
+msgstr "Non ancora"
+
+#: ctx.t
+msgid "{n, plural, one {once} other {# times}}, last {when}"
+msgstr "{n, plural, one {una volta} other {# volte}}, l'ultima {when}"
+
+#: ctx.t
+msgid "{name} is already on the list"
+msgstr "{name} è già in lista"
+
+#: ctx.t
+msgid "{name} is on the list"
+msgstr "{name} è in lista"
+
+#~ msgid "Emoji"
+#~ msgstr "Emoji"
+

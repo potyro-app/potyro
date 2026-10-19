@@ -8,7 +8,8 @@
 // "ingredients I have" filter, a CUSTOM cook view (full React), `ctx.caps.ai` with a confirm form, and
 // actions with input (plan a meal on a day).
 //
-// In six languages (#303); every language but English is a model's draft (#297). Recipes,
+// Written in English; its translations are catalogs, examples/files/recipes/locales/<lang>.po
+// (docs/30), every language but English a model's draft (#297). Recipes,
 // ingredients and steps are records and stay as written. A function sees an enum's stored value,
 // never its label (docs/20 Q5), so the few lines that put a category, a season or a difficulty into
 // words say it through the small `…Name` helpers below, with the same words as the fields' labels.
@@ -61,38 +62,38 @@ function recipeLine(r: Resolved, ctx: Ctx): string {
 
 /** A recipe's difficulty in words. */
 const difficultyName = (d: unknown, ctx: Ctx): string => {
-  if (d === "easy") return ctx.t({ en: "easy", "pt-BR": "fácil", de: "leicht", es: "fácil", pl: "łatwy", it: "facile" });
-  if (d === "medium") return ctx.t({ en: "medium", "pt-BR": "média", de: "mittel", es: "media", pl: "średni", it: "media" });
-  return ctx.t({ en: "hard", "pt-BR": "difícil", de: "schwer", es: "difícil", pl: "trudny", it: "difficile" });
+  if (d === "easy") return ctx.t("easy");
+  if (d === "medium") return ctx.t("medium");
+  return ctx.t("hard");
 };
 
 /** A recipe's diet (the `diet` computed) in words: it agrees with "recipe", not with "ingredient". */
 const dietName = (d: unknown, ctx: Ctx): string => {
-  if (d === "vegan") return ctx.t({ en: "vegan", "pt-BR": "vegana", de: "vegan", es: "vegana", pl: "wegański", it: "vegana" });
-  if (d === "vegetarian") return ctx.t({ en: "vegetarian", "pt-BR": "vegetariana", de: "vegetarisch", es: "vegetariana", pl: "wegetariański", it: "vegetariana" });
-  if (d === "animal-based") return ctx.t({ en: "animal-based", "pt-BR": "de origem animal", de: "tierisch", es: "de origen animal", pl: "odzwierzęcy", it: "di origine animale" });
-  return ctx.t({ en: "unknown", "pt-BR": "desconhecida", de: "unbekannt", es: "desconocida", pl: "nieznany", it: "sconosciuta" });
+  if (d === "vegan") return ctx.t("vegan");
+  if (d === "vegetarian") return ctx.t("vegetarian");
+  if (d === "animal-based") return ctx.t("animal-based");
+  return ctx.t("unknown");
 };
 
 /** An ingredient's category in words: the same as `category`'s labels. */
 const categoryName = (c: unknown, ctx: Ctx): string => {
   switch (c) {
     case "vegetable":
-      return ctx.t({ en: "vegetable", "pt-BR": "verdura", de: "Gemüse", es: "verdura", pl: "warzywo", it: "verdura" });
+      return ctx.t("vegetable");
     case "fruit":
-      return ctx.t({ en: "fruit", "pt-BR": "fruta", de: "Obst", es: "fruta", pl: "owoc", it: "frutta" });
+      return ctx.t("fruit");
     case "grain":
-      return ctx.t({ en: "grain", "pt-BR": "cereal", de: "Getreide", es: "cereal", pl: "zboże", it: "cereale" });
+      return ctx.t("grain");
     case "dairy":
-      return ctx.t({ en: "dairy", "pt-BR": "laticínio", de: "Milchprodukt", es: "lácteo", pl: "nabiał", it: "latticino" });
+      return ctx.t("dairy");
     case "protein":
-      return ctx.t({ en: "protein", "pt-BR": "proteína", de: "Eiweiß", es: "proteína", pl: "białko", it: "proteina" });
+      return ctx.t("protein");
     case "spice":
-      return ctx.t({ en: "spice", "pt-BR": "tempero", de: "Gewürz", es: "especia", pl: "przyprawa", it: "spezia" });
+      return ctx.t("spice");
     case "fat":
-      return ctx.t({ en: "fat", "pt-BR": "gordura", de: "Fett", es: "grasa", pl: "tłuszcz", it: "grasso" });
+      return ctx.t("fat");
     case "other":
-      return ctx.t({ en: "other", "pt-BR": "outro", de: "Sonstiges", es: "otro", pl: "inne", it: "altro" });
+      return ctx.t("other");
     default:
       return "—";
   }
@@ -100,19 +101,19 @@ const categoryName = (c: unknown, ctx: Ctx): string => {
 
 /** A season in words: the same as `seasons`' labels. */
 const seasonName = (s: string, ctx: Ctx): string => {
-  if (s === "spring") return ctx.t({ en: "spring", "pt-BR": "primavera", de: "Frühling", es: "primavera", pl: "wiosna", it: "primavera" });
-  if (s === "summer") return ctx.t({ en: "summer", "pt-BR": "verão", de: "Sommer", es: "verano", pl: "lato", it: "estate" });
-  if (s === "autumn") return ctx.t({ en: "autumn", "pt-BR": "outono", de: "Herbst", es: "otoño", pl: "jesień", it: "autunno" });
-  if (s === "winter") return ctx.t({ en: "winter", "pt-BR": "inverno", de: "Winter", es: "invierno", pl: "zima", it: "inverno" });
+  if (s === "spring") return ctx.t("spring");
+  if (s === "summer") return ctx.t("summer");
+  if (s === "autumn") return ctx.t("autumn");
+  if (s === "winter") return ctx.t("winter");
   return s;
 };
 
 
 /** A meal slot in words: the same as `slot`'s labels. */
 const slotName = (s: unknown, ctx: Ctx): string => {
-  if (s === "breakfast") return ctx.t({ en: "Breakfast", "pt-BR": "Café da manhã", de: "Frühstück", es: "Desayuno", pl: "Śniadanie", it: "Colazione" });
-  if (s === "lunch") return ctx.t({ en: "Lunch", "pt-BR": "Almoço", de: "Mittagessen", es: "Comida", pl: "Obiad", it: "Pranzo" });
-  return ctx.t({ en: "Dinner", "pt-BR": "Jantar", de: "Abendessen", es: "Cena", pl: "Kolacja", it: "Cena" });
+  if (s === "breakfast") return ctx.t("Breakfast");
+  if (s === "lunch") return ctx.t("Lunch");
+  return ctx.t("Dinner");
 };
 
 // ---- Cook mode (docs M1 DoD): a full React component — the "no ceiling" escape hatch. One step at a
@@ -232,9 +233,9 @@ function CookAlong(props: ViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) return <p>{ctx.t({ en: "Loading…", "pt-BR": "Carregando…", de: "Wird geladen…", es: "Cargando…", pl: "Wczytywanie…", it: "Caricamento…" })}</p>;
+  if (loading) return <p>{ctx.t("Loading…")}</p>;
   if (!record) {
-    return <p>{ctx.t({ en: "Recipe not found.", "pt-BR": "Receita não encontrada.", de: "Rezept nicht gefunden.", es: "No se encontró la receta.", pl: "Nie znaleziono przepisu.", it: "Ricetta non trovata." })}</p>;
+    return <p>{ctx.t("Recipe not found.")}</p>;
   }
 
   const steps: Step[] = Array.isArray(record.steps) ? (record.steps as Step[]) : [];
@@ -274,26 +275,26 @@ function CookAlong(props: ViewProps) {
     }
     void ctx.ui
       .timer({
-        label: ctx.t({ en: "{name}, step {n}", "pt-BR": "{name}, passo {n}", de: "{name}, Schritt {n}", es: "{name}, paso {n}", pl: "{name}, krok {n}", it: "{name}, passaggio {n}" }, { name: String(record.name), n: at + 1 }),
+        label: ctx.t("{name}, step {n}", { name: String(record.name), n: at + 1 }),
         seconds,
         id: timerId(at),
       })
       .then((t) => setTimers((all) => [...all.filter((x) => x.id !== t.id), t]))
       .catch((e: unknown) => ctx.ui.toast(e instanceof Error ? e.message : String(e)));
   };
-  const stepWord = ctx.t({ en: "Step {n} of {total}", "pt-BR": "Passo {n} de {total}", de: "Schritt {n} von {total}", es: "Paso {n} de {total}", pl: "Krok {n} z {total}", it: "Passaggio {n} di {total}" }, { n: at + 1, total: steps.length });
+  const stepWord = ctx.t("Step {n} of {total}", { n: at + 1, total: steps.length });
 
   return (
     <section className="ck" aria-labelledby="cook-heading">
       <style>{COOK_CSS}</style>
       <header className="ck-head">
         <h1 id="cook-heading" className="ck-title">
-          {ctx.t({ en: "Cooking: {name}", "pt-BR": "Cozinhando: {name}", de: "Jetzt kochen: {name}", es: "Cocinando: {name}", pl: "Gotujemy: {name}", it: "In cucina: {name}" }, { name: String(record.name) })}
+          {ctx.t("Cooking: {name}", { name: String(record.name) })}
         </h1>
         {steps.length > 0 ? (
           <div className="ck-progress">
             {steps.map((_, i) => (
-              <button key={i} type="button" className="ck-dot" data-on={i === at} data-done={done.has(i)} aria-label={ctx.t({ en: "Go to step {n}", "pt-BR": "Ir para o passo {n}", de: "Zu Schritt {n}", es: "Ir al paso {n}", pl: "Przejdź do kroku {n}", it: "Vai al passaggio {n}" }, { n: i + 1 })} onClick={() => setAt(i)} />
+              <button key={i} type="button" className="ck-dot" data-on={i === at} data-done={done.has(i)} aria-label={ctx.t("Go to step {n}", { n: i + 1 })} onClick={() => setAt(i)} />
             ))}
             <span>{stepWord}</span>
           </div>
@@ -314,25 +315,25 @@ function CookAlong(props: ViewProps) {
                 onClick={() => toggleTimer(Number(step.durationSec))}
               >
                 {timer
-                  ? `⏱ ${clock} · ${ctx.t({ en: "stop", "pt-BR": "parar", de: "stopp", es: "parar", pl: "stop", it: "ferma" })}`
-                  : `⏱ ${ctx.t({ en: "Start a {time} timer", "pt-BR": "Iniciar timer de {time}", de: "{time}-Timer starten", es: "Poner temporizador de {time}", pl: "Włącz minutnik: {time}", it: "Avvia timer di {time}" }, { time: minutesText(Math.max(1, Math.round(Number(step.durationSec) / 60)), ctx) })}`}
+                  ? `⏱ ${clock} · ${ctx.t("stop")}`
+                  : `⏱ ${ctx.t("Start a {time} timer", { time: minutesText(Math.max(1, Math.round(Number(step.durationSec) / 60)), ctx) })}`}
               </button>
             ) : null}
           </>
         ) : (
-          <p className="ck-step">{ctx.t({ en: "This recipe has no steps yet.", "pt-BR": "Esta receita ainda não tem passos.", de: "Dieses Rezept hat noch keine Schritte.", es: "Esta receta aún no tiene pasos.", pl: "Ten przepis nie ma jeszcze kroków.", it: "Questa ricetta non ha ancora passaggi." })}</p>
+          <p className="ck-step">{ctx.t("This recipe has no steps yet.")}</p>
         )}
         <div className="ck-nav">
           <button type="button" className="ck-btn" disabled={at === 0} onClick={() => go(at - 1)}>
-            {ctx.t({ en: "Back", "pt-BR": "Voltar", de: "Zurück", es: "Atrás", pl: "Wstecz", it: "Indietro" })}
+            {ctx.t("Back")}
           </button>
           {last ? (
             <button type="button" className="ck-btn primary" onClick={() => void finish()}>
-              {ctx.t({ en: "Cooked it ✓", "pt-BR": "Pronto, fiz ✓", de: "Gekocht ✓", es: "¡Hecho! ✓", pl: "Ugotowane ✓", it: "Fatto ✓" })}
+              {ctx.t("Cooked it ✓")}
             </button>
           ) : (
             <button type="button" className="ck-btn primary" onClick={() => { toggle(at); go(at + 1); }}>
-              {ctx.t({ en: "Next step", "pt-BR": "Próximo passo", de: "Nächster Schritt", es: "Siguiente paso", pl: "Następny krok", it: "Passaggio successivo" })}
+              {ctx.t("Next step")}
             </button>
           )}
         </div>
@@ -341,11 +342,11 @@ function CookAlong(props: ViewProps) {
       <aside className="ck-side">
         <div className="ck-box">
           <h2>
-            {ctx.t({ en: "Ingredients", "pt-BR": "Ingredientes", de: "Zutaten", es: "Ingredientes", pl: "Składniki", it: "Ingredienti" })}
+            {ctx.t("Ingredients")}
             <span className="ck-serv">
-              <button type="button" aria-label={ctx.t({ en: "Fewer servings", "pt-BR": "Menos porções", de: "Weniger Portionen", es: "Menos raciones", pl: "Mniej porcji", it: "Meno porzioni" })} onClick={() => setServings(Math.max(1, serving - 1))}>−</button>
-              <span>{ctx.t({ en: "{n, plural, one {# serving} other {# servings}}", "pt-BR": "{n, plural, one {# porção} other {# porções}}", de: "{n, plural, one {# Portion} other {# Portionen}}", es: "{n, plural, one {# ración} other {# raciones}}", pl: "{n, plural, one {# porcja} few {# porcje} many {# porcji} other {# porcji}}", it: "{n, plural, one {# porzione} other {# porzioni}}" }, { n: serving })}</span>
-              <button type="button" aria-label={ctx.t({ en: "More servings", "pt-BR": "Mais porções", de: "Mehr Portionen", es: "Más raciones", pl: "Więcej porcji", it: "Più porzioni" })} onClick={() => setServings(serving + 1)}>+</button>
+              <button type="button" aria-label={ctx.t("Fewer servings")} onClick={() => setServings(Math.max(1, serving - 1))}>−</button>
+              <span>{ctx.t("{n, plural, one {# serving} other {# servings}}", { n: serving })}</span>
+              <button type="button" aria-label={ctx.t("More servings")} onClick={() => setServings(serving + 1)}>+</button>
             </span>
           </h2>
           <ul className="ck-ings">
@@ -358,7 +359,7 @@ function CookAlong(props: ViewProps) {
           </ul>
         </div>
         <div className="ck-box">
-          <h2>{ctx.t({ en: "All steps", "pt-BR": "Todos os passos", de: "Alle Schritte", es: "Todos los pasos", pl: "Wszystkie kroki", it: "Tutti i passaggi" })}</h2>
+          <h2>{ctx.t("All steps")}</h2>
           <ol className="ck-steps">
             {steps.map((s, i) => (
               <li key={i} data-done={done.has(i)} data-on={i === at}>
@@ -402,7 +403,7 @@ function unitOf(u: string | null | undefined): string {
 async function captureRecipe(ctx: Ctx, how: "photo" | "paste"): Promise<void> {
   const ai = ctx.caps.ai;
   if (!ai) {
-    ctx.ui.toast(ctx.t({ en: "AI isn't available here. Type the recipe in instead.", "pt-BR": "A IA não está disponível aqui. Digite a receita.", de: "KI ist hier nicht verfügbar. Tipp das Rezept ein.", es: "La IA no está disponible aquí. Escribe la receta.", pl: "AI nie jest tu dostępne. Wpisz przepis ręcznie.", it: "L'IA non è disponibile qui. Scrivi la ricetta a mano." }));
+    ctx.ui.toast(ctx.t("AI isn't available here. Type the recipe in instead."));
     return;
   }
   let source: { image?: AiImage; text?: string } = {};
@@ -411,11 +412,11 @@ async function captureRecipe(ctx: Ctx, how: "photo" | "paste"): Promise<void> {
     if (!photo) return;
     source = { image: photo };
   } else {
-    const text = await ctx.ui.prompt(ctx.t({ en: "Paste the recipe: from a website, a message, a caption", "pt-BR": "Cole a receita: de um site, uma mensagem, uma legenda", de: "Füge das Rezept ein: von einer Website, einer Nachricht, einer Bildunterschrift", es: "Pega la receta: de una web, un mensaje, un pie de foto", pl: "Wklej przepis: ze strony, wiadomości, podpisu", it: "Incolla la ricetta: da un sito, un messaggio, una didascalia" }));
+    const text = await ctx.ui.prompt(ctx.t("Paste the recipe: from a website, a message, a caption"));
     if (!text?.trim()) return;
     source = { text };
   }
-  const bar = ctx.ui.progress(ctx.t({ en: "Reading the recipe…", "pt-BR": "Lendo a receita…", de: "Rezept wird gelesen…", es: "Leyendo la receta…", pl: "Czytam przepis…", it: "Leggo la ricetta…" }));
+  const bar = ctx.ui.progress(ctx.t("Reading the recipe…"));
   let read;
   try {
     read = await ai.extract({
@@ -428,13 +429,13 @@ async function captureRecipe(ctx: Ctx, how: "photo" | "paste"): Promise<void> {
   }
   // Nothing is saved until the person has looked at it.
   const checked = await ctx.ui.form<{ name: string; servings: number }>({
-    title: ctx.t({ en: "AI's reading — check it", "pt-BR": "O que a IA leu — confira", de: "Was die KI gelesen hat — prüf es", es: "Lo que leyó la IA — revísalo", pl: "Co odczytało AI — sprawdź", it: "Cosa ha letto l'IA — controlla" }),
+    title: ctx.t("AI's reading — check it"),
     fields: {
-      name: { type: "text", required: true, label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" } },
-      servings: { type: "number", min: 1, integer: true, label: { en: "Servings", "pt-BR": "Porções", de: "Portionen", es: "Raciones", pl: "Porcje", it: "Porzioni" } },
+      name: { type: "text", required: true, label: ctx.t("Name") },
+      servings: { type: "number", min: 1, integer: true, label: ctx.t("Servings") },
     },
     initial: { name: read.title, servings: read.servings ?? 2 },
-    submit: ctx.t({ en: "Save recipe", "pt-BR": "Salvar receita", de: "Rezept speichern", es: "Guardar receta", pl: "Zapisz przepis", it: "Salva ricetta" }),
+    submit: ctx.t("Save recipe"),
   });
   if (!checked) return;
   // Each ingredient line becomes one of your ingredients: an existing one by name, else a new one.
@@ -461,23 +462,23 @@ async function captureRecipe(ctx: Ctx, how: "photo" | "paste"): Promise<void> {
 /** The page's one big button: three ways in, the AI two first. */
 async function addRecipe(ctx: Ctx): Promise<void> {
   const how = await ctx.ui.sheet({
-    title: { en: "Add a recipe", "pt-BR": "Adicionar receita", de: "Rezept hinzufügen", es: "Añadir receta", pl: "Dodaj przepis", it: "Aggiungi ricetta" },
+    title: ctx.t("Add a recipe"),
     items: [
-      { id: "photo", icon: "📷", label: { en: "From a photo", "pt-BR": "De uma foto", de: "Aus einem Foto", es: "Desde una foto", pl: "Ze zdjęcia", it: "Da una foto" }, detail: { en: "A cookbook page or a screenshot", "pt-BR": "Uma página de livro ou uma captura de tela", de: "Eine Kochbuchseite oder ein Screenshot", es: "Una página de un libro o una captura", pl: "Strona z książki lub zrzut ekranu", it: "Una pagina di ricettario o uno screenshot" } },
-      { id: "paste", icon: "📋", label: { en: "Paste the text", "pt-BR": "Colar o texto", de: "Text einfügen", es: "Pegar el texto", pl: "Wklej tekst", it: "Incolla il testo" }, detail: { en: "From a website, a message, a caption", "pt-BR": "De um site, uma mensagem, uma legenda", de: "Von einer Website, einer Nachricht, einer Bildunterschrift", es: "De una web, un mensaje, un pie de foto", pl: "Ze strony, wiadomości, podpisu", it: "Da un sito, un messaggio, una didascalia" } },
-      { id: "type", icon: "✏️", label: { en: "Type it in", "pt-BR": "Digitar", de: "Selbst eintippen", es: "Escribirla", pl: "Wpisz ręcznie", it: "Scrivila tu" } },
+      { id: "photo", icon: "📷", label: ctx.t("From a photo"), detail: ctx.t("A cookbook page or a screenshot") },
+      { id: "paste", icon: "📋", label: ctx.t("Paste the text"), detail: ctx.t("From a website, a message, a caption") },
+      { id: "type", icon: "✏️", label: ctx.t("Type it in") },
     ],
   });
   if (how === "photo" || how === "paste") return captureRecipe(ctx, how);
   if (how !== "type") return;
   const typed = await ctx.ui.form<{ name: string; servings: number }>({
-    title: { en: "New recipe", "pt-BR": "Nova receita", de: "Neues Rezept", es: "Receta nueva", pl: "Nowy przepis", it: "Nuova ricetta" },
+    title: ctx.t("New recipe"),
     fields: {
-      name: { type: "text", required: true, placeholder: "Shakshuka", label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" } },
-      servings: { type: "number", min: 1, integer: true, default: 2, label: { en: "Servings", "pt-BR": "Porções", de: "Portionen", es: "Raciones", pl: "Porcje", it: "Porzioni" } },
+      name: { type: "text", required: true, placeholder: "Shakshuka", label: ctx.t("Name") },
+      servings: { type: "number", min: 1, integer: true, default: 2, label: ctx.t("Servings") },
     },
     initial: { servings: 2 },
-    submit: { en: "Add recipe", "pt-BR": "Adicionar receita", de: "Rezept hinzufügen", es: "Añadir receta", pl: "Dodaj przepis", it: "Aggiungi ricetta" },
+    submit: ctx.t("Add recipe"),
   });
   if (!typed) return;
   const recipe = await ctx.create("recipe", { name: typed.name, servings: typed.servings ?? 2, status: "want to try" });
@@ -493,14 +494,14 @@ async function putAway(ctx: Ctx): Promise<void> {
   }
   ctx.ui.toast(
     bought.length
-      ? ctx.t({ en: "{n, plural, one {# thing} other {# things}} put away in the pantry", "pt-BR": "{n, plural, one {# item guardado} other {# itens guardados}} na despensa", de: "{n, plural, one {# Sache} other {# Sachen}} im Vorrat verstaut", es: "{n, plural, one {# cosa guardada} other {# cosas guardadas}} en la despensa", pl: "{n, plural, one {# rzecz odłożona} few {# rzeczy odłożone} many {# rzeczy odłożonych} other {# rzeczy odłożonej}} do spiżarni", it: "{n, plural, one {# cosa messa} other {# cose messe}} in dispensa" }, { n: bought.length })
-      : ctx.t({ en: "Tick what you bought first.", "pt-BR": "Marque primeiro o que você comprou.", de: "Hak erst ab, was du gekauft hast.", es: "Marca primero lo que compraste.", pl: "Najpierw zaznacz, co kupiłeś.", it: "Prima spunta quello che hai comprato." }),
+      ? ctx.t("{n, plural, one {# thing} other {# things}} put away in the pantry", { n: bought.length })
+      : ctx.t("Tick what you bought first."),
   );
 }
 
 export default defineApp({
   id: "recipes",
-  name: { en: "Recipes", "pt-BR": "Receitas", de: "Rezepte", es: "Recetas", pl: "Przepisy", it: "Ricette" },
+  name: "Recipes",
   icon: "🍳",
   version: "2.0.0",
   schemaVersion: 1,
@@ -513,7 +514,7 @@ export default defineApp({
   // Adding a recipe is rare next to choosing and cooking it: a quiet button beside the cookbook's
   // search, never a floating one. An ingredient is added where the pantry is — its page's own button.
   quickActions: [
-    { id: "add-ingredient", label: { en: "Add: Ingredient", "pt-BR": "Adicionar: Ingrediente", de: "Hinzufügen: Zutat", es: "Añadir: Ingrediente", pl: "Dodaj: Składnik", it: "Aggiungi: Ingrediente" }, icon: "🥕", entity: "ingredient", mode: "form" },
+    { id: "add-ingredient", label: "Add: Ingredient", icon: "🥕", entity: "ingredient", mode: "form" },
   ],
   category: "everyday",
   // The launcher tile (docs/04 §Tile): tonight's dinner when the week has one, else what to cook next
@@ -528,13 +529,13 @@ export default defineApp({
     if (!next) return {};
     return {
       title: tonight
-        ? ctx.t({ en: "Tonight: {name}", "pt-BR": "Hoje: {name}", de: "Heute: {name}", es: "Esta noche: {name}", pl: "Dziś: {name}", it: "Stasera: {name}" }, { name: String(next.name) })
+        ? ctx.t("Tonight: {name}", { name: String(next.name) })
         : String(next.name),
       lines: [
         next.lastCookedAt
-          ? ctx.t({ en: "Last cooked {when}", "pt-BR": "Feita pela última vez {when}", de: "Zuletzt gekocht {when}", es: "Cocinada por última vez {when}", pl: "Ostatnio {when}", it: "Cucinata l'ultima volta {when}" }, { when: ctx.format.relative(new Date(String(next.lastCookedAt)), { unit: "day" }) })
-          : ctx.t({ en: "Not cooked yet", "pt-BR": "Ainda não foi feita", de: "Noch nie gekocht", es: "Aún sin cocinar", pl: "Jeszcze nie gotowane", it: "Mai cucinata" }),
-        ctx.t({ en: "{n, plural, one {# recipe} other {# recipes}}", "pt-BR": "{n, plural, one {# receita} other {# receitas}}", de: "{n, plural, one {# Rezept} other {# Rezepte}}", es: "{n, plural, one {# receta} other {# recetas}}", pl: "{n, plural, one {# przepis} few {# przepisy} many {# przepisów} other {# przepisu}}", it: "{n, plural, one {# ricetta} other {# ricette}}" }, { n: recipes.length }),
+          ? ctx.t("Last cooked {when}", { when: ctx.format.relative(new Date(String(next.lastCookedAt)), { unit: "day" }) })
+          : ctx.t("Not cooked yet"),
+        ctx.t("{n, plural, one {# recipe} other {# recipes}}", { n: recipes.length }),
       ],
       ...(next.photo ? { image: next.photo as never } : {}),
     };
@@ -542,107 +543,86 @@ export default defineApp({
 
   entities: {
     ingredient: {
-      label: { en: "Ingredient", "pt-BR": "Ingrediente", de: "Zutat", es: "Ingrediente", pl: "Składnik", it: "Ingrediente" },
+      label: "Ingredient",
       icon: "🥕",
       displayField: "name",
       fields: {
-        name: { type: "text", required: true, label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" } },
+        name: { type: "text", required: true, label: "Name" },
         // ingredients are a real data model — not just a picker option
         // Three options, so all three show as a row of buttons; the colours mean something here.
         diet: {
           type: "enum",
           options: ["vegan", "vegetarian", "animal-based"],
-          label: { en: "Diet", "pt-BR": "Dieta", de: "Ernährung", es: "Dieta", pl: "Dieta", it: "Dieta" },
+          label: "Diet",
           colors: { vegan: "green", vegetarian: "teal", "animal-based": "red" },
           labels: {
-            vegan: { en: "vegan", "pt-BR": "vegano", de: "vegan", es: "vegano", pl: "wegański", it: "vegano" },
-            vegetarian: { en: "vegetarian", "pt-BR": "vegetariano", de: "vegetarisch", es: "vegetariano", pl: "wegetariański", it: "vegetariano" },
-            "animal-based": { en: "animal-based", "pt-BR": "de origem animal", de: "tierisch", es: "de origen animal", pl: "odzwierzęcy", it: "di origine animale" },
+            vegan: { text: "vegan", context: "diet vegan" },
+            vegetarian: { text: "vegetarian", context: "diet vegetarian" },
+            "animal-based": "animal-based",
           },
         },
         category: {
           type: "enum",
-          label: { en: "Category", "pt-BR": "Categoria", de: "Kategorie", es: "Categoría", pl: "Kategoria", it: "Categoria" },
+          label: "Category",
           options: ["vegetable", "fruit", "grain", "dairy", "protein", "spice", "fat", "other"],
           labels: {
-            vegetable: { en: "vegetable", "pt-BR": "verdura", de: "Gemüse", es: "verdura", pl: "warzywo", it: "verdura" },
-            fruit: { en: "fruit", "pt-BR": "fruta", de: "Obst", es: "fruta", pl: "owoc", it: "frutta" },
-            grain: { en: "grain", "pt-BR": "cereal", de: "Getreide", es: "cereal", pl: "zboże", it: "cereale" },
-            dairy: { en: "dairy", "pt-BR": "laticínio", de: "Milchprodukt", es: "lácteo", pl: "nabiał", it: "latticino" },
-            protein: { en: "protein", "pt-BR": "proteína", de: "Eiweiß", es: "proteína", pl: "białko", it: "proteina" },
-            spice: { en: "spice", "pt-BR": "tempero", de: "Gewürz", es: "especia", pl: "przyprawa", it: "spezia" },
-            fat: { en: "fat", "pt-BR": "gordura", de: "Fett", es: "grasa", pl: "tłuszcz", it: "grasso" },
-            other: { en: "other", "pt-BR": "outro", de: "Sonstiges", es: "otro", pl: "inne", it: "altro" },
+            vegetable: "vegetable",
+            fruit: "fruit",
+            grain: "grain",
+            dairy: "dairy",
+            protein: "protein",
+            spice: "spice",
+            fat: "fat",
+            other: "other",
           },
         },
         seasons: {
           type: "tags",
-          label: { en: "Seasons", "pt-BR": "Estações", de: "Jahreszeiten", es: "Estaciones", pl: "Pory roku", it: "Stagioni" },
+          label: "Seasons",
           options: ["spring", "summer", "autumn", "winter"],
           labels: {
-            spring: { en: "spring", "pt-BR": "primavera", de: "Frühling", es: "primavera", pl: "wiosna", it: "primavera" },
-            summer: { en: "summer", "pt-BR": "verão", de: "Sommer", es: "verano", pl: "lato", it: "estate" },
-            autumn: { en: "autumn", "pt-BR": "outono", de: "Herbst", es: "otoño", pl: "jesień", it: "autunno" },
-            winter: { en: "winter", "pt-BR": "inverno", de: "Winter", es: "invierno", pl: "zima", it: "inverno" },
+            spring: "spring",
+            summer: "summer",
+            autumn: "autumn",
+            winter: "winter",
           },
         },
         pricePerKg: {
           type: "number",
           unit: "$/kg",
           min: 0,
-          label: { en: "Price per kg", "pt-BR": "Preço por kg", de: "Preis pro kg", es: "Precio por kg", pl: "Cena za kg", it: "Prezzo al kg" },
+          label: "Price per kg",
         },
         caloriesPer100: {
           type: "number",
           unit: "kcal",
           min: 0,
-          label: {
-            en: "Calories per 100 g",
-            "pt-BR": "Calorias por 100 g",
-            de: "Kalorien pro 100 g",
-            es: "Calorías por 100 g",
-            pl: "Kalorie na 100 g",
-            it: "Calorie per 100 g",
-          },
+          label: "Calories per 100 g",
         },
         proteinPer100: {
           type: "number",
           unit: "g",
           min: 0,
-          label: {
-            en: "Protein per 100 g",
-            "pt-BR": "Proteína por 100 g",
-            de: "Eiweiß pro 100 g",
-            es: "Proteína por 100 g",
-            pl: "Białko na 100 g",
-            it: "Proteine per 100 g",
-          },
+          label: "Protein per 100 g",
         },
         fatPer100: {
           type: "number",
           unit: "g",
           min: 0,
-          label: { en: "Fat per 100 g", "pt-BR": "Gordura por 100 g", de: "Fett pro 100 g", es: "Grasa por 100 g", pl: "Tłuszcz na 100 g", it: "Grassi per 100 g" },
+          label: "Fat per 100 g",
         },
         carbsPer100: {
           type: "number",
           unit: "g",
           min: 0,
-          label: {
-            en: "Carbs per 100 g",
-            "pt-BR": "Carboidratos por 100 g",
-            de: "Kohlenhydrate pro 100 g",
-            es: "Carbohidratos por 100 g",
-            pl: "Węglowodany na 100 g",
-            it: "Carboidrati per 100 g",
-          },
+          label: "Carbs per 100 g",
         },
         inStock: {
           type: "boolean",
           default: false,
-          label: { en: "In stock", "pt-BR": "Em estoque", de: "Vorrätig", es: "En casa", pl: "Na stanie", it: "In dispensa" },
+          label: "In stock",
         },
-        notes: { type: "text", multiline: true, label: { en: "Notes", "pt-BR": "Anotações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" } },
+        notes: { type: "text", multiline: true, label: "Notes" },
       },
       computed: {
         // in-season if no seasons listed (year-round) or the current season is included
@@ -656,25 +636,18 @@ export default defineApp({
       },
       actions: {
         toggleStock: {
-          label: {
-            en: "Have it / used up",
-            "pt-BR": "Tenho / acabou",
-            de: "Vorrat umschalten",
-            es: "Tengo / se acabó",
-            pl: "Mam / skończyło się",
-            it: "Ce l'ho / finito",
-          },
+          label: "Have it / used up",
           run: async (i, ctx) => {
             await ctx.patch("ingredient", i.id, { inStock: !i.inStock });
             // The ingredient's name is a record: the app's words go around it.
             ctx.ui.toast(
               i.inStock
                 ? ctx.t(
-                    { en: "Used up {name}", "pt-BR": "Acabou: {name}", de: "{name} aufgebraucht", es: "Se acabó: {name}", pl: "Skończyło się: {name}", it: "Finito: {name}" },
+                    "Used up {name}",
                     { name: String(i.name) },
                   )
                 : ctx.t(
-                    { en: "{name} in stock", "pt-BR": "{name} em estoque", de: "{name} vorrätig", es: "{name} en casa", pl: "{name}: na stanie", it: "{name} in dispensa" },
+                    "{name} in stock",
                     { name: String(i.name) },
                   ),
             );
@@ -684,36 +657,36 @@ export default defineApp({
     },
 
     recipe: {
-      label: { en: "Recipe", "pt-BR": "Receita", de: "Rezept", es: "Receta", pl: "Przepis", it: "Ricetta" },
+      label: "Recipe",
       icon: "🍳",
       displayField: "name",
       fields: {
-        name: { type: "text", required: true, placeholder: "Shakshuka", label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" } },
+        name: { type: "text", required: true, placeholder: "Shakshuka", label: "Name" },
         // Where the recipe stands with you; the Cookbook board's columns (#107).
         status: {
           type: "enum",
-          label: { en: "Status", "pt-BR": "Status", de: "Status", es: "Estado", pl: "Status", it: "Stato" },
+          label: "Status",
           options: ["want to try", "tried", "keeper"],
           default: "want to try",
           colors: { "want to try": "yellow", tried: "teal", keeper: "green" },
           labels: {
-            "want to try": { en: "want to try", "pt-BR": "quero provar", de: "will ich probieren", es: "quiero probarla", pl: "do wypróbowania", it: "da provare" },
-            tried: { en: "tried", "pt-BR": "já provei", de: "probiert", es: "probada", pl: "wypróbowany", it: "provata" },
-            keeper: { en: "keeper", "pt-BR": "favorita", de: "Lieblingsrezept", es: "favorita", pl: "ulubiony", it: "preferita" },
+            "want to try": "want to try",
+            tried: "tried",
+            keeper: "keeper",
           },
         },
-        photo: { type: "media", accept: "image", label: { en: "Photo", "pt-BR": "Foto", de: "Foto", es: "Foto", pl: "Zdjęcie", it: "Foto" } },
+        photo: { type: "media", accept: "image", label: "Photo" },
         tags: {
           type: "tags",
-          label: { en: "Tags", "pt-BR": "Etiquetas", de: "Schlagwörter", es: "Etiquetas", pl: "Tagi", it: "Tag" },
+          label: "Tags",
           options: ["breakfast", "lunch", "dinner", "snack", "vegetarian", "vegan"],
           labels: {
-            breakfast: { en: "breakfast", "pt-BR": "café da manhã", de: "Frühstück", es: "desayuno", pl: "śniadanie", it: "colazione" },
-            lunch: { en: "lunch", "pt-BR": "almoço", de: "Mittagessen", es: "comida", pl: "obiad", it: "pranzo" },
-            dinner: { en: "dinner", "pt-BR": "jantar", de: "Abendessen", es: "cena", pl: "kolacja", it: "cena" },
-            snack: { en: "snack", "pt-BR": "lanche", de: "Snack", es: "tentempié", pl: "przekąska", it: "spuntino" },
-            vegetarian: { en: "vegetarian", "pt-BR": "vegetariana", de: "vegetarisch", es: "vegetariana", pl: "wegetariańskie", it: "vegetariana" },
-            vegan: { en: "vegan", "pt-BR": "vegana", de: "vegan", es: "vegana", pl: "wegańskie", it: "vegana" },
+            breakfast: "breakfast",
+            lunch: "lunch",
+            dinner: "dinner",
+            snack: "snack",
+            vegetarian: { text: "vegetarian", context: "tags vegetarian" },
+            vegan: { text: "vegan", context: "tags vegan" },
           },
         },
         servings: {
@@ -721,19 +694,12 @@ export default defineApp({
           default: 2,
           min: 1,
           integer: true,
-          label: { en: "Servings", "pt-BR": "Porções", de: "Portionen", es: "Raciones", pl: "Porcje", it: "Porzioni" },
-          help: {
-            en: "The per-serving figures divide by this",
-            "pt-BR": "Os valores por porção são divididos por este número",
-            de: "Die Werte pro Portion werden dadurch geteilt",
-            es: "Las cifras por ración se dividen entre este número",
-            pl: "Wartości na porcję dzieli się przez tę liczbę",
-            it: "I valori per porzione si dividono per questo numero",
-          },
+          label: "Servings",
+          help: "The per-serving figures divide by this",
         },
         ingredients: {
           type: "list",
-          label: { en: "Ingredients", "pt-BR": "Ingredientes", de: "Zutaten", es: "Ingredientes", pl: "Składniki", it: "Ingredienti" },
+          label: "Ingredients",
           // Read as a recipe card reads: "350 g banana", one per line.
           lines: ["quantity", "unit", "ingredient"],
           of: {
@@ -741,25 +707,25 @@ export default defineApp({
               type: "relation",
               to: "ingredient",
               required: true,
-              label: { en: "Ingredient", "pt-BR": "Ingrediente", de: "Zutat", es: "Ingrediente", pl: "Składnik", it: "Ingrediente" },
+              label: "Ingredient",
             },
             quantity: {
               type: "number",
               min: 0,
               required: true,
-              label: { en: "Quantity", "pt-BR": "Quantidade", de: "Menge", es: "Cantidad", pl: "Ilość", it: "Quantità" },
+              label: "Quantity",
             },
             unit: {
               type: "enum",
-              label: { en: "Unit", "pt-BR": "Unidade", de: "Einheit", es: "Unidad", pl: "Jednostka", it: "Unità" },
+              label: "Unit",
               options: ["g", "ml", "tbsp", "tsp", "cup", "piece"],
               labels: {
                 g: "g", // the same in every language
                 ml: "ml",
-                tbsp: { en: "tbsp", "pt-BR": "colher de sopa", de: "EL", es: "cucharada", pl: "łyżka", it: "cucchiaio" },
-                tsp: { en: "tsp", "pt-BR": "colher de chá", de: "TL", es: "cucharadita", pl: "łyżeczka", it: "cucchiaino" },
-                cup: { en: "cup", "pt-BR": "xícara", de: "Tasse", es: "taza", pl: "szklanka", it: "tazza" },
-                piece: { en: "piece", "pt-BR": "unidade", de: "Stück", es: "unidad", pl: "sztuka", it: "pezzo" },
+                tbsp: "tbsp",
+                tsp: "tsp",
+                cup: "cup",
+                piece: "piece",
               },
             },
           },
@@ -767,47 +733,40 @@ export default defineApp({
         steps: {
           type: "list",
           ordered: true,
-          label: { en: "Steps", "pt-BR": "Passos", de: "Schritte", es: "Pasos", pl: "Kroki", it: "Passaggi" },
+          label: "Steps",
           of: {
-            text: { type: "text", multiline: true, required: true, label: { en: "Text", "pt-BR": "Texto", de: "Text", es: "Texto", pl: "Opis", it: "Testo" } },
+            text: { type: "text", multiline: true, required: true, label: "Text" },
             // A duration, not a bare number: the form asks in minutes and the card reads "8 min"
             // rather than "Duration Sec: 480" (#99, #104). The stored value is still seconds.
-            durationSec: { type: "duration", unit: "s", label: { en: "Time", "pt-BR": "Tempo", de: "Zeit", es: "Tiempo", pl: "Czas", it: "Tempo" } },
+            durationSec: { type: "duration", unit: "s", label: "Time" },
           },
         },
-        lastCookedAt: { type: "datetime", hidden: true, label: { en: "Last cooked", "pt-BR": "Feita pela última vez", de: "Zuletzt gekocht", es: "Cocinada por última vez", pl: "Ostatnio gotowane", it: "Cucinata l'ultima volta" } },
-        timesCooked: { type: "number", default: 0, integer: true, hidden: true, label: { en: "Times cooked", "pt-BR": "Vezes feitas", de: "Mal gekocht", es: "Veces cocinada", pl: "Razy ugotowane", it: "Volte cucinata" } },
+        lastCookedAt: { type: "datetime", hidden: true, label: "Last cooked" },
+        timesCooked: { type: "number", default: 0, integer: true, hidden: true, label: "Times cooked" },
         notes: {
           type: "text",
           multiline: true,
-          label: { en: "Your notes", "pt-BR": "Suas anotações", de: "Deine Notizen", es: "Tus notas", pl: "Twoje notatki", it: "Le tue note" },
-          placeholder: { en: "Less salt next time. Ana loved it.", "pt-BR": "Menos sal da próxima vez. A Ana adorou.", de: "Nächstes Mal weniger Salz. Ana fand es super.", es: "Menos sal la próxima vez. A Ana le encantó.", pl: "Następnym razem mniej soli. Ani bardzo smakowało.", it: "La prossima volta meno sale. Ad Ana è piaciuta tanto." },
+          label: "Your notes",
+          placeholder: "Less salt next time. Ana loved it.",
         },
-        source: { type: "url", label: { en: "Where it's from", "pt-BR": "De onde veio", de: "Woher es stammt", es: "De dónde viene", pl: "Skąd pochodzi", it: "Da dove viene" } },
+        source: { type: "url", label: "Where it's from" },
       },
       // One arrangement for the form and the detail page (#100). The form shows the fields of each
       // group it can edit; the detail page shows the computed values too.
       groups: [
-        { title: { en: "Overview", "pt-BR": "Visão geral", de: "Überblick", es: "Resumen", pl: "Przegląd", it: "Panoramica" }, fields: ["name", "status", "photo", "tags"] },
+        { title: "Overview", fields: ["name", "status", "photo", "tags"] },
         // Folds on the record page, remembered on this device, with the count in its heading (#108).
         {
-          title: { en: "Ingredients", "pt-BR": "Ingredientes", de: "Zutaten", es: "Ingredientes", pl: "Składniki", it: "Ingredienti" },
+          title: "Ingredients",
           fields: ["ingredients"],
           collapsible: true,
         },
-        { title: { en: "Steps", "pt-BR": "Passos", de: "Schritte", es: "Pasos", pl: "Kroki", it: "Passaggi" }, fields: ["steps"], collapsed: true },
+        { title: "Steps", fields: ["steps"], collapsed: true },
         {
-          title: {
-            en: "Nutrition & cost",
-            "pt-BR": "Nutrição e custo",
-            de: "Nährwerte & Kosten",
-            es: "Nutrición y coste",
-            pl: "Wartości odżywcze i koszt",
-            it: "Nutrizione e costo",
-          },
+          title: "Nutrition & cost",
           fields: ["servings", "caloriesPerServing", "proteinPerServing", "diet", "estimatedCost", "missingIngredients"],
         },
-        { title: { en: "Your notes", "pt-BR": "Suas anotações", de: "Deine Notizen", es: "Tus notas", pl: "Twoje notatki", it: "Le tue note" }, fields: ["notes", "source"] },
+        { title: "Your notes", fields: ["notes", "source"] },
       ],
 
       // ---- logic: ordinary functions; relations on `r` are pre-resolved ----
@@ -822,15 +781,15 @@ export default defineApp({
           ingredientRows(r).reduce((s, i) => s + (i.ingredient.carbsPer100 ?? 0) * i.quantity / 100, 0),
         // A computed a page shows under a heading says what it is called, in every language (#310).
         caloriesPerServing: {
-          label: { en: "Calories per serving", "pt-BR": "Calorias por porção", de: "Kalorien pro Portion", es: "Calorías por ración", pl: "Kalorie na porcję", it: "Calorie per porzione" },
+          label: "Calories per serving",
           value: (r) => r.calories / Math.max(r.servings, 1),
         },
         proteinPerServing: {
-          label: { en: "Protein per serving", "pt-BR": "Proteína por porção", de: "Eiweiß pro Portion", es: "Proteína por ración", pl: "Białko na porcję", it: "Proteine per porzione" },
+          label: "Protein per serving",
           value: (r) => r.protein / Math.max(r.servings, 1),
         },
         totalMinutes: {
-          label: { en: "Time (min)", "pt-BR": "Tempo (min)", de: "Zeit (Min.)", es: "Tiempo (min)", pl: "Czas (min)", it: "Tempo (min)" },
+          label: "Time (min)",
           value: (r) => totalMinutes(r),
         },
         // The cover's chips (DetailView.facts): a glyph for a label, the value in words.
@@ -839,18 +798,18 @@ export default defineApp({
         serves: {
           label: "🍽",
           value: (r, ctx) =>
-            ctx.t({ en: "{n, plural, one {# serving} other {# servings}}", "pt-BR": "{n, plural, one {# porção} other {# porções}}", de: "{n, plural, one {# Portion} other {# Portionen}}", es: "{n, plural, one {# ración} other {# raciones}}", pl: "{n, plural, one {# porcja} few {# porcje} many {# porcji} other {# porcji}}", it: "{n, plural, one {# porzione} other {# porzioni}}" }, { n: Math.max(Number(r.servings) || 1, 1) }),
+            ctx.t("{n, plural, one {# serving} other {# servings}}", { n: Math.max(Number(r.servings) || 1, 1) }),
         },
         difficulty: (r) => scoreDifficulty(r), // "easy" | "medium" | "hard"
         // derived from the ingredient models — the whole point of relations being resolved
         diet: {
-          label: { en: "Diet", "pt-BR": "Dieta", de: "Ernährung", es: "Dieta", pl: "Dieta", it: "Dieta" },
+          label: "Diet",
           // What each value reads as on a badge or the detail page; the value stays the key a filter compares.
           labels: {
-            vegan: { en: "vegan", "pt-BR": "vegana", de: "vegan", es: "vegana", pl: "wegański", it: "vegana" },
-            vegetarian: { en: "vegetarian", "pt-BR": "vegetariana", de: "vegetarisch", es: "vegetariana", pl: "wegetariański", it: "vegetariana" },
-            "animal-based": { en: "animal-based", "pt-BR": "de origem animal", de: "tierisch", es: "de origen animal", pl: "odzwierzęcy", it: "di origine animale" },
-            unknown: { en: "unknown", "pt-BR": "desconhecida", de: "unbekannt", es: "desconocida", pl: "nieznany", it: "sconosciuta" },
+            vegan: "vegan",
+            vegetarian: "vegetarian",
+            "animal-based": "animal-based",
+            unknown: "unknown",
           },
           value: (r) => {
             const diets = ingredientRows(r).map((i: any) => i.ingredient.diet).filter(Boolean);
@@ -861,12 +820,12 @@ export default defineApp({
           },
         },
         estimatedCost: {
-          label: { en: "Estimated cost", "pt-BR": "Custo estimado", de: "Geschätzte Kosten", es: "Coste estimado", pl: "Szacowany koszt", it: "Costo stimato" },
+          label: "Estimated cost",
           value: (r) => ingredientRows(r).reduce((s: number, i: any) => s + (i.ingredient.pricePerKg ?? 0) * (i.quantity / 1000), 0),
         },
         // which ingredients this recipe needs that aren't currently in stock
         missingIngredients: {
-          label: { en: "Missing ingredients", "pt-BR": "Ingredientes em falta", de: "Fehlende Zutaten", es: "Ingredientes que faltan", pl: "Brakujące składniki", it: "Ingredienti mancanti" },
+          label: "Missing ingredients",
           value: (r) => ingredientRows(r).filter((i: any) => !i.ingredient.inStock).map((i: any) => i.ingredient.name),
         },
         canCook: (r) => ingredientRows(r).length > 0 && ingredientRows(r).every((i: any) => i.ingredient.inStock),
@@ -874,7 +833,7 @@ export default defineApp({
 
       actions: {
         markCooked: {
-          label: { en: "Cooked it", "pt-BR": "Fiz esta", de: "Gekocht", es: "La cociné", pl: "Ugotowane", it: "Cucinata" },
+          label: "Cooked it",
           icon: "✓",
           description: "Record that this recipe was cooked today.",
           run: async (r, ctx) => {
@@ -886,45 +845,45 @@ export default defineApp({
             });
             ctx.ui.toast(
               ctx.t(
-                { en: "Nice — cooked {n}×", "pt-BR": "Boa — feita {n}×", de: "Super — {n}× gekocht", es: "Genial — cocinada {n}×", pl: "Super — ugotowane {n}×", it: "Ottimo — cucinata {n}×" },
+                "Nice — cooked {n}×",
                 { n: r.timesCooked ? r.timesCooked + 1 : 1 },
               ),
             );
           },
         },
         plan: {
-          label: { en: "Plan it", "pt-BR": "Planejar", de: "Einplanen", es: "Planificar", pl: "Zaplanuj", it: "Pianifica" },
+          label: "Plan it",
           icon: "📅",
           description: "Put this recipe on a day of the week's plan.",
           input: {
-            date: { type: "datetime", required: true, label: { en: "Day", "pt-BR": "Dia", de: "Tag", es: "Día", pl: "Dzień", it: "Giorno" } },
+            date: { type: "datetime", required: true, label: "Day" },
             slot: {
               type: "enum",
               options: ["breakfast", "lunch", "dinner"],
               default: "dinner",
-              label: { en: "Meal", "pt-BR": "Refeição", de: "Mahlzeit", es: "Comida", pl: "Posiłek", it: "Pasto" },
+              label: "Meal",
               labels: {
-                breakfast: { en: "breakfast", "pt-BR": "café da manhã", de: "Frühstück", es: "desayuno", pl: "śniadanie", it: "colazione" },
-                lunch: { en: "lunch", "pt-BR": "almoço", de: "Mittagessen", es: "comida", pl: "obiad", it: "pranzo" },
-                dinner: { en: "dinner", "pt-BR": "jantar", de: "Abendessen", es: "cena", pl: "kolacja", it: "cena" },
+                breakfast: "breakfast",
+                lunch: "lunch",
+                dinner: "dinner",
               },
             },
           },
           run: async (r, ctx, input) => {
             const { date, slot } = (input ?? {}) as { date?: Date | string; slot?: string };
             await ctx.create("meal", { recipe: r.id, date: date ? new Date(date) : ctx.today(), slot: slot ?? "dinner" });
-            ctx.ui.toast(ctx.t({ en: "On the plan: {name}", "pt-BR": "No plano: {name}", de: "Eingeplant: {name}", es: "En el plan: {name}", pl: "W planie: {name}", it: "Nel piano: {name}" }, { name: String(r.name) }));
+            ctx.ui.toast(ctx.t("On the plan: {name}", { name: String(r.name) }));
           },
         },
         shop: {
-          label: { en: "Add to shopping", "pt-BR": "Pôr na lista de compras", de: "Auf die Einkaufsliste", es: "A la lista de la compra", pl: "Do listy zakupów", it: "Alla lista della spesa" },
+          label: "Add to shopping",
           icon: "🛒",
           description: "Put this recipe's missing ingredients on the shopping list.",
           run: async (r, ctx) => {
             // What the pantry lacks, offered to pick from: untick what you have after all.
             const missing = ingredientRows(r).filter((i: any) => !i.ingredient.inStock);
             if (!missing.length) {
-              ctx.ui.toast(ctx.t({ en: "You have everything for this one.", "pt-BR": "Você já tem tudo para esta.", de: "Du hast schon alles dafür.", es: "Ya tienes todo para esta.", pl: "Masz już wszystko do tego przepisu.", it: "Hai già tutto per questa." }));
+              ctx.ui.toast(ctx.t("You have everything for this one."));
               return;
             }
             const picked = (await ctx.ui.pick(missing, { multi: true, label: (i: any) => `${i.ingredient.name} · ${i.quantity} ${i.unit ?? ""}`.trim() })) as any[] | null;
@@ -934,7 +893,7 @@ export default defineApp({
               if (already.has(i.ingredient.id)) continue;
               await ctx.create("buy", { name: i.ingredient.name, quantity: `${i.quantity} ${i.unit ?? ""}`.trim(), ingredient: i.ingredient.id, forRecipe: r.name, done: false });
             }
-            ctx.ui.toast(ctx.t({ en: "{n, plural, one {# thing} other {# things}} on the shopping list", "pt-BR": "{n, plural, one {# item} other {# itens}} na lista de compras", de: "{n, plural, one {# Sache} other {# Sachen}} auf der Einkaufsliste", es: "{n, plural, one {# cosa} other {# cosas}} en la lista de la compra", pl: "{n, plural, one {# rzecz} few {# rzeczy} many {# rzeczy} other {# rzeczy}} na liście zakupów", it: "{n, plural, one {# cosa} other {# cose}} nella lista della spesa" }, { n: picked.length }));
+            ctx.ui.toast(ctx.t("{n, plural, one {# thing} other {# things}} on the shopping list", { n: picked.length }));
           },
         },
       },
@@ -942,25 +901,25 @@ export default defineApp({
 
     // A meal on the week's plan: a recipe on a day.
     meal: {
-      label: { en: "Meal", "pt-BR": "Refeição", de: "Mahlzeit", es: "Comida", pl: "Posiłek", it: "Pasto" },
+      label: "Meal",
       icon: "📅",
       displayField: "title",
       fields: {
-        recipe: { type: "relation", to: "recipe", required: true, label: { en: "Recipe", "pt-BR": "Receita", de: "Rezept", es: "Receta", pl: "Przepis", it: "Ricetta" } },
-        date: { type: "datetime", required: true, label: { en: "Day", "pt-BR": "Dia", de: "Tag", es: "Día", pl: "Dzień", it: "Giorno" } },
+        recipe: { type: "relation", to: "recipe", required: true, label: "Recipe" },
+        date: { type: "datetime", required: true, label: "Day" },
         slot: {
           type: "enum",
           options: ["breakfast", "lunch", "dinner"],
           default: "dinner",
           colors: { breakfast: "yellow", lunch: "teal", dinner: "orange" },
-          label: { en: "Meal", "pt-BR": "Refeição", de: "Mahlzeit", es: "Comida", pl: "Posiłek", it: "Pasto" },
+          label: "Meal",
           labels: {
-            breakfast: { en: "breakfast", "pt-BR": "café da manhã", de: "Frühstück", es: "desayuno", pl: "śniadanie", it: "colazione" },
-            lunch: { en: "lunch", "pt-BR": "almoço", de: "Mittagessen", es: "comida", pl: "obiad", it: "pranzo" },
-            dinner: { en: "dinner", "pt-BR": "jantar", de: "Abendessen", es: "cena", pl: "kolacja", it: "cena" },
+            breakfast: "breakfast",
+            lunch: "lunch",
+            dinner: "dinner",
           },
         },
-        note: { type: "text", label: { en: "Note", "pt-BR": "Observação", de: "Notiz", es: "Nota", pl: "Notatka", it: "Nota" } },
+        note: { type: "text", label: "Note" },
       },
       computed: {
         title: (m) => String(m.recipe?.name ?? "—"),
@@ -969,7 +928,7 @@ export default defineApp({
       },
       actions: {
         cook: {
-          label: { en: "Cook", "pt-BR": "Cozinhar", de: "Kochen", es: "Cocinar", pl: "Gotuj", it: "Cucina" },
+          label: "Cook",
           icon: "🍳",
           run: async (m, ctx) => {
             if (m.recipe?.id) ctx.navigate("cook", { recipeId: m.recipe.id });
@@ -981,15 +940,15 @@ export default defineApp({
     // One thing on the shopping list. From a recipe it remembers the ingredient, so putting it away
     // marks that ingredient in stock — and "What can I cook?" grows.
     buy: {
-      label: { en: "Shopping item", "pt-BR": "Item de compra", de: "Einkauf", es: "Artículo", pl: "Produkt", it: "Articolo" },
+      label: "Shopping item",
       icon: "🛒",
       displayField: "name",
       fields: {
-        name: { type: "text", required: true, label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" } },
-        quantity: { type: "text", label: { en: "Quantity", "pt-BR": "Quantidade", de: "Menge", es: "Cantidad", pl: "Ilość", it: "Quantità" } },
-        done: { type: "boolean", default: false, label: { en: "Bought", "pt-BR": "Comprado", de: "Gekauft", es: "Comprado", pl: "Kupione", it: "Comprato" } },
-        ingredient: { type: "relation", to: "ingredient", label: { en: "Ingredient", "pt-BR": "Ingrediente", de: "Zutat", es: "Ingrediente", pl: "Składnik", it: "Ingrediente" } },
-        forRecipe: { type: "text", label: { en: "For", "pt-BR": "Para", de: "Für", es: "Para", pl: "Do", it: "Per" } },
+        name: { type: "text", required: true, label: "Name" },
+        quantity: { type: "text", label: "Quantity" },
+        done: { type: "boolean", default: false, label: "Bought" },
+        ingredient: { type: "relation", to: "ingredient", label: "Ingredient" },
+        forRecipe: { type: "text", label: "For" },
       },
     },
   },
@@ -1002,9 +961,9 @@ export default defineApp({
       // are a photo or pasted text that AI reads for you, or typing it.
       id: "all",
       icon: "🍳",
-      title: { en: "Recipes", "pt-BR": "Receitas", de: "Rezepte", es: "Recetas", pl: "Przepisy", it: "Ricette" },
-      description: { en: "Your cookbook, keepers first.", "pt-BR": "Seu livro de receitas, as favoritas primeiro.", de: "Dein Kochbuch, Lieblingsrezepte zuerst.", es: "Tu recetario, las favoritas primero.", pl: "Twoja książka kucharska, ulubione na początku.", it: "Il tuo ricettario, le preferite prima." },
-      actions: [{ label: { en: "Add a recipe", "pt-BR": "Adicionar receita", de: "Rezept hinzufügen", es: "Añadir receta", pl: "Dodaj przepis", it: "Aggiungi ricetta" }, icon: "＋", run: addRecipe }],
+      title: "Recipes",
+      description: "Your cookbook, keepers first.",
+      actions: [{ label: "Add a recipe", icon: "＋", run: addRecipe }],
       // It is the phone's "+" in the top bar: there when wanted, never in the way.
       add: 0,
       view: {
@@ -1014,14 +973,14 @@ export default defineApp({
         // (#216) — here the name or any tag.
         filters: [
           {
-            label: { en: "Search", "pt-BR": "Buscar", de: "Suche", es: "Buscar", pl: "Szukaj", it: "Cerca" },
+            label: "Search",
             param: "q",
             type: "text",
-            placeholder: { en: "Search recipes", "pt-BR": "Buscar receitas", de: "Rezepte suchen", es: "Buscar recetas", pl: "Szukaj przepisów", it: "Cerca ricette" },
+            placeholder: "Search recipes",
           },
-          { label: { en: "Can cook now", "pt-BR": "Dá para fazer agora", de: "Jetzt kochbar", es: "Puedo hacerla ya", pl: "Mogę ugotować teraz", it: "Si può fare ora" }, param: "ready", type: "boolean" },
-          { label: { en: "Under 30 min", "pt-BR": "Menos de 30 min", de: "Unter 30 Min.", es: "Menos de 30 min", pl: "Poniżej 30 min", it: "Meno di 30 min" }, param: "quick", type: "boolean" },
-          { label: { en: "Meal", "pt-BR": "Refeição", de: "Mahlzeit", es: "Comida", pl: "Posiłek", it: "Pasto" }, param: "tag", from: "tags", multi: true },
+          { label: "Can cook now", param: "ready", type: "boolean" },
+          { label: "Under 30 min", param: "quick", type: "boolean" },
+          { label: "Meal", param: "tag", from: "tags", multi: true },
         ],
         filter: (r, ctx) => {
           const { q, ready, quick, tag } = ctx.params as { q?: string; ready?: boolean; quick?: boolean; tag?: string[] };
@@ -1038,10 +997,10 @@ export default defineApp({
         // Under a heading per status, in the order the rows are sorted (a function's groups keep it).
         group: (r, ctx) =>
           r.status === "keeper"
-            ? ctx.t({ en: "Keepers", "pt-BR": "Favoritas", de: "Lieblingsrezepte", es: "Favoritas", pl: "Ulubione", it: "Preferite" })
+            ? ctx.t("Keepers")
             : r.status === "tried"
-              ? ctx.t({ en: "Tried", "pt-BR": "Já provei", de: "Probiert", es: "Probadas", pl: "Wypróbowane", it: "Provate" })
-              : ctx.t({ en: "Want to try", "pt-BR": "Quero provar", de: "Will ich probieren", es: "Quiero probarlas", pl: "Do wypróbowania", it: "Da provare" }),
+              ? ctx.t("Tried")
+              : ctx.t("Want to try"),
         display: {
           primary: "name",
           secondary: (r, ctx) => recipeLine(r, ctx),
@@ -1049,22 +1008,15 @@ export default defineApp({
           badges: ["diet"],
         },
         onOpen: { page: "detail", param: { recipeId: "id" } },
-        emptyText: {
-          en: "No recipes yet. Add one from a photo of a cookbook page, or paste one in.",
-          "pt-BR": "Nenhuma receita ainda. Adicione uma a partir da foto de uma página, ou cole o texto.",
-          de: "Noch keine Rezepte. Füge eins aus dem Foto einer Kochbuchseite hinzu oder füge Text ein.",
-          es: "Aún no hay recetas. Añade una desde la foto de una página o pega el texto.",
-          pl: "Nie ma jeszcze przepisów. Dodaj przepis ze zdjęcia strony z książki albo wklej tekst.",
-          it: "Ancora nessuna ricetta. Aggiungine una dalla foto di una pagina o incolla il testo.",
-        },
+        emptyText: "No recipes yet. Add one from a photo of a cookbook page, or paste one in.",
       },
     },
     {
       // The week's plan: a recipe on a day. Plan one from its page; tap a meal to cook it.
       id: "week",
       icon: "📅",
-      title: { en: "This week", "pt-BR": "Esta semana", de: "Diese Woche", es: "Esta semana", pl: "Ten tydzień", it: "Questa settimana" },
-      description: { en: "What's cooking, day by day. Plan a recipe from its page.", "pt-BR": "O que vai para a mesa, dia a dia. Planeje uma receita na página dela.", de: "Was es gibt, Tag für Tag. Plane ein Rezept auf seiner Seite ein.", es: "Qué se cocina, día a día. Planifica una receta desde su página.", pl: "Co gotujesz, dzień po dniu. Zaplanuj przepis z jego strony.", it: "Cosa si cucina, giorno per giorno. Pianifica una ricetta dalla sua pagina." },
+      title: "This week",
+      description: "What's cooking, day by day. Plan a recipe from its page.",
       view: {
         type: "timeline",
         entity: "meal",
@@ -1081,23 +1033,16 @@ export default defineApp({
           media: "picture",
         },
         onOpen: { page: "meal", param: { mealId: "id" } },
-        emptyText: {
-          en: "Nothing planned. Open a recipe and tap “Plan it”.",
-          "pt-BR": "Nada planejado. Abra uma receita e toque em “Planejar”.",
-          de: "Nichts geplant. Öffne ein Rezept und tippe auf „Einplanen“.",
-          es: "Nada planificado. Abre una receta y toca «Planificar».",
-          pl: "Nic nie zaplanowano. Otwórz przepis i stuknij „Zaplanuj”.",
-          it: "Niente in programma. Apri una ricetta e tocca “Pianifica”.",
-        },
+        emptyText: "Nothing planned. Open a recipe and tap “Plan it”.",
       },
     },
     {
       // The shopping list the recipes make. Put away what you bought and the pantry knows.
       id: "shopping",
       icon: "🛒",
-      title: { en: "Shopping", "pt-BR": "Compras", de: "Einkaufen", es: "Compras", pl: "Zakupy", it: "Spesa" },
-      description: { en: "What your recipes need. Tick it in the shop, then put it away.", "pt-BR": "O que suas receitas pedem. Marque no mercado e depois guarde.", de: "Was deine Rezepte brauchen. Im Laden abhaken, dann verstauen.", es: "Lo que piden tus recetas. Márcalo en la tienda y luego guárdalo.", pl: "Czego potrzebują twoje przepisy. Odhacz w sklepie, potem odłóż.", it: "Quello che serve alle tue ricette. Spunta al negozio, poi metti via." },
-      actions: [{ label: { en: "Put away", "pt-BR": "Guardar", de: "Verstauen", es: "Guardar", pl: "Odłóż", it: "Metti via" }, icon: "🧺", run: putAway }],
+      title: "Shopping",
+      description: "What your recipes need. Tick it in the shop, then put it away.",
+      actions: [{ label: "Put away", icon: "🧺", run: putAway }],
       view: {
         type: "checklist",
         entity: "buy",
@@ -1114,14 +1059,7 @@ export default defineApp({
             return found ? { ingredient: found.id } : {};
           },
         },
-        emptyText: {
-          en: "The list is empty. On a recipe, “Add to shopping” puts what's missing here.",
-          "pt-BR": "A lista está vazia. Numa receita, “Pôr na lista de compras” traz o que falta para cá.",
-          de: "Die Liste ist leer. Bei einem Rezept setzt „Auf die Einkaufsliste“ hierher, was fehlt.",
-          es: "La lista está vacía. En una receta, «A la lista de la compra» trae aquí lo que falta.",
-          pl: "Lista jest pusta. W przepisie „Do listy zakupów” dodaje tu to, czego brakuje.",
-          it: "La lista è vuota. In una ricetta, “Alla lista della spesa” porta qui quello che manca.",
-        },
+        emptyText: "The list is empty. On a recipe, “Add to shopping” puts what's missing here.",
       },
     },
 
@@ -1129,8 +1067,8 @@ export default defineApp({
     {
       id: "pantry",
       icon: "🥕",
-      title: { en: "Pantry", "pt-BR": "Despensa", de: "Vorrat", es: "Despensa", pl: "Spiżarnia", it: "Dispensa" },
-      description: { en: "Your pantry. What's in stock decides what you can cook.", "pt-BR": "Sua despensa. O que há em estoque decide o que dá para fazer.", de: "Dein Vorrat. Was da ist, entscheidet, was du kochen kannst.", es: "Tu despensa. Lo que hay en casa decide qué puedes cocinar.", pl: "Twoja spiżarnia. To, co masz, decyduje, co ugotujesz.", it: "La tua dispensa. Quello che c'è decide cosa puoi cucinare." },
+      title: "Pantry",
+      description: "Your pantry. What's in stock decides what you can cook.",
       // What you have, as a list you tick: ticked is in stock. That is what decides "Can cook now".
       view: {
         type: "checklist",
@@ -1149,7 +1087,7 @@ export default defineApp({
       // the picture is behind the page, not a screen to scroll past. "Start cooking" waits at the
       // bottom, where the thumb is.
       id: "detail",
-      title: { en: "Recipe", "pt-BR": "Receita", de: "Rezept", es: "Receta", pl: "Przepis", it: "Ricetta" },
+      title: "Recipe",
       hidden: true,
       view: {
         type: "detail",
@@ -1158,17 +1096,17 @@ export default defineApp({
         cover: "background",
         facts: ["time", "serves", "kcal", "status"],
         sections: [
-          { title: { en: "Ingredients", "pt-BR": "Ingredientes", de: "Zutaten", es: "Ingredientes", pl: "Składniki", it: "Ingredienti" }, fields: ["ingredients"] },
-          { title: { en: "Steps", "pt-BR": "Passos", de: "Schritte", es: "Pasos", pl: "Kroki", it: "Passaggi" }, fields: ["steps"] },
-          { title: { en: "Your notes", "pt-BR": "Suas anotações", de: "Deine Notizen", es: "Tus notas", pl: "Twoje notatki", it: "Le tue note" }, fields: ["notes", "source"] },
+          { title: "Ingredients", fields: ["ingredients"] },
+          { title: "Steps", fields: ["steps"] },
+          { title: "Your notes", fields: ["notes", "source"] },
           {
-            title: { en: "Nutrition & cost", "pt-BR": "Nutrição e custo", de: "Nährwerte & Kosten", es: "Nutrición y coste", pl: "Wartości odżywcze i koszt", it: "Nutrizione e costo" },
+            title: "Nutrition & cost",
             fields: ["caloriesPerServing", "proteinPerServing", "diet", "estimatedCost", "missingIngredients"],
             collapsed: true,
           },
         ],
         primaryAction: {
-          label: { en: "Start cooking", "pt-BR": "Começar a cozinhar", de: "Loskochen", es: "Empezar a cocinar", pl: "Zacznij gotować", it: "Inizia a cucinare" },
+          label: "Start cooking",
           navigate: { page: "cook", param: { recipeId: "id" } },
         },
         actions: [
@@ -1180,7 +1118,7 @@ export default defineApp({
     },
     {
       id: "ingredient",
-      title: { en: "Ingredient", "pt-BR": "Ingrediente", de: "Zutat", es: "Ingrediente", pl: "Składnik", it: "Ingrediente" },
+      title: "Ingredient",
       hidden: true,
       view: {
         type: "detail",
@@ -1188,33 +1126,26 @@ export default defineApp({
         param: "ingredientId",
         // `sections` on the page override the entity's groups for this page only.
         sections: [
-          { title: { en: "About", "pt-BR": "Sobre", de: "Info", es: "Información", pl: "Informacje", it: "Info" }, fields: ["inStock", "diet", "category", "seasons", "pricePerKg"] },
+          { title: "About", fields: ["inStock", "diet", "category", "seasons", "pricePerKg"] },
           {
-            title: {
-              en: "Nutrition (per 100g)",
-              "pt-BR": "Nutrição (por 100 g)",
-              de: "Nährwerte (pro 100 g)",
-              es: "Nutrición (por 100 g)",
-              pl: "Wartości odżywcze (na 100 g)",
-              it: "Valori nutrizionali (per 100 g)",
-            },
+            title: "Nutrition (per 100g)",
             fields: ["caloriesPer100", "proteinPer100", "fatPer100", "carbsPer100"],
             collapsible: true,
           },
-          { title: { en: "Notes", "pt-BR": "Anotações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" }, fields: ["notes"] },
+          { title: "Notes", fields: ["notes"] },
         ],
         actions: ["toggleStock"],
       },
     },
     {
       id: "meal",
-      title: { en: "Meal", "pt-BR": "Refeição", de: "Mahlzeit", es: "Comida", pl: "Posiłek", it: "Pasto" },
+      title: "Meal",
       hidden: true,
       view: { type: "detail", entity: "meal", param: "mealId", media: "picture", primaryAction: "cook" },
     },
     {
       id: "cook",
-      title: { en: "Cook", "pt-BR": "Cozinhar", de: "Kochen", es: "Cocinar", pl: "Gotuj", it: "Cucina" },
+      title: "Cook",
       hidden: true,
       view: {
         type: "custom",

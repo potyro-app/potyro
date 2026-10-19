@@ -1,10 +1,10 @@
-import { actionInfo, actionInputProblem, appLanguages, FieldValueError, isWordsMap, localize, pickLanguage, resolveView, VIEW_WORDS, word } from "potyro";
+import { actionInfo, actionInputProblem, appLanguages, FieldValueError, isContextWords, isWordsMap, localize, pickLanguage, resolveView, VIEW_WORDS, word } from "potyro";
 // RuntimeCore — the framework-agnostic engine (docs/05 "Runtime"). It owns the read path
 // (resolve via ctx → JS filter via host → JS sort via host), the write/action path, reminder
 // reconciliation, and binding resolution. React hooks (hooks.ts) wrap this. Everything goes
 // through the Host so trusted (direct) and untrusted (isolate) execution are uniform.
 
-import type { AppDefinition, Ctx, Id, Language, Localized, PotyroRecord, Person, Resolved, Space, Value, View } from "potyro";
+import type { AppDefinition, Ctx, Id, Language, Words, Localized, PotyroRecord, Person, Resolved, Space, Value, View } from "potyro";
 import type { BindingRef, Host, LoadedApp, MakeCtxBase, NavBridge, UiBridge } from "@potyro/host";
 import { formatLocaleFor, GuestBook } from "@potyro/host";
 import type { Capabilities } from "@potyro/capabilities";
@@ -150,7 +150,7 @@ export class RuntimeCore {
 
   /** A `Dynamic<Words>` option's value as a string; any other option's as it is. */
   private shownOption(value: Value, isWords: boolean): Value {
-    return isWords && isWordsMap(value) ? word(value as Record<string, string>, this.shownIn, this.app.definition) : value;
+    return isWords && (isWordsMap(value) || isContextWords(value)) ? word(value as Words, this.shownIn, this.app.definition) : value;
   }
 
   /** The current app-wide selection, by entity. */

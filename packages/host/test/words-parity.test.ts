@@ -192,7 +192,8 @@ const CAT_TABLE: Record<string, string> = {
   missing: 'ctx.t("Only English")',
   plural5: 'ctx.t("{n, plural, one {# plant} other {# plants}}", { n: 5 })',
   withVar: 'ctx.t("Water {name}", { name: r.name })',
-  context: 'ctx.t("Water", undefined)',
+  context: 'ctx.t({ text: "Water", context: "verb" })',
+  noContext: 'ctx.t("Water")',
 };
 
 const CAT_APP = `({
@@ -209,7 +210,8 @@ const CAT_PL = {
   "Due now": "Do podlania",
   "{n, plural, one {# plant} other {# plants}}": "{n, plural, one {# roślina} few {# rośliny} many {# roślin} other {# rośliny}}",
   "Water {name}": "Podlej: {name}",
-  Water: "",
+  Water: "Woda",
+  "verb\u0004Water": "Podlej",
 };
 
 async function runCatalog(kind: "direct" | Sealed, language: string): Promise<Runner> {
@@ -238,7 +240,7 @@ describe.each(RUNNERS)("catalogs: ctx.t looks up the app's .po in DirectHost and
     const [a, b] = [await read(direct), await read(boxed)];
     expect(b).toEqual(a);
     boxed.loaded.dispose();
-    expect(a).toEqual({ plain: "Do podlania", missing: "Only English", plural5: "5 roślin", withVar: "Podlej: Monstera", context: "Water" });
+    expect(a).toEqual({ plain: "Do podlania", missing: "Only English", plural5: "5 roślin", withVar: "Podlej: Monstera", context: "Podlej", noContext: "Woda" });
     // The definition the views read is translated too, in both.
     expect(String((direct.ctx as unknown as { locale: string }).locale)).toBe("pl");
   });

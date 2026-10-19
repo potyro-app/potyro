@@ -1,0 +1,501 @@
+msgid ""
+msgstr ""
+"Language: \n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Split"
+msgstr ""
+
+#: scope.label
+#: entities.group.label
+#: entities.expense.fields.group.label
+#: entities.payment.fields.group.label
+msgid "Group"
+msgstr ""
+
+#: quickActions.0.label
+#: ctx.t
+msgid "Add expense"
+msgstr ""
+
+#: quickActions.1.label
+#: ctx.t
+msgid "Record a payment"
+msgstr ""
+
+#: entities.group.fields.name.label
+msgid "Name"
+msgstr ""
+
+#: entities.group.fields.name.placeholder
+msgid "Lisbon weekend"
+msgstr ""
+
+#: entities.group.fields.note.label
+#: entities.expense.fields.note.label
+#: entities.payment.fields.note.label
+#: ctx.t
+msgid "Note"
+msgstr ""
+
+#: entities.group.fields.note.help
+msgid "What this group is for"
+msgstr ""
+
+#: entities.group.fields.people.label
+msgid "Not joined yet"
+msgstr ""
+
+#: entities.group.fields.people.help
+msgid "Name the others with Invite; whoever joins later says which one they are"
+msgstr ""
+
+#: entities.group.actions.settle.label
+#: ctx.t
+msgid "Settle up"
+msgstr ""
+
+#: entities.expense.label
+#: entities.expense.groups.0.title
+#: pages.3.title
+#: pages.3.view.sections.0.title
+msgid "Expense"
+msgstr ""
+
+#: entities.expense.fields.description.label
+msgid "Description"
+msgstr ""
+
+#: entities.expense.fields.description.placeholder
+#: ctx.t
+msgid "Dinner"
+msgstr ""
+
+#: entities.expense.fields.amount.label
+#: entities.expense.fields.exact.of.amount.label
+#: entities.payment.fields.amount.label
+#: ctx.t
+msgid "Amount"
+msgstr ""
+
+#: entities.expense.fields.paidBy.label
+msgid "Paid by"
+msgstr ""
+
+#: entities.expense.fields.when.label
+#: entities.payment.fields.when.label
+msgid "When"
+msgstr ""
+
+#: entities.expense.fields.category.labels.food
+#: entities.expense.computed.kind.labels.food
+msgid "🍽 food & drink"
+msgstr ""
+
+#: entities.expense.fields.category.labels.groceries
+#: entities.expense.computed.kind.labels.groceries
+#: ctx.t
+msgid "🛒 groceries"
+msgstr ""
+
+#: entities.expense.fields.category.labels.transport
+#: entities.expense.computed.kind.labels.transport
+#: ctx.t
+msgid "🚕 transport"
+msgstr ""
+
+#: entities.expense.fields.category.labels.stay
+#: entities.expense.computed.kind.labels.stay
+#: ctx.t
+msgid "🏨 stay"
+msgstr ""
+
+#: entities.expense.fields.category.labels.fun
+#: entities.expense.computed.kind.labels.fun
+#: ctx.t
+msgid "🎟 fun"
+msgstr ""
+
+#: entities.expense.fields.category.labels.bills
+#: entities.expense.computed.kind.labels.bills
+#: ctx.t
+msgid "💡 bills"
+msgstr ""
+
+#: entities.expense.fields.category.labels.other
+#: entities.expense.computed.kind.labels.other
+#: ctx.t
+msgid "🧾 other"
+msgstr ""
+
+#: entities.expense.fields.category.label
+#: entities.expense.computed.kind.label
+msgid "Category"
+msgstr ""
+
+#: entities.expense.fields.category.help
+msgid "Left empty, it counts as other"
+msgstr ""
+
+#: entities.expense.fields.split.labels.equally
+msgid "equally"
+msgstr ""
+
+#: entities.expense.fields.split.labels.shares
+msgid "by shares"
+msgstr ""
+
+#: entities.expense.fields.split.labels.exact
+msgid "exact amounts"
+msgstr ""
+
+#: entities.expense.fields.split.labels.items
+msgid "line by line"
+msgstr ""
+
+#: entities.expense.fields.split.label
+#: pages.3.view.sections.1.title
+msgctxt "expense split"
+msgid "Split"
+msgstr ""
+
+#: entities.expense.fields.split.help
+msgid "Equally between the people below, by shares, by exact amounts, or line by line from a receipt"
+msgstr ""
+
+#: entities.expense.fields.between.label
+msgid "Between"
+msgstr ""
+
+#: entities.expense.fields.between.help
+msgid "Who was in on it"
+msgstr ""
+
+#: entities.expense.fields.shares.of.person.label
+#: entities.expense.fields.exact.of.person.label
+msgid "Person"
+msgstr ""
+
+#: entities.expense.fields.shares.of.share.label
+msgid "Share"
+msgstr ""
+
+#: entities.expense.fields.shares.label
+msgid "By shares"
+msgstr ""
+
+#: entities.expense.fields.shares.help
+msgid "Two shares for a couple, one each for the rest"
+msgstr ""
+
+#: entities.expense.fields.exact.label
+msgid "Exact amounts"
+msgstr ""
+
+#: entities.expense.fields.exact.help
+msgid "What each person's part was; anything left over is shared by everyone"
+msgstr ""
+
+#: entities.expense.fields.items.of.name.label
+#: ctx.t
+msgid "What"
+msgstr ""
+
+#: entities.expense.fields.items.of.price.label
+#: ctx.t
+msgid "Price"
+msgstr ""
+
+#: entities.expense.fields.items.of.people.label
+#: ctx.t
+msgid "Who had it"
+msgstr ""
+
+#: entities.expense.fields.items.label
+#: ctx.t
+msgid "Lines"
+msgstr ""
+
+#: entities.expense.fields.items.help
+msgid "A line with nobody named is everyone's"
+msgstr ""
+
+#: entities.expense.fields.receipt.label
+msgid "Receipt"
+msgstr ""
+
+#: entities.expense.groups.1.title
+msgid "Who pays"
+msgstr ""
+
+#: entities.expense.groups.2.title
+msgid "More"
+msgstr ""
+
+#: entities.expense.computed.breakdown.label
+msgid "Breakdown"
+msgstr ""
+
+#: entities.expense.computed.check.label
+msgid "Adds up?"
+msgstr ""
+
+#: entities.expense.computed.yourShare.label
+msgid "Your share"
+msgstr ""
+
+#: entities.payment.label
+msgid "Payment"
+msgstr ""
+
+#: entities.payment.fields.from.label
+#: ctx.t
+msgid "From"
+msgstr ""
+
+#: entities.payment.fields.to.label
+#: ctx.t
+msgid "To"
+msgstr ""
+
+#: entities.payment.fields.note.placeholder
+#: ctx.t
+msgid "Settling up"
+msgstr ""
+
+#: pages.0.title
+#: pages.1.layout.items.0.view.items.2.label
+msgid "Expenses"
+msgstr ""
+
+#: pages.0.summary.1.label
+#: pages.1.layout.items.0.view.items.0.label
+msgid "Spent together"
+msgstr ""
+
+#: pages.0.actions.0.label
+#: ctx.t
+msgid "Split a receipt"
+msgstr ""
+
+#: pages.0.actions.1.label
+msgid "Invite"
+msgstr ""
+
+#: pages.0.layout.items.0.view.title
+msgid "To settle up"
+msgstr ""
+
+#: pages.0.layout.items.1.view.emptyText
+msgid "No expenses yet. Add the first one, or split a receipt."
+msgstr ""
+
+#: pages.1.title
+msgid "Where it went"
+msgstr ""
+
+#: pages.1.layout.items.0.view.items.1.label
+msgid "Your part of it"
+msgstr ""
+
+#: pages.1.layout.items.1.view.title
+msgid "By category"
+msgstr ""
+
+#: pages.1.layout.items.1.view.emptyText
+msgid "Nothing spent yet."
+msgstr ""
+
+#: pages.1.layout.items.2.view.title
+msgid "Who paid"
+msgstr ""
+
+#: pages.2.title
+msgid "Payments"
+msgstr ""
+
+#: pages.2.actions.0.label
+msgctxt "payments page"
+msgid "Settle up"
+msgstr ""
+
+#: pages.2.view.emptyText
+msgid "Nothing settled yet."
+msgstr ""
+
+#: pages.3.view.sections.2.title
+msgid "Notes"
+msgstr ""
+
+#: ctx.t
+msgid "You"
+msgstr ""
+
+#: ctx.t
+msgid "Someone"
+msgstr ""
+
+#: ctx.t
+msgid "Read a photo of it"
+msgstr ""
+
+#: ctx.t
+msgid "AI reads the lines; you check them before anything is saved"
+msgstr ""
+
+#: ctx.t
+msgid "Type the lines"
+msgstr ""
+
+#: ctx.t
+msgid "Reading the receipt…"
+msgstr ""
+
+#: ctx.t
+msgid "Rest of the bill (tax, tip)"
+msgstr ""
+
+#: ctx.t
+msgid "Who had what?"
+msgstr ""
+
+#: ctx.t
+msgid "Where"
+msgstr ""
+
+#: ctx.t
+msgid "Leave a line with nobody named and everyone shares it"
+msgstr ""
+
+#: ctx.t
+msgid "No lines with a price, so nothing to add."
+msgstr ""
+
+#: ctx.t
+msgid "{n, plural, one {Added, # line} other {Added, # lines}}"
+msgstr ""
+
+#: ctx.t
+msgid "All square 🎉"
+msgstr ""
+
+#: ctx.t
+msgid "Record another payment"
+msgstr ""
+
+#: ctx.t
+msgid "Record it"
+msgstr ""
+
+#: ctx.t
+msgid "Payment recorded"
+msgstr ""
+
+#: ctx.t
+msgid "Who's coming?"
+msgstr ""
+
+#: ctx.t
+msgid "Name them now"
+msgstr ""
+
+#: ctx.t
+msgid "Ana, Tom… they can join later and say which one they are"
+msgstr ""
+
+#: ctx.t
+msgid "Send a link"
+msgstr ""
+
+#: ctx.t
+msgid "Whoever opens it is in, no account needed"
+msgstr ""
+
+#: ctx.t
+msgid "Add them"
+msgstr ""
+
+#: ctx.t
+msgid "Names"
+msgstr ""
+
+#: ctx.t
+msgid "Separate them with commas"
+msgstr ""
+
+#: ctx.t
+msgid "and"
+msgstr ""
+
+#: ctx.t
+msgid "{names} can be in expenses now"
+msgstr ""
+
+#: ctx.t
+msgid "Open ⋯ and choose Share to invite people. No account needed."
+msgstr ""
+
+#: ctx.t
+msgid "Join {group} on Split so we can share costs. No account needed."
+msgstr ""
+
+#: ctx.t
+msgid "You are owed {amount}"
+msgstr ""
+
+#: ctx.t
+msgid "You owe {amount}"
+msgstr ""
+
+#: ctx.t
+msgid "All square"
+msgstr ""
+
+#: ctx.t
+msgid "Nobody yet"
+msgstr ""
+
+#: ctx.t
+msgid "✓ to the cent"
+msgstr ""
+
+#: ctx.t
+msgid "{rest} not on any line: shared by everyone"
+msgstr ""
+
+#: ctx.t
+msgctxt "your balance"
+msgid "All square 🎉"
+msgstr ""
+
+#: ctx.t
+msgid "You're owed {amount}"
+msgstr ""
+
+#: ctx.t
+msgid "Nobody owes anybody. 🎉"
+msgstr ""
+
+#: ctx.t
+msgid "Just you so far. Tap Invite to name who's coming, or send them the link: no account needed."
+msgstr ""
+
+#: ctx.t
+msgid "{dir, select, toMe {{from} owes you} fromMe {You owe {to}} other {{from} owes {to}}}"
+msgstr ""
+
+#: ctx.t
+msgid "Settle"
+msgstr ""
+
+#: ctx.t
+msgid "{who, select, me {You paid} other {{name} paid}} · your share {share}"
+msgstr ""
+
+#: ctx.t
+msgid "🍽 food"
+msgstr ""
+

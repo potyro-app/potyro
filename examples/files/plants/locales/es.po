@@ -1,0 +1,420 @@
+msgid ""
+msgstr ""
+"Language: es\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+#: pages.1.title
+msgid "Plants"
+msgstr "Plantas"
+
+#: quickActions.0.label
+msgid "Add: Plant"
+msgstr "Añadir: Planta"
+
+#: entities.plant.label
+#: entities.care.fields.plant.label
+#: pages.3.title
+msgid "Plant"
+msgstr "Planta"
+
+#: entities.plant.fields.name.label
+#: ctx.t
+msgid "Name"
+msgstr "Nombre"
+
+#: entities.plant.fields.photo.label
+msgid "Photo"
+msgstr "Foto"
+
+#: entities.plant.fields.wiki.label
+msgid "Wiki"
+msgstr ""
+
+#: entities.plant.fields.labels.label
+msgid "Labels"
+msgstr "Etiquetas"
+
+#: entities.plant.fields.labels.help
+msgid "Your own words: where it lives, who gave it to you"
+msgstr "Con tus palabras: dónde está, quién te la regaló"
+
+#: entities.plant.fields.room.label
+#: ctx.t
+msgid "Room"
+msgstr "Habitación"
+
+#: entities.plant.fields.room.placeholder
+#: ctx.t
+msgid "Living room"
+msgstr "Salón"
+
+#: entities.plant.fields.needsDirectSun.label
+msgctxt "plant needsDirectSun"
+msgid "Wants direct sun"
+msgstr "Necesita sol directo"
+
+#: entities.plant.fields.active.label
+msgid "Active"
+msgstr "Activa"
+
+#: entities.plant.fields.lastWatered.label
+msgid "Last watered"
+msgstr "Último riego"
+
+#: entities.plant.fields.wateringIntervalDays.unit
+#: entities.plant.fields.seasonalCare.of.intervalDays.unit
+msgid "days"
+msgstr "días"
+
+#: entities.plant.fields.wateringIntervalDays.label
+#: entities.plant.fields.seasonalCare.of.intervalDays.label
+msgid "Water every"
+msgstr "Regar cada"
+
+#: entities.plant.fields.wateringIntervalDays.help
+msgid "The reminder comes this many days after a watering"
+msgstr "El recordatorio llega tantos días después de regar"
+
+#: entities.plant.fields.seasonalCare.of.season.labels.spring
+msgid "Spring"
+msgstr "Primavera"
+
+#: entities.plant.fields.seasonalCare.of.season.labels.summer
+msgid "Summer"
+msgstr "Verano"
+
+#: entities.plant.fields.seasonalCare.of.season.labels.autumn
+msgid "Autumn"
+msgstr "Otoño"
+
+#: entities.plant.fields.seasonalCare.of.season.labels.winter
+msgid "Winter"
+msgstr "Invierno"
+
+#: entities.plant.fields.seasonalCare.of.season.label
+msgid "Season"
+msgstr "Estación"
+
+#: entities.plant.fields.seasonalCare.of.note.label
+#: entities.plant.actions.logCare.input.note.label
+#: entities.care.fields.note.label
+msgctxt "seasonalCare note"
+msgid "Note"
+msgstr "Nota"
+
+#: entities.plant.fields.seasonalCare.label
+msgid "Seasonal care"
+msgstr "Cuidados por estación"
+
+#: entities.plant.fields.species.label
+#: ctx.t
+msgid "Species"
+msgstr "Especie"
+
+#: entities.plant.fields.species.placeholder
+msgid "Monstera deliciosa"
+msgstr ""
+
+#: entities.plant.fields.tip.label
+msgid "Care tip"
+msgstr "Consejo de cuidado"
+
+#: entities.plant.fields.lastFertilized.label
+msgid "Last fed"
+msgstr "Último abono"
+
+#: entities.plant.fields.snoozedUntil.label
+msgid "Not before"
+msgstr "No antes de"
+
+#: entities.plant.fields.snoozes.label
+msgid "Still wet, in a row"
+msgstr "Aún húmeda, seguidas"
+
+#: entities.plant.groups.1.title
+msgid "Watering"
+msgstr "Riego"
+
+#: entities.plant.groups.2.title
+msgid "Care"
+msgstr "Cuidados"
+
+#: entities.plant.computed.nextText.label
+msgid "💧"
+msgstr ""
+
+#: entities.plant.computed.rhythm.label
+msgid "🗓"
+msgstr ""
+
+#: entities.plant.computed.sun.label
+msgid "☀️"
+msgstr ""
+
+#: entities.plant.computed.feedText.label
+msgid "Feeding"
+msgstr "Abono"
+
+#: entities.plant.actions.water.label
+msgid "Water"
+msgstr "Regar"
+
+#: entities.plant.actions.snooze.label
+msgid "Soil still wet"
+msgstr "Tierra aún húmeda"
+
+#: entities.plant.actions.logCare.label
+msgid "Log care…"
+msgstr "Anotar cuidado…"
+
+#: entities.plant.actions.logCare.input.kind.labels.water
+#: entities.care.fields.kind.labels.water
+msgid "water"
+msgstr "riego"
+
+#: entities.plant.actions.logCare.input.kind.labels.fertilize
+#: entities.care.fields.kind.labels.fertilize
+msgid "feed"
+msgstr "abono"
+
+#: entities.plant.actions.logCare.input.kind.labels.mist
+#: entities.care.fields.kind.labels.mist
+msgid "mist"
+msgstr "pulverizar"
+
+#: entities.plant.actions.logCare.input.kind.labels.repot
+#: entities.care.fields.kind.labels.repot
+msgid "repot"
+msgstr "trasplantar"
+
+#: entities.plant.actions.logCare.input.kind.labels.prune
+#: entities.care.fields.kind.labels.prune
+msgid "prune"
+msgstr "podar"
+
+#: entities.plant.actions.logCare.input.kind.labels.note
+#: entities.care.fields.kind.labels.note
+msgid "note"
+msgstr "nota"
+
+#: entities.plant.actions.logCare.input.kind.label
+#: entities.care.fields.kind.label
+msgid "What"
+msgstr "Qué"
+
+#: entities.plant.actions.logCare.input.at.label
+#: entities.care.fields.at.label
+msgid "When"
+msgstr "Cuándo"
+
+#: entities.care.label
+msgctxt "care"
+msgid "Care"
+msgstr "Cuidado"
+
+#: pages.0.title
+msgid "Today"
+msgstr "Hoy"
+
+#: pages.0.description
+msgid "Who wants water today, room by room, and who comes next."
+msgstr "Quién quiere agua hoy, habitación por habitación, y quién va después."
+
+#: pages.0.summary.0.label
+msgid "to water today"
+msgstr "para regar hoy"
+
+#: pages.0.summary.1.label
+msgid "tomorrow"
+msgstr "mañana"
+
+#: pages.0.actions.0.label
+#: pages.1.actions.0.label
+#: ctx.t
+msgid "Add a plant"
+msgstr "Añadir planta"
+
+#: pages.0.layout.items.0.view.emptyText
+msgid "Everyone's had a drink. 🌱"
+msgstr "Todas han bebido. 🌱"
+
+#: pages.0.layout.items.0.title
+msgid "Water now"
+msgstr "Regar ahora"
+
+#: pages.0.layout.items.1.view.emptyText
+msgid "A quiet week ahead."
+msgstr "Una semana tranquila."
+
+#: pages.0.layout.items.1.title
+msgid "Coming up"
+msgstr "Próximamente"
+
+#: pages.1.description
+msgid "Every plant in the house, by its photo."
+msgstr "Todas las plantas de casa, con su foto."
+
+#: pages.1.view.filters.0.label
+msgid "Search"
+msgstr "Buscar"
+
+#: pages.1.view.filters.0.placeholder
+msgid "Name or label"
+msgstr "Nombre o etiqueta"
+
+#: pages.2.title
+#: pages.3.view.sections.0.title
+msgid "Care log"
+msgstr "Diario"
+
+#: pages.2.description
+msgid "Every watering, feed and repot. Log one on a plant's page, any day."
+msgstr "Cada riego, abono y trasplante. Anótalo en la página de la planta, cualquier día."
+
+#: pages.2.view.emptyText
+msgid "Nothing logged yet. Water a plant and it shows here."
+msgstr "Aún no hay nada. Riega una planta y aparecerá aquí."
+
+#: pages.3.view.sections.1.title
+msgid "About"
+msgstr "Información"
+
+#: ctx.t
+msgid "Watered"
+msgstr "Regada"
+
+#: ctx.t
+msgid "Fed"
+msgstr "Abonada"
+
+#: ctx.t
+msgid "Misted"
+msgstr "Pulverizada"
+
+#: ctx.t
+msgid "Repotted"
+msgstr "Trasplantada"
+
+#: ctx.t
+msgid "Pruned"
+msgstr "Podada"
+
+#: ctx.t
+msgid "Note"
+msgstr "Nota"
+
+#: ctx.t
+msgid "From a photo"
+msgstr "Desde una foto"
+
+#: ctx.t
+msgid "AI suggests what it is and how often to water"
+msgstr "La IA sugiere qué es y cada cuánto regarla"
+
+#: ctx.t
+msgid "Type it in"
+msgstr "Escribirla"
+
+#: ctx.t
+msgid "Looking at your plant…"
+msgstr "Mirando tu planta…"
+
+#: ctx.t
+msgid "AI's guess — check it"
+msgstr "Lo que cree la IA — revísalo"
+
+#: ctx.t
+msgid "New plant"
+msgstr "Planta nueva"
+
+#: ctx.t
+msgid "Water every (days)"
+msgstr "Regar cada (días)"
+
+#: ctx.t
+msgid "Wants direct sun"
+msgstr "Quiere sol directo"
+
+#: ctx.t
+msgid "Add plant"
+msgstr "Añadir planta"
+
+#: ctx.t
+msgid "{n, plural, =0 {All watered} one {# to water} other {# to water}}"
+msgstr "{n, plural, =0 {Todo regado} one {# que regar} other {# que regar}}"
+
+#: ctx.t
+msgid "Thirsty — water today"
+msgstr "Tiene sed — regar hoy"
+
+#: ctx.t
+msgid "Water {when}"
+msgstr "Regar {when}"
+
+#: ctx.t
+msgid "Every {n, plural, one {day} other {# days}}"
+msgstr "Cada {n, plural, one {día} other {# días}}"
+
+#: ctx.t
+msgid "Direct sun"
+msgstr "Sol directo"
+
+#: ctx.t
+msgid "Bright, no direct sun"
+msgstr "Luz, sin sol directo"
+
+#: ctx.t
+msgid "Feed {when} (every 4 weeks in spring and summer)"
+msgstr "Abonar {when} (cada 4 semanas en primavera y verano)"
+
+#: ctx.t
+msgid "Resting: no feed until spring"
+msgstr "En reposo: sin abono hasta la primavera"
+
+#: ctx.t
+msgid "{name} stays wet longer: every {n} days from now"
+msgstr "{name} tarda más en secarse: cada {n} días desde ahora"
+
+#: ctx.t
+msgid "Asking again in two days"
+msgstr "Vuelvo a preguntar en dos días"
+
+#: ctx.t
+msgid "watered {when}"
+msgstr "regada {when}"
+
+#: ctx.t
+msgid "never watered here yet"
+msgstr "aún no regada aquí"
+
+#: ctx.t
+msgid "water {when}"
+msgstr "regar {when}"
+
+#: ctx.t
+msgid "thirsty"
+msgstr "con sed"
+
+#: ctx.t
+msgid "Water {name}"
+msgstr "Regar: {name}"
+
+#: ctx.t
+msgid "Last watered {when}"
+msgstr "Último riego {when}"
+
+#: ctx.t
+msgid "Never watered yet"
+msgstr "Todavía no se ha regado"
+
+#: ctx.t
+msgid "Feed {name}"
+msgstr "Abonar: {name}"
+
+#: ctx.t
+msgid "Every four weeks while it grows"
+msgstr "Cada cuatro semanas mientras crece"
+
