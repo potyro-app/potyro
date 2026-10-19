@@ -1,0 +1,705 @@
+msgid ""
+msgstr ""
+"Language: it\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+#: ctx.t
+msgid "Workout"
+msgstr "Allenamento"
+
+#: quickActions.0.label
+msgid "New routine"
+msgstr "Nuova routine"
+
+#: quickActions.1.label
+msgid "New exercise"
+msgstr "Nuovo esercizio"
+
+#: entities.routine.label
+#: entities.routine.groups.0.title
+#: entities.session.fields.routine.label
+#: entities.session.computed.title.label
+#: pages.4.title
+#: pages.4.view.sections.0.title
+msgid "Routine"
+msgstr "Routine"
+
+#: entities.routine.fields.name.label
+#: entities.exercise.fields.name.label
+msgid "Name"
+msgstr "Nome"
+
+#: entities.routine.fields.name.placeholder
+msgid "Push A"
+msgstr "Spinta A"
+
+#: entities.routine.fields.program.label
+#: pages.3.title
+msgid "Program"
+msgstr "Programma"
+
+#: entities.routine.fields.program.help
+msgid "Routines in the same program take turns"
+msgstr "Le routine dello stesso programma si alternano"
+
+#: entities.routine.fields.program.placeholder
+msgid "PPL"
+msgstr ""
+
+#: entities.routine.fields.order.label
+msgid "Turn"
+msgstr "Turno"
+
+#: entities.routine.fields.active.label
+msgid "In rotation"
+msgstr "In rotazione"
+
+#: entities.routine.fields.active.help
+msgid "Off: kept, but never suggested as next"
+msgstr "Spento: resta, ma non viene mai proposta"
+
+#: entities.routine.fields.exercises.of.exercise.label
+#: entities.exercise.label
+#: entities.exercise.groups.0.title
+#: entities.session.fields.entries.of.exercise.label
+#: entities.session.fields.records.of.exercise.label
+#: pages.5.title
+#: ctx.t
+msgid "Exercise"
+msgstr "Esercizio"
+
+#: entities.routine.fields.exercises.of.sets.label
+#: entities.session.fields.entries.of.sets.label
+#: ctx.t
+msgid "Sets"
+msgstr "Serie"
+
+#: entities.routine.fields.exercises.of.reps.label
+#: entities.session.fields.entries.of.sets.of.reps.label
+#: ctx.t
+msgid "Reps"
+msgstr "Ripetizioni"
+
+#: entities.routine.fields.exercises.label
+#: entities.routine.groups.1.title
+#: pages.3.layout.items.1.title
+#: pages.4.view.sections.1.title
+msgid "Exercises"
+msgstr "Esercizi"
+
+#: entities.routine.fields.note.label
+#: entities.session.fields.note.label
+msgid "Note"
+msgstr "Nota"
+
+#: entities.routine.groups.2.title
+msgid "More"
+msgstr "Altro"
+
+#: entities.routine.computed.art.label
+#: entities.exercise.computed.art.label
+msgid "Picture"
+msgstr "Immagine"
+
+#: entities.routine.computed.summary.label
+msgid "Plan"
+msgstr "Piano"
+
+#: entities.routine.computed.lastDone.label
+msgid "Last done"
+msgstr "Ultima volta"
+
+#: entities.exercise.fields.muscles.labels.chest
+#: ctx.t
+msgid "chest"
+msgstr "petto"
+
+#: entities.exercise.fields.muscles.labels.back
+#: ctx.t
+msgid "back"
+msgstr "schiena"
+
+#: entities.exercise.fields.muscles.labels.shoulders
+#: ctx.t
+msgid "shoulders"
+msgstr "spalle"
+
+#: entities.exercise.fields.muscles.labels.biceps
+#: ctx.t
+msgid "biceps"
+msgstr "bicipiti"
+
+#: entities.exercise.fields.muscles.labels.triceps
+#: ctx.t
+msgid "triceps"
+msgstr "tricipiti"
+
+#: entities.exercise.fields.muscles.labels.quads
+#: ctx.t
+msgid "quads"
+msgstr "quadricipiti"
+
+#: entities.exercise.fields.muscles.labels.hamstrings
+msgid "hamstrings"
+msgstr "femorali"
+
+#: entities.exercise.fields.muscles.labels.glutes
+#: ctx.t
+msgid "glutes"
+msgstr "glutei"
+
+#: entities.exercise.fields.muscles.labels.calves
+#: ctx.t
+msgid "calves"
+msgstr "polpacci"
+
+#: entities.exercise.fields.muscles.labels.core
+#: ctx.t
+msgid "core"
+msgstr "core"
+
+#: entities.exercise.fields.muscles.label
+msgid "Muscles"
+msgstr "Muscoli"
+
+#: entities.exercise.fields.repRange.label
+msgid "Rep range"
+msgstr "Intervallo di ripetizioni"
+
+#: entities.exercise.fields.repRange.help
+msgid "Reach the top on every set and the weight goes up"
+msgstr "Arriva in cima in ogni serie e il peso sale"
+
+#: entities.exercise.fields.step.unit
+#: entities.session.fields.entries.of.sets.of.kg.unit
+#: pages.2.layout.items.0.view.items.1.unit
+msgid "kg"
+msgstr ""
+
+#: entities.exercise.fields.step.label
+msgid "Add each time"
+msgstr "Incremento"
+
+#: entities.exercise.fields.restSec.label
+#: ctx.t
+msgid "Rest"
+msgstr "Recupero"
+
+#: entities.exercise.fields.restSec.help
+msgid "Counted down after each set; you can always skip it"
+msgstr "Conto alla rovescia dopo ogni serie; puoi sempre saltarlo"
+
+#: entities.exercise.fields.bodyweight.label
+msgid "Bodyweight"
+msgstr "Corpo libero"
+
+#: entities.exercise.fields.bodyweight.help
+msgid "Progress on reps; kg is anything you add"
+msgstr "Progredisci nelle ripetizioni; i kg sono il sovraccarico"
+
+#: entities.exercise.fields.cue.label
+msgid "Cue"
+msgstr "Suggerimento"
+
+#: entities.exercise.fields.cue.placeholder
+msgid "Elbows 45°, bar to mid-chest"
+msgstr "Gomiti a 45°, bilanciere a metà petto"
+
+#: entities.exercise.fields.day.labels.push
+#: entities.session.fields.day.labels.push
+msgid "push"
+msgstr "spinta"
+
+#: entities.exercise.fields.day.labels.pull
+#: entities.session.fields.day.labels.pull
+msgid "pull"
+msgstr "trazione"
+
+#: entities.exercise.fields.day.labels.legs
+#: entities.session.fields.day.labels.legs
+msgid "legs"
+msgstr "gambe"
+
+#: entities.exercise.fields.day.label
+#: entities.session.fields.day.label
+msgid "Day"
+msgstr "Giorno"
+
+#: entities.exercise.fields.order.label
+msgid "Order"
+msgstr "Ordine"
+
+#: entities.exercise.fields.targetSets.label
+msgid "Target sets"
+msgstr "Serie previste"
+
+#: entities.exercise.groups.1.title
+#: pages.5.layout.items.0.view.sections.1.title
+msgid "Progression"
+msgstr "Progressione"
+
+#: entities.exercise.groups.2.title
+#: pages.4.view.sections.3.title
+#: pages.5.layout.items.0.view.sections.2.title
+#: pages.6.view.sections.3.title
+msgid "Notes"
+msgstr "Note"
+
+#: entities.exercise.computed.history.label
+#: pages.1.title
+msgid "History"
+msgstr "Cronologia"
+
+#: entities.exercise.computed.lastBest.label
+msgid "Rolling best"
+msgstr "Record recente"
+
+#: entities.exercise.computed.lastBest.format
+msgid "{kg, plural, =0 {{reps} reps} other {{kg, number} kg × {reps}}}"
+msgstr "{kg, plural, =0 {{reps} rip.} other {{kg, number} kg × {reps}}}"
+
+#: entities.exercise.computed.progress.label
+msgid "Estimated 1RM per session"
+msgstr "1RM stimato per sessione"
+
+#: entities.exercise.computed.best.label
+msgid "Best estimated 1RM"
+msgstr "Miglior 1RM stimato"
+
+#: entities.session.label
+#: entities.session.computed.label.label
+#: pages.6.title
+msgid "Session"
+msgstr "Sessione"
+
+#: entities.session.fields.date.label
+msgid "Date"
+msgstr "Data"
+
+#: entities.session.fields.durationSec.label
+msgid "Duration (seconds)"
+msgstr "Durata (secondi)"
+
+#: entities.session.fields.entries.of.sets.of.kg.label
+msgid "Kg"
+msgstr ""
+
+#: entities.session.fields.entries.of.sets.of.kind.labels.warmup
+msgid "warm-up"
+msgstr "riscaldamento"
+
+#: entities.session.fields.entries.of.sets.of.kind.labels.drop
+msgid "drop"
+msgstr "a scalare"
+
+#: entities.session.fields.entries.of.sets.of.kind.label
+msgid "Kind"
+msgstr "Tipo"
+
+#: entities.session.fields.entries.label
+#: pages.6.view.sections.2.title
+msgid "Entries"
+msgstr "Esercizi"
+
+#: entities.session.fields.records.of.kind.labels.heaviest
+msgid "heaviest"
+msgstr "più pesante"
+
+#: entities.session.fields.records.of.kind.labels.e1rm
+msgid "estimated 1RM"
+msgstr "1RM stimato"
+
+#: entities.session.fields.records.of.kind.labels.reps
+msgid "most reps"
+msgstr "più ripetizioni"
+
+#: entities.session.fields.records.of.kind.label
+msgid "Record"
+msgstr "Record"
+
+#: entities.session.fields.records.of.value.label
+msgid "Value"
+msgstr "Valore"
+
+#: entities.session.fields.records.label
+#: entities.session.computed.prs.label
+#: pages.6.view.sections.1.title
+msgid "Personal records"
+msgstr "Record personali"
+
+#: entities.session.computed.duration.label
+msgid "Duration"
+msgstr "Durata"
+
+#: entities.session.computed.totalSets.label
+msgid "Total sets"
+msgstr "Serie totali"
+
+#: entities.session.computed.totalVolume.label
+msgid "Total volume (kg)"
+msgstr "Volume totale (kg)"
+
+#: entities.session.actions.logSet.label
+msgid "Log Set"
+msgstr "Segna serie"
+
+#: pages.0.title
+msgid "Train"
+msgstr "Allenamento"
+
+#: pages.1.view.emptyText
+msgid "No sessions logged yet. Hit Train to start one."
+msgstr "Ancora nessuna sessione. Tocca Allenamento per iniziarne una."
+
+#: pages.2.title
+msgid "Progress"
+msgstr "Progressi"
+
+#: pages.2.layout.items.0.view.items.0.label
+msgid "Sessions this week"
+msgstr "Sessioni questa settimana"
+
+#: pages.2.layout.items.0.view.items.0.compare.label
+#: pages.2.layout.items.0.view.items.1.compare.label
+#: pages.2.layout.items.0.view.items.2.compare.label
+msgid "last week"
+msgstr "la settimana scorsa"
+
+#: pages.2.layout.items.0.view.items.1.label
+msgid "Volume this week"
+msgstr "Volume questa settimana"
+
+#: pages.2.layout.items.0.view.items.2.label
+msgid "Average session"
+msgstr "Sessione media"
+
+#: pages.2.layout.items.0.view.items.2.unit
+msgid "min"
+msgstr ""
+
+#: pages.2.layout.items.0.view.items.3.label
+msgid "Weeks in a row"
+msgstr "Settimane di fila"
+
+#: pages.2.layout.items.1.view.title
+msgid "Sessions per week"
+msgstr "Sessioni a settimana"
+
+#: pages.2.layout.items.1.view.subtitle
+msgid "Last 8 weeks"
+msgstr "Ultime 8 settimane"
+
+#: pages.2.layout.items.2.view.title
+msgid "Sets per muscle"
+msgstr "Serie per muscolo"
+
+#: pages.2.layout.items.2.view.subtitle
+#: ctx.t
+msgid "This week"
+msgstr "Questa settimana"
+
+#: pages.3.description
+msgid "Routines take turns in the order you give them. Tap one to change its exercises."
+msgstr "Le routine si alternano nell'ordine che scegli. Toccane una per cambiarne gli esercizi."
+
+#: pages.3.layout.items.0.title
+msgid "Routines"
+msgstr "Routine"
+
+#: pages.4.view.sections.2.title
+msgctxt "a routine's sessions"
+msgid "Done"
+msgstr "Fatti"
+
+#: pages.5.layout.items.0.view.sections.0.title
+msgid "Your numbers"
+msgstr "I tuoi numeri"
+
+#: pages.5.layout.items.1.view.title
+msgid "Estimated 1RM"
+msgstr "1RM stimato"
+
+#: pages.5.layout.items.1.view.subtitle
+msgid "Every session, oldest first"
+msgstr "Ogni sessione, dalla più vecchia"
+
+#: pages.5.layout.items.1.view.emptyText
+msgid "Log this exercise and its curve starts here."
+msgstr "Registra questo esercizio e qui inizia la sua curva."
+
+#: pages.6.view.sections.0.title
+msgid "Overview"
+msgstr "Panoramica"
+
+#: ctx.t
+msgid "Push"
+msgstr "Spinta"
+
+#: ctx.t
+msgid "Pull"
+msgstr "Trazione"
+
+#: ctx.t
+msgid "Legs"
+msgstr "Gambe"
+
+#: ctx.t
+msgid "Loading…"
+msgstr "Caricamento…"
+
+#: ctx.t
+msgid "reps"
+msgstr "rip."
+
+#: ctx.t
+msgid "Workout done"
+msgstr "Allenamento fatto"
+
+#: ctx.t
+msgid "Time"
+msgstr "Tempo"
+
+#: ctx.t
+msgid "Volume"
+msgstr "Volume"
+
+#: ctx.t
+msgid "{n, plural, =0 {No new records} one {# personal record} other {# personal records}}"
+msgstr "{n, plural, =0 {Nessun nuovo record} one {# record personale} other {# record personali}}"
+
+#: ctx.t
+msgid "Showing up is the part that counts. The numbers follow."
+msgstr "Quello che conta è esserci. I numeri arrivano."
+
+#: ctx.t
+msgid "Share"
+msgstr "Condividi"
+
+#: ctx.t
+msgid "Done"
+msgstr "Fatto"
+
+#: ctx.t
+msgid "Next up"
+msgstr "Prossimo"
+
+#: ctx.t
+msgid "Your pick"
+msgstr "La tua scelta"
+
+#: ctx.t
+msgid "Last done {when}"
+msgstr "Ultima volta {when}"
+
+#: ctx.t
+msgid "Not done yet"
+msgstr "Mai fatto"
+
+#: ctx.t
+msgid "{n, plural, one {# exercise} other {# exercises}}, {sets, plural, one {# set} other {# sets}}"
+msgstr "{n, plural, one {# esercizio} other {# esercizi}}, {sets, plural, one {# serie} other {# serie}}"
+
+#: ctx.t
+msgid "Start {name}"
+msgstr "Inizia {name}"
+
+#: ctx.t
+msgid "No routines yet"
+msgstr "Ancora nessuna routine"
+
+#: ctx.t
+msgid "A routine is a list of exercises you do together. Make one on the Program tab."
+msgstr "Una routine è un elenco di esercizi da fare insieme. Creane una nella scheda Programma."
+
+#: ctx.t
+msgid "Open Program"
+msgstr "Apri Programma"
+
+#: ctx.t
+msgid "🔥 {n, plural, one {# week in a row} other {# weeks in a row}}"
+msgstr "🔥 {n, plural, one {# settimana di fila} other {# settimane di fila}}"
+
+#: ctx.t
+msgid "Start a streak today"
+msgstr "Inizia una serie oggi"
+
+#: ctx.t
+msgid "Or train something else"
+msgstr "Oppure altro"
+
+#: ctx.t
+msgid "Back to next up"
+msgstr "Torna al prossimo"
+
+#: ctx.t
+msgid "Discard this workout?"
+msgstr "Scartare questo allenamento?"
+
+#: ctx.t
+msgid "Nothing from it is saved."
+msgstr "Non verrà salvato niente."
+
+#: ctx.t
+msgid "Discard"
+msgstr "Scarta"
+
+#: ctx.t
+msgid "Finish workout?"
+msgstr "Finire l'allenamento?"
+
+#: ctx.t
+msgid "Save and finish"
+msgstr "Salva e finisci"
+
+#: ctx.t
+msgid "{sets, plural, one {# set} other {# sets}} · {min} min"
+msgstr "{sets, plural, one {# serie} other {# serie}} · {min} min"
+
+#: ctx.t
+msgid "Keep training"
+msgstr "Continua ad allenarti"
+
+#: ctx.t
+msgid "Discard workout"
+msgstr "Scarta l'allenamento"
+
+#: ctx.t
+msgid "Nothing from this workout is saved"
+msgstr "Non verrà salvato niente di questo allenamento"
+
+#: ctx.t
+msgid "Complete a set first"
+msgstr "Prima completa una serie"
+
+#: ctx.t
+msgid "Set"
+msgstr "Serie"
+
+#: ctx.t
+msgid "Previous"
+msgstr "Precedente"
+
+#: ctx.t
+msgid "Complete set"
+msgstr "Completa la serie"
+
+#: ctx.t
+msgid "+ Add set"
+msgstr "+ Aggiungi serie"
+
+#: ctx.t
+msgid "skip"
+msgstr "salta"
+
+#: ctx.t
+msgid "Tap ✓ to log a set"
+msgstr "Tocca ✓ per segnare una serie"
+
+#: ctx.t
+msgid "Finish"
+msgstr "Fine"
+
+#: ctx.t
+msgid "First time — find your weight"
+msgstr "Prima volta — trova il tuo peso"
+
+#: ctx.t
+msgid "{kg} kg today: +{step} kg, you hit {hit}"
+msgstr "Oggi {kg} kg: +{step} kg, hai fatto {hit}"
+
+#: ctx.t
+msgid "Aim for {reps}: last time {hit}"
+msgstr "Punta a {reps}: l'ultima volta {hit}"
+
+#: ctx.t
+msgid "{kg} kg × {reps}: beat {hit}"
+msgstr "{kg} kg × {reps}: batti {hit}"
+
+#: ctx.t
+msgid "Warm-up set: tap for a drop set"
+msgstr "Riscaldamento: tocca per serie a scalare"
+
+#: ctx.t
+msgid "Drop set: tap for a work set"
+msgstr "Serie a scalare: tocca per serie allenante"
+
+#: ctx.t
+msgid "Work set: tap for a warm-up"
+msgstr "Serie allenante: tocca per riscaldamento"
+
+#: ctx.t
+msgid "{n} reps, most ever"
+msgstr "{n} rip., il massimo di sempre"
+
+#: ctx.t
+msgid "{kg} kg, heaviest yet"
+msgstr "{kg} kg, il più pesante di sempre"
+
+#: ctx.t
+msgid "{kg} kg estimated 1RM"
+msgstr "{kg} kg di 1RM stimato"
+
+#: ctx.t
+msgid "{name} next"
+msgstr "Prossimo: {name}"
+
+#: ctx.t
+msgid "Last: {when}"
+msgstr "Ultimo: {when}"
+
+#: ctx.t
+msgid "Streak: {n, plural, one {# week} other {# weeks}}"
+msgstr "Serie: {n, plural, one {# settimana} other {# settimane}}"
+
+#: ctx.t
+msgid "{n, plural, one {# exercise} other {# exercises}} · {sets, plural, one {# set} other {# sets}}"
+msgstr "{n, plural, one {# esercizio} other {# esercizi}} · {sets, plural, one {# serie} other {# serie}}"
+
+#: ctx.t
+msgid "Log set"
+msgstr "Segna serie"
+
+#: ctx.t
+msgid "Weight"
+msgstr "Peso"
+
+#: ctx.t
+msgid "Logged {kg} kg × {reps}"
+msgstr "Segnato: {kg} kg × {reps}"
+
+#: ctx.t
+msgid "{sets, plural, one {# set} other {# sets}} · {volume} kg · {duration}"
+msgstr "{sets, plural, one {# serie} other {# serie}} · {volume} kg · {duration}"
+
+#: ctx.t
+msgid "🏆 {n}"
+msgstr "🏆 {n}"
+
+#: ctx.t
+msgid "{n, plural, one {# session} other {# sessions}}"
+msgstr "{n, plural, one {# sessione} other {# sessioni}}"
+
+#: ctx.t
+msgctxt "series hamstrings"
+msgid "hamstrings"
+msgstr "femorali"
+
+#: ctx.t
+msgid "{n, plural, one {# set} other {# sets}}"
+msgstr "{n, plural, one {# serie} other {# serie}}"
+
+#: ctx.t
+msgid "resting"
+msgstr "in pausa"
+
+#: ctx.t
+msgid "bodyweight"
+msgstr "corpo libero"
+
+#: ctx.t
+msgid "{n} reps"
+msgstr "{n} rip."
+

@@ -21,7 +21,8 @@
 // named the guest names them from then on. A guest is in the groups that name them: the flat's bills
 // are not the Lisbon friends' business.
 //
-// In six languages (#303); every language but English is a model's draft (#297). Amounts go through
+// Written in English; its translations are catalogs, examples/files/split/locales/<lang>.po (docs/30),
+// every language but English a model's draft (#297). Amounts go through
 // `ctx.format.money`, so a Pole reads "12,50 €" whichever box the app runs in — and the QuickJS
 // fallback, which has no `Intl`, can format them at all. The names are people's, so they are never
 // translated: "You" is the app's.
@@ -35,9 +36,9 @@ const idOf = (v: unknown): string => {
 };
 
 const nameOf = (id: string, ctx: Ctx): string => {
-  if (id === ctx.me?.id) return ctx.t({ en: "You", "pt-BR": "Você", de: "Du", es: "Tú", pl: "Ty", it: "Tu" });
+  if (id === ctx.me?.id) return ctx.t("You");
   const person = ctx.people.find((p) => p.id === id) ?? ctx.space?.members.find((m) => m.id === id);
-  return person?.name ?? ctx.t({ en: "Someone", "pt-BR": "Alguém", de: "Jemand", es: "Alguien", pl: "Ktoś", it: "Qualcuno" });
+  return person?.name ?? ctx.t("Someone");
 };
 
 const money = (minor: number, ctx: Ctx): string => ctx.format.money(minor, "EUR");
@@ -181,19 +182,8 @@ async function standing(ctx: Ctx): Promise<{ expenses: Resolved[]; payments: Res
   return { expenses, payments, net: netBalances(expenses, payments, ctx) };
 }
 
-// ---- categories: a guess from the words, which the person can always change ----
+// ---- categories: what the person picked; "other" until they do ----
 
-/** Words that say what an expense was, in the six languages the app speaks. First match wins. */
-const KEYWORDS: [string, RegExp][] = [
-  ["stay", /hotel|hostel|airbnb|apartment|apartamento|wohnung|unterkunft|alojamiento|nocleg|alloggio|pousada|room|quarto|zimmer/i],
-  ["transport", /taxi|uber|bolt|tram|train|trem|zug|tren|pociąg|treno|bus|ônibus|metro|u-bahn|flight|voo|flug|vuelo|lot|volo|fuel|petrol|gasolina|benzin|paliwo|benzina|parking|tuk/i],
-  ["groceries", /grocer|supermarket|mercado|supermercado|supermarkt|lidl|aldi|biedronka|żabka|pingo|continente|carrefour|rewe|edeka|shop|compras|einkauf|zakupy|spesa/i],
-  ["bills", /internet|rent|aluguel|miete|alquiler|czynsz|affitto|electric|luz|strom|prąd|gas|water|água|wasser|agua|woda|acqua|phone|bill|conta|rechnung|factura|rachunek|bolletta|netflix|spotify|insurance/i],
-  ["food", /dinner|lunch|breakfast|brunch|jantar|almoço|café|coffee|kaffee|abendessen|mittag|cena|comida|obiad|kolacja|pranzo|restaurant|restaurante|tasca|pizza|sushi|bar|beer|cerveja|bier|wine|vinho|wein|vino|wino|pastel|nata|ice cream|gelato|lody|sorvete|snack|takeaway|kebab/i],
-  ["fun", /museum|museu|museo|muzeum|ticket|bilhete|eintritt|entrada|bilet|biglietto|cinema|kino|concert|show|fado|tour|boat|barco|surf|bike|game|party|festa|party|fiesta|impreza/i],
-];
-
-const guessCategory = (text: unknown): string => KEYWORDS.find(([, re]) => re.test(String(text ?? "")))?.[0] ?? "other";
 const CATEGORY_EMOJI: Record<string, string> = { food: "🍽", groceries: "🛒", transport: "🚕", stay: "🏨", fun: "🎟", bills: "💡", other: "🧾" };
 
 /** What a receipt is read into. A line without a price is not an item; the total checks the lines. */
@@ -215,22 +205,15 @@ async function fromReceipt(ctx: Ctx): Promise<void> {
   const ai = ctx.caps.ai;
   if (ai) {
     const how = await ctx.ui.sheet({
-      title: ctx.t({ en: "Split a receipt", "pt-BR": "Dividir uma nota", de: "Beleg aufteilen", es: "Dividir un ticket", pl: "Podziel paragon", it: "Dividi uno scontrino" }),
+      title: ctx.t("Split a receipt"),
       items: [
         {
           id: "photo",
           icon: "📷",
-          label: ctx.t({ en: "Read a photo of it", "pt-BR": "Ler uma foto", de: "Foto lesen lassen", es: "Leer una foto", pl: "Odczytaj ze zdjęcia", it: "Leggi una foto" }),
-          detail: ctx.t({
-            en: "AI reads the lines; you check them before anything is saved",
-            "pt-BR": "A IA lê as linhas; você confere antes de salvar",
-            de: "Die KI liest die Zeilen; du prüfst sie, bevor etwas gespeichert wird",
-            es: "La IA lee las líneas; tú las revisas antes de guardar",
-            pl: "AI odczyta pozycje; sprawdzisz je przed zapisem",
-            it: "L'IA legge le righe; tu le controlli prima di salvare",
-          }),
+          label: ctx.t("Read a photo of it"),
+          detail: ctx.t("AI reads the lines; you check them before anything is saved"),
         },
-        { id: "type", icon: "⌨", label: ctx.t({ en: "Type the lines", "pt-BR": "Digitar as linhas", de: "Zeilen eintippen", es: "Escribir las líneas", pl: "Wpisz pozycje", it: "Scrivi le righe" }) },
+        { id: "type", icon: "⌨", label: ctx.t("Type the lines") },
       ],
     });
     if (!how) return;
@@ -239,7 +222,7 @@ async function fromReceipt(ctx: Ctx): Promise<void> {
       if (!file) return; // the person closed the picker
       const bytes = await ctx.files.bytes(file);
       if (bytes) photo = await ctx.media.put(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: file.mime || "image/jpeg" }));
-      const bar = ctx.ui.progress(ctx.t({ en: "Reading the receipt…", "pt-BR": "Lendo a nota…", de: "Beleg wird gelesen…", es: "Leyendo el ticket…", pl: "Czytam paragon…", it: "Leggo lo scontrino…" }));
+      const bar = ctx.ui.progress(ctx.t("Reading the receipt…"));
       try {
         read = await ai.extract({
           image: file,
@@ -259,36 +242,29 @@ async function fromReceipt(ctx: Ctx): Promise<void> {
   const total = read?.total ? Math.round(read.total * 100) : 0;
   if (total > sum)
     lines.push({
-      name: ctx.t({ en: "Rest of the bill (tax, tip)", "pt-BR": "Resto da conta (taxa, gorjeta)", de: "Rest der Rechnung (Steuer, Trinkgeld)", es: "Resto (impuestos, propina)", pl: "Reszta rachunku (podatek, napiwek)", it: "Resto del conto (tasse, mancia)" }),
+      name: ctx.t("Rest of the bill (tax, tip)"),
       price: total - sum,
       people: [],
     });
-  const add = ctx.t({ en: "Add expense", "pt-BR": "Adicionar despesa", de: "Ausgabe hinzufügen", es: "Añadir gasto", pl: "Dodaj wydatek", it: "Aggiungi spesa" });
+  const add = ctx.t("Add expense");
   const filled = await ctx.ui.form<{ description: string; items: { name: string; price: number; people?: string[] }[] }>({
-    title: ctx.t({ en: "Who had what?", "pt-BR": "Quem pediu o quê?", de: "Wer hatte was?", es: "¿Quién tomó qué?", pl: "Kto co zamawiał?", it: "Chi ha preso cosa?" }),
+    title: ctx.t("Who had what?"),
     submit: add,
     fields: {
       description: {
         type: "text",
         required: true,
-        label: ctx.t({ en: "Where", "pt-BR": "Onde", de: "Wo", es: "Dónde", pl: "Gdzie", it: "Dove" }),
-        placeholder: ctx.t({ en: "Dinner", "pt-BR": "Jantar", de: "Abendessen", es: "Cena", pl: "Kolacja", it: "Cena" }),
+        label: ctx.t("Where"),
+        placeholder: ctx.t("Dinner"),
       },
       items: {
         type: "list",
-        label: ctx.t({ en: "Lines", "pt-BR": "Linhas", de: "Zeilen", es: "Líneas", pl: "Pozycje", it: "Righe" }),
-        help: ctx.t({
-          en: "Leave a line with nobody named and everyone shares it",
-          "pt-BR": "Uma linha sem ninguém marcado é de todos",
-          de: "Eine Zeile ohne Namen teilen sich alle",
-          es: "Una línea sin nadie marcado es de todos",
-          pl: "Pozycja bez nikogo jest wspólna",
-          it: "Una riga senza nessuno è di tutti",
-        }),
+        label: ctx.t("Lines"),
+        help: ctx.t("Leave a line with nobody named and everyone shares it"),
         of: {
-          name: { type: "text", required: true, label: ctx.t({ en: "What", "pt-BR": "O quê", de: "Was", es: "Qué", pl: "Co", it: "Cosa" }) },
-          price: { type: "money", currency: "EUR", required: true, min: 0, label: ctx.t({ en: "Price", "pt-BR": "Preço", de: "Preis", es: "Precio", pl: "Cena", it: "Prezzo" }) },
-          people: { type: "member", many: true, label: ctx.t({ en: "Who had it", "pt-BR": "Quem pediu", de: "Wer", es: "Quién", pl: "Kto", it: "Chi" }) },
+          name: { type: "text", required: true, label: ctx.t("What") },
+          price: { type: "money", currency: "EUR", required: true, min: 0, label: ctx.t("Price") },
+          people: { type: "member", many: true, label: ctx.t("Who had it") },
         },
       },
     },
@@ -297,7 +273,7 @@ async function fromReceipt(ctx: Ctx): Promise<void> {
   if (!filled) return;
   const items = (filled.items ?? []).filter((l) => l.name && minorOf(l.price) > 0).map((l) => ({ name: l.name, price: minorOf(l.price), people: l.people ?? [] }));
   if (!items.length) {
-    ctx.ui.toast(ctx.t({ en: "No lines with a price, so nothing to add.", "pt-BR": "Nenhuma linha com preço; nada a adicionar.", de: "Keine Zeile mit Preis, also nichts hinzuzufügen.", es: "Ninguna línea con precio; nada que añadir.", pl: "Brak pozycji z ceną, nic do dodania.", it: "Nessuna riga con prezzo, niente da aggiungere." }));
+    ctx.ui.toast(ctx.t("No lines with a price, so nothing to add."));
     return;
   }
   await ctx.create("expense", {
@@ -308,10 +284,10 @@ async function fromReceipt(ctx: Ctx): Promise<void> {
     split: "items",
     items,
     group: ctx.scope.group?.id,
-    category: guessCategory(filled.description) === "other" ? "food" : guessCategory(filled.description),
+    category: "food",
     ...(photo ? { receipt: photo } : {}),
   });
-  ctx.ui.toast(ctx.t({ en: "{n, plural, one {Added, # line} other {Added, # lines}}", "pt-BR": "{n, plural, one {Adicionada, # linha} other {Adicionada, # linhas}}", de: "{n, plural, one {Hinzugefügt, # Zeile} other {Hinzugefügt, # Zeilen}}", es: "{n, plural, one {Añadido, # línea} other {Añadido, # líneas}}", pl: "{n, plural, one {Dodano, # pozycja} few {Dodano, # pozycje} many {Dodano, # pozycji} other {Dodano, # pozycji}}", it: "{n, plural, one {Aggiunta, # riga} other {Aggiunta, # righe}}" }, { n: items.length }));
+  ctx.ui.toast(ctx.t("{n, plural, one {Added, # line} other {Added, # lines}}", { n: items.length }));
 }
 
 /**
@@ -328,8 +304,8 @@ async function settleUp(ctx: Ctx, direct = false, given?: unknown): Promise<void
   const named = asked ? moves.findIndex((m) => m.from === asked.from && m.to === asked.to) : -1;
   const choice = named >= 0 ? String(named) : direct && moves.length === 1 ? "0" : await ctx.ui.sheet<string>({
     title: moves.length
-      ? ctx.t({ en: "Settle up", "pt-BR": "Acertar as contas", de: "Ausgleichen", es: "Saldar cuentas", pl: "Rozlicz się", it: "Salda i conti" })
-      : ctx.t({ en: "All square 🎉", "pt-BR": "Tudo certo 🎉", de: "Alles ausgeglichen 🎉", es: "Cuentas saldadas 🎉", pl: "Wszystko rozliczone 🎉", it: "Tutto in pari 🎉" }),
+      ? ctx.t("Settle up")
+      : ctx.t("All square 🎉"),
     items: [
       ...moves.map((m, i) => ({
         id: String(i),
@@ -337,19 +313,19 @@ async function settleUp(ctx: Ctx, direct = false, given?: unknown): Promise<void
         label: `${nameOf(m.from, ctx)} → ${nameOf(m.to, ctx)}`,
         detail: money(m.amount, ctx),
       })),
-      { id: other, icon: "＋", label: ctx.t({ en: "Record another payment", "pt-BR": "Registrar outro pagamento", de: "Andere Zahlung eintragen", es: "Registrar otro pago", pl: "Zapisz inną płatność", it: "Registra un altro pagamento" }) },
+      { id: other, icon: "＋", label: ctx.t("Record another payment") },
     ],
   });
   if (choice == null) return;
   const move = choice === other ? null : moves[Number(choice)];
   const filled = await ctx.ui.form<{ from: string; to: string; amount: number; note?: string }>({
-    title: ctx.t({ en: "Record a payment", "pt-BR": "Registrar pagamento", de: "Zahlung eintragen", es: "Registrar pago", pl: "Zapisz płatność", it: "Registra pagamento" }),
-    submit: ctx.t({ en: "Record it", "pt-BR": "Registrar", de: "Eintragen", es: "Registrar", pl: "Zapisz", it: "Registra" }),
+    title: ctx.t("Record a payment"),
+    submit: ctx.t("Record it"),
     fields: {
-      from: { type: "member", required: true, label: ctx.t({ en: "From", "pt-BR": "De", de: "Von", es: "De", pl: "Od", it: "Da" }) },
-      to: { type: "member", required: true, label: ctx.t({ en: "To", "pt-BR": "Para", de: "An", es: "Para", pl: "Dla", it: "A" }) },
-      amount: { type: "money", currency: "EUR", required: true, min: 0, label: ctx.t({ en: "Amount", "pt-BR": "Valor", de: "Betrag", es: "Importe", pl: "Kwota", it: "Importo" }) },
-      note: { type: "text", label: ctx.t({ en: "Note", "pt-BR": "Observação", de: "Notiz", es: "Nota", pl: "Notatka", it: "Nota" }) },
+      from: { type: "member", required: true, label: ctx.t("From") },
+      to: { type: "member", required: true, label: ctx.t("To") },
+      amount: { type: "money", currency: "EUR", required: true, min: 0, label: ctx.t("Amount") },
+      note: { type: "text", label: ctx.t("Note") },
     },
     initial: move ? { from: move.from, to: move.to, amount: move.amount } : { from: ctx.me?.id },
   });
@@ -359,11 +335,11 @@ async function settleUp(ctx: Ctx, direct = false, given?: unknown): Promise<void
     to: filled.to,
     amount: minorOf(filled.amount),
     when: ctx.now(),
-    note: filled.note || ctx.t({ en: "Settling up", "pt-BR": "Acertando as contas", de: "Ausgleich", es: "Saldando cuentas", pl: "Rozliczenie", it: "Saldo dei conti" }),
+    note: filled.note || ctx.t("Settling up"),
     group: ctx.scope.group?.id,
   });
   // It happened: say so. (Asking "send them a reminder?" here asked for money just paid.)
-  ctx.ui.toast(ctx.t({ en: "Payment recorded", "pt-BR": "Pagamento registrado", de: "Zahlung eingetragen", es: "Pago registrado", pl: "Płatność zapisana", it: "Pagamento registrato" }));
+  ctx.ui.toast(ctx.t("Payment recorded"));
 }
 
 /**
@@ -373,26 +349,19 @@ async function settleUp(ctx: Ctx, direct = false, given?: unknown): Promise<void
  */
 async function invite(ctx: Ctx): Promise<void> {
   const how = await ctx.ui.sheet<string>({
-    title: ctx.t({ en: "Who's coming?", "pt-BR": "Quem vem?", de: "Wer ist dabei?", es: "¿Quién viene?", pl: "Kto jedzie?", it: "Chi viene?" }),
+    title: ctx.t("Who's coming?"),
     items: [
       {
         id: "names",
         icon: "✍",
-        label: ctx.t({ en: "Name them now", "pt-BR": "Dizer os nomes agora", de: "Jetzt mit Namen eintragen", es: "Escribir sus nombres ya", pl: "Wpisz ich imiona teraz", it: "Scrivi ora i nomi" }),
-        detail: ctx.t({
-          en: "Ana, Tom… they can join later and say which one they are",
-          "pt-BR": "Ana, Tom… eles podem entrar depois e dizer quem são",
-          de: "Ana, Tom… sie können später dazukommen und sagen, wer sie sind",
-          es: "Ana, Tom… pueden unirse después y decir quién es quién",
-          pl: "Ana, Tom… mogą dołączyć później i wskazać, kim są",
-          it: "Ana, Tom… possono unirsi dopo e dire chi sono",
-        }),
+        label: ctx.t("Name them now"),
+        detail: ctx.t("Ana, Tom… they can join later and say which one they are"),
       },
       {
         id: "link",
         icon: "🔗",
-        label: ctx.t({ en: "Send a link", "pt-BR": "Mandar um link", de: "Einen Link schicken", es: "Mandar un enlace", pl: "Wyślij link", it: "Manda un link" }),
-        detail: ctx.t({ en: "Whoever opens it is in, no account needed", "pt-BR": "Quem abrir entra, sem conta", de: "Wer ihn öffnet, ist dabei, ohne Konto", es: "Quien lo abra entra, sin cuenta", pl: "Kto go otworzy, dołącza, bez konta", it: "Chi lo apre è dentro, senza account" }),
+        label: ctx.t("Send a link"),
+        detail: ctx.t("Whoever opens it is in, no account needed"),
       },
     ],
   });
@@ -409,21 +378,21 @@ async function nameGuests(ctx: Ctx): Promise<void> {
   const group = ctx.scope.group;
   if (!group) return;
   const filled = await ctx.ui.form<{ names: string }>({
-    title: ctx.t({ en: "Who's coming?", "pt-BR": "Quem vem?", de: "Wer ist dabei?", es: "¿Quién viene?", pl: "Kto jedzie?", it: "Chi viene?" }),
-    submit: ctx.t({ en: "Add them", "pt-BR": "Adicionar", de: "Hinzufügen", es: "Añadir", pl: "Dodaj", it: "Aggiungi" }),
+    title: ctx.t("Who's coming?"),
+    submit: ctx.t("Add them"),
     fields: {
       names: {
         type: "text",
         required: true,
-        label: ctx.t({ en: "Names", "pt-BR": "Nomes", de: "Namen", es: "Nombres", pl: "Imiona", it: "Nomi" }),
+        label: ctx.t("Names"),
         placeholder: "Ana, Tom…",
-        help: ctx.t({ en: "Separate them with commas", "pt-BR": "Separe com vírgulas", de: "Mit Kommas getrennt", es: "Sepáralos con comas", pl: "Oddziel je przecinkami", it: "Separali con virgole" }),
+        help: ctx.t("Separate them with commas"),
       },
     },
   });
   if (!filled?.names) return;
   // Commas, and the language's own "and": "Ana, Tom and Inês" is three people.
-  const and = ctx.t({ en: "and", "pt-BR": "e", de: "und", es: "y", pl: "i", it: "e" });
+  const and = ctx.t("and");
   const typed = String(filled.names)
     .split(new RegExp(`[,;\\n]+|\\s+(?:${and}|&|\\+)\\s+`, "i"))
     .map((n) => n.trim())
@@ -445,7 +414,7 @@ async function nameGuests(ctx: Ctx): Promise<void> {
   await ctx.patch("group", String(group.id), { people: [...new Set([...before, ...ids])] });
   ctx.ui.toast(
     ctx.t(
-      { en: "{names} can be in expenses now", "pt-BR": "{names} já podem entrar nas despesas", de: "{names} können jetzt in Ausgaben stehen", es: "{names} ya pueden estar en los gastos", pl: "{names} mogą już być w wydatkach", it: "{names} possono già stare nelle spese" },
+      "{names} can be in expenses now",
       { names: ctx.format.list(names) },
     ),
   );
@@ -460,28 +429,14 @@ async function sendInvite(ctx: Ctx): Promise<void> {
   const link = ctx.space?.invite ? await ctx.space.invite().catch(() => "") : "";
   if (!link) {
     ctx.ui.toast(
-      ctx.t({
-        en: "Open ⋯ and choose Share to invite people. No account needed.",
-        "pt-BR": "Abra ⋯ e escolha Compartilhar para convidar. Sem conta.",
-        de: "Öffne ⋯ und wähle Teilen, um Leute einzuladen. Ohne Konto.",
-        es: "Abre ⋯ y elige Compartir para invitar. Sin cuenta.",
-        pl: "Otwórz ⋯ i wybierz Udostępnij, by zaprosić. Bez konta.",
-        it: "Apri ⋯ e scegli Condividi per invitare. Senza account.",
-      }),
+      ctx.t("Open ⋯ and choose Share to invite people. No account needed."),
     );
     return;
   }
   await ctx.ui.share({
     url: link,
     title: String(ctx.scope.group?.name ?? ""),
-    text: ctx.t({
-      en: "Join {group} on Split so we can share costs. No account needed.",
-      "pt-BR": "Entre em {group} no Dividir para dividirmos as contas. Sem conta.",
-      de: "Komm zu {group} in Aufteilen, damit wir Kosten teilen. Ohne Konto.",
-      es: "Únete a {group} en Dividir para repartir gastos. Sin cuenta.",
-      pl: "Dołącz do {group} w Podziale, żebyśmy dzielili koszty. Bez konta.",
-      it: "Entra in {group} su Dividi per dividere le spese. Senza account.",
-    }, { group: String(ctx.scope.group?.name ?? "") }),
+    text: ctx.t("Join {group} on Split so we can share costs. No account needed.", { group: String(ctx.scope.group?.name ?? "") }),
   });
 }
 
@@ -497,7 +452,7 @@ function dayHeading(when: unknown, ctx: Ctx): string {
 
 export default defineApp({
   id: "split",
-  name: { en: "Split", "pt-BR": "Dividir", de: "Aufteilen", es: "Dividir", pl: "Podział", it: "Dividi" },
+  name: "Split",
   icon: "🧾",
   version: "2.0.0",
   // 2.0.0: an expense can be split by exact amounts or line by line, and has a category. A copy
@@ -523,49 +478,42 @@ export default defineApp({
     const amount = money(Math.abs(you), ctx);
     const title =
       you > 0
-        ? ctx.t({ en: "You are owed {amount}", "pt-BR": "Você tem {amount} a receber", de: "Du bekommst {amount}", es: "Te deben {amount}", pl: "Masz do odebrania {amount}", it: "Devi ricevere {amount}" }, { amount })
+        ? ctx.t("You are owed {amount}", { amount })
         : you < 0
-          ? ctx.t({ en: "You owe {amount}", "pt-BR": "Você deve {amount}", de: "Du schuldest {amount}", es: "Debes {amount}", pl: "Masz do oddania {amount}", it: "Devi {amount}" }, { amount })
-          : ctx.t({ en: "All square", "pt-BR": "Tudo certo", de: "Alles ausgeglichen", es: "Cuentas saldadas", pl: "Wszystko rozliczone", it: "Tutto in pari" });
+          ? ctx.t("You owe {amount}", { amount })
+          : ctx.t("All square");
     const next = settlements(net).find((s) => s.from === ctx.me?.id || s.to === ctx.me?.id);
     const latest = [...expenses].sort((a, b) => new Date(String(b.when ?? 0)).getTime() - new Date(String(a.when ?? 0)).getTime())[0];
     return {
       title,
       lines: [
         String(group.name ?? ""),
-        next ? `${nameOf(next.from, ctx)} → ${nameOf(next.to, ctx)} ${money(next.amount, ctx)}` : latest ? `${CATEGORY_EMOJI[String(latest.category || guessCategory(latest.description))] ?? "🧾"} ${String(latest.description ?? "")} ${money(minorOf(latest.amount), ctx)}` : "",
+        next ? `${nameOf(next.from, ctx)} → ${nameOf(next.to, ctx)} ${money(next.amount, ctx)}` : latest ? `${CATEGORY_EMOJI[String(latest.category || "other")] ?? "🧾"} ${String(latest.description ?? "")} ${money(minorOf(latest.amount), ctx)}` : "",
       ].filter(Boolean),
     };
   },
 
   // The group is the app's selection, in the header, and every page follows it. `required` because
   // an expense with no group is an expense nobody can be asked to pay.
-  scope: { entity: "group", label: { en: "Group", "pt-BR": "Grupo", de: "Gruppe", es: "Grupo", pl: "Grupa", it: "Gruppo" }, required: true },
+  scope: { entity: "group", label: "Group", required: true },
 
   entities: {
     group: {
-      label: { en: "Group", "pt-BR": "Grupo", de: "Gruppe", es: "Grupo", pl: "Grupa", it: "Gruppo" },
+      label: "Group",
       icon: "👥",
       displayField: "name",
       fields: {
         name: {
           type: "text",
           required: true,
-          label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" },
-          placeholder: { en: "Lisbon weekend", "pt-BR": "Fim de semana em Lisboa", de: "Wochenende in Lissabon", es: "Finde en Lisboa", pl: "Weekend w Lizbonie", it: "Weekend a Lisbona" },
+          label: "Name",
+          placeholder: "Lisbon weekend",
         },
         note: {
           type: "text",
           multiline: true,
-          label: { en: "Note", "pt-BR": "Observação", de: "Notiz", es: "Nota", pl: "Notatka", it: "Nota" },
-          help: {
-            en: "What this group is for",
-            "pt-BR": "Para que serve este grupo",
-            de: "Wofür diese Gruppe da ist",
-            es: "Para qué es este grupo",
-            pl: "Do czego jest ta grupa",
-            it: "A cosa serve questo gruppo",
-          },
+          label: "Note",
+          help: "What this group is for",
         },
         // The others before they have the app (docs/04 §Guests): names that expenses can name, and
         // that share this group's costs. Whoever joins says which one they are, and every expense that
@@ -573,22 +521,15 @@ export default defineApp({
         people: {
           type: "member",
           many: true,
-          label: { en: "Not joined yet", "pt-BR": "Ainda não entraram", de: "Noch nicht dabei", es: "Aún no se han unido", pl: "Jeszcze nie dołączyli", it: "Non ancora entrati" },
-          help: {
-            en: "Name the others with Invite; whoever joins later says which one they are",
-            "pt-BR": "Diga os nomes dos outros em Convidar; quem entrar depois diz quem é",
-            de: "Trag die anderen über Einladen ein; wer später dazukommt, sagt, wer er ist",
-            es: "Escribe a los demás con Invitar; quien se una después dice quién es",
-            pl: "Wpisz pozostałych przez Zaproś; kto dołączy później, wskaże, kim jest",
-            it: "Scrivi gli altri con Invita; chi si unisce dopo dice chi è",
-          },
+          label: "Not joined yet",
+          help: "Name the others with Invite; whoever joins later says which one they are",
         },
       },
       actions: {
         // What a row under "To settle up" runs (the row cannot say which transfer it is, so with one
         // transfer it goes straight to the payment, and with several it asks which).
         settle: {
-          label: { en: "Settle up", "pt-BR": "Acertar as contas", de: "Ausgleichen", es: "Saldar cuentas", pl: "Rozlicz się", it: "Salda i conti" },
+          label: "Settle up",
           icon: "💸",
           // From a row of the balances, the row says which payment (`input`); else you choose.
           run: (_group, ctx, input) => settleUp(ctx, true, input),
@@ -597,84 +538,70 @@ export default defineApp({
     },
 
     expense: {
-      label: { en: "Expense", "pt-BR": "Despesa", de: "Ausgabe", es: "Gasto", pl: "Wydatek", it: "Spesa" },
+      label: "Expense",
       icon: "🧾",
       displayField: "description",
       fields: {
         description: {
           type: "text",
           required: true,
-          label: { en: "Description", "pt-BR": "Descrição", de: "Beschreibung", es: "Descripción", pl: "Opis", it: "Descrizione" },
-          placeholder: { en: "Dinner", "pt-BR": "Jantar", de: "Abendessen", es: "Cena", pl: "Kolacja", it: "Cena" },
+          label: "Description",
+          placeholder: "Dinner",
         },
         amount: {
           type: "money",
           currency: "EUR",
           required: true,
           min: 0,
-          label: { en: "Amount", "pt-BR": "Valor", de: "Betrag", es: "Importe", pl: "Kwota", it: "Importo" },
+          label: "Amount",
         },
         // The group's people — members, and the guests named before they joined — never typed names.
         paidBy: {
           type: "member",
-          label: { en: "Paid by", "pt-BR": "Pago por", de: "Bezahlt von", es: "Pagado por", pl: "Kto zapłacił", it: "Pagato da" },
+          label: "Paid by",
           default: (ctx) => ctx.me?.id,
         },
         when: {
           type: "datetime",
           precision: "day",
           default: (ctx) => ctx.now(),
-          label: { en: "When", "pt-BR": "Quando", de: "Wann", es: "Cuándo", pl: "Kiedy", it: "Quando" },
+          label: "When",
         },
         category: {
           type: "enum",
-          label: { en: "Category", "pt-BR": "Categoria", de: "Kategorie", es: "Categoría", pl: "Kategoria", it: "Categoria" },
+          label: "Category",
           options: ["food", "groceries", "transport", "stay", "fun", "bills", "other"],
           colors: { food: "orange", groceries: "green", transport: "blue", stay: "purple", fun: "pink", bills: "yellow", other: "grey" },
           labels: {
-            food: { en: "🍽 food & drink", "pt-BR": "🍽 comida e bebida", de: "🍽 Essen & Trinken", es: "🍽 comida y bebida", pl: "🍽 jedzenie i picie", it: "🍽 cibo e bevande" },
-            groceries: { en: "🛒 groceries", "pt-BR": "🛒 mercado", de: "🛒 Einkauf", es: "🛒 súper", pl: "🛒 zakupy", it: "🛒 spesa" },
-            transport: { en: "🚕 transport", "pt-BR": "🚕 transporte", de: "🚕 Fahrten", es: "🚕 transporte", pl: "🚕 transport", it: "🚕 trasporti" },
-            stay: { en: "🏨 stay", "pt-BR": "🏨 hospedagem", de: "🏨 Unterkunft", es: "🏨 alojamiento", pl: "🏨 nocleg", it: "🏨 alloggio" },
-            fun: { en: "🎟 fun", "pt-BR": "🎟 passeios", de: "🎟 Freizeit", es: "🎟 ocio", pl: "🎟 rozrywka", it: "🎟 svago" },
-            bills: { en: "💡 bills", "pt-BR": "💡 contas", de: "💡 Rechnungen", es: "💡 facturas", pl: "💡 rachunki", it: "💡 bollette" },
-            other: { en: "🧾 other", "pt-BR": "🧾 outros", de: "🧾 Sonstiges", es: "🧾 otros", pl: "🧾 inne", it: "🧾 altro" },
+            food: "🍽 food & drink",
+            groceries: "🛒 groceries",
+            transport: "🚕 transport",
+            stay: "🏨 stay",
+            fun: "🎟 fun",
+            bills: "💡 bills",
+            other: "🧾 other",
           },
-          help: {
-            en: "Left empty, it is guessed from what it was for",
-            "pt-BR": "Se vazio, é deduzido pela descrição",
-            de: "Leer gelassen, wird sie aus dem Wofür erraten",
-            es: "Si lo dejas vacío, se deduce de la descripción",
-            pl: "Puste pole zostanie zgadnięte z opisu",
-            it: "Se vuoto, si deduce dalla descrizione",
-          },
+          help: "Left empty, it counts as other",
           control: "picker",
         },
         split: {
           type: "enum",
-          label: { en: "Split", "pt-BR": "Divisão", de: "Aufteilung", es: "Reparto", pl: "Podział", it: "Ripartizione" },
+          label: { text: "Split", context: "expense split" },
           options: ["equally", "shares", "exact", "items"],
           labels: {
-            equally: { en: "equally", "pt-BR": "em partes iguais", de: "gleichmäßig", es: "a partes iguales", pl: "po równo", it: "in parti uguali" },
-            shares: { en: "by shares", "pt-BR": "por cotas", de: "nach Anteilen", es: "por partes", pl: "według udziałów", it: "a quote" },
-            exact: { en: "exact amounts", "pt-BR": "valores exatos", de: "genaue Beträge", es: "importes exactos", pl: "dokładne kwoty", it: "importi esatti" },
-            items: { en: "line by line", "pt-BR": "item por item", de: "Zeile für Zeile", es: "línea a línea", pl: "pozycja po pozycji", it: "riga per riga" },
+            equally: "equally",
+            shares: "by shares",
+            exact: "exact amounts",
+            items: "line by line",
           },
           default: "equally",
-          help: {
-            en: "Equally between the people below, by shares, by exact amounts, or line by line from a receipt",
-            "pt-BR": "Em partes iguais entre as pessoas abaixo, por cotas, por valores exatos ou item por item de uma nota",
-            de: "Gleichmäßig unter den Leuten unten, nach Anteilen, nach genauen Beträgen oder Zeile für Zeile vom Beleg",
-            es: "A partes iguales entre las personas de abajo, por partes, por importes exactos o línea a línea de un ticket",
-            pl: "Po równo między osoby poniżej, według udziałów, dokładnymi kwotami albo pozycja po pozycji z paragonu",
-            it: "In parti uguali tra le persone qui sotto, a quote, a importi esatti o riga per riga da uno scontrino",
-          },
+          help: "Equally between the people below, by shares, by exact amounts, or line by line from a receipt",
         },
         between: {
           type: "member",
-          label: { en: "Between", "pt-BR": "Entre", de: "Geteilt unter", es: "Entre", pl: "Między", it: "Tra" },
+          label: "Between",
           many: true,
-          help: { en: "Who was in on it", "pt-BR": "Quem participou", de: "Wer dabei war", es: "Quién participó", pl: "Kto brał udział", it: "Chi c'era" },
+          help: "Who was in on it",
           // Everyone in the group — its guests too — because that is what "split equally" means nine times out of ten
           // — and an expense that starts with nobody in it credits whoever paid and charges no one,
           // which is how two people who each paid for dinner end up both being "owed" in full.
@@ -692,144 +619,116 @@ export default defineApp({
         },
         shares: {
           type: "list",
-          label: { en: "By shares", "pt-BR": "Por cotas", de: "Nach Anteilen", es: "Por partes", pl: "Według udziałów", it: "A quote" },
-          help: {
-            en: "Two shares for a couple, one each for the rest",
-            "pt-BR": "Duas cotas para um casal, uma para cada um dos outros",
-            de: "Zwei Anteile für ein Paar, einer für alle anderen",
-            es: "Dos partes para una pareja, una para cada uno de los demás",
-            pl: "Dwa udziały dla pary, po jednym dla reszty",
-            it: "Due quote per una coppia, una a testa per gli altri",
-          },
+          label: "By shares",
+          help: "Two shares for a couple, one each for the rest",
           of: {
-            person: { type: "member", label: { en: "Person", "pt-BR": "Pessoa", de: "Person", es: "Persona", pl: "Osoba", it: "Persona" } },
+            person: { type: "member", label: "Person" },
             share: {
               type: "number",
               integer: true,
               min: 0,
               default: 1,
-              label: { en: "Share", "pt-BR": "Cotas", de: "Anteile", es: "Partes", pl: "Udziały", it: "Quote" },
+              label: "Share",
             },
           },
         },
         exact: {
           type: "list",
-          label: { en: "Exact amounts", "pt-BR": "Valores exatos", de: "Genaue Beträge", es: "Importes exactos", pl: "Dokładne kwoty", it: "Importi esatti" },
-          help: {
-            en: "What each person's part was; anything left over is shared by everyone",
-            "pt-BR": "A parte de cada um; o que sobrar é de todos",
-            de: "Wie viel auf wen entfällt; was übrig bleibt, teilen sich alle",
-            es: "La parte de cada uno; lo que sobre es de todos",
-            pl: "Część każdej osoby; reszta jest wspólna",
-            it: "La parte di ciascuno; quello che avanza è di tutti",
-          },
+          label: "Exact amounts",
+          help: "What each person's part was; anything left over is shared by everyone",
           of: {
-            person: { type: "member", label: { en: "Person", "pt-BR": "Pessoa", de: "Person", es: "Persona", pl: "Osoba", it: "Persona" } },
-            amount: { type: "money", currency: "EUR", min: 0, label: { en: "Amount", "pt-BR": "Valor", de: "Betrag", es: "Importe", pl: "Kwota", it: "Importo" } },
+            person: { type: "member", label: "Person" },
+            amount: { type: "money", currency: "EUR", min: 0, label: "Amount" },
           },
         },
         items: {
           type: "list",
-          label: { en: "Lines", "pt-BR": "Linhas", de: "Zeilen", es: "Líneas", pl: "Pozycje", it: "Righe" },
-          help: {
-            en: "A line with nobody named is everyone's",
-            "pt-BR": "Uma linha sem ninguém marcado é de todos",
-            de: "Eine Zeile ohne Namen gehört allen",
-            es: "Una línea sin nadie marcado es de todos",
-            pl: "Pozycja bez nikogo jest wspólna",
-            it: "Una riga senza nessuno è di tutti",
-          },
+          label: "Lines",
+          help: "A line with nobody named is everyone's",
           of: {
-            name: { type: "text", label: { en: "What", "pt-BR": "O quê", de: "Was", es: "Qué", pl: "Co", it: "Cosa" } },
-            price: { type: "money", currency: "EUR", min: 0, label: { en: "Price", "pt-BR": "Preço", de: "Preis", es: "Precio", pl: "Cena", it: "Prezzo" } },
-            people: { type: "member", many: true, label: { en: "Who had it", "pt-BR": "Quem pediu", de: "Wer", es: "Quién", pl: "Kto", it: "Chi" } },
+            name: { type: "text", label: "What" },
+            price: { type: "money", currency: "EUR", min: 0, label: "Price" },
+            people: { type: "member", many: true, label: "Who had it" },
           },
         },
-        receipt: { type: "media", accept: "image", full: true, label: { en: "Receipt", "pt-BR": "Nota", de: "Beleg", es: "Ticket", pl: "Paragon", it: "Scontrino" } },
-        note: { type: "text", multiline: true, label: { en: "Note", "pt-BR": "Observação", de: "Notiz", es: "Nota", pl: "Notatka", it: "Nota" } },
-        group: { type: "relation", to: "group", hidden: true, label: { en: "Group", "pt-BR": "Grupo", de: "Gruppe", es: "Grupo", pl: "Grupa", it: "Gruppo" }, default: (ctx) => ctx.scope.group?.id },
+        receipt: { type: "media", accept: "image", full: true, label: "Receipt" },
+        note: { type: "text", multiline: true, label: "Note" },
+        group: { type: "relation", to: "group", hidden: true, label: "Group", default: (ctx) => ctx.scope.group?.id },
       },
       groups: [
-        { title: { en: "Expense", "pt-BR": "Despesa", de: "Ausgabe", es: "Gasto", pl: "Wydatek", it: "Spesa" }, fields: ["amount", "description", "category", "paidBy", "when"] },
-        { title: { en: "Who pays", "pt-BR": "Quem paga", de: "Wer zahlt", es: "Quién paga", pl: "Kto płaci", it: "Chi paga" }, fields: ["split", "between", "shares", "exact", "items"] },
-        { title: { en: "More", "pt-BR": "Mais", de: "Mehr", es: "Más", pl: "Więcej", it: "Altro" }, fields: ["receipt", "note"], collapsed: true },
+        { title: "Expense", fields: ["amount", "description", "category", "paidBy", "when"] },
+        { title: "Who pays", fields: ["split", "between", "shares", "exact", "items"] },
+        { title: "More", fields: ["receipt", "note"], collapsed: true },
       ],
       computed: {
         /** The category it has, or the one its words suggest. */
         kind: {
-          label: { en: "Category", "pt-BR": "Categoria", de: "Kategorie", es: "Categoría", pl: "Kategoria", it: "Categoria" },
+          label: "Category",
           labels: {
-            food: { en: "🍽 food & drink", "pt-BR": "🍽 comida e bebida", de: "🍽 Essen & Trinken", es: "🍽 comida y bebida", pl: "🍽 jedzenie i picie", it: "🍽 cibo e bevande" },
-            groceries: { en: "🛒 groceries", "pt-BR": "🛒 mercado", de: "🛒 Einkauf", es: "🛒 súper", pl: "🛒 zakupy", it: "🛒 spesa" },
-            transport: { en: "🚕 transport", "pt-BR": "🚕 transporte", de: "🚕 Fahrten", es: "🚕 transporte", pl: "🚕 transport", it: "🚕 trasporti" },
-            stay: { en: "🏨 stay", "pt-BR": "🏨 hospedagem", de: "🏨 Unterkunft", es: "🏨 alojamiento", pl: "🏨 nocleg", it: "🏨 alloggio" },
-            fun: { en: "🎟 fun", "pt-BR": "🎟 passeios", de: "🎟 Freizeit", es: "🎟 ocio", pl: "🎟 rozrywka", it: "🎟 svago" },
-            bills: { en: "💡 bills", "pt-BR": "💡 contas", de: "💡 Rechnungen", es: "💡 facturas", pl: "💡 rachunki", it: "💡 bollette" },
-            other: { en: "🧾 other", "pt-BR": "🧾 outros", de: "🧾 Sonstiges", es: "🧾 otros", pl: "🧾 inne", it: "🧾 altro" },
+            food: "🍽 food & drink",
+            groceries: "🛒 groceries",
+            transport: "🚕 transport",
+            stay: "🏨 stay",
+            fun: "🎟 fun",
+            bills: "💡 bills",
+            other: "🧾 other",
           },
-          value: (e: Resolved) => String(e.category || guessCategory(e.description)),
+          value: (e: Resolved) => String(e.category || "other"),
         },
         /** "You 12,50 · Ana 12,50" — the arithmetic, spelled out, on the expense itself. */
         breakdown: {
-          label: { en: "Breakdown", "pt-BR": "Divisão", de: "Aufteilung", es: "Desglose", pl: "Podział", it: "Ripartizione" },
+          label: "Breakdown",
           value: (expense: Resolved, ctx: Ctx) =>
             sharesOf(expense, ctx)
               .map((s) => `${nameOf(s.id, ctx)} ${money(s.owes, ctx)}`)
-              .join(" · ") || ctx.t({ en: "Nobody yet", "pt-BR": "Ninguém ainda", de: "Noch niemand", es: "Nadie todavía", pl: "Jeszcze nikt", it: "Ancora nessuno" }),
+              .join(" · ") || ctx.t("Nobody yet"),
         },
         /** For exact amounts and lines: whether they add up to what was paid, and by how much they do not. */
         check: {
-          label: { en: "Adds up?", "pt-BR": "Fecha?", de: "Geht es auf?", es: "¿Cuadra?", pl: "Czy się zgadza?", it: "Torna?" },
+          label: "Adds up?",
           value: (expense: Resolved, ctx: Ctx) => {
             if (expense.split !== "exact" && expense.split !== "items") return "—";
             const rows = (expense.split === "exact" ? expense.exact : expense.items) as { amount?: unknown; price?: unknown }[] | undefined;
             const listed = (rows ?? []).reduce((n, r) => n + minorOf(r.amount ?? r.price), 0);
             const rest = minorOf(expense.amount) - listed;
             return rest === 0
-              ? ctx.t({ en: "✓ to the cent", "pt-BR": "✓ até o centavo", de: "✓ auf den Cent", es: "✓ al céntimo", pl: "✓ co do grosza", it: "✓ al centesimo" })
+              ? ctx.t("✓ to the cent")
               : ctx.t(
-                  {
-                    en: "{rest} not on any line: shared by everyone",
-                    "pt-BR": "{rest} fora das linhas: dividido entre todos",
-                    de: "{rest} in keiner Zeile: teilen sich alle",
-                    es: "{rest} fuera de las líneas: lo comparten todos",
-                    pl: "{rest} poza pozycjami: dzielone na wszystkich",
-                    it: "{rest} fuori dalle righe: diviso tra tutti",
-                  },
+                  "{rest} not on any line: shared by everyone",
                   { rest: money(Math.abs(rest), ctx) },
                 );
           },
         },
-        yourShare: { label: { en: "Your share", "pt-BR": "Sua parte", de: "Dein Anteil", es: "Tu parte", pl: "Twoja część", it: "La tua quota" }, value: (expense: Resolved, ctx: Ctx) => money(sharesOf(expense, ctx).find((s) => s.id === ctx.me?.id)?.owes ?? 0, ctx) },
+        yourShare: { label: "Your share", value: (expense: Resolved, ctx: Ctx) => money(sharesOf(expense, ctx).find((s) => s.id === ctx.me?.id)?.owes ?? 0, ctx) },
       },
     },
 
     payment: {
-      label: { en: "Payment", "pt-BR": "Pagamento", de: "Zahlung", es: "Pago", pl: "Płatność", it: "Pagamento" },
+      label: "Payment",
       icon: "💸",
       displayField: "note",
       fields: {
-        from: { type: "member", label: { en: "From", "pt-BR": "De", de: "Von", es: "De", pl: "Od", it: "Da" }, default: (ctx) => ctx.me?.id },
-        to: { type: "member", label: { en: "To", "pt-BR": "Para", de: "An", es: "Para", pl: "Dla", it: "A" } },
+        from: { type: "member", label: "From", default: (ctx) => ctx.me?.id },
+        to: { type: "member", label: "To" },
         amount: {
           type: "money",
           currency: "EUR",
           required: true,
           min: 0,
-          label: { en: "Amount", "pt-BR": "Valor", de: "Betrag", es: "Importe", pl: "Kwota", it: "Importo" },
+          label: "Amount",
         },
         when: {
           type: "datetime",
           precision: "day",
           default: (ctx) => ctx.now(),
-          label: { en: "When", "pt-BR": "Quando", de: "Wann", es: "Cuándo", pl: "Kiedy", it: "Quando" },
+          label: "When",
         },
         note: {
           type: "text",
-          label: { en: "Note", "pt-BR": "Observação", de: "Notiz", es: "Nota", pl: "Notatka", it: "Nota" },
-          placeholder: { en: "Settling up", "pt-BR": "Acertando as contas", de: "Ausgleich", es: "Saldando cuentas", pl: "Rozliczenie", it: "Saldo dei conti" },
+          label: "Note",
+          placeholder: "Settling up",
         },
-        group: { type: "relation", to: "group", hidden: true, label: { en: "Group", "pt-BR": "Grupo", de: "Gruppe", es: "Grupo", pl: "Grupa", it: "Gruppo" }, default: (ctx) => ctx.scope.group?.id },
+        group: { type: "relation", to: "group", hidden: true, label: "Group", default: (ctx) => ctx.scope.group?.id },
       },
     },
   },
@@ -839,14 +738,14 @@ export default defineApp({
     // back on the group is landing on the answer — what everyone now owes.
     {
       id: "new-expense",
-      label: { en: "Add expense", "pt-BR": "Adicionar despesa", de: "Ausgabe hinzufügen", es: "Añadir gasto", pl: "Dodaj wydatek", it: "Aggiungi spesa" },
+      label: "Add expense",
       icon: "＋",
       entity: "expense",
       mode: "form",
     },
     {
       id: "settle",
-      label: { en: "Record a payment", "pt-BR": "Registrar pagamento", de: "Zahlung eintragen", es: "Registrar pago", pl: "Zapisz płatność", it: "Registra pagamento" },
+      label: "Record a payment",
       icon: "💸",
       entity: "payment",
       mode: "form",
@@ -858,7 +757,7 @@ export default defineApp({
       id: "group",
       // "Expenses", not the group's name: the header's chip already says which group you are in,
       // and a tab labelled "Flat" next to a tab labelled "Payments" reads like two unrelated things.
-      title: { en: "Expenses", "pt-BR": "Despesas", de: "Ausgaben", es: "Gastos", pl: "Wydatki", it: "Spese" },
+      title: "Expenses",
       icon: "🧾",
       // The answer first (#105, Splitwise's group screen): where you stand, in the header; then who
       // owes whom and the way out of it; then what it is made of, by day.
@@ -867,22 +766,22 @@ export default defineApp({
           // No label: the figure is the whole phrase ("You're owed €42.85"); which way it goes is the point.
           value: async (_rows, ctx) => {
             const you = (await standing(ctx)).net.get(ctx.me?.id ?? "") ?? 0;
-            if (you === 0) return ctx.t({ en: "All square 🎉", "pt-BR": "Tudo certo 🎉", de: "Ausgeglichen 🎉", es: "En paz 🎉", pl: "Na zero 🎉", it: "In pari 🎉" });
+            if (you === 0) return ctx.t({ text: "All square 🎉", context: "your balance" });
             return you > 0
-              ? ctx.t({ en: "You're owed {amount}", "pt-BR": "Você tem a receber {amount}", de: "Du bekommst {amount}", es: "Te deben {amount}", pl: "Masz do odebrania {amount}", it: "Devi ricevere {amount}" }, { amount: money(you, ctx) })
-              : ctx.t({ en: "You owe {amount}", "pt-BR": "Você deve {amount}", de: "Du schuldest {amount}", es: "Debes {amount}", pl: "Masz do oddania {amount}", it: "Devi {amount}" }, { amount: money(-you, ctx) });
+              ? ctx.t("You're owed {amount}", { amount: money(you, ctx) })
+              : ctx.t("You owe {amount}", { amount: money(-you, ctx) });
           },
         },
         {
-          label: { en: "Spent together", "pt-BR": "Gasto juntos", de: "Zusammen ausgegeben", es: "Gastado juntos", pl: "Wydane razem", it: "Speso insieme" },
+          label: "Spent together",
           value: (rows, ctx) => money(rows.filter((e) => inGroup(e, ctx)).reduce((n, e) => n + minorOf(e.amount), 0), ctx),
         },
       ],
       primaryAction: "new-expense",
       // Settling is each row's Settle below (and Payments' own page); here only what adds to the group.
       actions: [
-        { label: { en: "Split a receipt", "pt-BR": "Dividir uma nota", de: "Beleg aufteilen", es: "Dividir un ticket", pl: "Podziel paragon", it: "Dividi uno scontrino" }, icon: "📷", run: fromReceipt },
-        { label: { en: "Invite", "pt-BR": "Convidar", de: "Einladen", es: "Invitar", pl: "Zaproś", it: "Invita" }, icon: "👋", run: invite },
+        { label: "Split a receipt", icon: "📷", run: fromReceipt },
+        { label: "Invite", icon: "👋", run: invite },
       ],
       layout: {
         type: "stack",
@@ -891,19 +790,12 @@ export default defineApp({
             view: {
               type: "aggregate",
               entity: "expense",
-              title: { en: "To settle up", "pt-BR": "Para acertar", de: "Zum Ausgleichen", es: "Para saldar", pl: "Do rozliczenia", it: "Da saldare" },
+              title: "To settle up",
               // Alone, there is nobody to owe: the empty balances are where the group starts — ask the others in.
               emptyText: (ctx) =>
                 everyone(ctx, ctx.scope.group).some((id) => id !== ctx.me?.id)
-                  ? ctx.t({ en: "Nobody owes anybody. 🎉", "pt-BR": "Ninguém deve nada a ninguém. 🎉", de: "Niemand schuldet jemandem etwas. 🎉", es: "Nadie le debe nada a nadie. 🎉", pl: "Nikt nikomu nic nie jest winien. 🎉", it: "Nessuno deve niente a nessuno. 🎉" })
-                  : ctx.t({
-                      en: "Just you so far. Tap Invite to name who's coming, or send them the link: no account needed.",
-                      "pt-BR": "Por enquanto só você. Toque em Convidar para dizer quem vem, ou mande o link: sem conta.",
-                      de: "Bisher nur du. Tippe auf Einladen, um einzutragen, wer dabei ist, oder schick den Link: ohne Konto.",
-                      es: "De momento solo tú. Toca Invitar para decir quién viene, o manda el enlace: sin cuenta.",
-                      pl: "Na razie tylko ty. Stuknij Zaproś, by wpisać, kto jedzie, albo wyślij link: bez konta.",
-                      it: "Per ora solo tu. Tocca Invita per dire chi viene, o manda il link: senza account.",
-                    }),
+                  ? ctx.t("Nobody owes anybody. 🎉")
+                  : ctx.t("Just you so far. Tap Invite to name who's coming, or send them the link: no account needed."),
               // An aggregate has no `filter` of its own: the fold IS the filter, and it is handed
               // every expense the app holds — including the other groups'.
               rows: async (all, ctx) => {
@@ -915,21 +807,14 @@ export default defineApp({
                 return settlements(netBalances(expenses, payments, ctx)).map((s) => ({
                   id: `${s.from}->${s.to}`,
                   label: ctx.t(
-                    {
-                      en: "{dir, select, toMe {{from} owes you} fromMe {You owe {to}} other {{from} owes {to}}}",
-                      "pt-BR": "{dir, select, toMe {{from} te deve} fromMe {Você deve a {to}} other {{from} deve a {to}}}",
-                      de: "{dir, select, toMe {{from} schuldet dir} fromMe {Du schuldest {to}} other {{from} schuldet {to}}}",
-                      es: "{dir, select, toMe {{from} te debe} fromMe {Le debes a {to}} other {{from} le debe a {to}}}",
-                      pl: "{dir, select, toMe {{from} ma ci oddać} fromMe {Oddajesz: {to}} other {{from} oddaje: {to}}}",
-                      it: "{dir, select, toMe {{from} ti deve} fromMe {Devi a {to}} other {{from} deve a {to}}}",
-                    },
+                    "{dir, select, toMe {{from} owes you} fromMe {You owe {to}} other {{from} owes {to}}}",
                     { dir: s.to === me ? "toMe" : s.from === me ? "fromMe" : "other", from: nameOf(s.from, ctx), to: nameOf(s.to, ctx) },
                   ),
                   value: money(s.amount, ctx),
                   tone: (s.to === me ? "positive" : s.from === me ? "negative" : "neutral") as "positive" | "negative" | "neutral",
                   // Tap Settle on the row: the payment is filled in from it, to confirm.
                   ...(ctx.scope.group
-                    ? { action: { entity: "group", id: String(ctx.scope.group.id), key: "settle", label: ctx.t({ en: "Settle", "pt-BR": "Acertar", de: "Ausgleichen", es: "Saldar", pl: "Rozlicz", it: "Salda" }), input: { from: s.from, to: s.to } } }
+                    ? { action: { entity: "group", id: String(ctx.scope.group.id), key: "settle", label: ctx.t("Settle"), input: { from: s.from, to: s.to } } }
                     : {}),
                 }));
               },
@@ -951,14 +836,7 @@ export default defineApp({
                 secondary: (e: Resolved, ctx: Ctx) => {
                   const payer = payerOf(e, ctx);
                   return ctx.t(
-                    {
-                      en: "{who, select, me {You paid} other {{name} paid}} · your share {share}",
-                      "pt-BR": "{who, select, me {Você pagou} other {{name} pagou}} · sua parte {share}",
-                      de: "{who, select, me {Du hast bezahlt} other {{name} hat bezahlt}} · dein Anteil {share}",
-                      es: "{who, select, me {Pagaste tú} other {Pagó {name}}} · tu parte {share}",
-                      pl: "{who, select, me {Płacisz ty} other {Płaci {name}}} · twoja część {share}",
-                      it: "{who, select, me {Hai pagato tu} other {Ha pagato {name}}} · la tua quota {share}",
-                    },
+                    "{who, select, me {You paid} other {{name} paid}} · your share {share}",
                     { who: payer === ctx.me?.id ? "me" : "other", name: nameOf(payer, ctx), share: String(e.yourShare) },
                   );
                 },
@@ -966,14 +844,7 @@ export default defineApp({
                 icon: (e: Resolved) => CATEGORY_EMOJI[String(e.kind)] ?? "🧾",
               },
               onOpen: { page: "expense", param: { expenseId: "id" } },
-              emptyText: {
-                en: "No expenses yet. Add the first one, or split a receipt.",
-                "pt-BR": "Nenhuma despesa ainda. Adicione a primeira ou divida uma nota.",
-                de: "Noch keine Ausgaben. Füge die erste hinzu oder teile einen Beleg auf.",
-                es: "Aún no hay gastos. Añade el primero o divide un ticket.",
-                pl: "Jeszcze nie ma wydatków. Dodaj pierwszy albo podziel paragon.",
-                it: "Ancora nessuna spesa. Aggiungi la prima o dividi uno scontrino.",
-              },
+              emptyText: "No expenses yet. Add the first one, or split a receipt.",
             },
           },
         ],
@@ -983,7 +854,7 @@ export default defineApp({
     {
       // Where the money went: by category, by person, and over the days.
       id: "where",
-      title: { en: "Where it went", "pt-BR": "Para onde foi", de: "Wohin es ging", es: "A dónde fue", pl: "Na co poszło", it: "Dove è finito" },
+      title: "Where it went",
       icon: "📊",
       layout: {
         type: "stack",
@@ -995,15 +866,15 @@ export default defineApp({
               filter: inGroup,
               items: [
                 {
-                  label: { en: "Spent together", "pt-BR": "Gasto juntos", de: "Zusammen ausgegeben", es: "Gastado juntos", pl: "Wydane razem", it: "Speso insieme" },
+                  label: "Spent together",
                   value: (rows, ctx) => money(rows.reduce((n, e) => n + minorOf(e.amount), 0), ctx),
                 },
                 {
-                  label: { en: "Your part of it", "pt-BR": "Sua parte", de: "Dein Teil davon", es: "Tu parte", pl: "Twoja część", it: "La tua parte" },
+                  label: "Your part of it",
                   value: (rows, ctx) => money(rows.reduce((n, e) => n + (sharesOf(e, ctx).find((s) => s.id === ctx.me?.id)?.owes ?? 0), 0), ctx),
                 },
                 {
-                  label: { en: "Expenses", "pt-BR": "Despesas", de: "Ausgaben", es: "Gastos", pl: "Wydatki", it: "Spese" },
+                  label: "Expenses",
                   op: "count",
                 },
               ],
@@ -1014,19 +885,19 @@ export default defineApp({
               type: "chart",
               entity: "expense",
               filter: inGroup,
-              title: { en: "By category", "pt-BR": "Por categoria", de: "Nach Kategorie", es: "Por categoría", pl: "Według kategorii", it: "Per categoria" },
-              emptyText: { en: "Nothing spent yet.", "pt-BR": "Nada gasto ainda.", de: "Noch nichts ausgegeben.", es: "Aún no se ha gastado nada.", pl: "Jeszcze nic nie wydano.", it: "Ancora niente speso." },
+              title: "By category",
+              emptyText: "Nothing spent yet.",
               series: (rows, ctx) => {
                 const total = new Map<string, number>();
                 for (const e of rows) total.set(String(e.kind), (total.get(String(e.kind)) ?? 0) + minorOf(e.amount));
                 const said: Record<string, string> = {
-                  food: ctx.t({ en: "🍽 food", "pt-BR": "🍽 comida", de: "🍽 Essen", es: "🍽 comida", pl: "🍽 jedzenie", it: "🍽 cibo" }),
-                  groceries: ctx.t({ en: "🛒 groceries", "pt-BR": "🛒 mercado", de: "🛒 Einkauf", es: "🛒 súper", pl: "🛒 zakupy", it: "🛒 spesa" }),
-                  transport: ctx.t({ en: "🚕 transport", "pt-BR": "🚕 transporte", de: "🚕 Fahrten", es: "🚕 transporte", pl: "🚕 transport", it: "🚕 trasporti" }),
-                  stay: ctx.t({ en: "🏨 stay", "pt-BR": "🏨 hospedagem", de: "🏨 Unterkunft", es: "🏨 alojamiento", pl: "🏨 nocleg", it: "🏨 alloggio" }),
-                  fun: ctx.t({ en: "🎟 fun", "pt-BR": "🎟 passeios", de: "🎟 Freizeit", es: "🎟 ocio", pl: "🎟 rozrywka", it: "🎟 svago" }),
-                  bills: ctx.t({ en: "💡 bills", "pt-BR": "💡 contas", de: "💡 Rechnungen", es: "💡 facturas", pl: "💡 rachunki", it: "💡 bollette" }),
-                  other: ctx.t({ en: "🧾 other", "pt-BR": "🧾 outros", de: "🧾 Sonstiges", es: "🧾 otros", pl: "🧾 inne", it: "🧾 altro" }),
+                  food: ctx.t("🍽 food"),
+                  groceries: ctx.t("🛒 groceries"),
+                  transport: ctx.t("🚕 transport"),
+                  stay: ctx.t("🏨 stay"),
+                  fun: ctx.t("🎟 fun"),
+                  bills: ctx.t("💡 bills"),
+                  other: ctx.t("🧾 other"),
                 };
                 return [...total.entries()]
                   .sort((a, b) => b[1] - a[1])
@@ -1039,7 +910,7 @@ export default defineApp({
               type: "chart",
               entity: "expense",
               filter: inGroup,
-              title: { en: "Who paid", "pt-BR": "Quem pagou", de: "Wer bezahlt hat", es: "Quién pagó", pl: "Kto płacił", it: "Chi ha pagato" },
+              title: "Who paid",
               series: (rows, ctx) => {
                 const paid = new Map<string, number>();
                 for (const e of rows) paid.set(payerOf(e, ctx), (paid.get(payerOf(e, ctx)) ?? 0) + minorOf(e.amount));
@@ -1053,9 +924,9 @@ export default defineApp({
 
     {
       id: "history",
-      title: { en: "Payments", "pt-BR": "Pagamentos", de: "Zahlungen", es: "Pagos", pl: "Płatności", it: "Pagamenti" },
+      title: "Payments",
       icon: "💸",
-      actions: [{ label: { en: "Settle up", "pt-BR": "Acertar", de: "Ausgleichen", es: "Saldar", pl: "Rozlicz", it: "Salda" }, icon: "💸", run: settleUp }],
+      actions: [{ label: { text: "Settle up", context: "payments page" }, icon: "💸", run: settleUp }],
       primaryAction: 0,
       view: {
         type: "list",
@@ -1067,20 +938,13 @@ export default defineApp({
           primary: (p: Resolved, ctx: Ctx) => `${nameOf(idOf(p.from), ctx)} → ${nameOf(idOf(p.to), ctx)}`,
           secondary: "note",
         },
-        emptyText: {
-          en: "Nothing settled yet.",
-          "pt-BR": "Nada acertado ainda.",
-          de: "Noch nichts ausgeglichen.",
-          es: "Aún no se ha saldado nada.",
-          pl: "Jeszcze nic nie rozliczono.",
-          it: "Ancora niente di saldato.",
-        },
+        emptyText: "Nothing settled yet.",
       },
     },
 
     {
       id: "expense",
-      title: { en: "Expense", "pt-BR": "Despesa", de: "Ausgabe", es: "Gasto", pl: "Wydatek", it: "Spesa" },
+      title: "Expense",
       hidden: true,
       view: {
         type: "detail",
@@ -1090,9 +954,9 @@ export default defineApp({
         media: "receipt",
         facts: ["kind"],
         sections: [
-          { title: { en: "Expense", "pt-BR": "Despesa", de: "Ausgabe", es: "Gasto", pl: "Wydatek", it: "Spesa" }, fields: ["amount", "paidBy", "when", "category"] },
-          { title: { en: "Split", "pt-BR": "Divisão", de: "Aufteilung", es: "Reparto", pl: "Podział", it: "Ripartizione" }, fields: ["split", "between", "shares", "exact", "items", "check", "breakdown"] },
-          { title: { en: "Notes", "pt-BR": "Observações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" }, fields: ["note"] },
+          { title: "Expense", fields: ["amount", "paidBy", "when", "category"] },
+          { title: { text: "Split", context: "expense split" }, fields: ["split", "between", "shares", "exact", "items", "check", "breakdown"] },
+          { title: "Notes", fields: ["note"] },
         ],
       },
     },

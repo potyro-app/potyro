@@ -4,10 +4,15 @@
 export type Language = string;
 
 /**
- * Words a person reads: a string, the same in every language, or one per language — `{ en: "Nights",
- * pl: "Noce" }`, the app's own first, on one line when it fits. Records are never translated.
+ * Words a person reads, in the app's own language; their translations are the app's catalogs,
+ * `locales/<lang>.po` (docs/30). Where one text means two things ("Water" the verb and the noun),
+ * `{ text, context }` tells them apart. A per-language map `{ en, pl }` is the older form (docs/20),
+ * still read. Records are never translated.
  */
-export type Words = string | WordsMap;
+export type Words = string | ContextWords | WordsMap;
+
+/** Words with a `context`: the same text, translated apart (gettext's `msgctxt`). */
+export type ContextWords = { readonly text: string; readonly context: string };
 
 /** The per-language form of `Words`. */
 export type WordsMap = { readonly [language: Language]: string };

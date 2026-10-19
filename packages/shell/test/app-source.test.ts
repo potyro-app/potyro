@@ -73,7 +73,7 @@ describe("inspect", () => {
 
   it("reports each page's entity, which is what the panel offers field controls for", async () => {
     const shape = await inspect(PLACES);
-    expect(shape.pages.find((p) => p.id === "map")).toMatchObject({ titles: expect.objectContaining({ en: "Map", pl: "Mapa" }), entity: "place" });
+    expect(shape.pages.find((p) => p.id === "map")).toMatchObject({ title: "Map", entity: "place" });
   });
 
   it("reports a field's declared label and hidden flag", async () => {
@@ -251,8 +251,8 @@ describe("refusing rather than guessing", () => {
 describe("everything else is byte-identical", () => {
   it("preserves comments, imports and functions across an edit", async () => {
     // recipes.app.ts is the hard case: imports, helper modules, a custom view, comments throughout.
-    // Its labels are maps in six languages (#303): the English entry is the one rewritten.
-    const next = await apply(RECIPES, { kind: "field-label", entity: "recipe", field: "servings", value: "Serves", language: "en" });
+    // Written in English, translated in catalogs (docs/30): the label is one string.
+    const next = await apply(RECIPES, { kind: "field-label", entity: "recipe", field: "servings", value: "Serves" });
 
     const comments = (s: string): number => (s.match(/\/\//g) ?? []).length;
     expect(comments(next)).toBe(comments(RECIPES));
@@ -261,7 +261,7 @@ describe("everything else is byte-identical", () => {
     // The only differing line is the one that was edited.
     const differing = RECIPES.split("\n").filter((l, i) => next.split("\n")[i] !== l);
     expect(differing).toHaveLength(1);
-    expect(differing[0]).toContain('en: "Servings"');
+    expect(differing[0]).toContain('label: "Servings"');
   });
 });
 
@@ -320,9 +320,8 @@ export default defineApp({
 
   it("reads the groups and the computed keys of the real Recipes app", async () => {
     const recipe = (await inspect(RECIPES)).entities.find((e) => e.key === "recipe")!;
-    // Titles in six languages (#303): read as maps, one entry per language.
-    expect(recipe.groups?.map((g) => g.titles?.en)).toEqual(["Overview", "Ingredients", "Steps", "Nutrition & cost", "Your notes"]);
-    expect(recipe.groups?.[0]?.titles?.pl).toBe("Przegląd");
+    // Titles in English; their translations are the app's catalogs (docs/30).
+    expect(recipe.groups?.map((g) => g.title)).toEqual(["Overview", "Ingredients", "Steps", "Nutrition & cost", "Your notes"]);
     expect(recipe.groups?.[3]?.fields).toContain("caloriesPerServing");
     expect(recipe.computed).toContain("caloriesPerServing");
     expect(recipe.blocked).toBeUndefined();

@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./backends": "./src/backends.ts",
     "./agent": "./src/agent/index.ts",
-    "./language": "./src/language.ts"
+    "./language": "./src/language.ts",
+    "./app-catalog": "./src/app-catalog.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
@@ -24,7 +25,8 @@
     "eval:ask": "vite-node scripts/run-ask-eval.ts --",
     "eval:translate": "vite-node scripts/run-translate-eval.ts --",
     "eval:translate:fixture": "vite-node scripts/run-translate-eval.ts -- --fixture",
-    "i18n:app": "vite-node scripts/i18n-app.ts --"
+    "i18n:app": "vite-node scripts/i18n-app.ts --",
+    "maps-to-po": "vite-node scripts/maps-to-po.ts --"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

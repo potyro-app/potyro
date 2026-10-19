@@ -4,7 +4,7 @@
 // of slots therefore exists once: where the schema says so.
 
 import { z } from "zod";
-import type { Words } from "./types/words.js";
+import type { ContextWords, Words } from "./types/words.js";
 
 /** A well-formed BCP 47 tag of the kind an app declares: "en", "pl", "pt-BR", "zh-Hant", "es-419". */
 export const LANGUAGE_TAG = /^[a-z]{2,3}(-[A-Z][a-z]{3})?(-([A-Z]{2}|\d{3}))?$/;
@@ -18,9 +18,17 @@ export function isWordsSchema(schema: z.ZodTypeAny): boolean {
   return WORDS_SCHEMAS.has(schema);
 }
 
-/** A translation map: an object (not an array, not null) — the one shape that is not a plain string. */
+/** Words with a context, `{ text, context }` (docs/30): exactly those two keys, both text. */
+export function isContextWords(value: unknown): value is ContextWords {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) return false;
+  const keys = Object.keys(value);
+  const v = value as Record<string, unknown>;
+  return keys.length === 2 && typeof v.text === "string" && typeof v.context === "string";
+}
+
+/** A translation map (docs/20): an object that is not `{ text, context }`, an array, a date or null. */
 export function isWordsMap(value: unknown): value is { readonly [language: string]: string } {
-  return value != null && typeof value === "object" && !Array.isArray(value) && !(value instanceof Date);
+  return value != null && typeof value === "object" && !Array.isArray(value) && !(value instanceof Date) && !isContextWords(value);
 }
 
 /**
@@ -32,6 +40,11 @@ function words(minLength: number): z.ZodType<Words> {
   const schema = z.any().superRefine((value: unknown, ctx) => {
     if (typeof value === "string") {
       if (value.length < minLength) ctx.addIssue({ code: z.ZodIssueCode.too_small, minimum: minLength, type: "string", inclusive: true, message: "must not be empty" });
+      return;
+    }
+    if (isContextWords(value)) {
+      if (value.text.length < Math.max(minLength, 1)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["text"], message: "must be non-empty text" });
+      if (!value.context.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["context"], message: 'says which meaning: "verb", "noun", "button"' });
       return;
     }
     if (!isWordsMap(value)) {
@@ -58,5 +71,6 @@ export const zWordsNonEmpty = words(1);
 export function plainWords(w: Words | undefined): string {
   if (w == null) return "";
   if (typeof w === "string") return w;
+  if (isContextWords(w)) return w.text;
   return isWordsMap(w) ? (Object.values(w).find((v) => typeof v === "string") ?? "") : String(w);
 }

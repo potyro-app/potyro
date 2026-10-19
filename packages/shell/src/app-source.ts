@@ -451,10 +451,21 @@ function inDisplayPosition(node: Node, ancestors: readonly Node[]): boolean {
   }
   const parent = ancestors[i];
   if (!parent) return false;
+  // The words of `ctx.t("…")` (docs/30): an app's text in its own language, translated in catalogs.
+  const isT = (n: Node | undefined): boolean => n?.type === "CallExpression" && ((n.callee as Node | undefined)?.property as Node | undefined)?.name === "t";
+  if (isT(parent) && asArray(parent.arguments)[0] === child) return true;
   if (parent.type === "ObjectProperty") {
     const key = keyOf(parent);
     if (parent.value !== child || parent.computed === true || key === undefined) return false;
     if (DISPLAY_KEYS.has(key)) return true;
+    // The text of `{ text, context }`, in a slot or in `ctx.t(...)`: the context is not words.
+    if (key === "text") {
+      const words = ancestors[i - 1];
+      const holder = ancestors[i - 2];
+      if (words?.type !== "ObjectExpression" || !holder) return false;
+      if (holder.type === "ObjectProperty") return holder.value === words && DISPLAY_KEYS.has(keyOf(holder) ?? "");
+      return isT(holder) && asArray(holder.arguments)[0] === words;
+    }
     // One language of a translation map (#302): `label: { en: "…", pl: "…" }`, `ctx.t({ en: "…" })`.
     const map = ancestors[i - 1];
     const holder = ancestors[i - 2];

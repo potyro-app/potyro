@@ -15,7 +15,7 @@ export default defineApp({
   actions: { water: { label: "Water", run: async (p, ctx) => ctx.ui.toast(ctx.t("Watered {name}", { name: p.name })) } } } },
   pages: [{ id: "today", title: "Today", view: { type: "list", entity: "plant",
     display: { primary: "name", secondary: (p, ctx) => ctx.t("{n, plural, one {# day} other {# days}}", { n: 2 }) } } },
-    { id: "log", title: "Today", view: { type: "list", entity: "plant", emptyText: ctx => ctx.t("Water", undefined, { context: "noun" }) } }],
+    { id: "log", title: "Today", view: { type: "list", entity: "plant", emptyText: ctx => ctx.t({ text: "Water", context: "noun" }) } }],
   reminders: [{ id: "r", entity: "plant", when: () => null, title: (p, ctx) => ctx.t(p.name) }],
 });
 `;
