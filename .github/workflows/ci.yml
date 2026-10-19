@@ -1,23 +1,32 @@
+# The fast tier (docs/16 §8): what every push gets, in about five minutes — the checks every change
+# must pass, and a browser smoke that boots the shell, one example, one sealed app, one share flow,
+# one Studio save and one invite. The full browser suite is the ship gate (ship.yml), run once per
+# change when it is shipped, and again on main before anything is deployed.
+#
+# Runs on Blacksmith's runners (benchmarked 2026-10-19: a 4 vCPU x64 runner matches the owner's
+# laptop; see scripts/bench-ci.sh). `gh workflow run ci.yml --ref <branch>` runs it by hand.
 name: CI
-
 on:
   push:
-    branches: [main]
-  pull_request:
-  # A commit the "Launcher baselines" workflow pushes with the workflow token gets no run of its
-  # own (GitHub does not chain workflows off that token), so this lets a branch be checked by hand:
-  #   gh workflow run ci.yml --ref <branch>
+    branches-ignore: [main]
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-test:
-    runs-on: ubuntu-latest
+  checks:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: 10.5.0
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
@@ -27,24 +36,35 @@ jobs:
       - run: pnpm lint:tokens
       - run: pnpm lint:i18n
 
-  e2e:
-    # M1 browser smoke (issue #15). Node 20 satisfies Playwright's >=20 requirement.
-    runs-on: ubuntu-latest
+  smoke:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: 10.5.0
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm e2e
+      # Ten files, about a minute of tests on the desktop: the shell's boot and launcher, an example
+      # with a custom view, an example sealed, a sealed view's frame, a widget page, a demo link,
+      # two devices syncing, a Studio save, an invite that joins a room, and files.
+      - name: Browser smoke
+        run: >
+          pnpm exec playwright test
+          e2e/launcher/home-trusted.spec.ts e2e/recipes-trusted.spec.ts e2e/groceries-sandbox.spec.ts
+          e2e/sealed-views-sandbox.spec.ts e2e/enums-trusted.spec.ts e2e/demo-link-trusted.spec.ts
+          e2e/sync-two-peers-trusted.spec.ts e2e/studio-save-and-sheet-trusted.spec.ts
+          e2e/app-links-trusted.spec.ts e2e/files-trusted.spec.ts
+          --project=trusted --project=sandbox --workers=1 --retries=1 --reporter=line
       - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+        if: failure()
         with:
-          name: playwright-report
-          path: |
-            playwright-report/
-            test-results/
+          name: smoke-failures
+          path: test-results/
           retention-days: 7
