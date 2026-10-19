@@ -8,7 +8,9 @@ import { resolve } from "node:path";
 import { applyEdit, inspect, textSites } from "../src/app-source.js";
 import { editorLanguages } from "../src/app-source-words.js";
 
-const groceries = readFileSync(resolve(process.cwd(), "../../examples/groceries.app.ts"), "utf8");
+// Groceries as it was with inline maps (docs/20): the structural editor still edits a map's languages,
+// for apps written that way. The examples themselves are translated in catalogs now (docs/30).
+const groceries = readFileSync(resolve(process.cwd(), "../generator/test/fixtures/legacy-examples/groceries.app.ts"), "utf8");
 
 /** Groceries' Note label as it ships, in six languages. */
 const NOTE = `label: { en: "Note", "pt-BR": "Observação", de: "Notiz", es: "Nota", pl: "Notatka", it: "Nota" }`;

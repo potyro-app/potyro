@@ -27,7 +27,8 @@ import { meteredEngine, newMeter } from "../src/loop-eval.js";
 import { loadCorpus } from "../src/load-corpus.js";
 import type { ChatEngine } from "../src/chat-backend.js";
 
-const examples = fileURLToPath(new URL("../../../examples/", import.meta.url));
+// The examples as they were with inline maps (test/fixtures/legacy-examples/README.md).
+const examples = fileURLToPath(new URL("../test/fixtures/legacy-examples/", import.meta.url));
 const read = (file: string): string => readFileSync(join(examples, file), "utf8");
 const load = async (source: string): Promise<AppDefinition> => (await loadApp(source, examples)) as unknown as AppDefinition;
 

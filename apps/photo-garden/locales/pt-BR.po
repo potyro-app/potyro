@@ -1,0 +1,179 @@
+msgid ""
+msgstr ""
+"Language: pt-BR\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Photo Garden"
+msgstr "Jardim de fotos"
+
+#: entities.artwork.label
+msgid "Artwork"
+msgstr "Obra"
+
+#: entities.artwork.fields.title.label
+msgid "Title"
+msgstr "Título"
+
+#: entities.artwork.fields.style.labels.flow
+#: ctx.t
+msgid "Flow"
+msgstr "Fluxo"
+
+#: entities.artwork.fields.style.labels.points
+#: ctx.t
+msgid "Points"
+msgstr "Pontos"
+
+#: entities.artwork.fields.style.labels.mosaic
+#: ctx.t
+msgid "Mosaic"
+msgstr "Mosaico"
+
+#: entities.artwork.fields.style.label
+#: ctx.t
+msgid "Style"
+msgstr "Estilo"
+
+#: entities.artwork.fields.date.label
+msgid "Date"
+msgstr "Data"
+
+#: entities.artwork.fields.image.label
+msgid "Image"
+msgstr "Imagem"
+
+#: pages.0.title
+msgid "Studio"
+msgstr "Ateliê"
+
+#: pages.1.title
+msgid "Gallery"
+msgstr "Galeria"
+
+#: ctx.t
+msgid "Take a photo"
+msgstr "Tirar uma foto"
+
+#: ctx.t
+msgid "Choose one"
+msgstr "Escolher uma"
+
+#: ctx.t
+msgid "Grow a garden from a photo"
+msgstr "Faça um jardim nascer de uma foto"
+
+#: ctx.t
+msgid "Take a picture of something you love — a face, a plant, a street at night. It becomes thousands of drifting specks that remember it. Touch them and they scatter."
+msgstr "Fotografe algo que você ama — um rosto, uma planta, uma rua à noite. A foto vira milhares de partículas à deriva que se lembram dela. Toque nelas e elas se espalham."
+
+#: ctx.t
+msgid "Drag across it to scatter the specks"
+msgstr "Arraste o dedo por cima para espalhar as partículas"
+
+#: ctx.t
+msgid "Density"
+msgstr "Densidade"
+
+#: ctx.t
+msgid "New photo"
+msgstr "Nova foto"
+
+#: ctx.t
+msgid "Keep this"
+msgstr "Guardar esta"
+
+#: ctx.t
+msgid "Sparse"
+msgstr "Esparso"
+
+#: ctx.t
+msgid "Dense"
+msgstr "Denso"
+
+#: ctx.t
+msgid "A living picture made of drifting specks of colour. Drag across it to scatter them."
+msgstr "Uma imagem viva feita de partículas de cor à deriva. Arraste por cima para espalhá-las."
+
+#: ctx.t
+msgid "This device does not let apps take photos."
+msgstr "Este aparelho não deixa os apps tirarem fotos."
+
+#: ctx.t
+msgid "That file could not be read as a picture."
+msgstr "Não foi possível ler esse arquivo como imagem."
+
+#: ctx.t
+msgid "A new photo"
+msgstr "Uma nova foto"
+
+#: ctx.t
+msgid "Choose from your photos"
+msgstr "Escolher entre as suas fotos"
+
+#: ctx.t
+msgid "The picture could not be saved."
+msgstr "Não foi possível salvar a imagem."
+
+#: ctx.t
+msgid "Kept “{title}” in your gallery"
+msgstr "“{title}” foi para a sua galeria"
+
+#: ctx.t
+msgid "Delete"
+msgstr "Excluir"
+
+#: ctx.t
+msgid "Share"
+msgstr "Compartilhar"
+
+#: ctx.t
+msgid "Save a copy"
+msgstr "Salvar uma cópia"
+
+#: ctx.t
+msgid "Close"
+msgstr "Fechar"
+
+#: ctx.t
+msgid "It could not be saved here."
+msgstr "Não deu para salvar aqui."
+
+#: ctx.t
+msgid "It could not be shared."
+msgstr "Não deu para compartilhar."
+
+#: ctx.t
+msgid "Delete “{title}”?"
+msgstr "Excluir “{title}”?"
+
+#: ctx.t
+msgid "The picture is removed from this app."
+msgstr "A imagem será removida deste app."
+
+#: ctx.t
+msgid "{n} kept, newest first. Tap one to see it large."
+msgstr "{n, plural, one {# guardada} other {# guardadas}}, as mais novas primeiro. Toque em uma para ver em tamanho grande."
+
+#: ctx.t
+msgid "Open the Studio"
+msgstr "Abrir o Ateliê"
+
+#: ctx.t
+msgid "Nothing kept yet"
+msgstr "Nada guardado ainda"
+
+#: ctx.t
+msgid "Grow a garden from a photo, then press “Keep this”. It lands here."
+msgstr "Faça um jardim nascer de uma foto e toque em “Guardar esta”. Ela aparece aqui."
+
+#: ctx.t
+msgid "{title}, open"
+msgstr "{title}, abrir"
+
+#: ctx.t
+msgid "Not on this device yet"
+msgstr "Ainda não está neste aparelho"
+

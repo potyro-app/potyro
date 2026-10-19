@@ -11,5 +11,8 @@
   },
   "dependencies": {
     "potyro": "workspace:*"
+  },
+  "devDependencies": {
+    "@potyro/generator": "workspace:*"
   }
 }

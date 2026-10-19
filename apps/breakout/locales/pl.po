@@ -1,0 +1,91 @@
+msgid ""
+msgstr ""
+"Language: pl\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Breakout"
+msgstr ""
+
+#: entities.run.label
+msgid "Game"
+msgstr "Gra"
+
+#: entities.run.fields.score.label
+msgid "Score"
+msgstr "Wynik"
+
+#: entities.run.fields.level.label
+msgid "Level"
+msgstr "Poziom"
+
+#: entities.run.fields.levelName.label
+msgid "Level Name"
+msgstr "Nazwa poziomu"
+
+#: entities.run.fields.won.label
+msgid "Won"
+msgstr "Wygrana"
+
+#: entities.run.fields.playedAt.label
+msgid "Played At"
+msgstr "Rozegrano"
+
+#: pages.0.title
+msgid "Play"
+msgstr "Graj"
+
+#: pages.1.title
+msgid "Scores"
+msgstr "Wyniki"
+
+#: ctx.t
+msgid "levels.json has a problem"
+msgstr "Problem z plikiem levels.json"
+
+#: ctx.t
+msgid "Loading levels…"
+msgstr "Wczytywanie poziomów…"
+
+#: ctx.t
+msgid "best {n}"
+msgstr "rekord {n}"
+
+#: ctx.t
+msgid "Tap to play again"
+msgstr "Stuknij, by zagrać znowu"
+
+#: ctx.t
+msgid "Tap to launch"
+msgstr "Stuknij, by wystrzelić"
+
+#: ctx.t
+msgid "Paused — tap to go on"
+msgstr "Pauza — stuknij, by grać dalej"
+
+#: ctx.t
+msgid "You cleared it! {score}"
+msgstr "Udało się! {score}"
+
+#: ctx.t
+msgid "Game over · {score}"
+msgstr "Koniec gry · {score}"
+
+#: ctx.t
+msgid "levels.json has not reached this device yet"
+msgstr "Plik levels.json jeszcze nie dotarł na to urządzenie"
+
+#: ctx.t
+msgid "{n, plural, one {# point} other {# points}}"
+msgstr "{n, plural, one {# punkt} few {# punkty} many {# punktów} other {# punktu}}"
+
+#: ctx.t
+msgid "Cleared every level"
+msgstr "Wszystkie poziomy ukończone"
+
+#: ctx.t
+msgid "Reached {level}"
+msgstr "Poziom: {level}"
+

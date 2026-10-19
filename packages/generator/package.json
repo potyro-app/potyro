@@ -7,7 +7,10 @@
     ".": "./src/index.ts",
     "./backends": "./src/backends.ts",
     "./agent": "./src/agent/index.ts",
-    "./language": "./src/language.ts"
+    "./language": "./src/language.ts",
+    "./app-catalog": "./src/app-catalog.ts",
+    "./app-translate": "./src/app-translate.ts",
+    "./app-sources": "./src/app-sources.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
@@ -23,14 +26,18 @@
     "eval:modify:edits": "vite-node scripts/run-modify-edits-eval.ts --",
     "eval:ask": "vite-node scripts/run-ask-eval.ts --",
     "eval:translate": "vite-node scripts/run-translate-eval.ts --",
-    "eval:translate:fixture": "vite-node scripts/run-translate-eval.ts -- --fixture"
+    "eval:translate:fixture": "vite-node scripts/run-translate-eval.ts -- --fixture",
+    "i18n:app": "vite-node scripts/i18n-app.ts --",
+    "maps-to-po": "vite-node scripts/maps-to-po.ts --"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
     "@babel/parser": "^7.29.8",
+    "@formatjs/icu-messageformat-parser": "^2.11.4",
     "@mlc-ai/web-llm": "^0.2.84",
     "@potyro/capabilities": "workspace:*",
     "@potyro/host": "workspace:*",
+    "@potyro/i18n": "workspace:*",
     "@potyro/runtime": "workspace:*",
     "@potyro/store": "workspace:*",
     "esbuild": "^0.21.5",

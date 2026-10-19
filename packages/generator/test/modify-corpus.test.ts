@@ -22,43 +22,43 @@ function appFile(app: string): string {
 const shape = async (src: string, dir: string) => (await loadApp(src, dir)) as unknown as DefinitionShape;
 
 /** A right change for each new case: [search, replace] against the app as it is. */
-// The examples are in six languages (#303), so a right change gives its new words in all six: one
-// in English only is a gap the check sends back.
+// The examples are written in English and translated in catalogs (docs/30): a right change gives its
+// new words in English, and the catalogs take them up later (pnpm i18n:app).
 const PLANTS_LIST_FILTERS =
-  '            placeholder: { en: "Name or label", "pt-BR": "Nome ou etiqueta", de: "Name oder Schlagwort", es: "Nombre o etiqueta", pl: "Nazwa lub etykieta", it: "Nome o etichetta" },\n          },';
+  '            placeholder: "Name or label",\n          },';
 const PLANTS_LIST_RETURN =
   '          return !q || p.name.toLowerCase().includes(q) || String(p.room ?? "").toLowerCase().includes(q) || ((p.labels as string[] | undefined) ?? []).some((l) => l.toLowerCase().includes(q));';
-const RECIPE_PHOTO = '        photo: { type: "media", accept: "image", label: { en: "Photo", "pt-BR": "Foto", de: "Foto", es: "Foto", pl: "Zdjęcie", it: "Foto" } },';
-const PLACE_NOTES = '        notes: { type: "text", multiline: true, label: { en: "Notes", "pt-BR": "Anotações", de: "Notizen", es: "Notas", pl: "Notatki", it: "Note" } },';
+const RECIPE_PHOTO = '        photo: { type: "media", accept: "image", label: "Photo" },';
+const PLACE_NOTES = '        notes: { type: "text", multiline: true, label: "Notes" },';
 const RIGHT: Record<string, Array<[string, string]>> = {
   "plants-no-more-pages": [
     [
       // The Plants list's search chip, then a second chip; its filter keeps the search and adds sun.
       `${PLANTS_LIST_FILTERS}`,
-      `${PLANTS_LIST_FILTERS}\n          { label: { en: "Direct sun", "pt-BR": "Sol direto", de: "Direkte Sonne", es: "Sol directo", pl: "Pełne słońce", it: "Sole diretto" }, param: "sun", type: "boolean" },`,
+      `${PLANTS_LIST_FILTERS}\n          { label: "Direct sun", param: "sun", type: "boolean" },`,
     ],
     [
       PLANTS_LIST_RETURN,
       `          if (ctx.params.sun && !p.needsDirectSun) return false;\n${PLANTS_LIST_RETURN}`,
     ],
   ],
-  "workout-rating-out-of-10": [["        durationSec: { type: \"number\", hidden: true, label: { en: \"Duration (seconds)\", \"pt-BR\": \"Duração (segundos)\", de: \"Dauer (Sekunden)\", es: \"Duración (segundos)\", pl: \"Czas trwania (sekundy)\", it: \"Durata (secondi)\" } },", "        durationSec: { type: \"number\", hidden: true, label: { en: \"Duration (seconds)\", \"pt-BR\": \"Duração (segundos)\", de: \"Dauer (Sekunden)\", es: \"Duración (segundos)\", pl: \"Czas trwania (sekundy)\", it: \"Durata (secondi)\" } },\n        rating: { type: \"number\", min: 0, max: 10, integer: true },"]],
+  "workout-rating-out-of-10": [["        durationSec: { type: \"number\", hidden: true, label: \"Duration (seconds)\" },", "        durationSec: { type: \"number\", hidden: true, label: \"Duration (seconds)\" },\n        rating: { type: \"number\", min: 0, max: 10, integer: true },"]],
   "recipes-put-spice-back": [
     [
       RECIPE_PHOTO,
-      `${RECIPE_PHOTO}\n        spiciness: { type: "enum", options: ["mild", "medium", "hot"], colors: { mild: "green", medium: "yellow", hot: "red" }, label: { en: "Spiciness", "pt-BR": "Picância", de: "Schärfe", es: "Picante", pl: "Ostrość", it: "Piccantezza" }, labels: { mild: { en: "mild", "pt-BR": "suave", de: "mild", es: "suave", pl: "łagodne", it: "delicato" }, medium: { en: "medium", "pt-BR": "média", de: "mittel", es: "medio", pl: "średnie", it: "medio" }, hot: { en: "hot", "pt-BR": "forte", de: "scharf", es: "fuerte", pl: "ostre", it: "forte" } } },`,
+      `${RECIPE_PHOTO}\n        spiciness: { type: "enum", options: ["mild", "medium", "hot"], colors: { mild: "green", medium: "yellow", hot: "red" }, label: "Spiciness", labels: { mild: "mild", medium: "medium", hot: "hot" } },`,
     ],
   ],
   "plants-scan-barcode": [
     [
       '        wiki: { type: "url", label: "Wiki" }, // the same in every language',
-      '        wiki: { type: "url", label: "Wiki" }, // the same in every language\n        barcode: { type: "text", label: { en: "Barcode", "pt-BR": "Código de barras", de: "Strichcode", es: "Código de barras", pl: "Kod kreskowy", it: "Codice a barre" } },',
+      '        wiki: { type: "url", label: "Wiki" }, // the same in every language\n        barcode: { type: "text", label: "Barcode" },',
     ],
   ],
   "plants-water-in-ml": [
     [
       '        wiki: { type: "url", label: "Wiki" }, // the same in every language',
-      '        wiki: { type: "url", label: "Wiki" }, // the same in every language\n        waterAmount: { type: "number", unit: "ml", min: 0, label: { en: "Water each time", "pt-BR": "Água por rega", de: "Wasser pro Gießen", es: "Agua por riego", pl: "Woda na podlanie", it: "Acqua a ogni annaffiatura" } },',
+      '        wiki: { type: "url", label: "Wiki" }, // the same in every language\n        waterAmount: { type: "number", unit: "ml", min: 0, label: "Water each time" },',
     ],
   ],
   "places-visited-starts-off": [
@@ -67,9 +67,9 @@ const RIGHT: Record<string, Array<[string, string]>> = {
       '          options: ["want to go", "been", "favourite"],\n          default: "want to go",\n          colors: { "want to go": "yellow", been: "teal", favourite: "pink" },',
     ],
   ],
-  "workout-heart-rate-strap": [["        durationSec: { type: \"number\", hidden: true, label: { en: \"Duration (seconds)\", \"pt-BR\": \"Duração (segundos)\", de: \"Dauer (Sekunden)\", es: \"Duración (segundos)\", pl: \"Czas trwania (sekundy)\", it: \"Durata (secondi)\" } },", "        durationSec: { type: \"number\", hidden: true, label: { en: \"Duration (seconds)\", \"pt-BR\": \"Duração (segundos)\", de: \"Dauer (Sekunden)\", es: \"Duración (segundos)\", pl: \"Czas trwania (sekundy)\", it: \"Durata (secondi)\" } },\n        avgHeartRate: { type: \"number\", unit: \"bpm\", integer: true },"]],
+  "workout-heart-rate-strap": [["        durationSec: { type: \"number\", hidden: true, label: \"Duration (seconds)\" },", "        durationSec: { type: \"number\", hidden: true, label: \"Duration (seconds)\" },\n        avgHeartRate: { type: \"number\", unit: \"bpm\", integer: true },"]],
   "places-phone-wrong-gate": [
-    [PLACE_NOTES, `${PLACE_NOTES}\n        phone: { type: "text", label: { en: "Phone", "pt-BR": "Telefone", de: "Telefon", es: "Teléfono", pl: "Telefon", it: "Telefono" } },`],
+    [PLACE_NOTES, `${PLACE_NOTES}\n        phone: { type: "text", label: "Phone" },`],
   ],
 };
 

@@ -1,0 +1,515 @@
+msgid ""
+msgstr ""
+"Language: de\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Piano"
+msgstr "Klavier"
+
+#: quickActions.0.label
+#: ctx.t
+msgid "Log this week"
+msgstr "Diese Woche eintragen"
+
+#: entities.session.label
+#: pages.6.title
+msgid "Session"
+msgstr "Einheit"
+
+#: entities.session.fields.date.label
+#: entities.weekLog.fields.date.label
+msgid "Date"
+msgstr "Datum"
+
+#: entities.session.fields.weekId.help
+msgid "The plan week this day belonged to"
+msgstr "Die Planwoche, zu der dieser Tag gehörte"
+
+#: entities.session.fields.blocksDone.label
+msgid "Blocks done"
+msgstr "Erledigte Blöcke"
+
+#: entities.session.fields.rest.label
+#: ctx.t
+msgid "Rest day"
+msgstr "Ruhetag"
+
+#: entities.session.fields.minutes.unit
+msgid "min"
+msgstr ""
+
+#: entities.session.fields.minutes.label
+msgid "Minutes"
+msgstr "Minuten"
+
+#: entities.session.fields.note.label
+msgid "Note"
+msgstr "Notiz"
+
+#: entities.weekLog.label
+#: pages.4.title
+msgid "Week log"
+msgstr "Wochenbericht"
+
+#: entities.weekLog.fields.week.label
+#: entities.weekLog.groups.0.title
+msgid "Week"
+msgstr "Woche"
+
+#: entities.weekLog.fields.week.placeholder
+msgid "Week 3"
+msgstr "Woche 3"
+
+#: entities.weekLog.fields.daysPractised.label
+msgid "Days practised"
+msgstr "Geübte Tage"
+
+#: entities.weekLog.fields.tempoBpm.unit
+msgid "bpm"
+msgstr ""
+
+#: entities.weekLog.fields.tempoBpm.label
+msgid "Tempo reached"
+msgstr "Erreichtes Tempo"
+
+#: entities.weekLog.fields.recorded.label
+msgid "Piece / exercise recorded"
+msgstr "Aufgenommenes Stück / Übung"
+
+#: entities.weekLog.fields.fix.label
+msgid "One thing to fix"
+msgstr "Eine Sache zum Verbessern"
+
+#: entities.weekLog.fields.notes.label
+msgid "Notes"
+msgstr "Notizen"
+
+#: entities.weekLog.groups.1.title
+msgid "Review"
+msgstr "Rückblick"
+
+#: pages.0.title
+msgid "Today"
+msgstr "Heute"
+
+#: pages.1.title
+msgid "Log"
+msgstr "Protokoll"
+
+#: pages.1.view.emptyText
+msgid "No weeks logged yet. On your review day, block 5 becomes “Record + log”."
+msgstr "Noch keine Woche eingetragen. An deinem Rückblick-Tag wird Block 5 zum Aufnehmen und Eintragen."
+
+#: pages.2.title
+#: ctx.t
+msgid "Plan"
+msgstr "Plan"
+
+#: pages.3.title
+#: ctx.t
+msgid "Modules"
+msgstr "Module"
+
+#: pages.5.title
+msgid "Sessions"
+msgstr "Einheiten"
+
+#: pages.5.view.emptyText
+msgid "Nothing practised yet. Tick a block on Today."
+msgstr "Noch nichts geübt. Hak einen Block unter Heute ab."
+
+#: ctx.t
+msgid "plan.json has not reached this device yet"
+msgstr "plan.json ist noch nicht auf diesem Gerät"
+
+#: ctx.t
+msgid "plan.json is not a valid plan:"
+msgstr "plan.json ist kein gültiger Plan:"
+
+#: ctx.t
+msgid "Loading…"
+msgstr "Wird geladen…"
+
+#: ctx.t
+msgid "Done when: {goal}"
+msgstr "Geschafft, wenn: {goal}"
+
+#: ctx.t
+msgid "{module} · week {n} of {total}"
+msgstr "{module} · Woche {n} von {total}"
+
+#: ctx.t
+msgid "The plan suggests {module} from {from} ({phase}); you are on {here}."
+msgstr "Der Plan sieht {module} ab {from} ({phase}) vor; du bist bei {here}."
+
+#: ctx.t
+msgid "{label}: time's up"
+msgstr "{label}: Zeit ist um"
+
+#: ctx.t
+msgid "This plan has no weeks. Load one on the Modules tab."
+msgstr "Dieser Plan hat keine Wochen. Lade einen im Tab Module."
+
+#: ctx.t
+msgid "{week} · {module} week {n}"
+msgstr "{week} · {module}, Woche {n}"
+
+#: ctx.t
+msgid "Save log"
+msgstr "Eintrag speichern"
+
+#: ctx.t
+msgid "Week logged"
+msgstr "Woche eingetragen"
+
+#: ctx.t
+msgid "Module week {n} of {total} done?"
+msgstr "Modulwoche {n} von {total} geschafft?"
+
+#: ctx.t
+msgid "{week} done?"
+msgstr "{week} geschafft?"
+
+#: ctx.t
+msgid "This is the last week of the plan."
+msgstr "Das ist die letzte Woche des Plans."
+
+#: ctx.t
+msgid "Goal met"
+msgstr "Ziel erreicht"
+
+#: ctx.t
+msgid "Repeat this module week?"
+msgstr "Diese Modulwoche wiederholen?"
+
+#: ctx.t
+msgid "Repeat {week}?"
+msgstr "{week} wiederholen?"
+
+#: ctx.t
+msgid "Repeating a week is normal."
+msgstr "Eine Woche zu wiederholen ist normal."
+
+#: ctx.t
+msgid "Repeat"
+msgstr "Wiederholen"
+
+#: ctx.t
+msgid " · week {n} of {total}"
+msgstr " · Woche {n} von {total}"
+
+#: ctx.t
+msgid "Day 7 · rest"
+msgstr "Tag 7 · Ruhetag"
+
+#: ctx.t
+msgid "Day {day} of 7"
+msgstr "Tag {day} von 7"
+
+#: ctx.t
+msgid " · review day"
+msgstr " · Rückblick"
+
+#: ctx.t
+msgid "repeat {n}"
+msgstr "Wiederholung {n}"
+
+#: ctx.t
+msgid "The plan starts on {date}. Change it on the Modules tab."
+msgstr "Der Plan beginnt am {date}. Ändern kannst du das im Tab Module."
+
+#: ctx.t
+msgid "This week"
+msgstr "Diese Woche"
+
+#: ctx.t
+msgid "✓ Rested"
+msgstr "✓ Ausgeruht"
+
+#: ctx.t
+msgid "Mark as rested"
+msgstr "Als Ruhetag abhaken"
+
+#: ctx.t
+msgid "Practise anyway"
+msgstr "Trotzdem üben"
+
+#: ctx.t
+msgid "module"
+msgstr "Modul"
+
+#: ctx.t
+msgid "review"
+msgstr "Rückblick"
+
+#: ctx.t
+msgid "{label} done"
+msgstr "{label} erledigt"
+
+#: ctx.t
+msgid "{label} timer"
+msgstr "Timer: {label}"
+
+#: ctx.t
+msgid "Pause"
+msgstr "Pause"
+
+#: ctx.t
+msgid "Resume"
+msgstr "Weiter"
+
+#: ctx.t
+msgid "Start"
+msgstr "Start"
+
+#: ctx.t
+msgid "Reset"
+msgstr "Zurücksetzen"
+
+#: ctx.t
+msgid "Done when"
+msgstr "Geschafft, wenn"
+
+#: ctx.t
+msgid "{done}/{total} blocks today"
+msgstr "{done}/{total} Blöcke heute"
+
+#: ctx.t
+msgid "You have met the last goal of this plan. Time to ask for a new one."
+msgstr "Du hast das letzte Ziel dieses Plans erreicht. Zeit für einen neuen."
+
+#: ctx.t
+msgid "Goal met → next"
+msgstr "Ziel erreicht → weiter"
+
+#: ctx.t
+msgid "Repeat this week"
+msgstr "Diese Woche wiederholen"
+
+#: ctx.t
+msgid "Go to {week}?"
+msgstr "Zu {week} wechseln?"
+
+#: ctx.t
+msgid "This also leaves the running module."
+msgstr "Damit verlässt du auch das laufende Modul."
+
+#: ctx.t
+msgid "Go"
+msgstr "Los"
+
+#: ctx.t
+msgid "Plan · {version}"
+msgstr "Plan · {version}"
+
+#: ctx.t
+msgid "Phase"
+msgstr "Phase"
+
+#: ctx.t
+msgid " · plan week {n}"
+msgstr " · Planwoche {n}"
+
+#: ctx.t
+msgid "now"
+msgstr "jetzt"
+
+#: ctx.t
+msgid "Back here"
+msgstr "Hierher zurück"
+
+#: ctx.t
+msgid "Jump here"
+msgstr "Hierher springen"
+
+#: ctx.t
+msgid "The five blocks"
+msgstr "Die fünf Blöcke"
+
+#: ctx.t
+msgid "Core resources"
+msgstr "Wichtigste Materialien"
+
+#: ctx.t
+msgid "Save"
+msgstr "Speichern"
+
+#: ctx.t
+msgid "Change"
+msgstr "Ändern"
+
+#: ctx.t
+msgid "Use built-in"
+msgstr "Eingebauten verwenden"
+
+#: ctx.t
+msgid "Start over"
+msgstr "Neu beginnen"
+
+#: ctx.t
+msgid "Usually {min}–{max} weeks; blocks 2 and 4 follow the module, then the plan resumes at {week}."
+msgstr "Meist {min}–{max} Wochen; die Blöcke 2 und 4 folgen dem Modul, danach geht der Plan bei {week} weiter."
+
+#: ctx.t
+msgid "Usually {min}–{max} weeks; blocks 2 and 4 follow the module, then the plan resumes at where you left it."
+msgstr "Meist {min}–{max} Wochen; die Blöcke 2 und 4 folgen dem Modul, danach geht der Plan dort weiter, wo du aufgehört hast."
+
+#: ctx.t
+msgid "Start {module}"
+msgstr "{module} starten"
+
+#: ctx.t
+msgid "For how many weeks"
+msgstr "Wie viele Wochen"
+
+#: ctx.t
+msgid "{module} for {n, plural, one {# week} other {# weeks}}"
+msgstr "{module} für {n, plural, one {# Woche} other {# Wochen}}"
+
+#: ctx.t
+msgid "Back to {week} where you left it."
+msgstr "Zurück zu {week}, wo du aufgehört hast."
+
+#: ctx.t
+msgid "Back to the plan where you left it."
+msgstr "Zurück zum Plan, wo du aufgehört hast."
+
+#: ctx.t
+msgid "Leave the module now?"
+msgstr "Das Modul jetzt verlassen?"
+
+#: ctx.t
+msgid "Leave"
+msgstr "Verlassen"
+
+#: ctx.t
+msgid "Start date"
+msgstr "Startdatum"
+
+#: ctx.t
+msgid "Day 1 of week 1"
+msgstr "Tag 1 von Woche 1"
+
+#: ctx.t
+msgid "Day 7 of every cycle is the rest day"
+msgstr "Tag 7 jedes Zyklus ist der Ruhetag"
+
+#: ctx.t
+msgid "current"
+msgstr "aktuell"
+
+#: ctx.t
+msgid "Review day"
+msgstr "Rückblick-Tag"
+
+#: ctx.t
+msgid "That file is not JSON"
+msgstr "Diese Datei ist kein JSON"
+
+#: ctx.t
+msgid "The plan file has problems"
+msgstr "Die Plandatei hat Fehler"
+
+#: ctx.t
+msgid "OK"
+msgstr "OK"
+
+#: ctx.t
+msgid "Use “{title}” ({version})?"
+msgstr "„{title}“ ({version}) verwenden?"
+
+#: ctx.t
+msgid "Your progress and logs are kept; a week the new plan does not have falls back to its first week."
+msgstr "Dein Fortschritt und deine Einträge bleiben; eine Woche, die der neue Plan nicht hat, fällt auf seine erste Woche zurück."
+
+#: ctx.t
+msgid "Use this plan"
+msgstr "Diesen Plan verwenden"
+
+#: ctx.t
+msgid "Plan loaded"
+msgstr "Plan geladen"
+
+#: ctx.t
+msgid "Go back to the built-in plan?"
+msgstr "Zum eingebauten Plan zurück?"
+
+#: ctx.t
+msgid "Start the plan over?"
+msgstr "Den Plan von vorn beginnen?"
+
+#: ctx.t
+msgid "Progress goes back to week 1 from today. Sessions and logs are kept."
+msgstr "Der Fortschritt beginnt ab heute wieder bei Woche 1. Einheiten und Einträge bleiben."
+
+#: ctx.t
+msgid "Blues, jazz and the plan itself"
+msgstr "Blues, Jazz und der Plan selbst"
+
+#: ctx.t
+msgid "Running"
+msgstr "Läuft"
+
+#: ctx.t
+msgid "Returns to {week} afterwards."
+msgstr "Danach geht es mit {week} weiter."
+
+#: ctx.t
+msgid "Leave module"
+msgstr "Modul verlassen"
+
+#: ctx.t
+msgid "Usually {a}–{b} weeks · {n, plural, one {# week} other {# weeks}} of material"
+msgstr "Meist {a}–{b} Wochen · Material für {n, plural, one {# Woche} other {# Wochen}}"
+
+#: ctx.t
+msgid "The weeks"
+msgstr "Die Wochen"
+
+#: ctx.t
+msgid "Week {n}"
+msgstr "Woche {n}"
+
+#: ctx.t
+msgid "Settings"
+msgstr "Einstellungen"
+
+#: ctx.t
+msgid "built-in"
+msgstr "eingebaut"
+
+#: ctx.t
+msgid "Load plan file…"
+msgstr "Plandatei laden…"
+
+#: ctx.t
+msgid "Progress"
+msgstr "Fortschritt"
+
+#: ctx.t
+msgid "{n, plural, one {# move} other {# moves}} since {date}"
+msgstr "{n, plural, one {# Schritt} other {# Schritte}} seit {date}"
+
+#: ctx.t
+msgid "rest"
+msgstr "Ruhetag"
+
+#: ctx.t
+msgid "{n, plural, one {# block} other {# blocks}}"
+msgstr "{n, plural, one {# Block} other {# Blöcke}}"
+
+#: ctx.t
+msgid "{n, plural, one {# day} other {# days}}"
+msgstr "{n, plural, one {# Tag} other {# Tage}}"
+
+#: ctx.t
+msgid "fix: {fix}"
+msgstr "verbessern: {fix}"
+
+#: ctx.t
+msgid "{n} of 5 blocks"
+msgstr "{n} von 5 Blöcken"
+

@@ -1,3 +1,6 @@
+import { fileURLToPath } from "node:url";
+import { catalogProblems } from "@potyro/generator/app-catalog";
+import { readAppSources } from "@potyro/generator/app-sources";
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { checkReferences, checkWords, isPotyroApp, structureSchema, wordGaps, wordSlots } from "potyro";
@@ -44,23 +47,17 @@ describe("in six languages (#303)", () => {
     expect(wordGaps(app)).toEqual([]);
   });
 
-  it("has no plain words in its declared slots", () => {
-    const plain = wordSlots(app)
-      .filter((s) => typeof s.value === "string")
-      .map((s) => s.value as string);
-    for (const p of plain) expect(p, p).toMatch(/^\S{1,5}$/);
-  });
-
-  it("says every word the screens show in all six languages, with the same placeholders in each", () => {
-    const entries = Object.entries(W);
-    expect(entries.length).toBeGreaterThan(80);
-    for (const [key, words] of entries) {
-      expect(Object.keys(words).sort(), key).toEqual(["de", "en", "es", "it", "pl", "pt-BR"]);
-      const holes = (s: string) => [...s.matchAll(/\{(\w+)[,}]/g)].map((m) => m[1]).sort();
-      for (const [lang, text] of Object.entries(words)) {
-        expect(text.trim().length, `${key}.${lang}`).toBeGreaterThan(0);
-        expect(holes(text), `${key}.${lang}`).toEqual(holes(words.en));
+  it("carries a catalog for each other language, in step with its code, every word translated, every placeholder kept (docs/30)", async () => {
+    // Its source and the modules of its own it imports: their words are the app's.
+    const { source: code, modules } = readAppSources(fileURLToPath(new URL("../draw-guess.app.ts", import.meta.url)));
+    const read = (l: string): string | undefined => {
+      try {
+        return readFileSync(new URL(`../locales/${l}.po`, import.meta.url), "utf8");
+      } catch {
+        return undefined;
       }
-    }
+    };
+    const catalogs = Object.fromEntries(["pt-BR", "de", "es", "pl", "it"].map((l) => [l, read(l)]));
+    expect(await catalogProblems({ source: code, modules, catalogs, same: /^(\S{1,5}|Draw & Guess)$/ })).toEqual([]);
   });
 });

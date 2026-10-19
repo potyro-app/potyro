@@ -1,0 +1,689 @@
+msgid ""
+msgstr ""
+"Language: pt-BR\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+#: pages.0.title
+msgid "Recipes"
+msgstr "Receitas"
+
+#: quickActions.0.label
+msgid "Add: Ingredient"
+msgstr "Adicionar: Ingrediente"
+
+#: entities.ingredient.label
+#: entities.recipe.fields.ingredients.of.ingredient.label
+#: entities.buy.fields.ingredient.label
+#: pages.5.title
+msgid "Ingredient"
+msgstr "Ingrediente"
+
+#: entities.ingredient.fields.name.label
+#: entities.recipe.fields.name.label
+#: entities.buy.fields.name.label
+#: ctx.t
+msgid "Name"
+msgstr "Nome"
+
+#: entities.ingredient.fields.diet.labels.vegan
+msgctxt "diet vegan"
+msgid "vegan"
+msgstr "vegano"
+
+#: entities.ingredient.fields.diet.labels.vegetarian
+msgctxt "diet vegetarian"
+msgid "vegetarian"
+msgstr "vegetariano"
+
+#: entities.ingredient.fields.diet.labels.animal-based
+#: entities.recipe.computed.diet.labels.animal-based
+#: ctx.t
+msgid "animal-based"
+msgstr "de origem animal"
+
+#: entities.ingredient.fields.diet.label
+#: entities.recipe.computed.diet.label
+msgid "Diet"
+msgstr "Dieta"
+
+#: entities.ingredient.fields.category.labels.vegetable
+#: ctx.t
+msgid "vegetable"
+msgstr "verdura"
+
+#: entities.ingredient.fields.category.labels.fruit
+#: ctx.t
+msgid "fruit"
+msgstr "fruta"
+
+#: entities.ingredient.fields.category.labels.grain
+#: ctx.t
+msgid "grain"
+msgstr "cereal"
+
+#: entities.ingredient.fields.category.labels.dairy
+#: ctx.t
+msgid "dairy"
+msgstr "laticínio"
+
+#: entities.ingredient.fields.category.labels.protein
+#: ctx.t
+msgid "protein"
+msgstr "proteína"
+
+#: entities.ingredient.fields.category.labels.spice
+#: ctx.t
+msgid "spice"
+msgstr "tempero"
+
+#: entities.ingredient.fields.category.labels.fat
+#: ctx.t
+msgid "fat"
+msgstr "gordura"
+
+#: entities.ingredient.fields.category.labels.other
+#: ctx.t
+msgid "other"
+msgstr "outro"
+
+#: entities.ingredient.fields.category.label
+msgid "Category"
+msgstr "Categoria"
+
+#: entities.ingredient.fields.seasons.labels.spring
+#: ctx.t
+msgid "spring"
+msgstr "primavera"
+
+#: entities.ingredient.fields.seasons.labels.summer
+#: ctx.t
+msgid "summer"
+msgstr "verão"
+
+#: entities.ingredient.fields.seasons.labels.autumn
+#: ctx.t
+msgid "autumn"
+msgstr "outono"
+
+#: entities.ingredient.fields.seasons.labels.winter
+#: ctx.t
+msgid "winter"
+msgstr "inverno"
+
+#: entities.ingredient.fields.seasons.label
+msgid "Seasons"
+msgstr "Estações"
+
+#: entities.ingredient.fields.pricePerKg.unit
+msgid "$/kg"
+msgstr ""
+
+#: entities.ingredient.fields.pricePerKg.label
+msgid "Price per kg"
+msgstr "Preço por kg"
+
+#: entities.ingredient.fields.caloriesPer100.unit
+msgid "kcal"
+msgstr ""
+
+#: entities.ingredient.fields.caloriesPer100.label
+msgid "Calories per 100 g"
+msgstr "Calorias por 100 g"
+
+#: entities.ingredient.fields.proteinPer100.unit
+#: entities.ingredient.fields.fatPer100.unit
+#: entities.ingredient.fields.carbsPer100.unit
+#: entities.recipe.fields.ingredients.of.unit.labels.g
+msgid "g"
+msgstr ""
+
+#: entities.ingredient.fields.proteinPer100.label
+msgid "Protein per 100 g"
+msgstr "Proteína por 100 g"
+
+#: entities.ingredient.fields.fatPer100.label
+msgid "Fat per 100 g"
+msgstr "Gordura por 100 g"
+
+#: entities.ingredient.fields.carbsPer100.label
+msgid "Carbs per 100 g"
+msgstr "Carboidratos por 100 g"
+
+#: entities.ingredient.fields.inStock.label
+msgid "In stock"
+msgstr "Em estoque"
+
+#: entities.ingredient.fields.notes.label
+#: pages.5.view.sections.2.title
+msgid "Notes"
+msgstr "Anotações"
+
+#: entities.ingredient.actions.toggleStock.label
+msgid "Have it / used up"
+msgstr "Tenho / acabou"
+
+#: entities.recipe.label
+#: entities.meal.fields.recipe.label
+#: pages.4.title
+msgid "Recipe"
+msgstr "Receita"
+
+#: entities.recipe.fields.name.placeholder
+msgid "Shakshuka"
+msgstr ""
+
+#: entities.recipe.fields.status.labels.want to try
+msgid "want to try"
+msgstr "quero provar"
+
+#: entities.recipe.fields.status.labels.tried
+msgid "tried"
+msgstr "já provei"
+
+#: entities.recipe.fields.status.labels.keeper
+msgid "keeper"
+msgstr "favorita"
+
+#: entities.recipe.fields.status.label
+msgid "Status"
+msgstr "Status"
+
+#: entities.recipe.fields.photo.label
+msgid "Photo"
+msgstr "Foto"
+
+#: entities.recipe.fields.tags.labels.breakfast
+#: entities.recipe.actions.plan.input.slot.labels.breakfast
+#: entities.meal.fields.slot.labels.breakfast
+msgid "breakfast"
+msgstr "café da manhã"
+
+#: entities.recipe.fields.tags.labels.lunch
+#: entities.recipe.actions.plan.input.slot.labels.lunch
+#: entities.meal.fields.slot.labels.lunch
+msgid "lunch"
+msgstr "almoço"
+
+#: entities.recipe.fields.tags.labels.dinner
+#: entities.recipe.actions.plan.input.slot.labels.dinner
+#: entities.meal.fields.slot.labels.dinner
+msgid "dinner"
+msgstr "jantar"
+
+#: entities.recipe.fields.tags.labels.snack
+msgid "snack"
+msgstr "lanche"
+
+#: entities.recipe.fields.tags.labels.vegetarian
+msgctxt "tags vegetarian"
+msgid "vegetarian"
+msgstr "vegetariana"
+
+#: entities.recipe.fields.tags.labels.vegan
+msgctxt "tags vegan"
+msgid "vegan"
+msgstr "vegana"
+
+#: entities.recipe.fields.tags.label
+msgid "Tags"
+msgstr "Etiquetas"
+
+#: entities.recipe.fields.servings.label
+#: ctx.t
+msgid "Servings"
+msgstr "Porções"
+
+#: entities.recipe.fields.servings.help
+msgid "The per-serving figures divide by this"
+msgstr "Os valores por porção são divididos por este número"
+
+#: entities.recipe.fields.ingredients.of.quantity.label
+#: entities.buy.fields.quantity.label
+msgid "Quantity"
+msgstr "Quantidade"
+
+#: entities.recipe.fields.ingredients.of.unit.labels.ml
+msgid "ml"
+msgstr ""
+
+#: entities.recipe.fields.ingredients.of.unit.labels.tbsp
+msgid "tbsp"
+msgstr "colher de sopa"
+
+#: entities.recipe.fields.ingredients.of.unit.labels.tsp
+msgid "tsp"
+msgstr "colher de chá"
+
+#: entities.recipe.fields.ingredients.of.unit.labels.cup
+msgid "cup"
+msgstr "xícara"
+
+#: entities.recipe.fields.ingredients.of.unit.labels.piece
+msgid "piece"
+msgstr "unidade"
+
+#: entities.recipe.fields.ingredients.of.unit.label
+msgid "Unit"
+msgstr "Unidade"
+
+#: entities.recipe.fields.ingredients.label
+#: entities.recipe.groups.1.title
+#: pages.4.view.sections.0.title
+#: ctx.t
+msgid "Ingredients"
+msgstr "Ingredientes"
+
+#: entities.recipe.fields.steps.of.text.label
+msgid "Text"
+msgstr "Texto"
+
+#: entities.recipe.fields.steps.of.durationSec.label
+msgid "Time"
+msgstr "Tempo"
+
+#: entities.recipe.fields.steps.label
+#: entities.recipe.groups.2.title
+#: pages.4.view.sections.1.title
+msgid "Steps"
+msgstr "Passos"
+
+#: entities.recipe.fields.lastCookedAt.label
+msgid "Last cooked"
+msgstr "Feita pela última vez"
+
+#: entities.recipe.fields.timesCooked.label
+msgid "Times cooked"
+msgstr "Vezes feitas"
+
+#: entities.recipe.fields.notes.label
+#: entities.recipe.groups.4.title
+#: pages.4.view.sections.2.title
+msgid "Your notes"
+msgstr "Suas anotações"
+
+#: entities.recipe.fields.notes.placeholder
+msgid "Less salt next time. Ana loved it."
+msgstr "Menos sal da próxima vez. A Ana adorou."
+
+#: entities.recipe.fields.source.label
+msgid "Where it's from"
+msgstr "De onde veio"
+
+#: entities.recipe.groups.0.title
+msgid "Overview"
+msgstr "Visão geral"
+
+#: entities.recipe.groups.3.title
+#: pages.4.view.sections.3.title
+msgid "Nutrition & cost"
+msgstr "Nutrição e custo"
+
+#: entities.recipe.computed.caloriesPerServing.label
+msgid "Calories per serving"
+msgstr "Calorias por porção"
+
+#: entities.recipe.computed.proteinPerServing.label
+msgid "Protein per serving"
+msgstr "Proteína por porção"
+
+#: entities.recipe.computed.totalMinutes.label
+msgid "Time (min)"
+msgstr "Tempo (min)"
+
+#: entities.recipe.computed.time.label
+msgid "⏱"
+msgstr ""
+
+#: entities.recipe.computed.kcal.label
+msgid "🔥"
+msgstr ""
+
+#: entities.recipe.computed.serves.label
+msgid "🍽"
+msgstr ""
+
+#: entities.recipe.computed.diet.labels.vegan
+#: ctx.t
+msgid "vegan"
+msgstr "vegana"
+
+#: entities.recipe.computed.diet.labels.vegetarian
+#: ctx.t
+msgid "vegetarian"
+msgstr "vegetariana"
+
+#: entities.recipe.computed.diet.labels.unknown
+#: ctx.t
+msgid "unknown"
+msgstr "desconhecida"
+
+#: entities.recipe.computed.estimatedCost.label
+msgid "Estimated cost"
+msgstr "Custo estimado"
+
+#: entities.recipe.computed.missingIngredients.label
+msgid "Missing ingredients"
+msgstr "Ingredientes em falta"
+
+#: entities.recipe.actions.markCooked.label
+msgid "Cooked it"
+msgstr "Fiz esta"
+
+#: entities.recipe.actions.plan.label
+msgid "Plan it"
+msgstr "Planejar"
+
+#: entities.recipe.actions.plan.input.date.label
+#: entities.meal.fields.date.label
+msgid "Day"
+msgstr "Dia"
+
+#: entities.recipe.actions.plan.input.slot.label
+#: entities.meal.label
+#: entities.meal.fields.slot.label
+#: pages.0.view.filters.3.label
+#: pages.6.title
+msgid "Meal"
+msgstr "Refeição"
+
+#: entities.recipe.actions.shop.label
+msgid "Add to shopping"
+msgstr "Pôr na lista de compras"
+
+#: entities.meal.fields.note.label
+msgid "Note"
+msgstr "Observação"
+
+#: entities.meal.actions.cook.label
+#: pages.7.title
+msgid "Cook"
+msgstr "Cozinhar"
+
+#: entities.buy.label
+msgid "Shopping item"
+msgstr "Item de compra"
+
+#: entities.buy.fields.done.label
+msgid "Bought"
+msgstr "Comprado"
+
+#: entities.buy.fields.forRecipe.label
+msgid "For"
+msgstr "Para"
+
+#: pages.0.description
+msgid "Your cookbook, keepers first."
+msgstr "Seu livro de receitas, as favoritas primeiro."
+
+#: pages.0.actions.0.label
+#: ctx.t
+msgid "Add a recipe"
+msgstr "Adicionar receita"
+
+#: pages.0.view.filters.0.label
+msgid "Search"
+msgstr "Buscar"
+
+#: pages.0.view.filters.0.placeholder
+msgid "Search recipes"
+msgstr "Buscar receitas"
+
+#: pages.0.view.filters.1.label
+msgid "Can cook now"
+msgstr "Dá para fazer agora"
+
+#: pages.0.view.filters.2.label
+msgid "Under 30 min"
+msgstr "Menos de 30 min"
+
+#: pages.0.view.emptyText
+msgid "No recipes yet. Add one from a photo of a cookbook page, or paste one in."
+msgstr "Nenhuma receita ainda. Adicione uma a partir da foto de uma página, ou cole o texto."
+
+#: pages.1.title
+msgid "This week"
+msgstr "Esta semana"
+
+#: pages.1.description
+msgid "What's cooking, day by day. Plan a recipe from its page."
+msgstr "O que vai para a mesa, dia a dia. Planeje uma receita na página dela."
+
+#: pages.1.view.emptyText
+msgid "Nothing planned. Open a recipe and tap “Plan it”."
+msgstr "Nada planejado. Abra uma receita e toque em “Planejar”."
+
+#: pages.2.title
+msgid "Shopping"
+msgstr "Compras"
+
+#: pages.2.description
+msgid "What your recipes need. Tick it in the shop, then put it away."
+msgstr "O que suas receitas pedem. Marque no mercado e depois guarde."
+
+#: pages.2.actions.0.label
+msgid "Put away"
+msgstr "Guardar"
+
+#: pages.2.view.emptyText
+msgid "The list is empty. On a recipe, “Add to shopping” puts what's missing here."
+msgstr "A lista está vazia. Numa receita, “Pôr na lista de compras” traz o que falta para cá."
+
+#: pages.3.title
+msgid "Pantry"
+msgstr "Despensa"
+
+#: pages.3.description
+msgid "Your pantry. What's in stock decides what you can cook."
+msgstr "Sua despensa. O que há em estoque decide o que dá para fazer."
+
+#: pages.4.view.primaryAction.label
+msgid "Start cooking"
+msgstr "Começar a cozinhar"
+
+#: pages.5.view.sections.0.title
+msgid "About"
+msgstr "Sobre"
+
+#: pages.5.view.sections.1.title
+msgid "Nutrition (per 100g)"
+msgstr "Nutrição (por 100 g)"
+
+#: ctx.t
+msgid "easy"
+msgstr "fácil"
+
+#: ctx.t
+msgid "medium"
+msgstr "média"
+
+#: ctx.t
+msgid "hard"
+msgstr "difícil"
+
+#: ctx.t
+msgid "Breakfast"
+msgstr "Café da manhã"
+
+#: ctx.t
+msgid "Lunch"
+msgstr "Almoço"
+
+#: ctx.t
+msgid "Dinner"
+msgstr "Jantar"
+
+#: ctx.t
+msgid "Loading…"
+msgstr "Carregando…"
+
+#: ctx.t
+msgid "Recipe not found."
+msgstr "Receita não encontrada."
+
+#: ctx.t
+msgid "{name}, step {n}"
+msgstr "{name}, passo {n}"
+
+#: ctx.t
+msgid "Step {n} of {total}"
+msgstr "Passo {n} de {total}"
+
+#: ctx.t
+msgid "Cooking: {name}"
+msgstr "Cozinhando: {name}"
+
+#: ctx.t
+msgid "Go to step {n}"
+msgstr "Ir para o passo {n}"
+
+#: ctx.t
+msgid "stop"
+msgstr "parar"
+
+#: ctx.t
+msgid "Start a {time} timer"
+msgstr "Iniciar timer de {time}"
+
+#: ctx.t
+msgid "This recipe has no steps yet."
+msgstr "Esta receita ainda não tem passos."
+
+#: ctx.t
+msgid "Back"
+msgstr "Voltar"
+
+#: ctx.t
+msgid "Cooked it ✓"
+msgstr "Pronto, fiz ✓"
+
+#: ctx.t
+msgid "Next step"
+msgstr "Próximo passo"
+
+#: ctx.t
+msgid "Fewer servings"
+msgstr "Menos porções"
+
+#: ctx.t
+msgid "{n, plural, one {# serving} other {# servings}}"
+msgstr "{n, plural, one {# porção} other {# porções}}"
+
+#: ctx.t
+msgid "More servings"
+msgstr "Mais porções"
+
+#: ctx.t
+msgid "All steps"
+msgstr "Todos os passos"
+
+#: ctx.t
+msgid "AI isn't available here. Type the recipe in instead."
+msgstr "A IA não está disponível aqui. Digite a receita."
+
+#: ctx.t
+msgid "Paste the recipe: from a website, a message, a caption"
+msgstr "Cole a receita: de um site, uma mensagem, uma legenda"
+
+#: ctx.t
+msgid "Reading the recipe…"
+msgstr "Lendo a receita…"
+
+#: ctx.t
+msgid "AI's reading — check it"
+msgstr "O que a IA leu — confira"
+
+#: ctx.t
+msgid "Save recipe"
+msgstr "Salvar receita"
+
+#: ctx.t
+msgid "From a photo"
+msgstr "De uma foto"
+
+#: ctx.t
+msgid "A cookbook page or a screenshot"
+msgstr "Uma página de livro ou uma captura de tela"
+
+#: ctx.t
+msgid "Paste the text"
+msgstr "Colar o texto"
+
+#: ctx.t
+msgid "From a website, a message, a caption"
+msgstr "De um site, uma mensagem, uma legenda"
+
+#: ctx.t
+msgid "Type it in"
+msgstr "Digitar"
+
+#: ctx.t
+msgid "New recipe"
+msgstr "Nova receita"
+
+#: ctx.t
+msgid "Add recipe"
+msgstr "Adicionar receita"
+
+#: ctx.t
+msgid "{n, plural, one {# thing} other {# things}} put away in the pantry"
+msgstr "{n, plural, one {# item guardado} other {# itens guardados}} na despensa"
+
+#: ctx.t
+msgid "Tick what you bought first."
+msgstr "Marque primeiro o que você comprou."
+
+#: ctx.t
+msgid "Tonight: {name}"
+msgstr "Hoje: {name}"
+
+#: ctx.t
+msgid "Last cooked {when}"
+msgstr "Feita pela última vez {when}"
+
+#: ctx.t
+msgid "Not cooked yet"
+msgstr "Ainda não foi feita"
+
+#: ctx.t
+msgid "{n, plural, one {# recipe} other {# recipes}}"
+msgstr "{n, plural, one {# receita} other {# receitas}}"
+
+#: ctx.t
+msgid "Used up {name}"
+msgstr "Acabou: {name}"
+
+#: ctx.t
+msgid "{name} in stock"
+msgstr "{name} em estoque"
+
+#: ctx.t
+msgid "Nice — cooked {n}×"
+msgstr "Boa — feita {n}×"
+
+#: ctx.t
+msgid "On the plan: {name}"
+msgstr "No plano: {name}"
+
+#: ctx.t
+msgid "You have everything for this one."
+msgstr "Você já tem tudo para esta."
+
+#: ctx.t
+msgid "{n, plural, one {# thing} other {# things}} on the shopping list"
+msgstr "{n, plural, one {# item} other {# itens}} na lista de compras"
+
+#: ctx.t
+msgid "Keepers"
+msgstr "Favoritas"
+
+#: ctx.t
+msgid "Tried"
+msgstr "Já provei"
+
+#: ctx.t
+msgid "Want to try"
+msgstr "Quero provar"
+

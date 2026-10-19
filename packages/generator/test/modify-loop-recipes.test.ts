@@ -19,7 +19,7 @@ const shipped = readFileSync(`${dir}recipes.app.tsx`, "utf8");
 
 // The example is in six languages (#303), so the new field's label is too: a label in English only
 // is a gap the check sends back.
-const OVERVIEW = '{ title: { en: "Overview", "pt-BR": "Visão geral", de: "Überblick", es: "Resumen", pl: "Przegląd", it: "Panoramica" }';
+const OVERVIEW = '{ title: "Overview"';
 const ADD_RATING = [
   "A 1–5 rating is a whole number, which the number field covers; it goes in the Overview group.",
   "```ts",
@@ -27,7 +27,7 @@ const ADD_RATING = [
   "        ingredients: {",
   '          type: "list",',
   "=======",
-  '        rating: { type: "number", min: 1, max: 5, integer: true, label: { en: "Rating", "pt-BR": "Nota", de: "Bewertung", es: "Valoración", pl: "Ocena", it: "Voto" } },',
+  '        rating: { type: "number", min: 1, max: 5, integer: true, label: "Rating" },',
   "        ingredients: {",
   '          type: "list",',
   ">>>>>>> REPLACE",

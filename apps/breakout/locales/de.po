@@ -1,0 +1,91 @@
+msgid ""
+msgstr ""
+"Language: de\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Breakout"
+msgstr ""
+
+#: entities.run.label
+msgid "Game"
+msgstr "Spiel"
+
+#: entities.run.fields.score.label
+msgid "Score"
+msgstr "Punkte"
+
+#: entities.run.fields.level.label
+msgid "Level"
+msgstr "Level"
+
+#: entities.run.fields.levelName.label
+msgid "Level Name"
+msgstr "Levelname"
+
+#: entities.run.fields.won.label
+msgid "Won"
+msgstr "Gewonnen"
+
+#: entities.run.fields.playedAt.label
+msgid "Played At"
+msgstr "Gespielt am"
+
+#: pages.0.title
+msgid "Play"
+msgstr "Spielen"
+
+#: pages.1.title
+msgid "Scores"
+msgstr "Punktestände"
+
+#: ctx.t
+msgid "levels.json has a problem"
+msgstr "levels.json hat ein Problem"
+
+#: ctx.t
+msgid "Loading levels…"
+msgstr "Level werden geladen…"
+
+#: ctx.t
+msgid "best {n}"
+msgstr "Rekord {n}"
+
+#: ctx.t
+msgid "Tap to play again"
+msgstr "Tippen für ein neues Spiel"
+
+#: ctx.t
+msgid "Tap to launch"
+msgstr "Tippen zum Starten"
+
+#: ctx.t
+msgid "Paused — tap to go on"
+msgstr "Pause — tippen zum Weiterspielen"
+
+#: ctx.t
+msgid "You cleared it! {score}"
+msgstr "Geschafft! {score}"
+
+#: ctx.t
+msgid "Game over · {score}"
+msgstr "Spiel vorbei · {score}"
+
+#: ctx.t
+msgid "levels.json has not reached this device yet"
+msgstr "levels.json ist noch nicht auf diesem Gerät"
+
+#: ctx.t
+msgid "{n, plural, one {# point} other {# points}}"
+msgstr "{n, plural, one {# Punkt} other {# Punkte}}"
+
+#: ctx.t
+msgid "Cleared every level"
+msgstr "Alle Level geschafft"
+
+#: ctx.t
+msgid "Reached {level}"
+msgstr "Bis {level} gekommen"
+

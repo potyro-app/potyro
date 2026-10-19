@@ -1,0 +1,433 @@
+msgid ""
+msgstr ""
+"Language: es\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+#: pages.1.summary.0.label
+msgid "Places"
+msgstr "Lugares"
+
+#: scope.label
+#: entities.collection.label
+msgid "List"
+msgstr "Lista"
+
+#: quickActions.0.label
+msgid "Add: Place"
+msgstr "Añadir: Lugar"
+
+#: entities.collection.fields.name.label
+#: entities.place.fields.name.label
+#: ctx.t
+msgid "Name"
+msgstr "Nombre"
+
+#: entities.collection.fields.name.placeholder
+msgid "Date night"
+msgstr "Noche de cita"
+
+#: entities.collection.fields.emoji.label
+msgid "Emoji"
+msgstr ""
+
+#: entities.collection.fields.emoji.placeholder
+msgid "🌙"
+msgstr ""
+
+#: entities.collection.fields.note.label
+#: entities.place.actions.logVisit.input.note.label
+#: entities.visit.fields.note.label
+msgid "Note"
+msgstr "Nota"
+
+#: entities.place.label
+#: entities.visit.fields.place.label
+#: pages.3.title
+msgid "Place"
+msgstr "Lugar"
+
+#: entities.place.fields.location.label
+#: pages.3.view.sections.3.title
+msgid "Location"
+msgstr "Ubicación"
+
+#: entities.place.fields.photo.label
+#: entities.visit.fields.photo.label
+msgid "Photo"
+msgstr "Foto"
+
+#: entities.place.fields.status.labels.want to go
+#: ctx.t
+msgid "want to go"
+msgstr "quiero ir"
+
+#: entities.place.fields.status.labels.been
+#: ctx.t
+msgid "been"
+msgstr "ya fui"
+
+#: entities.place.fields.status.labels.favourite
+#: ctx.t
+msgid "favourite"
+msgstr "favorito"
+
+#: entities.place.fields.status.label
+#: pages.0.view.filters.1.label
+#: pages.1.layout.items.0.view.filters.1.label
+#: ctx.t
+msgid "Status"
+msgstr "Estado"
+
+#: entities.place.fields.kind.labels.restaurant
+#: ctx.t
+msgid "restaurant"
+msgstr "restaurante"
+
+#: entities.place.fields.kind.labels.bar
+#: ctx.t
+msgid "bar"
+msgstr "bar"
+
+#: entities.place.fields.kind.labels.cafe
+#: ctx.t
+msgid "cafe"
+msgstr "cafetería"
+
+#: entities.place.fields.kind.labels.pizza
+#: ctx.t
+msgid "pizza"
+msgstr "pizzería"
+
+#: entities.place.fields.kind.labels.bakery
+#: ctx.t
+msgid "bakery"
+msgstr "panadería"
+
+#: entities.place.fields.kind.labels.museum
+#: ctx.t
+msgid "museum"
+msgstr "museo"
+
+#: entities.place.fields.kind.labels.park
+#: ctx.t
+msgid "park"
+msgstr "parque"
+
+#: entities.place.fields.kind.labels.viewpoint
+#: ctx.t
+msgid "viewpoint"
+msgstr "mirador"
+
+#: entities.place.fields.kind.labels.shop
+#: ctx.t
+msgid "shop"
+msgstr "tienda"
+
+#: entities.place.fields.kind.labels.stay
+#: ctx.t
+msgid "place to stay"
+msgstr "alojamiento"
+
+#: entities.place.fields.kind.labels.other
+#: ctx.t
+msgid "other"
+msgstr "otro"
+
+#: entities.place.fields.kind.label
+#: ctx.t
+msgid "Kind"
+msgstr "Tipo"
+
+#: entities.place.fields.notes.label
+#: ctx.t
+msgid "Notes"
+msgstr "Notas"
+
+#: entities.place.fields.mustOrder.label
+msgid "Order this"
+msgstr "Pide esto"
+
+#: entities.place.fields.mustOrder.placeholder
+msgid "The cardamom bun"
+msgstr "El bollo de cardamomo"
+
+#: entities.place.fields.lists.label
+msgid "Lists"
+msgstr "Listas"
+
+#: entities.place.fields.vibes.labels.cheap
+msgid "cheap"
+msgstr "barato"
+
+#: entities.place.fields.vibes.labels.fancy
+msgid "fancy"
+msgstr "elegante"
+
+#: entities.place.fields.vibes.labels.outdoor
+msgid "outdoor"
+msgstr "al aire libre"
+
+#: entities.place.fields.vibes.labels.quiet
+msgid "quiet"
+msgstr "tranquilo"
+
+#: entities.place.fields.vibes.labels.late-night
+msgid "late-night"
+msgstr "hasta tarde"
+
+#: entities.place.fields.vibes.labels.dog-friendly
+msgid "dog-friendly"
+msgstr "admite perros"
+
+#: entities.place.fields.vibes.label
+msgid "Vibes"
+msgstr "Ambiente"
+
+#: entities.place.fields.rating.label
+msgid "Rating"
+msgstr "Valoración"
+
+#: entities.place.fields.rankInKind.label
+msgid "Rank among its kind"
+msgstr "Puesto entre los de su tipo"
+
+#: entities.place.fields.openingHours.of.day.labels.mon
+msgid "mon"
+msgstr "lun"
+
+#: entities.place.fields.openingHours.of.day.labels.tue
+msgid "tue"
+msgstr "mar"
+
+#: entities.place.fields.openingHours.of.day.labels.wed
+msgid "wed"
+msgstr "mié"
+
+#: entities.place.fields.openingHours.of.day.labels.thu
+msgid "thu"
+msgstr "jue"
+
+#: entities.place.fields.openingHours.of.day.labels.fri
+msgid "fri"
+msgstr "vie"
+
+#: entities.place.fields.openingHours.of.day.labels.sat
+msgid "sat"
+msgstr "sáb"
+
+#: entities.place.fields.openingHours.of.day.labels.sun
+msgid "sun"
+msgstr "dom"
+
+#: entities.place.fields.openingHours.of.day.label
+msgid "Day"
+msgstr "Día"
+
+#: entities.place.fields.openingHours.of.from.label
+msgid "Opens"
+msgstr "Abre"
+
+#: entities.place.fields.openingHours.of.from.placeholder
+msgid "09:00"
+msgstr ""
+
+#: entities.place.fields.openingHours.of.to.label
+msgid "Closes"
+msgstr "Cierra"
+
+#: entities.place.fields.openingHours.of.to.placeholder
+msgid "18:00"
+msgstr ""
+
+#: entities.place.fields.openingHours.label
+msgid "Opening hours"
+msgstr "Horario"
+
+#: entities.place.computed.rankText.label
+msgid "🏅"
+msgstr ""
+
+#: entities.place.computed.directions.label
+msgid "Open in a map"
+msgstr "Abrir en un mapa"
+
+#: entities.place.actions.logVisit.label
+msgid "Log a visit"
+msgstr "Anotar visita"
+
+#: entities.place.actions.logVisit.input.at.label
+#: entities.visit.fields.at.label
+msgid "When"
+msgstr "Cuándo"
+
+#: entities.place.actions.logVisit.input.dish.label
+#: entities.visit.fields.dish.label
+msgid "What you had"
+msgstr "Qué tomaste"
+
+#: entities.place.actions.logVisit.input.with.label
+#: entities.visit.fields.with.label
+msgid "Who with"
+msgstr "Con quién"
+
+#: entities.place.actions.rank.label
+msgid "Rank it"
+msgstr "Clasificar"
+
+#: entities.place.actions.favourite.label
+msgid "Favourite"
+msgstr "Favorito"
+
+#: entities.visit.label
+msgid "Visit"
+msgstr "Visita"
+
+#: pages.0.title
+msgid "Map"
+msgstr "Mapa"
+
+#: pages.0.actions.0.label
+msgid "Show all"
+msgstr "Ver todos"
+
+#: pages.0.actions.1.label
+#: ctx.t
+msgid "Save this spot"
+msgstr "Guardar este sitio"
+
+#: pages.0.view.filters.0.label
+#: pages.1.layout.items.0.view.filters.0.label
+msgid "Category"
+msgstr "Categoría"
+
+#: pages.0.view.filters.2.label
+msgid "Vibe"
+msgstr "Ambiente"
+
+#: pages.0.view.filters.3.label
+msgid "Open now"
+msgstr "Abierto ahora"
+
+#: pages.1.title
+msgid "All places"
+msgstr "Todos los lugares"
+
+#: pages.1.description
+msgid "Favourites first, by kind. Rank a place against the others of its kind."
+msgstr "Favoritos primero, por tipo. Clasifica un sitio frente a los de su tipo."
+
+#: pages.1.summary.1.label
+msgid "Visited"
+msgstr "Visitados"
+
+#: pages.1.layout.items.0.view.filters.2.label
+msgid "Near me"
+msgstr "Cerca de mí"
+
+#: pages.2.title
+msgid "Memories"
+msgstr "Recuerdos"
+
+#: pages.2.description
+msgid "Every visit you logged, what you had and who you were with."
+msgstr "Cada visita que anotaste, qué tomaste y con quién."
+
+#: pages.2.view.emptyText
+msgid "No visits yet. On a place's page, “Log a visit”."
+msgstr "Aún no hay visitas. En la página de un sitio, «Anotar visita»."
+
+#: pages.3.view.sections.0.title
+msgid "Overview"
+msgstr "Resumen"
+
+#: pages.3.view.sections.1.title
+msgid "Visits"
+msgstr "Visitas"
+
+#: pages.3.view.sections.2.title
+msgid "Hours"
+msgstr "Horario"
+
+#: ctx.t
+msgid "unknown"
+msgstr "sin categoría"
+
+#: ctx.t
+msgid "restaurants"
+msgstr "restaurantes"
+
+#: ctx.t
+msgid "bars"
+msgstr "bares"
+
+#: ctx.t
+msgid "cafés"
+msgstr "cafeterías"
+
+#: ctx.t
+msgid "pizzerias"
+msgstr "pizzerías"
+
+#: ctx.t
+msgid "bakeries"
+msgstr "panaderías"
+
+#: ctx.t
+msgid "parks"
+msgstr "parques"
+
+#: ctx.t
+msgid "places like it"
+msgstr "sitios de este tipo"
+
+#: ctx.t
+msgid "hours unknown"
+msgstr "horario desconocido"
+
+#: ctx.t
+msgid "open now"
+msgstr "abierto ahora"
+
+#: ctx.t
+msgid "closed"
+msgstr "cerrado"
+
+#: ctx.t
+msgid "{name}: better or worse than {other}?"
+msgstr "{name}: ¿mejor o peor que {other}?"
+
+#: ctx.t
+msgid "Better"
+msgstr "Mejor"
+
+#: ctx.t
+msgid "Worse"
+msgstr "Peor"
+
+#: ctx.t
+msgid "#{n} of your {kinds}"
+msgstr "#{n} de tus {kinds}"
+
+#: ctx.t
+msgid "Can't tell where you are. Use “Add here” on the map instead."
+msgstr "No sé dónde estás. Usa «Añadir aquí» en el mapa."
+
+#: ctx.t
+msgid "Save"
+msgstr "Guardar"
+
+#: ctx.t
+msgid "{n, plural, =0 {Everywhere visited} one {# to visit} other {# to visit}}"
+msgstr "{n, plural, =0 {Todo visitado} one {# por visitar} other {# por visitar}}"
+
+#: ctx.t
+msgid "A visit"
+msgstr "Una visita"
+
+#: ctx.t
+msgid "with {who}"
+msgstr "con {who}"
+

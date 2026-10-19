@@ -81,6 +81,32 @@ export async function replaceFile(store: Store, id: string, file: Blob, opts: { 
   return fileSpace(store).write(f.path, file, { origin: opts.origin ?? "imported", mime: file.type || undefined });
 }
 
+/**
+ * An app's translation catalog (`locales/<lang>.po`, docs/30): the one kind of file a person edits in
+ * Files, to fix a word. Everything else is the app's to change, or Replace's.
+ */
+export const isCatalogFile = (path: string): boolean => /^locales\/[^/]+\.po$/.test(path);
+
+/**
+ * Save a catalog's new text. It must read as a catalog — a broken one would leave the app in its own
+ * language for that one, silently — and the text it replaces is kept as an earlier copy.
+ */
+export async function saveCatalogText(store: Store, id: string, text: string): Promise<FileInfo> {
+  const f = await mustFind(store, id);
+  if (!isCatalogFile(f.path)) throw new Error(t`Only an app's translations can be changed here.`);
+  const { poLineProblem, readPo } = await import("@potyro/i18n/app-catalogs");
+  let problem = poLineProblem(text);
+  if (!problem) {
+    try {
+      readPo(text);
+    } catch (e) {
+      problem = e instanceof Error ? e.message : String(e);
+    }
+  }
+  if (problem) throw new Error(t`These translations can't be read, so they were not saved (${problem}).`);
+  return fileSpace(store).write(f.path, new Blob([text], { type: f.mime }), { mime: f.mime, origin: f.origin });
+}
+
 export async function renameFile(store: Store, id: string, to: string): Promise<FileInfo> {
   const f = await mustFind(store, id);
   const path = personPath(to);

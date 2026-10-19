@@ -1,4 +1,7 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { catalogProblems } from "@potyro/generator/app-catalog";
+import { readAppSources } from "@potyro/generator/app-sources";
 import { describe, expect, it } from "vitest";
 import { checkReferences, checkWords, fieldValueProblem, isPotyroApp, structureSchema, wordGaps, wordSlots } from "potyro";
 import app from "../mood-sleep.app.js";
@@ -37,10 +40,17 @@ describe("in six languages (#303)", () => {
     expect(wordGaps(app)).toEqual([]);
   });
 
-  it("leaves plain only what reads the same everywhere: units and the game's name", () => {
-    const plain = wordSlots(app)
-      .filter((s) => typeof s.value === "string")
-      .map((s) => s.value as string);
-    for (const p of plain) expect(p, p).toMatch(/^(\S{1,5}|Breakout)$/);
+  it("carries a catalog for each other language, in step with its code, every word translated (docs/30)", async () => {
+    // Its source and the modules of its own it imports: their words are the app's.
+    const { source, modules } = readAppSources(fileURLToPath(new URL("../mood-sleep.app.ts", import.meta.url)));
+    const read = (l: string): string | undefined => {
+      try {
+        return readFileSync(new URL(`../locales/${l}.po`, import.meta.url), "utf8");
+      } catch {
+        return undefined;
+      }
+    };
+    const catalogs = Object.fromEntries(["pt-BR", "de", "es", "pl", "it"].map((l) => [l, read(l)]));
+    expect(await catalogProblems({ source, modules, catalogs, same: /^(\S{1,5}|Sleep & Mood)$/ })).toEqual([]);
   });
 });

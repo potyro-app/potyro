@@ -1,0 +1,169 @@
+msgid ""
+msgstr ""
+"Language: \n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Groceries"
+msgstr ""
+
+#: entities.list.label
+#: entities.item.fields.list.label
+#: pages.0.title
+msgid "List"
+msgstr ""
+
+#: entities.list.fields.name.label
+#: entities.aisle.fields.name.label
+#: entities.item.fields.name.label
+msgid "Name"
+msgstr ""
+
+#: entities.list.fields.name.placeholder
+msgid "Weekly shop"
+msgstr ""
+
+#: entities.aisle.label
+#: entities.item.fields.aisle.label
+msgid "Aisle"
+msgstr ""
+
+#: entities.aisle.fields.name.placeholder
+msgid "Produce"
+msgstr ""
+
+#: entities.aisle.fields.order.label
+msgid "Order"
+msgstr ""
+
+#: entities.item.label
+#: entities.item.groups.0.title
+#: pages.1.title
+#: pages.1.view.sections.0.title
+msgid "Item"
+msgstr ""
+
+#: entities.item.fields.name.placeholder
+msgid "Milk"
+msgstr ""
+
+#: entities.item.fields.quantity.label
+msgid "Quantity"
+msgstr ""
+
+#: entities.item.fields.quantity.help
+msgid "How much, in your own words"
+msgstr ""
+
+#: entities.item.fields.quantity.placeholder
+msgid "2 × 1 l"
+msgstr ""
+
+#: entities.item.fields.for.label
+msgid "For"
+msgstr ""
+
+#: entities.item.fields.for.help
+msgid "Whose it is, when it is not the household's"
+msgstr ""
+
+#: entities.item.fields.bought.label
+#: pages.0.view.doneLabel
+msgid "In the basket"
+msgstr ""
+
+#: entities.item.fields.position.label
+msgid "Position"
+msgstr ""
+
+#: entities.item.fields.note.label
+#: pages.1.view.sections.2.title
+msgid "Note"
+msgstr ""
+
+#: entities.item.fields.note.placeholder
+msgid "The oat one, not barista"
+msgstr ""
+
+#: entities.item.fields.onList.label
+msgid "On the list"
+msgstr ""
+
+#: entities.item.fields.timesBought.label
+msgid "Times bought"
+msgstr ""
+
+#: entities.item.fields.lastBought.label
+msgid "Last bought"
+msgstr ""
+
+#: entities.item.groups.1.title
+msgid "More"
+msgstr ""
+
+#: entities.item.computed.line.label
+msgid "Details"
+msgstr ""
+
+#: entities.item.computed.memory.label
+msgid "Bought"
+msgstr ""
+
+#: entities.item.actions.again.label
+msgid "Add"
+msgstr ""
+
+#: pages.0.description
+msgid "Tick things as they go in the basket. Done shopping puts them away for next time."
+msgstr ""
+
+#: pages.0.summary.0.label
+msgid "to buy"
+msgstr ""
+
+#: pages.0.summary.1.label
+msgid "in the basket"
+msgstr ""
+
+#: pages.0.actions.0.label
+msgid "Done shopping"
+msgstr ""
+
+#: pages.0.view.emptyText
+msgid "Nothing on the list. Add the first thing below — tap the box for your usuals."
+msgstr ""
+
+#: pages.1.view.sections.1.title
+msgid "Memory"
+msgstr ""
+
+#: ctx.t
+msgid "Tick what went in the basket first."
+msgstr ""
+
+#: ctx.t
+msgid "{n, plural, one {Put # thing away} other {Put # things away}}. Next time, tap the add box to bring them back."
+msgstr ""
+
+#: ctx.t
+msgid "{n, plural, =0 {All bought} one {# to buy} other {# to buy}}"
+msgstr ""
+
+#: ctx.t
+msgid "Not yet"
+msgstr ""
+
+#: ctx.t
+msgid "{n, plural, one {once} other {# times}}, last {when}"
+msgstr ""
+
+#: ctx.t
+msgid "{name} is already on the list"
+msgstr ""
+
+#: ctx.t
+msgid "{name} is on the list"
+msgstr ""
+

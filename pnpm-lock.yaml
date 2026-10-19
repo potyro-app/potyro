@@ -43,12 +43,20 @@ importers:
       potyro:
         specifier: workspace:*
         version: link:../../packages/schema
+    devDependencies:
+      '@potyro/generator':
+        specifier: workspace:*
+        version: link:../../packages/generator
 
   apps/draw-guess:
     dependencies:
       potyro:
         specifier: workspace:*
         version: link:../../packages/schema
+    devDependencies:
+      '@potyro/generator':
+        specifier: workspace:*
+        version: link:../../packages/generator
 
   apps/earthquakes:
     dependencies:
@@ -56,6 +64,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/schema
     devDependencies:
+      '@potyro/generator':
+        specifier: workspace:*
+        version: link:../../packages/generator
+      '@potyro/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       intl-messageformat:
         specifier: ^10.7.18
         version: 10.7.18
@@ -84,6 +98,10 @@ importers:
       potyro:
         specifier: workspace:*
         version: link:../../packages/schema
+    devDependencies:
+      '@potyro/generator':
+        specifier: workspace:*
+        version: link:../../packages/generator
 
   apps/mood-sleep:
     dependencies:
@@ -91,6 +109,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/schema
     devDependencies:
+      '@potyro/generator':
+        specifier: workspace:*
+        version: link:../../packages/generator
+      '@potyro/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       chart.js:
         specifier: 4.5.1
         version: 4.5.1
@@ -103,6 +127,10 @@ importers:
       potyro:
         specifier: workspace:*
         version: link:../../packages/schema
+    devDependencies:
+      '@potyro/generator':
+        specifier: workspace:*
+        version: link:../../packages/generator
 
   apps/piano:
     dependencies:
@@ -113,6 +141,9 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1
     devDependencies:
+      '@potyro/generator':
+        specifier: workspace:*
+        version: link:../../packages/generator
       '@types/react':
         specifier: ^18.3.12
         version: 18.3.31
@@ -129,6 +160,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/schema
     devDependencies:
+      '@potyro/generator':
+        specifier: workspace:*
+        version: link:../../packages/generator
+      '@potyro/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       intl-messageformat:
         specifier: ^10.7.18
         version: 10.7.18
@@ -139,6 +176,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/schema
     devDependencies:
+      '@potyro/generator':
+        specifier: workspace:*
+        version: link:../../packages/generator
+      '@potyro/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       intl-messageformat:
         specifier: ^10.7.18
         version: 10.7.18
@@ -152,6 +195,12 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1
     devDependencies:
+      '@potyro/generator':
+        specifier: workspace:*
+        version: link:../packages/generator
+      '@potyro/i18n':
+        specifier: workspace:*
+        version: link:../packages/i18n
       '@types/react':
         specifier: ^18.3.12
         version: 18.3.31
@@ -178,6 +227,9 @@ importers:
       '@babel/parser':
         specifier: ^7.29.8
         version: 7.29.8
+      '@formatjs/icu-messageformat-parser':
+        specifier: ^2.11.4
+        version: 2.11.4
       '@mlc-ai/web-llm':
         specifier: ^0.2.84
         version: 0.2.84
@@ -187,6 +239,9 @@ importers:
       '@potyro/host':
         specifier: workspace:*
         version: link:../host
+      '@potyro/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@potyro/runtime':
         specifier: workspace:*
         version: link:../runtime
@@ -264,6 +319,9 @@ importers:
       '@lingui/react':
         specifier: ^5.9.5
         version: 5.9.5(@lingui/babel-plugin-lingui-macro@5.9.5(typescript@5.9.3))(react@18.3.1)
+      pofile:
+        specifier: ^1.1.4
+        version: 1.1.4
     devDependencies:
       '@lingui/babel-plugin-lingui-macro':
         specifier: ^5.9.5
@@ -400,6 +458,9 @@ importers:
         specifier: workspace:*
         version: link:../schema
     devDependencies:
+      '@potyro/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@types/react':
         specifier: ^18.3.12
         version: 18.3.31

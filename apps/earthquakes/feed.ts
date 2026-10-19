@@ -213,7 +213,7 @@ export async function watchLive(ctx: Ctx): Promise<void> {
   stopDemo();
   startedHere = true;
   if (live.state === "live" || live.state === "connecting") {
-    ctx.ui.toast(ctx.t({ en: "Already live.", "pt-BR": "Já está ao vivo.", de: "Läuft schon live.", es: "Ya está en vivo.", pl: "Już na żywo.", it: "Già in diretta." }));
+    ctx.ui.toast(ctx.t("Already live."));
     return;
   }
   inBackground(ctx, async () => {
@@ -301,7 +301,7 @@ async function clearing(ctx: Ctx): Promise<void> {
   await setState(ctx, live.state === "live" ? "live" : "off");
   ctx.ui.toast(
     ctx.t(
-      { en: "{n, plural, one {# sample quake removed.} other {# sample quakes removed.}}", "pt-BR": "{n, plural, one {# terremoto de exemplo removido.} other {# terremotos de exemplo removidos.}}", de: "{n, plural, one {# Beispielbeben entfernt.} other {# Beispielbeben entfernt.}}", es: "{n, plural, one {# terremoto de ejemplo borrado.} other {# terremotos de ejemplo borrados.}}", pl: "{n, plural, one {Usunięto # przykładowe trzęsienie.} few {Usunięto # przykładowe trzęsienia.} other {Usunięto # przykładowych trzęsień.}}", it: "{n, plural, one {# terremoto di esempio cancellato.} other {# terremoti di esempio cancellati.}}" },
+      "{n, plural, one {# sample quake removed.} other {# sample quakes removed.}}",
       { n: rows.length },
     ),
   );
@@ -311,14 +311,14 @@ async function clearing(ctx: Ctx): Promise<void> {
 export async function editAlerts(ctx: Ctx): Promise<void> {
   alerts = await alertSettings(ctx);
   const answer = await ctx.ui.form<{ on: boolean; above: number; withinKm: number }>({
-    title: { en: "Alerts near you", "pt-BR": "Alertas perto de você", de: "Warnungen in deiner Nähe", es: "Alertas cerca de ti", pl: "Alerty w pobliżu", it: "Avvisi vicino a te" },
+    title: ctx.t("Alerts near you"),
     fields: {
-      on: { type: "boolean", label: { en: "Tell me about strong earthquakes near me", "pt-BR": "Avise-me de terremotos fortes perto de mim", de: "Sag mir Bescheid bei starken Erdbeben in meiner Nähe", es: "Avísame de terremotos fuertes cerca de mí", pl: "Powiadamiaj o silnych trzęsieniach w pobliżu", it: "Avvisami dei terremoti forti vicino a me" } },
-      above: { type: "number", min: 2, max: 9, step: 0.5, required: true, label: { en: "From magnitude", "pt-BR": "A partir da magnitude", de: "Ab Magnitude", es: "Desde la magnitud", pl: "Od magnitudy", it: "Da magnitudo" } },
-      withinKm: { type: "number", integer: true, min: 10, max: 5000, step: 50, required: true, unit: "km", label: { en: "Within", "pt-BR": "Num raio de", de: "Im Umkreis von", es: "En un radio de", pl: "W promieniu", it: "Entro" } },
+      on: { type: "boolean", label: ctx.t("Tell me about strong earthquakes near me") },
+      above: { type: "number", min: 2, max: 9, step: 0.5, required: true, label: ctx.t("From magnitude") },
+      withinKm: { type: "number", integer: true, min: 10, max: 5000, step: 50, required: true, unit: "km", label: ctx.t("Within") },
     },
     initial: { on: alerts.on || !alerts.home, above: alerts.above, withinKm: alerts.withinKm },
-    submit: { en: "Save", "pt-BR": "Salvar", de: "Speichern", es: "Guardar", pl: "Zapisz", it: "Salva" },
+    submit: ctx.t("Save"),
   });
   if (!answer) return;
   // Finding where the device is can take a few seconds: past what a button may hold a sealed box.
@@ -334,7 +334,7 @@ async function saveAlerts(ctx: Ctx, answer: { on: boolean; above: number; within
       home = await geo.current();
     } catch {
       if (!home) {
-        ctx.ui.toast(ctx.t({ en: "Alerts need to know where you are; your location wasn't available.", "pt-BR": "Os alertas precisam saber onde você está; sua localização não estava disponível.", de: "Für Warnungen braucht es deinen Standort; er war nicht verfügbar.", es: "Las alertas necesitan saber dónde estás; tu ubicación no estaba disponible.", pl: "Alerty potrzebują twojej lokalizacji; nie była dostępna.", it: "Gli avvisi devono sapere dove sei; la posizione non era disponibile." }));
+        ctx.ui.toast(ctx.t("Alerts need to know where you are; your location wasn't available."));
         return;
       }
     }
@@ -345,8 +345,8 @@ async function saveAlerts(ctx: Ctx, answer: { on: boolean; above: number; within
   await setState(ctx, demoRunning ? "demo" : live.state);
   ctx.ui.toast(
     alerts.on
-      ? ctx.t({ en: "Alerts on: {mag} and up within {km} km, while the app is open.", "pt-BR": "Alertas ligados: {mag} ou mais num raio de {km} km, com o app aberto.", de: "Warnungen an: ab {mag} im Umkreis von {km} km, solange die App offen ist.", es: "Alertas activadas: {mag} o más en {km} km, con la app abierta.", pl: "Alerty włączone: od {mag} w promieniu {km} km, gdy aplikacja jest otwarta.", it: "Avvisi attivi: da {mag} entro {km} km, con l'app aperta." }, { mag: magText(alerts.above, ctx), km: ctx.format.number(alerts.withinKm) })
-      : ctx.t({ en: "Alerts off.", "pt-BR": "Alertas desligados.", de: "Warnungen aus.", es: "Alertas desactivadas.", pl: "Alerty wyłączone.", it: "Avvisi disattivati." }),
+      ? ctx.t("Alerts on: {mag} and up within {km} km, while the app is open.", { mag: magText(alerts.above, ctx), km: ctx.format.number(alerts.withinKm) })
+      : ctx.t("Alerts off."),
   );
 }
 

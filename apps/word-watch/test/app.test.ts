@@ -1,3 +1,6 @@
+import { fileURLToPath } from "node:url";
+import { catalogProblems } from "@potyro/generator/app-catalog";
+import { readAppSources } from "@potyro/generator/app-sources";
 // The app's shape and words, and the stream end to end against a scripted ctx: no words, then words;
 // matches written at most every two seconds with their handles; counts per minute; a firehose that
 // writes nothing when nothing matches; the store kept small; trying again when Bluesky fails; the demo.
@@ -47,21 +50,18 @@ describe("Word Watch — the app", () => {
     expect(app.quickActions).toEqual([]);
   });
 
-  it("carries all six languages, in its declared words and in its code", () => {
-    expect(app.languages).toEqual(LANGUAGES);
-    expect(checkWords(app)).toEqual([]);
-    expect(wordGaps(app)).toEqual([]);
-    const maps = [...source.matchAll(/\{\s*en: /g)].map((m) => {
-      let depth = 0;
-      let i = m.index!;
-      for (; i < source.length; i++) {
-        if (source[i] === "{") depth++;
-        if (source[i] === "}" && --depth === 0) break;
+  it("carries a catalog for each other language, in step with its code, every word translated, every placeholder kept (docs/30)", async () => {
+    // Its source and the modules of its own it imports: their words are the app's.
+    const { source: code, modules } = readAppSources(fileURLToPath(new URL("../word-watch.app.ts", import.meta.url)));
+    const read = (l: string): string | undefined => {
+      try {
+        return readFileSync(new URL(`../locales/${l}.po`, import.meta.url), "utf8");
+      } catch {
+        return undefined;
       }
-      return source.slice(m.index!, i + 1);
-    });
-    expect(maps.length).toBeGreaterThan(60);
-    for (const map of maps) for (const l of ['"pt-BR":', " de:", " es:", " pl:", " it:"]) expect(map, map.slice(0, 80)).toContain(l);
+    };
+    const catalogs = Object.fromEntries(["pt-BR", "de", "es", "pl", "it"].map((l) => [l, read(l)]));
+    expect(await catalogProblems({ source: code, modules, catalogs, same: /^(\S{1,5}|Word Watch|Bluesky)$/ })).toEqual([]);
   });
 });
 

@@ -1,0 +1,197 @@
+msgid ""
+msgstr ""
+"Language: pl\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Mirror Monsters"
+msgstr "Potwory z Lustra"
+
+#: entities.snap.label
+msgctxt "snap"
+msgid "Snap"
+msgstr "Zdjęcie"
+
+#: entities.snap.fields.title.label
+msgid "Title"
+msgstr "Tytuł"
+
+#: entities.snap.fields.monster.label
+#: msg
+msgid "Monster"
+msgstr "Potwór"
+
+#: entities.snap.fields.date.label
+msgid "Date"
+msgstr "Data"
+
+#: entities.snap.fields.image.label
+msgid "Picture"
+msgstr "Obraz"
+
+#: pages.0.title
+msgid "Mirror"
+msgstr "Lustro"
+
+#: pages.1.title
+msgid "Gallery"
+msgstr "Galeria"
+
+#: msg
+msgid "Twin"
+msgstr "Bliźniak"
+
+#: msg
+msgid "Kaleido"
+msgstr "Kalejdo"
+
+#: msg
+msgid "Trails"
+msgstr "Smugi"
+
+#: msg
+msgid "Pixel"
+msgstr "Piksel"
+
+#: msg
+msgid "Meet your monster"
+msgstr "Poznaj swojego potwora"
+
+#: msg
+msgid "Turn on the camera and a monster moves into the mirror with you. Wiggle and its eyes wobble. Tap the picture for a new colour."
+msgstr "Włącz kamerę, a do lustra wprowadzi się z tobą potwór. Porusz się, a jego oczy zaczną latać. Stuknij obraz, by zmienić kolor."
+
+#: msg
+msgid "Turn on the camera"
+msgstr "Włącz kamerę"
+
+#: msg
+msgid "🔒 What the camera sees stays on this device. Only the snaps you keep are saved, in this app."
+msgstr "🔒 To, co widzi kamera, zostaje na tym urządzeniu. Zapisują się tylko zachowane zdjęcia, w tej aplikacji."
+
+#: msg
+msgid "The camera is off"
+msgstr "Kamera jest wyłączona"
+
+#: msg
+msgid "It turns off whenever you look away from the app, so nothing watches you by accident."
+msgstr "Wyłącza się, gdy tylko opuścisz aplikację, żeby nic cię przypadkiem nie podglądało."
+
+#: msg
+msgid "Turn it back on"
+msgstr "Włącz ponownie"
+
+#: msg
+msgid "The camera was not allowed. You can allow it in your browser's or phone's settings for this site."
+msgstr "Nie zezwolono na kamerę. Możesz na nią zezwolić w ustawieniach przeglądarki lub telefonu dla tej strony."
+
+#: msg
+msgid "This device has no camera to look through."
+msgstr "To urządzenie nie ma kamery."
+
+#: msg
+msgid "Another app is using the camera. Close it and try again."
+msgstr "Inna aplikacja używa kamery. Zamknij ją i spróbuj ponownie."
+
+#: msg
+msgid "The camera would not start. Try again."
+msgstr "Nie udało się uruchomić kamery. Spróbuj ponownie."
+
+#: msg
+msgid "The live camera isn’t here. It needs a Potyro that has it, and Mirror Monsters running as yours: add it with “I wrote this. Run it as mine.” ticked, or tap “Let it run as yours” in its menu."
+msgstr "Kamery na żywo tu nie ma. Potrzebny jest Potyro, który ją ma, i Potwory z Lustra uruchamiane jako twoje: dodaj je z zaznaczonym „Napisałem to. Uruchom jako moją” albo dotknij „Pozwól działać jako twoja” w ich menu."
+
+#: msg
+msgid "Snap"
+msgstr "Pstryknij"
+
+#: msg
+msgid "Switch camera"
+msgstr "Przełącz kamerę"
+
+#: msg
+msgid "Open the Gallery"
+msgstr "Otwórz galerię"
+
+#: msg
+msgid "Monsters"
+msgstr "Potwory"
+
+#: msg
+msgid "“{title}” is in your Gallery"
+msgstr "„{title}” jest w galerii"
+
+#: msg
+msgid "The snap could not be saved."
+msgstr "Nie udało się zapisać zdjęcia."
+
+#: msg
+msgid "The camera as a mirror, with a monster in it. Tap for a new colour."
+msgstr "Kamera jako lustro, z potworem w środku. Stuknij, by zmienić kolor."
+
+#: msg
+msgid "The monster can’t see faces on this device, so it follows the colours of your skin instead."
+msgstr "Potwór nie widzi twarzy na tym urządzeniu, więc podąża za kolorem twojej skóry."
+
+#: msg
+msgid "The camera as a kaleidoscope. Tap for more mirrors."
+msgstr "Kamera jako kalejdoskop. Stuknij, by dodać lustra."
+
+#: ctx.t
+msgid "Delete"
+msgstr "Usuń"
+
+#: ctx.t
+msgid "Share"
+msgstr "Udostępnij"
+
+#: ctx.t
+msgid "Save a copy"
+msgstr "Zapisz kopię"
+
+#: ctx.t
+msgid "Close"
+msgstr "Zamknij"
+
+#: ctx.t
+msgid "My monster from Mirror Monsters 👹"
+msgstr "Mój potwór z Potworów z Lustra 👹"
+
+#: ctx.t
+msgid "It could not be shared."
+msgstr "Nie udało się udostępnić."
+
+#: ctx.t
+msgid "It could not be saved here."
+msgstr "Nie udało się tu zapisać."
+
+#: ctx.t
+msgid "Delete “{title}”?"
+msgstr "Usunąć „{title}”?"
+
+#: ctx.t
+msgid "Open the mirror"
+msgstr "Otwórz lustro"
+
+#: ctx.t
+msgid "No monsters yet"
+msgstr "Jeszcze żadnych potworów"
+
+#: ctx.t
+msgid "Pull a face in the mirror and press the round button. Your snaps land here."
+msgstr "Zrób minę w lustrze i naciśnij okrągły przycisk. Twoje zdjęcia trafią tutaj."
+
+#: ctx.t
+msgid "{title}, open"
+msgstr "{title}, otwórz"
+
+#: ctx.t
+msgid "Not on this device yet"
+msgstr "Jeszcze nie ma go na tym urządzeniu"
+
+#: ctx.t
+msgid "{n, plural, one {# snap} other {# snaps}}, newest first."
+msgstr "{n, plural, one {# zdjęcie} few {# zdjęcia} many {# zdjęć} other {# zdjęcia}}, najnowsze najpierw."
+

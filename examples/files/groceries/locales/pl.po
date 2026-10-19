@@ -1,0 +1,172 @@
+msgid ""
+msgstr ""
+"Language: pl\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Groceries"
+msgstr "Zakupy"
+
+#: entities.list.label
+#: entities.item.fields.list.label
+#: pages.0.title
+msgid "List"
+msgstr "Lista"
+
+#: entities.list.fields.name.label
+#: entities.aisle.fields.name.label
+#: entities.item.fields.name.label
+msgid "Name"
+msgstr "Nazwa"
+
+#: entities.list.fields.name.placeholder
+msgid "Weekly shop"
+msgstr "Zakupy na tydzień"
+
+#: entities.aisle.label
+#: entities.item.fields.aisle.label
+msgid "Aisle"
+msgstr "Dział"
+
+#: entities.aisle.fields.name.placeholder
+msgid "Produce"
+msgstr "Warzywa"
+
+#: entities.aisle.fields.order.label
+msgid "Order"
+msgstr "Kolejność"
+
+#: entities.item.label
+#: entities.item.groups.0.title
+#: pages.1.title
+#: pages.1.view.sections.0.title
+msgid "Item"
+msgstr "Produkt"
+
+#: entities.item.fields.name.placeholder
+msgid "Milk"
+msgstr "Mleko"
+
+#: entities.item.fields.quantity.label
+msgid "Quantity"
+msgstr "Ilość"
+
+#: entities.item.fields.quantity.help
+msgid "How much, in your own words"
+msgstr "Ile — własnymi słowami"
+
+#: entities.item.fields.quantity.placeholder
+msgid "2 × 1 l"
+msgstr ""
+
+#: entities.item.fields.for.label
+msgid "For"
+msgstr "Dla"
+
+#: entities.item.fields.for.help
+msgid "Whose it is, when it is not the household's"
+msgstr "Czyje to, jeśli nie wspólne"
+
+#: entities.item.fields.bought.label
+#: pages.0.view.doneLabel
+msgid "In the basket"
+msgstr "W koszyku"
+
+#: entities.item.fields.position.label
+msgid "Position"
+msgstr "Pozycja"
+
+#: entities.item.fields.note.label
+#: pages.1.view.sections.2.title
+msgid "Note"
+msgstr "Notatka"
+
+#: entities.item.fields.note.placeholder
+msgid "The oat one, not barista"
+msgstr "Owsiane, nie barista"
+
+#: entities.item.fields.onList.label
+msgid "On the list"
+msgstr "Na liście"
+
+#: entities.item.fields.timesBought.label
+msgid "Times bought"
+msgstr "Ile razy kupione"
+
+#: entities.item.fields.lastBought.label
+msgid "Last bought"
+msgstr "Ostatnio kupione"
+
+#: entities.item.groups.1.title
+msgid "More"
+msgstr "Więcej"
+
+#: entities.item.computed.line.label
+msgid "Details"
+msgstr "Szczegóły"
+
+#: entities.item.computed.memory.label
+msgid "Bought"
+msgstr "Kupione"
+
+#: entities.item.actions.again.label
+msgid "Add"
+msgstr "Dodaj"
+
+#: pages.0.description
+msgid "Tick things as they go in the basket. Done shopping puts them away for next time."
+msgstr "Odhaczaj, co trafia do koszyka. Gotowe zapamięta to na następny raz."
+
+#: pages.0.summary.0.label
+msgid "to buy"
+msgstr "do kupienia"
+
+#: pages.0.summary.1.label
+msgid "in the basket"
+msgstr "w koszyku"
+
+#: pages.0.actions.0.label
+msgid "Done shopping"
+msgstr "Gotowe"
+
+#: pages.0.view.emptyText
+msgid "Nothing on the list. Add the first thing below — tap the box for your usuals."
+msgstr "Lista jest pusta. Dodaj pierwszą rzecz poniżej — stuknij pole, by zobaczyć stałe zakupy."
+
+#: pages.1.view.sections.1.title
+msgid "Memory"
+msgstr "Pamięć"
+
+#: ctx.t
+msgid "Tick what went in the basket first."
+msgstr "Najpierw odhacz, co jest w koszyku."
+
+#: ctx.t
+msgid "{n, plural, one {Put # thing away} other {Put # things away}}. Next time, tap the add box to bring them back."
+msgstr "{n, plural, one {Odłożono # rzecz} few {Odłożono # rzeczy} many {Odłożono # rzeczy} other {Odłożono # rzeczy}}. Następnym razem stuknij pole dodawania, by je przywrócić."
+
+#: ctx.t
+msgid "{n, plural, =0 {All bought} one {# to buy} other {# to buy}}"
+msgstr "{n, plural, =0 {Wszystko kupione} one {# do kupienia} few {# do kupienia} many {# do kupienia} other {# do kupienia}}"
+
+#: ctx.t
+msgid "Not yet"
+msgstr "Jeszcze nie"
+
+#: ctx.t
+msgid "{n, plural, one {once} other {# times}}, last {when}"
+msgstr "{n, plural, one {raz} few {# razy} many {# razy} other {# razy}}, ostatnio {when}"
+
+#: ctx.t
+msgid "{name} is already on the list"
+msgstr "{name} już jest na liście"
+
+#: ctx.t
+msgid "{name} is on the list"
+msgstr "{name} jest na liście"
+
+#~ msgid "Emoji"
+#~ msgstr "Emoji"
+

@@ -14,6 +14,8 @@
     "react": "^18.3.1"
   },
   "devDependencies": {
+    "@potyro/generator": "workspace:*",
+    "@potyro/i18n": "workspace:*",
     "@types/react": "^18.3.12"
   }
 }

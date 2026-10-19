@@ -1,3 +1,4 @@
+import { msg } from "potyro";
 // What the check-ins say: the 30-day series, the scatter by tag, and the one sentence worth reading.
 // Plain functions over plain rows, so they are tested without a browser and the chart only draws.
 //
@@ -37,19 +38,19 @@ export const MOOD_FACES = ["", "😫", "😕", "😐", "🙂", "😄"] as const;
 export function tagName(tag: string, say: Say): string {
   switch (tag) {
     case "exercise":
-      return say.t({ en: "exercise", "pt-BR": "exercício", de: "Sport", es: "ejercicio", pl: "ćwiczenia", it: "sport" });
+      return say.t("exercise");
     case "coffee":
-      return say.t({ en: "coffee", "pt-BR": "café", de: "Kaffee", es: "café", pl: "kawa", it: "caffè" });
+      return say.t("coffee");
     case "alcohol":
-      return say.t({ en: "alcohol", "pt-BR": "álcool", de: "Alkohol", es: "alcohol", pl: "alkohol", it: "alcol" });
+      return say.t("alcohol");
     case "late screen":
-      return say.t({ en: "late screen", "pt-BR": "tela até tarde", de: "spät am Bildschirm", es: "pantalla hasta tarde", pl: "ekran do późna", it: "schermi fino a tardi" });
+      return say.t("late screen");
     case "nap":
-      return say.t({ en: "nap", "pt-BR": "cochilo", de: "Mittagsschlaf", es: "siesta", pl: "drzemka", it: "pisolino" });
+      return say.t("nap");
     case "stressed":
-      return say.t({ en: "stressed", "pt-BR": "estresse", de: "gestresst", es: "estrés", pl: "stres", it: "stress" });
+      return say.t("stressed");
     case "":
-      return say.t({ en: "nothing tagged", "pt-BR": "sem etiqueta", de: "ohne Schlagwort", es: "sin etiqueta", pl: "bez tagu", it: "senza tag" });
+      return say.t("nothing tagged");
     default:
       return tag;
   }
@@ -59,15 +60,15 @@ export function tagName(tag: string, say: Say): string {
 export function moodWord(mood: number, say: Say): string {
   switch (mood) {
     case 1:
-      return say.t({ en: "rough", "pt-BR": "péssimo", de: "mies", es: "fatal", pl: "fatalnie", it: "malissimo" });
+      return say.t("rough");
     case 2:
-      return say.t({ en: "low", "pt-BR": "pra baixo", de: "gedrückt", es: "bajo", pl: "słabo", it: "giù" });
+      return say.t("low");
     case 3:
-      return say.t({ en: "okay", "pt-BR": "ok", de: "okay", es: "normal", pl: "w porządku", it: "così così" });
+      return say.t("okay");
     case 4:
-      return say.t({ en: "good", "pt-BR": "bem", de: "gut", es: "bien", pl: "dobrze", it: "bene" });
+      return say.t("good");
     case 5:
-      return say.t({ en: "great", "pt-BR": "ótimo", de: "super", es: "genial", pl: "świetnie", it: "benissimo" });
+      return say.t("great");
     default:
       return "";
   }
@@ -182,20 +183,13 @@ export function one(n: number, say: Say): string {
 
 /** "7.5h", "7,5 godz." */
 export function hoursText(h: number, say: Say): string {
-  return say.t({ en: "{h}h", "pt-BR": "{h} h", de: "{h} Std.", es: "{h} h", pl: "{h} godz.", it: "{h} h" }, { h: Math.round(h * 10) / 10 });
+  return say.t("{h}h", { h: Math.round(h * 10) / 10 });
 }
 
 /** "7 hours", "7 godzin": whole hours, as a phrase. */
 function hoursPhrase(n: number, say: Say): string {
   return say.t(
-    {
-      en: "{n, plural, one {# hour} other {# hours}}",
-      "pt-BR": "{n, plural, one {# hora} other {# horas}}",
-      de: "{n, plural, one {# Stunde} other {# Stunden}}",
-      es: "{n, plural, one {# hora} other {# horas}}",
-      pl: "{n, plural, one {# godzina} few {# godziny} many {# godzin} other {# godziny}}",
-      it: "{n, plural, one {# ora} other {# ore}}",
-    },
+    "{n, plural, one {# hour} other {# hours}}",
     { n },
   );
 }
@@ -240,24 +234,10 @@ export function sleepInsight(nights: readonly Night[], say: Say): Insight | null
   const a = mean(long)!;
   const b = mean(short)!;
   if (Math.abs(a - b) < 0.3) {
-    const flat = say.t({
-      en: "Long nights or short, your mood stays close to {m}. Sleep is not what moves it.",
-      "pt-BR": "Com noites longas ou curtas, seu humor fica perto de {m}. Não é o sono que o mexe.",
-      de: "Ob lange oder kurze Nächte, deine Stimmung bleibt bei etwa {m}. Am Schlaf liegt es nicht.",
-      es: "Con noches largas o cortas, tu ánimo se queda cerca de {m}. No es el sueño lo que lo mueve.",
-      pl: "Długie noce czy krótkie — twój nastrój trzyma się około {m}. To nie sen go zmienia.",
-      it: "Notti lunghe o corte, il tuo umore resta intorno a {m}. Non è il sonno a muoverlo.",
-    });
+    const flat = say.t("Long nights or short, your mood stays close to {m}. Sleep is not what moves it.");
     return { kind: "sleep", parts: parts(flat, { m: { value: one((a + b) / 2, say), series: "mood" } }), strength: 0.05 };
   }
-  const template = say.t({
-    en: "On nights of {long} or more your mood averages {a}. Under {short}, it's {b}.",
-    "pt-BR": "Nas noites de {long} ou mais, seu humor fica em média em {a}. Com menos de {short}, fica em {b}.",
-    de: "In Nächten mit {long} oder mehr liegt deine Stimmung im Schnitt bei {a}. Unter {short} bei {b}.",
-    es: "Las noches de {long} o más, tu ánimo medio es {a}. Con menos de {short}, es {b}.",
-    pl: "Po nocach, w które śpisz {long} lub dłużej, twój nastrój wynosi średnio {a}. Poniżej {short} — {b}.",
-    it: "Nelle notti di {long} o più il tuo umore è in media {a}. Sotto le {short}, è {b}.",
-  });
+  const template = say.t("On nights of {long} or more your mood averages {a}. Under {short}, it's {b}.");
   return {
     kind: "sleep",
     parts: parts(template, {
@@ -274,28 +254,21 @@ export function sleepInsight(nights: readonly Night[], say: Say): Insight | null
 function tagLead(tag: string, say: Say): string {
   switch (tag) {
     case "exercise":
-      return say.t({ en: "On days you exercise", "pt-BR": "Nos dias em que você se exercita", de: "An Tagen mit Sport", es: "Los días que haces ejercicio", pl: "W dni z ćwiczeniami", it: "Nei giorni in cui fai sport" });
+      return say.t("On days you exercise");
     case "coffee":
-      return say.t({ en: "On coffee days", "pt-BR": "Nos dias com café", de: "An Kaffeetagen", es: "Los días con café", pl: "W dni z kawą", it: "Nei giorni con il caffè" });
+      return say.t("On coffee days");
     case "alcohol":
-      return say.t({ en: "After a drink", "pt-BR": "Depois de beber", de: "Nach einem Drink", es: "Después de beber", pl: "Po alkoholu", it: "Dopo aver bevuto" });
+      return say.t("After a drink");
     case "late screen":
-      return say.t({
-        en: "After late screens",
-        "pt-BR": "Depois de tela até tarde",
-        de: "Nach spätem Bildschirm",
-        es: "Tras pantallas hasta tarde",
-        pl: "Po wieczorze przed ekranem",
-        it: "Dopo gli schermi fino a tardi",
-      });
+      return say.t("After late screens");
     case "nap":
-      return say.t({ en: "On days with a nap", "pt-BR": "Nos dias com cochilo", de: "An Tagen mit Mittagsschlaf", es: "Los días con siesta", pl: "W dni z drzemką", it: "Nei giorni con il pisolino" });
+      return say.t("On days with a nap");
     case "stressed":
-      return say.t({ en: "On stressful days", "pt-BR": "Nos dias estressantes", de: "An stressigen Tagen", es: "Los días de estrés", pl: "W stresujące dni", it: "Nei giorni stressanti" });
+      return say.t("On stressful days");
     default:
       // A tag typed by hand is the person's own word: quoted as it is.
       return say.t(
-        { en: "On days tagged “{tag}”", "pt-BR": "Nos dias com “{tag}”", de: "An Tagen mit „{tag}“", es: "Los días con «{tag}»", pl: "W dni z tagiem „{tag}”", it: "Nei giorni con “{tag}”" },
+        "On days tagged “{tag}”",
         { tag },
       );
   }
@@ -318,22 +291,8 @@ export function tagInsight(nights: readonly Night[], say: Say): Insight | null {
     const sleepGap = mean(withIt.map((n) => n.hours))! - mean(without.map((n) => n.hours))!;
     const byMood = Math.abs(moodGap) / 4;
     const bySleep = Math.abs(sleepGap) / 4;
-    const moodTemplate = {
-      en: "{lead} your mood averages {a}, against {b} without.",
-      "pt-BR": "{lead}, seu humor fica em média em {a}, contra {b} nos outros dias.",
-      de: "{lead} liegt deine Stimmung im Schnitt bei {a}, sonst bei {b}.",
-      es: "{lead}, tu ánimo medio es {a}, frente a {b} el resto de días.",
-      pl: "{lead} twój nastrój wynosi średnio {a}, a w pozostałe dni {b}.",
-      it: "{lead} il tuo umore è in media {a}, contro {b} negli altri giorni.",
-    };
-    const sleepTemplate = {
-      en: "{lead} you sleep {a} on average, against {b} without.",
-      "pt-BR": "{lead}, você dorme em média {a}, contra {b} nos outros dias.",
-      de: "{lead} schläfst du im Schnitt {a}, sonst {b}.",
-      es: "{lead}, duermes {a} de media, frente a {b} el resto de días.",
-      pl: "{lead} śpisz średnio {a}, a w pozostałe dni {b}.",
-      it: "{lead} dormi in media {a}, contro {b} negli altri giorni.",
-    };
+    const moodTemplate = msg("{lead} your mood averages {a}, against {b} without.");
+    const sleepTemplate = msg("{lead} you sleep {a} on average, against {b} without.");
     const candidate: Insight =
       byMood >= bySleep
         ? {
@@ -374,26 +333,12 @@ export function insights(nights: readonly Night[], say: Say): Insight[] {
       parts: have
         ? [
             say.t(
-              {
-                en: "{have, plural, one {# check-in} other {# check-ins}} so far. A few more nights — about {need} — and a pattern starts to show.",
-                "pt-BR": "{have, plural, one {# registro} other {# registros}} até agora. Mais algumas noites — umas {need} — e um padrão começa a aparecer.",
-                de: "Bisher {have, plural, one {# Eintrag} other {# Einträge}}. Noch ein paar Nächte — etwa {need} — und ein Muster zeigt sich.",
-                es: "{have, plural, one {# registro} other {# registros}} hasta ahora. Unas cuantas noches más — unas {need} — y empezará a verse un patrón.",
-                pl: "Na razie {have, plural, one {# wpis} few {# wpisy} many {# wpisów} other {# wpisu}}. Jeszcze kilka nocy — około {need} — i zacznie się rysować wzór.",
-                it: "{have, plural, one {# registrazione} other {# registrazioni}} finora. Ancora qualche notte — circa {need} — e comincia a vedersi uno schema.",
-              },
+              "{have, plural, one {# check-in} other {# check-ins}} so far. A few more nights — about {need} — and a pattern starts to show.",
               { have, need },
             ),
           ]
         : [
-            say.t({
-              en: "Log how you slept tonight. After a week or so, this is where the pattern shows up.",
-              "pt-BR": "Registre como você dormiu esta noite. Depois de mais ou menos uma semana, é aqui que o padrão aparece.",
-              de: "Trag ein, wie du heute Nacht geschlafen hast. Nach etwa einer Woche zeigt sich hier das Muster.",
-              es: "Apunta cómo has dormido esta noche. Después de una semana o así, aquí aparecerá el patrón.",
-              pl: "Zapisz, jak ci się spało tej nocy. Po mniej więcej tygodniu tutaj pojawi się wzór.",
-              it: "Segna come hai dormito stanotte. Dopo una settimana circa, qui comparirà lo schema.",
-            }),
+            say.t("Log how you slept tonight. After a week or so, this is where the pattern shows up."),
           ],
       strength: 0,
     },

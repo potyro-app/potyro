@@ -9,6 +9,7 @@
 
 import { readSourceWords, sourceSlots, spliceLanguage } from "./source-words.js";
 import type { TranslateCase } from "./translate-eval.js";
+import type { WordsMap } from "potyro";
 
 /** Reads an example app's source by file name. Node supplies `fs`; tests pass their own. */
 export type ReadExample = (file: string) => string;
@@ -67,7 +68,7 @@ async function everyWord(source: string, lang: (en: string) => string): Promise<
   const words: Record<string, string> = {};
   for (const s of sw ? sourceSlots(sw) : []) {
     if (s.kind !== "literal") continue;
-    const en = s.suggested ?? (typeof s.value === "string" ? s.value : (s.value?.en ?? Object.values(s.value ?? {})[0] ?? ""));
+    const en = s.suggested ?? (typeof s.value === "string" ? s.value : ((s.value as WordsMap | undefined)?.en ?? Object.values(s.value ?? {})[0] ?? ""));
     words[s.path] = lang(en);
   }
   return words;

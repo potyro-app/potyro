@@ -172,8 +172,9 @@ describe("pointing at a translated label", () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     const { localize } = await import("potyro");
-    const source = readFileSync(resolve(process.cwd(), "../../examples/groceries.app.ts"), "utf8");
-    const raw = (await import("../../../examples/groceries.app.js")).default as unknown as AppDefinition;
+    // Groceries as it was with inline maps (docs/20): pointing at a map slices it per language.
+    const source = readFileSync(resolve(process.cwd(), "../generator/test/fixtures/legacy-examples/groceries.app.ts"), "utf8");
+    const raw = (await import("../../generator/test/fixtures/legacy-examples/groceries.app.js")).default as unknown as AppDefinition;
     const ref: PointRef = { kind: "field", entity: "item", field: "quantity", part: "shopping" };
     expect(describePoint(ref, localize(raw, "pl") as AppDefinition).words).toBe('the "Ilość" field of Produkt, as shown in the checklist on the "Lista" page');
     expect(describePoint(ref, raw).words).toBe('the "Quantity" field of Item, as shown in the checklist on the "List" page');

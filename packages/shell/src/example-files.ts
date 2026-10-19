@@ -13,7 +13,7 @@ import { fileSpace, type Store } from "@potyro/store";
 import { getUserApp, setUserAppShipped, type UserApp } from "./user-apps.js";
 
 /** Each bundled file's URL, loaded only when one is needed. Never evaluated. */
-const FILES = import.meta.glob("../../../examples/files/*/**/*.{webp,jpg,png,svg,json}", { query: "?url", import: "default" }) as Record<
+const FILES = import.meta.glob("../../../examples/files/*/**/*.{webp,jpg,png,svg,json,po}", { query: "?url", import: "default" }) as Record<
   string,
   () => Promise<string>
 >;
@@ -29,7 +29,7 @@ export function exampleFilePaths(appId: string): string[] {
     .sort();
 }
 
-const MIME: Record<string, string> = { webp: "image/webp", jpg: "image/jpeg", png: "image/png", svg: "image/svg+xml", json: "application/json" };
+const MIME: Record<string, string> = { webp: "image/webp", jpg: "image/jpeg", png: "image/png", svg: "image/svg+xml", json: "application/json", po: "text/x-gettext-translation" };
 
 /** A bundled file's bytes, or null when it cannot be fetched (offline on a first open). */
 export async function exampleFile(appId: string, path: string): Promise<Blob | null> {

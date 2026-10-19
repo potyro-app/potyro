@@ -38,6 +38,8 @@ export interface SealedViewDeps {
   newCtxId(): number;
   /** The plain-data half of a ctx, as the logic gets it. */
   baseOf(ctx: Ctx, ctxId: number): CtxBase;
+  /** The app's translations for a language (docs/30), for `ctx.t` in the view. */
+  catalogFor?(language: string | undefined): Readonly<Record<string, string>> | undefined;
   /** Answer one op through the app's op table (realm-host.ts). */
   answer(m: Extract<ViewToHost, { t: "op" }>, ch: Channel): void;
   /** Let go of what a port holds by name (its screen keep-awakes), when its view goes. */
@@ -372,6 +374,7 @@ export class SealedViewController implements SealedView {
           base,
           definition: definitionJson(props.runtime.definition),
           language: { current: language?.current, default: language?.default, available: [...(language?.available ?? [])] },
+          catalog: d.catalogFor?.(language?.current),
           entity: props.entity,
           param: { ...(props.param ?? {}) },
           tokens: frameTokens(el),

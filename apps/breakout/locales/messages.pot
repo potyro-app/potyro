@@ -1,0 +1,91 @@
+msgid ""
+msgstr ""
+"Language: \n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Breakout"
+msgstr ""
+
+#: entities.run.label
+msgid "Game"
+msgstr ""
+
+#: entities.run.fields.score.label
+msgid "Score"
+msgstr ""
+
+#: entities.run.fields.level.label
+msgid "Level"
+msgstr ""
+
+#: entities.run.fields.levelName.label
+msgid "Level Name"
+msgstr ""
+
+#: entities.run.fields.won.label
+msgid "Won"
+msgstr ""
+
+#: entities.run.fields.playedAt.label
+msgid "Played At"
+msgstr ""
+
+#: pages.0.title
+msgid "Play"
+msgstr ""
+
+#: pages.1.title
+msgid "Scores"
+msgstr ""
+
+#: ctx.t
+msgid "levels.json has a problem"
+msgstr ""
+
+#: ctx.t
+msgid "Loading levels…"
+msgstr ""
+
+#: ctx.t
+msgid "best {n}"
+msgstr ""
+
+#: ctx.t
+msgid "Tap to play again"
+msgstr ""
+
+#: ctx.t
+msgid "Tap to launch"
+msgstr ""
+
+#: ctx.t
+msgid "Paused — tap to go on"
+msgstr ""
+
+#: ctx.t
+msgid "You cleared it! {score}"
+msgstr ""
+
+#: ctx.t
+msgid "Game over · {score}"
+msgstr ""
+
+#: ctx.t
+msgid "levels.json has not reached this device yet"
+msgstr ""
+
+#: ctx.t
+msgid "{n, plural, one {# point} other {# points}}"
+msgstr ""
+
+#: ctx.t
+msgid "Cleared every level"
+msgstr ""
+
+#: ctx.t
+msgid "Reached {level}"
+msgstr ""
+

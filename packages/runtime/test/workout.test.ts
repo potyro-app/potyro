@@ -3,7 +3,9 @@
 // computed can call ctx.query (exercise.lastBest reads session history); computed are memoized
 // per pass; and a genuinely self-referential computed is caught by the cycle guard.
 
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it, beforeEach, vi } from "vitest";
+import { compileCatalog } from "@potyro/i18n/app-catalogs";
 import workout from "../../../examples/workout.app.js";
 import { computedInfo, defineApp, type AppDefinition, type EntityDef } from "potyro";
 import { MemoryStore } from "@potyro/store";
@@ -169,6 +171,12 @@ describe("self-referential cycle guard", () => {
   });
 });
 
+const WORKOUT_CATALOGS = Object.fromEntries(
+  readdirSync(new URL("../../../examples/files/workout/locales/", import.meta.url))
+    .filter((f) => f.endsWith(".po"))
+    .map((f) => [f.slice(0, -3), compileCatalog(readFileSync(new URL(`../../../examples/files/workout/locales/${f}`, import.meta.url), "utf8"))]),
+);
+
 describe("the rolling best reads as words", () => {
   // It is an object (the session view prefills from it); its `format` says it on the detail page.
   for (const [language, heavy, bodyweight] of [
@@ -180,7 +188,8 @@ describe("the rolling best reads as words", () => {
       const store = new MemoryStore();
       await store.open("workout");
       const host = createHost();
-      const loaded = await host.load({ kind: "module", app: workout as never });
+      // Its translations are its catalogs, beside it (docs/30), as the shell hands them over.
+      const loaded = await host.load({ kind: "module", app: workout as never, catalogs: WORKOUT_CATALOGS });
       const runtime = createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui, nav, languages: [language] });
       const format = computedInfo(runtime.definition.entities.exercise as unknown as EntityDef, "lastBest")?.format;
       expect(format).toBeDefined();
