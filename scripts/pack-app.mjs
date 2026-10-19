@@ -5,7 +5,8 @@
 //   pnpm pack:app <app.tsx> [file …] [--seed seed.json] [--files <dir>] [-o out.zip]
 //
 // Every `file` ships at the top of the app's folder under its own name; `--files <dir>` ships a whole
-// folder, keeping its sub-folders. Those are DATA, read at run time with `ctx.files`.
+// folder, keeping its sub-folders. Those are DATA, read at run time with `ctx.files`. The app's
+// translations, `locales/*.po` beside the source, always ship (docs/30).
 //
 // The modules the source imports (`./plan.ts`, and what they import in turn) are CODE (#258): they go
 // in the package's `src/`, by their path from the source's folder, and the shell's bundler resolves
@@ -60,6 +61,13 @@ if (filesDir) {
     }
   };
   walk(root);
+}
+
+// The app's translations (docs/30): every `locales/<lang>.po` beside the source travels with it, as
+// `locales/<lang>.po` in its folder, where the shell reads them when the app opens. No flag to forget.
+{
+  const locales = join(dirname(at(sourcePath)), "locales");
+  if (existsSync(locales)) for (const name of readdirSync(locales)) if (name.endsWith(".po")) shipped.set(`locales/${name}`, readFileSync(join(locales, name)));
 }
 
 /** The source's own modules, by path from its folder: every local file the bundle would pull in. */

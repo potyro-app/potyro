@@ -9,7 +9,7 @@
 import { z } from "zod";
 import type { AppDefinition } from "./types/app.js";
 import type { Field } from "./types/fields.js";
-import type { Language, Words } from "./types/words.js";
+import type { ContextWords, Language, Words } from "./types/words.js";
 import type { Localized } from "./types/localized.js";
 import { fieldSchema, structureSchema } from "./validate.js";
 import { isContextWords, isWordsMap, isWordsSchema } from "./words-schema.js";
@@ -30,7 +30,12 @@ function unionMember(options: readonly z.ZodTypeAny[], value: unknown): z.ZodTyp
   if (accepting) return accepting;
   // A definition read out of the sealed box has "__potyro_fn__" where its functions were, so the
   // object around one may parse nowhere; it still has words to find.
-  if (isPlainObject(value)) return options.find((o) => ["ZodObject", "ZodDiscriminatedUnion", "ZodEffects", "ZodLazy"].includes((o._def as AnyDef).typeName ?? ""));
+  // An object shape first: `z.custom` (a function's schema) is a refinement too, and would be a dead end
+  // for an action whose `run` names a function rather than writing one (`run: removeWord`).
+  if (isPlainObject(value)) {
+    const kind = (o: z.ZodTypeAny): string => (o._def as AnyDef).typeName ?? "";
+    return options.find((o) => ["ZodObject", "ZodDiscriminatedUnion", "ZodLazy"].includes(kind(o))) ?? options.find((o) => kind(o) === "ZodEffects");
+  }
   return undefined;
 }
 
@@ -147,6 +152,16 @@ export function catalogsOf(definition: object | undefined): Readonly<Record<Lang
 /** The catalog for `language`, when the definition carries one. */
 export function catalogFor(definition: object | undefined, language: Language | undefined): Catalog | undefined {
   return language ? catalogsOf(definition)[language] : undefined;
+}
+
+/**
+ * Mark words for translation where they are written, to be translated where they are shown (docs/30):
+ * `const MODES = { twin: msg("Twin") }` … `ctx.t(MODES[mode])`. It returns its argument unchanged; it
+ * only tells the extractor these are words (gettext's `N_`, Lingui's `msg`). A table of words behind a
+ * const is otherwise invisible to it.
+ */
+export function msg<T extends string | ContextWords>(words: T): T {
+  return words;
 }
 
 /** Source text in a catalog: its translation, else the source text itself (missing or empty msgstr). */

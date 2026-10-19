@@ -6,6 +6,11 @@ export function defineApp(def: unknown): unknown {
   return def;
 }
 
+/** Words marked for the extractor (docs/30): unchanged, as the real one. */
+export function msg(words: unknown): unknown {
+  return words;
+}
+
 export const f = new Proxy(
   {},
   {

@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { checkReferences, checkWords, computedInfo, computedRun, isPotyroApp, isWordsMap, wordSlots, type AppDefinition } from "potyro";
-import { readPo } from "@potyro/i18n/app-catalogs";
-import { extractMessages, mergeCatalog } from "@potyro/generator/app-catalog";
+import { catalogProblems } from "@potyro/generator/app-catalog";
 import recipes from "../recipes.app.js";
 import plants from "../plants.app.js";
 import places from "../places.app.js";
@@ -80,23 +79,11 @@ describe("every example speaks the six languages (#303)", () => {
       expect(sourceOf(name)).not.toMatch(/\{\s*en:\s*"/);
     });
 
-    it(`${name} carries a catalog for each other language, in step with its source`, async () => {
-      const extracted = (await extractMessages(sourceOf(name)))!;
-      expect(extracted.problems).toEqual([]);
-      for (const language of SIX.filter((l) => l !== "en")) {
-        const po = catalogOf(name, language);
-        // In step: merging the app's messages into it again changes nothing (pnpm i18n:app).
-        expect(mergeCatalog(po, language, extracted.messages).po, `${name} ${language}: run pnpm i18n:app`).toBe(po);
-      }
-    });
-
-    it(`${name}'s untranslated messages are only the ones that read the same everywhere`, () => {
-      // Units, a dish's own name, a brand: a word a translator would leave alone. Anything longer
-      // than a short token with no space is a word somebody forgot to translate.
-      for (const language of SIX.filter((l) => l !== "en")) {
-        const empty = readPo(catalogOf(name, language)).entries.filter((e) => !e.obsolete && !e.text).map((e) => e.id);
-        for (const id of empty) expect(id, `${name} ${language}: "${id}"`).toMatch(/^(\S{1,5}|\$\/kg|Wiki|Shakshuka|Monstera deliciosa|2 × 1 l)$/);
-      }
+    it(`${name} carries a catalog for each other language, in step with its source, every word translated`, async () => {
+      // Units, a dish's own name, a brand: a word a translator would leave alone. Anything longer than a
+      // short token with no space is a word somebody forgot to translate.
+      const catalogs = Object.fromEntries(SIX.filter((l) => l !== "en").map((l) => [l, catalogOf(name, l)]));
+      expect(await catalogProblems({ source: sourceOf(name), catalogs, same: /^(\S{1,5}|\$\/kg|Wiki|Shakshuka|Monstera deliciosa|2 × 1 l)$/ })).toEqual([]);
     });
   }
 });
