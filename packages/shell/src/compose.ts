@@ -8,6 +8,7 @@ import type { Capabilities } from "@potyro/capabilities";
 import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import type { LoadIsolated } from "./isolate-bridge.js";
 import { languagePrefs } from "./locale.js";
+import { readCatalogs } from "./app-catalogs.js";
 
 export interface ComposeOptions {
   /** Required for the trusted (direct) path; the untrusted (isolate) path loads from `bundleCode`. */
@@ -40,10 +41,12 @@ export interface Composed {
 
 export async function compose(opts: ComposeOptions): Promise<Composed> {
   const host = createHost({ loadIsolated: opts.loadIsolated });
+  // Its translations, from its folder (docs/30): before it loads, so it never shows in English first.
+  const catalogs = await readCatalogs(opts.store);
   const loaded =
     opts.provenance === "trusted"
-      ? await host.load({ kind: "module", app: requireApp(opts.app), provenance: "trusted" })
-      : await host.load({ kind: "bundle", code: requireBundle(opts.bundleCode), provenance: "untrusted" });
+      ? await host.load({ kind: "module", app: requireApp(opts.app), provenance: "trusted", catalogs })
+      : await host.load({ kind: "bundle", code: requireBundle(opts.bundleCode), provenance: "untrusted", catalogs });
 
   const runtime = createRuntime({
     app: loaded,
