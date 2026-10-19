@@ -114,4 +114,4 @@ export const COLOR_WORDS = [W.black, W.red, W.orange, W.yellow, W.green, W.blue,
 export const SIZE_WORDS = [W.thin, W.medium, W.thick] as const;
 
 /** Each language by its own name, for the room's language picker. */
-export const LANG_NAMES = msg("English") as const;
+export const LANG_NAMES = { en: "English", "pt-BR": "Português", de: "Deutsch", es: "Español", pl: "Polski", it: "Italiano" } as const;

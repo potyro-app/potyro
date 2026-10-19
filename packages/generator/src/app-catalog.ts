@@ -306,7 +306,8 @@ export async function catalogProblems(opts: {
   const extracted = await extractMessages(opts.source, opts.modules);
   if (!extracted) return ["no defineApp({...}) in the source"];
   for (const s of [opts.source, ...(opts.modules ?? [])]) {
-    if (/\{\s*en:\s*"/.test(s)) out.push("an inline translation map is left in the app's code: its words belong in locales/<lang>.po");
+    // (a map under `as const` is data looked up by language — each language's own name — not words)
+    if (/\{\s*en:\s*"/.test(s.replace(/\{[^{}]*\}\s+as\s+const\b/g, ""))) out.push("an inline translation map is left in the app's code: its words belong in locales/<lang>.po");
   }
   for (const p of extracted.problems) if (p.why !== "not-literal") out.push(`line ${p.line}: ${p.why}: ${p.text}`);
   for (const [language, po] of Object.entries(opts.catalogs)) {
