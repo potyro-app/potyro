@@ -3,7 +3,7 @@
 //
 // A list, not a table: a file is a name first, and what a person needs beside it is where it came
 // from (it came with the app, the app made it, or you added it), how big it is and when it changed.
-// Every file opens in a read-only viewer; its menu saves a copy outside, renames, replaces or
+// Every file opens in a viewer (read-only, but for the app's translations); its menu saves a copy outside, renames, replaces or
 // deletes it. Files come in through "Add files" or by dropping them anywhere on the panel; a name
 // that is taken gets a free one beside it rather than replacing anything (app-folder.ts).
 //

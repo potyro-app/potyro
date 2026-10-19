@@ -902,6 +902,10 @@ msgstr "{title}: wybierz"
 msgid "{title}: more"
 msgstr "{title}: więcej"
 
+#: ../shell/src/App.tsx
+msgid "{translationGaps, plural, one {# word missing} other {# words missing}}"
+msgstr "{translationGaps, plural, one {brakuje # słowa} few {brakuje # słów} many {brakuje # słów} other {brakuje # słowa}}"
+
 #: ../shell/src/device-files.tsx
 msgid "{used} of {budget} is used, and this needs {needed} more. Removing files or earlier copies would not make room: the relay keeps every version ever shared. You can keep it on this device only — it stays in {appName}’s Files here, but the app and the people you share it with will not see it."
 msgstr "Zajęto {used} z {budget}, a to wymaga jeszcze {needed}. Usunięcie plików ani wcześniejszych kopii nie zwolni miejsca: przekaźnik przechowuje każdą udostępnioną wersję. Możesz zachować go tylko na tym urządzeniu — zostanie tutaj w plikach aplikacji {appName}, ale ani aplikacja, ani osoby, którym ją udostępniasz, go nie zobaczą."
@@ -1936,6 +1940,7 @@ msgstr "Może oglądać"
 #: ../shell/src/App.tsx
 #: ../shell/src/ask-sources-panel.tsx
 #: ../shell/src/dialog.tsx
+#: ../shell/src/file-viewer.tsx
 #: ../shell/src/guests-panel.tsx
 #: ../shell/src/inline-edit.tsx
 #: ../shell/src/picker.tsx
@@ -2828,7 +2833,9 @@ msgid "edit"
 msgstr "edycja"
 
 #. Data table: edit this record
+#. Files viewer: change the words of an app's translation file
 #: ../shell/src/data-table.tsx
+#: ../shell/src/file-viewer.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
@@ -4816,6 +4823,10 @@ msgstr "Wspomina o tym tylko {site}; nic innego tego nie potwierdziło."
 msgid "Only allow an address that belongs to that service."
 msgstr "Zezwól tylko na adres należący do tej usługi."
 
+#: ../shell/src/app-folder.ts
+msgid "Only an app's translations can be changed here."
+msgstr "Tutaj można zmieniać tylko tłumaczenia aplikacji."
+
 #: ../shell/src/add-app.ts
 msgid "Only http and https links can be fetched"
 msgstr "Można pobierać tylko linki http i https"
@@ -5539,6 +5550,8 @@ msgstr "Ta sama osoba"
 msgid "Same person as…"
 msgstr "Ta sama osoba co…"
 
+#. Files viewer: save the changed translation file
+#: ../shell/src/file-viewer.tsx
 #: ../shell/src/inline-edit.tsx
 #: ../shell/src/tile-editor.tsx
 msgid "Save"
@@ -5607,6 +5620,10 @@ msgstr "Zapisano pliki"
 #: ../shell/src/move-banner.tsx
 msgid "Saved. Open {site} with the button below and choose this file there. Who you are does not go in a file: to be the same person there, enter your recovery words under You."
 msgstr "Zapisano. Otwórz {site} przyciskiem poniżej i wybierz tam ten plik. To, kim jesteś, nie trafia do pliku: aby być tam tą samą osobą, wpisz swoje słowa w panelu Ty."
+
+#: ../shell/src/file-viewer.tsx
+msgid "Saved. The app shows the new words when it opens again."
+msgstr "Zapisano. Aplikacja pokaże nowe słowa, gdy otworzysz ją ponownie."
 
 #: ../shell/src/inline-edit.tsx
 #: ../views/src/record-form.tsx
@@ -6518,6 +6535,12 @@ msgstr "Studio o twojej przeróbce"
 msgid "the top"
 msgstr "góra listy"
 
+#. App menu: translating the app's words failed; the reason follows
+#. placeholder {0}: e instanceof Error ? e.message : String(e)
+#: ../shell/src/App.tsx
+msgid "The translation could not be made: {0}"
+msgstr "Nie udało się przetłumaczyć: {0}"
+
 #: ../shell/src/studio.tsx
 msgid "The versions after it stay in History."
 msgstr "Wersje po niej zostają w historii."
@@ -6554,6 +6577,10 @@ msgstr "Są na twoim koncie. To, czego nie zaznaczysz, tam zostaje — możesz t
 #: ../shell/src/add-app.ts
 msgid "These files did not land in its folder: {list}."
 msgstr "Te pliki nie trafiły do jej folderu: {list}."
+
+#: ../shell/src/app-folder.ts
+msgid "These translations can't be read, so they were not saved ({problem})."
+msgstr "Tych tłumaczeń nie da się odczytać, więc nie zostały zapisane ({problem})."
 
 #: ../shell/src/thinking-settings.tsx
 msgid "Think hard when stuck"
@@ -6980,9 +7007,14 @@ msgstr "Jutro"
 msgid "Translate into {into}"
 msgstr "Przetłumacz na: {into}"
 
+#. App menu: the app's words are being translated, which takes a moment
 #: ../shell/src/App.tsx
-msgid "Translate this app into {intoName} ({intoTag})."
-msgstr "Przetłumacz tę aplikację na: {intoName} ({intoTag})."
+msgid "Translating into {languageLabel}…"
+msgstr "Tłumaczenie na: {languageLabel}…"
+
+#: ../shell/src/file-viewer.tsx
+msgid "Translations in {name}"
+msgstr "Tłumaczenia w {name}"
 
 #. A launcher tile group
 #: ../shell/src/launcher-groups.ts
@@ -7153,6 +7185,11 @@ msgstr "Zaktualizować teraz udostępnione dane? Potem kopię musi zaktualizowa�
 #: ../shell/src/version-gate.ts
 msgid "Update to keep making changes. Until you do, it stays open read-only, so your older copy can’t damage the shared data."
 msgstr "Zaktualizuj, aby dalej wprowadzać zmiany. Do tego czasu jest otwarta tylko do odczytu, żeby twoja starsza kopia nie uszkodziła udostępnionych danych."
+
+#. App menu: translate the app's words that are new or changed since it was translated
+#: ../shell/src/App.tsx
+msgid "Update translations"
+msgstr "Zaktualizuj tłumaczenia"
 
 #: ../shell/src/version-gate.ts
 msgid "Update your copy? Your version is kept in History, so you can go back."

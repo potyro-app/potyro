@@ -69,3 +69,15 @@ describe("app catalogs", () => {
     expect(catalogLanguage("photos/pl.po")).toBeNull();
   });
 });
+
+describe("poLineProblem", () => {
+  test("passes every catalog the tools write, and names the first line that breaks one", async () => {
+    const { poLineProblem } = await import("../src/app-catalogs.js");
+    const { readdirSync, readFileSync } = await import("node:fs");
+    const dir = new URL("../../../examples/files/groceries/locales/", import.meta.url);
+    for (const f of readdirSync(dir)) expect(poLineProblem(readFileSync(new URL(f, dir), "utf8")), f).toBeNull();
+    expect(poLineProblem('msgid "Today"\nmsgstr "Dzi')).toBe('line 2: msgstr "Dzi');
+    expect(poLineProblem('msgid "Today"\nmsgstr "Dziś" extra')).toBe('line 2: msgstr "Dziś" extra');
+    expect(poLineProblem('msgid "Say \\"hi\\""\nmsgstr ""\n"continued"\n#, fuzzy\n#~ msgid "old"\n')).toBeNull();
+  });
+});
