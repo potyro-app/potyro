@@ -266,10 +266,39 @@ No restart, no reload. The relay only needs touching when `cojson` changes versi
 which case bump the pin in `/opt/potyro-relay/package.json`, re-run the `npm install` container, and
 `docker restart potyro-relay`.
 
-## 8. Merging and deploying through the CI machine
+## 8. Merging and deploying: the ship gate on GitHub Actions
 
-GitHub Actions is unavailable, so the CI machine (`vazio`) is both the gate and the deployer.
-**Merge with `pnpm ship <pr-number>`**:
+Since 2026-10-19 the gate runs on GitHub Actions, on Blacksmith's runners (GitHub's own are blocked
+by the account's billing; third-party runners are not). Two tiers, measured on the first run:
+
+| | When | What | Wall time |
+|---|---|---|---|
+| **CI** (`ci.yml`) | every push to a branch | the checks (build, unit, typecheck, lint) and a ten-file browser smoke | **5 min** |
+| **Ship gate** (`ship.yml`) | `pnpm ship <pr>`, and every push to main | the checks, and the browser specs the change needs (below); on main, always everything, then the deploy | **9 min** for everything (8 shards) |
+
+**What a change needs** is decided by `scripts/ci-select.mjs` from the files it touches: the full
+suite as eight shards (ci-local's deal by measured duration, `e2e/timings.json`) when it touches
+what every spec boots — `packages/{shell,views,runtime,host,store,schema,i18n,capabilities,
+identity,share-links}`, the e2e helpers, the configs; a named few for one app (`apps/<id>` → its
+specs), one example (its specs, the languages sweep, the gallery, the launcher's home), one surface
+(`packages/generator` → the Studio and Ask specs, `packages/rooms` → the rooms specs); none for
+docs, words and the servers the browser never reaches. Anything unknown → the full suite.
+
+**Merge with `pnpm ship <pr-number>`** (scripts/ship.mjs): it dispatches the gate on the PR's head
+(which must build on main as it is), waits, and merges when green — `gh pr merge --match-head-commit`,
+a merge commit as before. Red → nothing merged. Main's push then runs the whole suite once more and
+deploys potyro.app: `vite build`, `version.json`, rsync as the site's `deploy` user with the
+`POTYRO_DEPLOY_KEY` repository secret (an rsync-only key, `rrsync /srv/potyro/site`). Without the
+secret the run is green but says it did not deploy. Benchmarks of the runner types, and the script
+that produced them, are in `scripts/bench-ci.sh` and `.github/workflows/bench.yml`.
+
+### How it was: vazio as the gate (until 2026-10-19)
+
+While vazio runs its cron again it would deploy too: disable that cron line, or point it at nothing,
+before it comes back. The hooks and `ci-local` still work for a full run on any machine.
+
+GitHub Actions was unavailable, so the CI machine (`vazio`) was both the gate and the deployer.
+**Merge with `pnpm ship <pr-number>`** meant:
 
 ```
 laptop:  pnpm ship 232          merge commit on GitHub's main, pushed to vazio:appinator.git
