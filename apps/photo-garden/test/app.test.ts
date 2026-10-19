@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { catalogProblems } from "@potyro/generator/app-catalog";
 import { readAppSources } from "@potyro/generator/app-sources";
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { checkReferences, checkWords, isPotyroApp, structureSchema, wordGaps, wordSlots } from "potyro";
 import app from "../photo-garden.app.js";
