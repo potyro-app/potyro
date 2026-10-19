@@ -22,6 +22,7 @@ export {
   pickLanguage,
   word,
   attachCatalogs,
+  msg,
   catalogsOf,
   catalogFor,
   lookup,

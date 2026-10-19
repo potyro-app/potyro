@@ -2,7 +2,7 @@
 
 import { describe, expect, test } from "vitest";
 import { defineApp } from "../src/defineApp.js";
-import { appLanguages, attachCatalogs, catalogFor, localize, lookup, pickLanguage, word } from "../src/words.js";
+import { appLanguages, attachCatalogs, catalogFor, localize, lookup, pickLanguage, word, wordSlots } from "../src/words.js";
 
 function app(legacy = false) {
   return defineApp({
@@ -83,5 +83,10 @@ describe("catalogs", () => {
     expect(word("Today", "pl", { language: "en" }, catalogFor(def, "pl"))).toBe("Dziś");
     expect(lookup("Water", catalogFor(def, "pl"))).toBe("Water");
     expect(lookup("Water", catalogFor(def, "pl"), "verb")).toBe("Podlej");
+  });
+
+  test("an action whose run names a function still has its label found (read from source: run is code)", () => {
+    const def = { id: "x", entities: { w: { fields: {}, actions: { a: { label: "A", run: "__potyro_fn__" }, b: { label: "Stop watching", run: "__potyro_code__" } } } }, pages: [] };
+    expect(wordSlots(def).map((s) => s.value)).toEqual(["A", "Stop watching"]);
   });
 });
