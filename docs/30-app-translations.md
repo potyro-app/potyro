@@ -1,6 +1,6 @@
 # 30 · App translations: one language in the source, catalogs beside it
 
-**Status: proposal, 2026-10-19.** It replaces how docs/20 (#302) stores an app's words. docs/20's
+**Status: approved, 2026-10-19 (§9).** It replaces how docs/20 (#302) stores an app's words. docs/20's
 `ctx.locale`, `ctx.format`, the resolution order and "records are never translated" stay.
 
 The owner reviewed the examples' source on 2026-10-19 and rejected the inline maps: "we need to have a
@@ -25,8 +25,9 @@ source text as the message id.
   stale one, shows the source text: an English word, never a blank and never an error.
 - **Catalogs travel with the code**, as the app's modules do (#258): in the package, in the app record,
   in a demo link. An app never opens before its catalog is there, so it never flashes English.
-- **The model writes and edits only the app's language.** A separate translate step, in the Studio and
-  for the examples, fills new or changed messages in each catalog. It never touches the code.
+- **The model writes and edits only the app's language.** Translating is the person's choice, never
+  automatic: most people make apps for themselves. "Translate into…" (and "Update translations") fills
+  new or changed messages in each catalog, and never touches the code.
 - **People's content is never translated**, and no app carries word lists in several languages to guess
   things about it. Groceries' `STAPLES` dictionary goes (§6).
 - **Old apps keep working.** An inline map `{ en, pl }` is still read, as before, but deprecated: the
@@ -110,14 +111,15 @@ record keeps the compiled form, a `{ msgid → msgstr }` map, so opening an app 
 - The reference and the corpus show apps in one language. The model is never asked for a map, and an
   edit is one SEARCH/REPLACE in one place. This also returns the many tokens six-language maps cost
   every prompt (docs/20 §7.1).
-- After a Studio change, extraction runs. If the app carries more than one language and there are new,
-  fuzzy or missing messages, the **translate step** sends ONLY those messages, each with its slot or
-  its `ctx.t` call as context, to the model in one structured answer per language. It writes the
-  catalogs and never the code.
-- It runs through the app's AI allowance, like any other Studio call. Without AI, the app works and
-  shows the source text for what is missing; "Translations: 4 missing in Polish" is said where the
-  app's languages are listed.
-- Adding a language is the same step with every message missing: one new file.
+- An app made in the Studio carries ONE language, the person's, and no catalogs. Most people make apps
+  for themselves; nothing is translated, and no allowance is spent on it, unless they ask.
+- **Translating is on request** (owner, 2026-10-19: not automatic). Where the app's languages are
+  listed, "Translate into…" adds a language, and "Update translations" appears when a catalog has new,
+  fuzzy or missing messages ("4 missing in Polish"). Both run the **translate step**: extraction, then
+  ONLY the messages that need it, each with its slot or its `ctx.t` call as context, to the model in one
+  structured answer per language. It writes the catalogs and never the code, through the app's AI
+  allowance like any other Studio call.
+- Until then, the app works and shows the source text for what is missing.
 - `check` reports a literal-free `ctx.t`, a slot map in a new app (deprecated), and `msgctxt` needs.
   It does not report missing translations: those are the translate step's job, not the model's.
 
@@ -151,13 +153,13 @@ record keeps the compiled form, a `{ msgid → msgstr }` map, so opening an app 
    `ctx.t`, the sealed box, legacy maps kept. With tests in both trusted and sealed boxes.
 2. Extractor, merge and compile; `pnpm i18n:app`; the corpus and reference in one language.
 3. Codemod for the examples and showcase apps; Groceries without `STAPLES`; e2e in Polish still green.
-4. Studio: extract after each change, the translate step, "N missing" shown.
+4. Studio: "Translate into…" and "Update translations" (on request), "N missing" shown; catalogs
+   editable in the app's Files.
 5. docs/04, docs/05 and docs/20 updated; `gen:reference` and `gen:corpus` regenerated.
 
-## 9. Open questions for the owner
+## 9. Decided (owner, 2026-10-19)
 
-1. **Translate step trigger**: automatically after each Studio change (recommended; it spends a little
-   of the allowance), or only when the person taps "Update translations"?
-2. **A person's own translation edits**: a person may want to fix a word. Offer the catalogs in the
-   app's Files ("locales/pl.po", editable), or a simple "Fix a word" sheet later? Recommended: Files now,
-   a sheet later if people ask.
+1. **The translate step runs on request, never automatically**: "most of the users will be creating apps
+   for themselves and not interested in translating them".
+2. **People fix a translation in the app's Files**: `locales/pl.po` is listed there and editable, and a
+   saved edit is compiled and used at once. A simpler "Fix a word" sheet can come later if people ask.
