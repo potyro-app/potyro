@@ -35,8 +35,10 @@ export class ViewWatchdog {
   private readonly blockedMs: number;
   private readonly mountMs: number;
   private readonly checkMs: number;
-  private readonly startedAt: number;
+  private startedAt: number;
   private lastCheck: number;
+  /** Whether the last check saw the page on screen. */
+  private wasVisible = true;
   private mountedAt: number | null = null;
   private seq = 0;
   /** Pings not answered yet, by number, with when they count from. */
@@ -97,8 +99,20 @@ export class ViewWatchdog {
   check(visible: boolean): ViewVerdict {
     const t = this.now();
     const late = t - this.lastCheck - this.checkMs;
+    const since = t - this.lastCheck;
     this.lastCheck = t;
+    const back = visible && !this.wasVisible;
+    this.wasVisible = visible;
     if (!visible) {
+      // Time hidden is not the view's: its mount budget pauses (a link opened in a background tab).
+      if (this.mountedAt === null) this.startedAt += since;
+      this.forgive(t);
+      return OK;
+    }
+    if (back) {
+      // The first check after the page came back: the throttled timer that runs it can fire seconds
+      // late (a background tab, a sleeping laptop). That wait was the page's, not the view's.
+      if (this.mountedAt === null) this.startedAt += Math.max(0, late);
       this.forgive(t);
       return OK;
     }

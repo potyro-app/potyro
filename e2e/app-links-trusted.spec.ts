@@ -1,6 +1,7 @@
 import { test, expect, type Browser, type FrameLocator, type Page } from "./console-guard";
 import { addAsMine, packApp } from "./library-demos";
 import { routeRooms, startRoomsRelay, type RoomsRelay } from "./live-servers.js";
+import { setHidden } from "./live-apps";
 import { stranger } from "./share-demo";
 
 // Links that open an app at one of its pages (docs/24 §11), the way Draw & Guess invites people:
@@ -8,7 +9,8 @@ import { stranger } from "./share-demo";
 //   - a friend who has the game: the link opens THEIR copy, on Play, the code in the box — and only
 //     a tap on Join joins;
 //   - a friend who does not: the demo, sealed, on Play with the code — the game's own screen runs
-//     sealed (#267), so they can play right away — then Keep this app keeps it on Play, still sealed;
+//     sealed (#267), so they can play right away — and after a few minutes in it, Keep this app keeps it
+//     on Play, still sealed;
 //   - a link anyone could write: what does not fit is cut, silently; an app this device does not have
 //     is said in plain words, and nothing is installed;
 //   - the remix intent (`&remix=1`) on such a link still opens Make it mine.
@@ -30,8 +32,11 @@ const shot = async (p: Page, name: string): Promise<void> => {
   if (dir) await p.screenshot({ path: `${dir}/${name}.png` });
 };
 
+// Invited, the start screen is one task: your name, then Join the game. The code is shown, not asked for.
 const codeBox = (p: Page | FrameLocator) => p.getByPlaceholder("KQ7M-XR4P-2DHC");
-const invitedNote = (p: Page | FrameLocator) => p.getByText("You're invited to a game. Say your name and tap Join.");
+const gameCode = (p: Page | FrameLocator) => p.getByText(/^Game code: /);
+const invitedNote = (p: Page | FrameLocator) => p.getByText("You're invited to play. Say your name and join.");
+const joinGame = (p: Page | FrameLocator) => p.getByRole("button", { name: "Join the game" });
 
 /** Someone with Draw & Guess added as theirs, on its start screen. */
 async function player(browser: Browser, baseURL: string, name?: string): Promise<Page> {
@@ -74,8 +79,9 @@ test("a friend who has the game: the invite opens their own copy on Play, with t
   await expect(bo).toHaveURL(/\/\?user=draw-guess$/, { timeout: 30_000 });
   await expect(bo.locator(".k-app")).toHaveAttribute("data-provenance", "trusted");
   await expect(bo.locator(".k-demo-bar")).toHaveCount(0);
-  await expect(codeBox(bo)).toHaveValue(code, { timeout: 30_000 });
+  await expect(gameCode(bo)).toHaveText(`Game code: ${code}`, { timeout: 30_000 });
   await expect(invitedNote(bo)).toBeVisible();
+  await expect(bo.getByRole("button", { name: "New game" })).toHaveCount(0);
   // What is left to do is theirs: a name (the box has the focus), then Join — nothing joins by itself.
   await expect(bo.getByLabel("Your name")).toBeFocused();
   await bo.keyboard.type("Bo");
@@ -84,7 +90,7 @@ test("a friend who has the game: the invite opens their own copy on Play, with t
   await expect(bo.getByRole("heading", { name: "Waiting for players" })).toHaveCount(0);
   await expect(lobbyHas(ana, "Bo")).toHaveCount(0);
 
-  await bo.getByRole("button", { name: "Join", exact: true }).click();
+  await joinGame(bo).click();
   await expect(bo.getByRole("heading", { name: "Waiting for players" })).toBeVisible({ timeout: 20_000 });
   await expect(lobbyHas(ana, "Bo")).toBeVisible({ timeout: 20_000 });
   await expect(lobbyHas(bo, "Ana")).toBeVisible();
@@ -96,6 +102,7 @@ test("a friend who does not have it: the demo opens sealed on Play with the code
   const { context, page: cy } = await stranger(browser, baseURL!);
   await routeRooms(cy, relay);
 
+  await cy.clock.install();
   await cy.goto(link);
   // The demo, sealed, opened on the page the link is for — and the game's own screen runs there, in
   // its sandboxed frame (#267): the code is in the box, so they can play right away.
@@ -105,7 +112,7 @@ test("a friend who does not have it: the demo opens sealed on Play with the code
   const demoFrame = cy.locator(".k-sealed-view iframe");
   await expect(demoFrame).toHaveAttribute("sandbox", "allow-scripts", { timeout: 30_000 });
   const demoBoard = cy.frameLocator(".k-sealed-view iframe");
-  await expect(codeBox(demoBoard)).toHaveValue(code, { timeout: 30_000 });
+  await expect(gameCode(demoBoard)).toHaveText(`Game code: ${code}`, { timeout: 30_000 });
   await expect(invitedNote(demoBoard)).toBeVisible();
   // It is the real screen, drawn in the frame — not a card about it.
   expect(await demoBoard.locator("body").evaluate(() => self.origin)).toBe("null");
@@ -115,6 +122,11 @@ test("a friend who does not have it: the demo opens sealed on Play with the code
   expect(await cy.evaluate(() => JSON.parse(localStorage.getItem("potyro:user-apps") ?? "[]").length)).toBe(0);
   await shot(cy, "3-demo-on-play");
 
+  // An invitation opens with nothing to decide: Keep and Make it mine come after a few minutes in it.
+  await expect(cy.locator(".k-demo-bar").getByRole("button", { name: "Keep this app" })).toHaveCount(0);
+  await setHidden(cy, true);
+  await cy.clock.runFor(3 * 60_000 + 1000);
+  await setHidden(cy, false);
   await cy.locator(".k-demo-bar").getByRole("button", { name: "Keep this app" }).click();
   const card = cy.getByRole("dialog", { name: "Add an app" });
   await expect(card.getByRole("heading", { name: "Draw & Guess" })).toBeVisible({ timeout: 30_000 });
@@ -125,7 +137,7 @@ test("a friend who does not have it: the demo opens sealed on Play with the code
   await expect(cy.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
   await expect(cy.locator(".k-tab", { hasText: "Play" })).toHaveAttribute("data-active", "true");
   const board = cy.frameLocator(".k-sealed-view iframe");
-  await expect(codeBox(board)).toHaveValue(code, { timeout: 30_000 });
+  await expect(gameCode(board)).toHaveText(`Game code: ${code}`, { timeout: 30_000 });
   await expect(invitedNote(board)).toBeVisible();
   await shot(cy, "4-kept-landed-with-code");
   // The kept copy is the same app: its next invite link names the same line.

@@ -83,6 +83,36 @@ describe("the view watchdog", () => {
     expect(dog.check(true)).toEqual({ stop: false });
   });
 
+  it("does not blame the view for the page coming back: the first check after hidden time may run late", () => {
+    // Firefox throttles a background tab's timers to a second or more, and a laptop can sleep: the
+    // check that runs as the page comes back is seconds late through no fault of the view.
+    const c = clock();
+    const dog = new ViewWatchdog(c.now, { silenceMs: 2000, blockedMs: 2000, checkMs: 100 });
+    dog.mounted();
+    expect(dog.check(false)).toEqual({ stop: false });
+    c.tick(5000);
+    expect(dog.check(true)).toEqual({ stop: false });
+    // From then on, a real block on screen still stops it.
+    c.tick(3100);
+    expect(dog.check(true)).toMatchObject({ stop: true, kind: "blocked" });
+  });
+
+  it("pauses the mount budget while the page is hidden: a link opened in a background tab", () => {
+    const c = clock();
+    const dog = new ViewWatchdog(c.now, { mountMs: 10_000, checkMs: 100 });
+    for (let i = 0; i < 30; i++) {
+      c.tick(1000);
+      expect(dog.check(false)).toEqual({ stop: false });
+    }
+    c.tick(100);
+    expect(dog.check(true)).toEqual({ stop: false });
+    c.tick(5000);
+    expect(dog.check(true)).toEqual({ stop: false });
+    // Ten seconds on screen without mounting is still too long.
+    c.tick(5100);
+    expect(dog.check(true)).toMatchObject({ stop: true, kind: "mount" });
+  });
+
   it("is healthy only while it answers", () => {
     const c = clock();
     const dog = new ViewWatchdog(c.now);
