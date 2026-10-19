@@ -9,7 +9,7 @@
 // words a stranger's app sends to the host. It is loaded lazily (`loadMessageFormat`) when an app
 // is loaded, so the shell's first screen does not carry it.
 
-import type { Ctx, CtxFormat, FormatDateOptions, FormatNumberOptions, Language, Words } from "potyro";
+import type { Catalog, Ctx, CtxFormat, FormatDateOptions, FormatNumberOptions, Language, Words } from "potyro";
 import { isWordsMap, minorDigits, word } from "potyro";
 
 type MessageFormatCtor = typeof import("intl-messageformat").IntlMessageFormat;
@@ -187,11 +187,16 @@ export interface WordsContext {
   formatLocale: string;
   /** `ctx.now()` — `relative` measures from it, so it is fixed within a pass. */
   now: () => Date;
+  /**
+   * The app's translations for `language` (docs/30). Only the sealed box passes it: there `app` is not
+   * the definition, so the catalog cannot be found through it.
+   */
+  catalog?: Catalog;
 }
 
 /** `ctx.t`: the words for the language, an ICU message when `vars` are given. */
 export function translate(w: Words, vars: Record<string, unknown> | undefined, wc: WordsContext): string {
-  const chosen = word(w, wc.language, wc.app);
+  const chosen = word(w, wc.language, wc.app, wc.catalog);
   if (vars == null) return chosen;
   return formatMessage(text(chosen, "a message"), vars, wc.formatLocale);
 }
@@ -311,7 +316,8 @@ export function hostPure(json: string, ctx: Pick<Ctx, "t" | "format">): string {
         break;
       }
       case "t":
-        value = ctx.t(checkWordsArg(req.words), checkVars(req.vars) as Record<string, string | number | Date>);
+        // No vars: a plain string looked up in the app's catalog (docs/30).
+        value = ctx.t(checkWordsArg(req.words), req.vars == null ? undefined : (checkVars(req.vars) as Record<string, string | number | Date>));
         break;
       default:
         throw new FormatError(`unknown request ${JSON.stringify(String(op)).slice(0, 40)}`);

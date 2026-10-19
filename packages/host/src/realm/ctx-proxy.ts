@@ -63,6 +63,8 @@ function safeString(v: unknown): string {
 export interface RealmCtxOptions {
   /** Prefix of this side's progress ids, so a view's bars and the logic's never share a name. */
   progressPrefix?: string;
+  /** The app's translations for the shown language (docs/30), for `ctx.t`. */
+  catalog?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -82,6 +84,7 @@ export function makeRealmCtx(base: CtxBase, tx: Transport, opts: RealmCtxOptions
     app: { language: base.language, languages: base.languages },
     formatLocale: base.formatLocale,
     now: () => fixedNow,
+    catalog: opts.catalog,
   };
   const has = (n: string) => base.capsAvailable.includes(n);
   const timerControl = async (tid: string, verb: TimerVerb): Promise<void> => {

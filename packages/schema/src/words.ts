@@ -120,10 +120,50 @@ export function wordSlots(definition: unknown): Array<{ path: WordsPath; value: 
 /** A path as one line: `pages.0.title`, as Zod issues read. */
 export const wordsPathText = (path: WordsPath): string => path.join(".");
 
-/** The languages an app carries: `languages`, else `[language]`, else none (an old app). */
+// ── catalogs (docs/30) ──────────────────────────────────────────────────────────────────────────
+//
+// An app is written in one language; its translations are catalogs beside it, one per language,
+// compiled from `locales/<lang>.po` into `{ msgid → msgstr }` with the source text as the msgid. The
+// host attaches them to the loaded definition, so `localize()`, `word()` and `ctx.t` find them without
+// app code ever seeing them.
+
+/** One language's translations: source text → translated text. A `msgctxt` is `context\u0004text`. */
+export type Catalog = Readonly<Record<string, string>>;
+
+const catalogsByApp = new WeakMap<object, Readonly<Record<Language, Catalog>>>();
+
+/** Give a loaded definition its catalogs, replacing any it had. What it was shown in is forgotten. */
+export function attachCatalogs(definition: object, catalogs: Readonly<Record<Language, Catalog>> | undefined): void {
+  if (catalogs && Object.keys(catalogs).length) catalogsByApp.set(definition, catalogs);
+  else catalogsByApp.delete(definition);
+  localized.delete(definition);
+}
+
+/** The catalogs attached to a definition, by language. */
+export function catalogsOf(definition: object | undefined): Readonly<Record<Language, Catalog>> {
+  return (definition && catalogsByApp.get(definition)) || {};
+}
+
+/** The catalog for `language`, when the definition carries one. */
+export function catalogFor(definition: object | undefined, language: Language | undefined): Catalog | undefined {
+  return language ? catalogsOf(definition)[language] : undefined;
+}
+
+/** Source text in a catalog: its translation, else the source text itself (missing or empty msgstr). */
+export function lookup(text: string, catalog: Catalog | undefined, context?: string): string {
+  if (!catalog) return text;
+  const hit = catalog[context ? `${context}\u0004${text}` : text];
+  return typeof hit === "string" && hit !== "" ? hit : text;
+}
+
+/**
+ * The languages an app carries: `languages`, else `[language]`, else none (an old app); and every
+ * language it has a catalog for.
+ */
 export function appLanguages(app: Pick<AppDefinition, "language" | "languages">): Language[] {
-  if (app.languages?.length) return [...app.languages];
-  return app.language ? [app.language] : [];
+  const declared = app.languages?.length ? [...app.languages] : app.language ? [app.language] : [];
+  for (const l of Object.keys(catalogsOf(app))) if (!declared.includes(l)) declared.push(l);
+  return declared;
 }
 
 const baseOf = (tag: string): string => tag.split("-")[0]!.toLowerCase();
@@ -153,9 +193,9 @@ export function pickLanguage(prefs: readonly string[], app: Pick<AppDefinition, 
  * two exist only for data that should not exist (a copy from a newer Potyro, a hand edit) — they
  * keep it readable rather than blank.
  */
-export function word(w: Words | undefined | null, language: Language | undefined, app?: Pick<AppDefinition, "language" | "languages">): string {
+export function word(w: Words | undefined | null, language: Language | undefined, app?: Pick<AppDefinition, "language" | "languages">, catalog?: Catalog): string {
   if (w == null) return "";
-  if (typeof w === "string") return w;
+  if (typeof w === "string") return lookup(w, catalog ?? catalogFor(app, language));
   if (!isWordsMap(w)) return String(w);
   if (language && typeof w[language] === "string") return w[language]!;
   if (app?.language && typeof w[app.language] === "string") return w[app.language]!;
@@ -178,7 +218,8 @@ export function localize<T extends Pick<AppDefinition, "language" | "languages">
   const key = language ?? "";
   let out = byLanguage.get(key);
   if (out === undefined) {
-    out = walkWords(definition, (value) => (typeof value === "string" ? undefined : word(value, language, definition)));
+    const catalog = catalogFor(definition, language);
+    out = walkWords(definition, (value) => (typeof value === "string" ? (catalog ? lookup(value, catalog) : undefined) : word(value, language, definition)));
     byLanguage.set(key, out);
   }
   return out as Localized<T>;
@@ -190,7 +231,8 @@ const FIELDS = z.record(fieldSchema);
 
 /** The same for a set of fields on their own — a `ctx.ui.form`'s — in the app's terms. */
 export function localizeFields(fields: Record<string, Field>, language: Language | undefined, app: Pick<AppDefinition, "language" | "languages">): Record<string, Localized<Field>> {
-  return walk(FIELDS, fields, [], (value) => (typeof value === "string" ? undefined : word(value, language, app))) as Record<string, Localized<Field>>;
+  const catalog = catalogFor(app, language);
+  return walk(FIELDS, fields, [], (value) => (typeof value === "string" ? (catalog ? lookup(value, catalog) : undefined) : word(value, language, app))) as Record<string, Localized<Field>>;
 }
 
 /** Option keys of each enum/tags field that declares `labels`, with where it sits. */

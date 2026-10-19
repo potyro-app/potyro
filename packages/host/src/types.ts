@@ -17,6 +17,7 @@ import type {
   Field,
   Language,
   Localized,
+  Catalog,
   UiItem,
   UiProgress,
   ViewProps,
@@ -29,13 +30,17 @@ import type { Store } from "@potyro/store";
 export type Provenance = "trusted" | "untrusted";
 
 /** Where an app came from. Determines the runner (docs/07). */
-export type AppSource =
+export type AppSource = (
   /** An already-imported module (trusted dev path: Vite imports the `.app.ts`). */
   | { kind: "module"; app: PotyroApp; provenance?: Provenance }
   /** A self-contained bundled JS string (untrusted-by-default: shared/imported). */
   | { kind: "bundle"; code: string; provenance?: Provenance }
   /** A URL to fetch a bundle from (untrusted-by-default). */
-  | { kind: "url"; url: string; provenance?: Provenance };
+  | { kind: "url"; url: string; provenance?: Provenance }
+) & {
+  /** The app's translations, compiled from its `locales/<lang>.po`, by language (docs/30). */
+  catalogs?: Readonly<Record<string, Catalog>>;
+};
 
 /** Identifies a function *binding* so untrusted calls can be marshalled by reference. */
 export type BindingRef =
