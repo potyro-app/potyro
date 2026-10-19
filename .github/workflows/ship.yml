@@ -1,0 +1,160 @@
+# The ship gate (docs/16 §8): the checks, and the browser specs a change needs — all 202 files as
+# eight parallel shards when it touches what every spec boots, a named few when it touches one app
+# or one surface, none when it touches only docs or servers the browser never reaches
+# (scripts/ci-select.mjs). `pnpm ship <pr>` runs it on the PR's head and merges when it is green.
+#
+# On main it always runs everything, and then deploys potyro.app — the backstop vazio's cron used
+# to be. The deploy needs the `POTYRO_DEPLOY_KEY` secret: the rsync-only key for the site's deploy
+# user (rrsync to /srv/potyro/site). Without it the run is still the gate; it just says so.
+name: Ship gate
+on:
+  push:
+    branches: [main, ci/benchmark]   # TEMP: ci/benchmark validates the shards; removed before merge
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "auto (what the change needs), full, or none"
+        default: auto
+
+concurrency:
+  group: ship-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  SHARDS: 8
+  SHIP_MODE: full   # TEMP: forces the full suite on this branch; removed before merge
+
+jobs:
+  select:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 5
+    outputs:
+      mode: ${{ steps.select.outputs.mode }}
+      files: ${{ steps.select.outputs.files }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: select
+        run: |
+          forced="${{ inputs.mode }}"; [ -n "$forced" ] && [ "$forced" != auto ] || forced="${SHIP_MODE:-}"
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "mode=full" >> "$GITHUB_OUTPUT"; echo "files=" >> "$GITHUB_OUTPUT"
+            echo "main: the full suite, always"
+          elif [ -n "$forced" ]; then
+            echo "mode=$forced" >> "$GITHUB_OUTPUT"; echo "files=" >> "$GITHUB_OUTPUT"
+            echo "forced: $forced"
+          else
+            git fetch -q origin main
+            node scripts/ci-select.mjs --base origin/main --head HEAD
+          fi
+
+  checks:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.5.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm -r test
+      - run: pnpm typecheck
+      - run: pnpm lint:boundaries
+      - run: pnpm lint:tokens
+      - run: pnpm lint:i18n
+
+  e2e-full:
+    needs: select
+    if: needs.select.outputs.mode == 'full'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.5.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm exec playwright install --with-deps chromium
+      # ci-local's shard: the same deal of files by measured duration every runner computes alike
+      # (e2e/timings.json), one worker, a retry, and the JSON report folded into the timings.
+      - name: Shard ${{ matrix.shard }} of ${{ env.SHARDS }}
+        run: CI_LOCAL_SHARDS=${{ env.SHARDS }} node scripts/ci-local.mjs e2e:${{ matrix.shard }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-failures-${{ matrix.shard }}
+          path: |
+            test-results/
+            .ci-local/*/e2e-${{ matrix.shard }}.log
+          retention-days: 7
+
+  e2e-some:
+    needs: select
+    if: needs.select.outputs.mode == 'files'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.5.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: The specs this change needs
+        run: pnpm exec playwright test ${{ needs.select.outputs.files }} --project=trusted --project=sandbox --workers=1 --retries=1 --reporter=line
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-failures
+          path: test-results/
+          retention-days: 7
+
+  deploy:
+    # Main, green: build and put it on potyro.app. Never from a branch.
+    needs: [checks, e2e-full, e2e-some]
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && needs.checks.result == 'success' && needs.e2e-full.result == 'success' }}
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.5.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm --filter @potyro/shell exec vite build
+      - name: version.json
+        run: echo "{\"commit\":\"${{ github.sha }}\",\"deployedAt\":\"$(date -u +%FT%TZ)\"}" > packages/shell/dist/version.json
+      - name: rsync to potyro.app
+        env:
+          KEY: ${{ secrets.POTYRO_DEPLOY_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then echo "::warning::POTYRO_DEPLOY_KEY is not set: green, but not deployed"; exit 0; fi
+          install -m 700 -d ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          ssh-keyscan -H 65.109.228.5 >> ~/.ssh/known_hosts 2>/dev/null
+          rsync -az --delete -e "ssh -i ~/.ssh/deploy -o IdentitiesOnly=yes" packages/shell/dist/ deploy@65.109.228.5:
+          curl -sf https://potyro.app/version.json

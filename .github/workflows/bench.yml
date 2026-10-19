@@ -3,9 +3,6 @@
 # job summary and as an artifact. Started by hand only.
 name: bench
 on:
-  # A push to this branch runs it too: a dispatch needs the workflow on main first.
-  push:
-    branches: [ci/benchmark]
   workflow_dispatch:
     inputs:
       runners:
