@@ -1,0 +1,294 @@
+msgid ""
+msgstr ""
+"Language: it\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Sleep & Mood"
+msgstr "Sonno e umore"
+
+#: quickActions.0.label
+msgid "Log last night"
+msgstr "Segna la notte scorsa"
+
+#: entities.checkin.label
+msgid "Check-in"
+msgstr "Registrazione"
+
+#: entities.checkin.fields.date.label
+msgid "Date"
+msgstr "Data"
+
+#: entities.checkin.fields.date.help
+msgid "The morning you are checking in"
+msgstr "La mattina in cui registri"
+
+#: entities.checkin.fields.hours.unit
+msgid "h"
+msgstr ""
+
+#: entities.checkin.fields.hours.label
+msgid "Hours slept"
+msgstr "Ore dormite"
+
+#: entities.checkin.fields.mood.label
+#: ctx.t
+msgid "Mood"
+msgstr "Umore"
+
+#: entities.checkin.fields.mood.help
+msgid "1 rough · 3 okay · 5 great"
+msgstr "1 malissimo · 3 così così · 5 benissimo"
+
+#: entities.checkin.fields.tags.labels.exercise
+#: ctx.t
+msgid "exercise"
+msgstr "sport"
+
+#: entities.checkin.fields.tags.labels.coffee
+#: ctx.t
+msgid "coffee"
+msgstr "caffè"
+
+#: entities.checkin.fields.tags.labels.alcohol
+#: ctx.t
+msgid "alcohol"
+msgstr "alcol"
+
+#: entities.checkin.fields.tags.labels.late screen
+#: ctx.t
+msgid "late screen"
+msgstr "schermi fino a tardi"
+
+#: entities.checkin.fields.tags.labels.nap
+#: ctx.t
+msgid "nap"
+msgstr "pisolino"
+
+#: entities.checkin.fields.tags.labels.stressed
+#: ctx.t
+msgid "stressed"
+msgstr "stress"
+
+#: entities.checkin.fields.tags.label
+msgid "The day had"
+msgstr "La giornata ha avuto"
+
+#: entities.checkin.fields.note.label
+msgid "A short note"
+msgstr "Una breve nota"
+
+#: entities.checkin.fields.note.placeholder
+msgid "Late dinner, woke at four…"
+msgstr "Cena tardi, sveglia alle quattro…"
+
+#: pages.0.title
+msgid "Patterns"
+msgstr "Andamento"
+
+#: pages.1.title
+msgid "Nights"
+msgstr "Notti"
+
+#: pages.1.view.emptyText
+msgid "No nights logged yet. Tap “Log last night”."
+msgstr "Ancora nessuna notte segnata. Tocca “Segna la notte scorsa”."
+
+#: pages.2.title
+msgid "Night"
+msgstr "Notte"
+
+#: ctx.t
+msgid "{h}h goal"
+msgstr "obiettivo: {h} h"
+
+#: ctx.t
+msgid "Slept {h}"
+msgstr "Sonno: {h}"
+
+#: ctx.t
+msgid "Mood {v} · {word} {face}"
+msgstr "Umore {v} · {word} {face}"
+
+#: ctx.t
+msgid "hours slept"
+msgstr "ore di sonno"
+
+#: ctx.t
+msgid "mood"
+msgstr "umore"
+
+#: ctx.t
+msgid "{h} · mood {m} {face}"
+msgstr "{h} · umore {m} {face}"
+
+#: ctx.t
+msgid "How did you sleep?"
+msgstr "Come hai dormito?"
+
+#: ctx.t
+msgid "Save"
+msgstr "Salva"
+
+#: ctx.t
+msgid "Logged {h} · {face}"
+msgstr "Segnato: {h} · {face}"
+
+#: ctx.t
+msgid "🌙  Log last night"
+msgstr "🌙  Segna la notte scorsa"
+
+#: ctx.t
+msgid "Sleep"
+msgstr "Sonno"
+
+#: ctx.t
+msgid "Hours slept and mood for each day, up to the last 30"
+msgstr "Ore di sonno e umore di ogni giorno, fino agli ultimi 30"
+
+#: ctx.t
+msgid "Night by night"
+msgstr "Notte per notte"
+
+#: ctx.t
+msgid "Sleep on the left, mood on the right"
+msgstr "Sonno a sinistra, umore a destra"
+
+#: ctx.t
+msgid "Each night as a dot: hours slept across, mood up, coloured by what the day had"
+msgstr "Ogni notte è un punto: ore di sonno in orizzontale, umore in verticale, colorato secondo cosa ha avuto la giornata"
+
+#: ctx.t
+msgid "Show nights by tag"
+msgstr "Mostra le notti per tag"
+
+#: ctx.t
+msgid "Does a long night lift the day?"
+msgstr "Una notte lunga migliora la giornata?"
+
+#: ctx.t
+msgid "Every dot is a night, coloured by what the day had"
+msgstr "Ogni punto è una notte, colorato secondo cosa ha avuto la giornata"
+
+#: ctx.t
+msgid "The dashed line is the trend: the steeper it climbs, the more sleep shows in your mood."
+msgstr "La linea tratteggiata è la tendenza: più sale ripida, più il sonno si vede nel tuo umore."
+
+#: ctx.t
+msgid "{n, plural, one {# check-in} other {# check-ins}} · {range}"
+msgstr "{n, plural, one {# registrazione} other {# registrazioni}} · {range}"
+
+#: ctx.t
+msgid "Your nights"
+msgstr "Le tue notti"
+
+#: ctx.t
+msgid "Average sleep"
+msgstr "Sonno medio"
+
+#: ctx.t
+msgid "Average mood"
+msgstr "Umore medio"
+
+#: ctx.t
+msgid "Nights ≥ {h}h"
+msgstr "Notti ≥ {h} h"
+
+#: ctx.t
+msgid "Last night"
+msgstr "La notte scorsa"
+
+#: ctx.t
+msgid "Week: {avg} a night"
+msgstr "Settimana: {avg} a notte"
+
+#: ctx.t
+msgid "{h} slept"
+msgstr "{h} di sonno"
+
+#: ctx.t
+msgid "nothing tagged"
+msgstr "senza tag"
+
+#: ctx.t
+msgid "rough"
+msgstr "malissimo"
+
+#: ctx.t
+msgid "low"
+msgstr "giù"
+
+#: ctx.t
+msgid "okay"
+msgstr "così così"
+
+#: ctx.t
+msgid "good"
+msgstr "bene"
+
+#: ctx.t
+msgid "great"
+msgstr "benissimo"
+
+#: ctx.t
+msgid "{h}h"
+msgstr "{h} h"
+
+#: ctx.t
+msgid "{n, plural, one {# hour} other {# hours}}"
+msgstr "{n, plural, one {# ora} other {# ore}}"
+
+#: ctx.t
+msgid "Long nights or short, your mood stays close to {m}. Sleep is not what moves it."
+msgstr "Notti lunghe o corte, il tuo umore resta intorno a {m}. Non è il sonno a muoverlo."
+
+#: ctx.t
+msgid "On nights of {long} or more your mood averages {a}. Under {short}, it's {b}."
+msgstr "Nelle notti di {long} o più il tuo umore è in media {a}. Sotto le {short}, è {b}."
+
+#: ctx.t
+msgid "On days you exercise"
+msgstr "Nei giorni in cui fai sport"
+
+#: ctx.t
+msgid "On coffee days"
+msgstr "Nei giorni con il caffè"
+
+#: ctx.t
+msgid "After a drink"
+msgstr "Dopo aver bevuto"
+
+#: ctx.t
+msgid "After late screens"
+msgstr "Dopo gli schermi fino a tardi"
+
+#: ctx.t
+msgid "On days with a nap"
+msgstr "Nei giorni con il pisolino"
+
+#: ctx.t
+msgid "On stressful days"
+msgstr "Nei giorni stressanti"
+
+#: ctx.t
+msgid "On days tagged “{tag}”"
+msgstr "Nei giorni con “{tag}”"
+
+#: msg
+msgid "{lead} your mood averages {a}, against {b} without."
+msgstr "{lead} il tuo umore è in media {a}, contro {b} negli altri giorni."
+
+#: msg
+msgid "{lead} you sleep {a} on average, against {b} without."
+msgstr "{lead} dormi in media {a}, contro {b} negli altri giorni."
+
+#: ctx.t
+msgid "{have, plural, one {# check-in} other {# check-ins}} so far. A few more nights — about {need} — and a pattern starts to show."
+msgstr "{have, plural, one {# registrazione} other {# registrazioni}} finora. Ancora qualche notte — circa {need} — e comincia a vedersi uno schema."
+
+#: ctx.t
+msgid "Log how you slept tonight. After a week or so, this is where the pattern shows up."
+msgstr "Segna come hai dormito stanotte. Dopo una settimana circa, qui comparirà lo schema."
+

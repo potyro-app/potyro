@@ -45,6 +45,23 @@ describe("extractMessages", () => {
     const x = (await extractMessages(SOURCE))!;
     expect(x.problems).toEqual([expect.objectContaining({ why: "not-literal", text: "ctx.t(p.name)" })]);
   });
+
+  it("takes a slot's words from a const marked with msg, and says when a const is not marked", async () => {
+    const source = `import { defineApp, msg } from "potyro";
+const EMPTY = msg("Nothing here yet");
+const PLAIN = "Not marked";
+export default defineApp({
+  id: "a", name: "A", version: "1.0.0", schemaVersion: 1, language: "en",
+  entities: { item: { label: "Item", fields: { name: { type: "text", label: "Name" } } } },
+  pages: [{ id: "p", title: "P", view: { type: "list", entity: "item", emptyText: EMPTY } },
+    { id: "q", title: "Q", view: { type: "list", entity: "item", emptyText: PLAIN } }],
+});
+`;
+    const x = (await extractMessages(source))!;
+    expect(x.messages.map((m) => m.id)).toContain("Nothing here yet");
+    expect(x.messages.map((m) => m.id).filter((id) => id.startsWith("__"))).toEqual([]);
+    expect(x.problems).toEqual([expect.objectContaining({ why: "behind-code", text: "pages.1.view.emptyText" })]);
+  });
 });
 
 describe("mergeCatalog", () => {

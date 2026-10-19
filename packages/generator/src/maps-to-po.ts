@@ -57,6 +57,8 @@ export interface Converted {
   catalogs: Record<string, Map<string, string>>;
   maps: number;
   wrapped: number;
+  /** Words marked with `msg` where they are written (behind a const, or with no ctx in scope). */
+  marked: number;
   /** Texts translated more than one way, now told apart by a context. */
   contexts: number;
   reports: string[];
@@ -142,21 +144,33 @@ export function convert(source: string, own = "en"): Converted {
 
   const catalogs: Record<string, Map<string, string>> = {};
   let wrapped = 0;
+  let marked = 0;
   for (const o of found) {
     const context = contextOf.get(o);
     const key = context ? `${context}\u0004${o.text}` : o.text;
     for (const [lang, t] of Object.entries(o.map)) if (lang !== own) (catalogs[lang] ??= new Map()).set(key, t);
     const words = context ? `{ text: ${JSON.stringify(o.text)}, context: ${JSON.stringify(context)} }` : JSON.stringify(o.text);
-    if (!o.inFn || o.isTArg) {
+    if (o.isTArg || (!o.inFn && o.inDef)) {
+      // A slot, or the words of a ctx.t: the extractor reads them where they are.
       ms.overwrite(o.node.start, o.node.end, words);
-      if (!o.inFn && !o.inDef) reports.push(`line ${o.node.loc?.start.line}: "${o.text}" is behind a const — inline it where it is used, or the extractor cannot see it`);
-    } else if (o.ctxInScope) {
+    } else if (o.inFn && o.ctxInScope) {
       ms.overwrite(o.node.start, o.node.end, `ctx.t(${words})`);
       wrapped++;
     } else {
-      ms.overwrite(o.node.start, o.node.end, words);
-      reports.push(`line ${o.node.loc?.start.line}: "${o.text}" is in a function with no ctx in scope — wrap it in ctx.t by hand`);
+      // Behind a const, or in a function with no ctx: marked where it is written, translated where a
+      // ctx.t shows it (or where a slot reads it — a slot's words are looked up all the same).
+      ms.overwrite(o.node.start, o.node.end, `msg(${words})`);
+      marked++;
     }
   }
-  return { source: ms.toString(), catalogs, maps: found.length, wrapped, contexts, reports };
+  // `msg` comes from potyro, beside whatever the app already imports from it.
+  if (marked) {
+    const potyro = asArray((ast as Node & { program?: Node }).program?.body).find((n) => n.type === "ImportDeclaration" && (n.source as Node)?.value === "potyro" && n.importKind !== "type");
+    const named = potyro ? asArray(potyro.specifiers).filter((sp) => sp.type === "ImportSpecifier") : [];
+    if (named.some((sp) => (sp.imported as Node)?.name === "msg")) {
+      // already there
+    } else if (named.length) ms.appendLeft(named[named.length - 1]!.end, ", msg");
+    else ms.prepend('import { msg } from "potyro";\n');
+  }
+  return { source: ms.toString(), catalogs, maps: found.length, wrapped, marked, contexts, reports };
 }

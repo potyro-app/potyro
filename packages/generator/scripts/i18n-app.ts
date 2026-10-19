@@ -8,6 +8,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { extractMessages, mergeCatalog, writeTemplate } from "../src/app-catalog.js";
+import { readAppSources } from "../src/app-sources.js";
 
 const args = process.argv.slice(2).filter((a) => a !== "--");
 const flag = (name: string): string | undefined => {
@@ -22,9 +23,10 @@ if (!sourcePath || !folder) {
   process.exit(2);
 }
 const cwd = process.env.INIT_CWD ?? process.cwd();
-const source = readFileSync(resolve(cwd, sourcePath), "utf8");
+// The app's source and the modules of its own it imports: their words are the app's.
+const app = readAppSources(resolve(cwd, sourcePath));
 const dir = resolve(cwd, folder);
-const extracted = await extractMessages(source);
+const extracted = await extractMessages(app.source, app.modules);
 if (!extracted) {
   console.error(`${sourcePath}: no defineApp({...}) found`);
   process.exit(1);
@@ -54,7 +56,7 @@ for (const language of [...languages].sort()) {
   const missing = report.total - report.translated - report.fuzzy;
   console.log(`${language}: ${report.translated}/${report.total} translated${report.fuzzy ? `, ${report.fuzzy} fuzzy` : ""}${missing ? `, ${missing} missing` : ""}${report.obsolete ? `, ${report.obsolete} obsolete` : ""}`);
 }
-for (const p of extracted.problems) console.warn(`  line ${p.line}: ${p.why === "not-literal" ? "ctx.t needs the words written out, not computed" : "words behind code cannot be extracted"}: ${p.text}`);
+for (const p of extracted.problems.filter((x) => x.why !== "not-literal")) console.warn(`  line ${p.line}: ${p.why === "not-literal" ? "ctx.t needs the words written out, not computed" : "words behind code cannot be extracted"}: ${p.text}`);
 if (check && stale) {
   console.error(`${stale} file(s) out of step with ${sourcePath}: run pnpm i18n:app ${sourcePath} ${folder}`);
   process.exit(1);

@@ -1,3 +1,6 @@
+import { fileURLToPath } from "node:url";
+import { catalogProblems } from "@potyro/generator/app-catalog";
+import { readAppSources } from "@potyro/generator/app-sources";
 // The app's shape and words, and the prices end to end against a scripted ctx: the watchlist started,
 // an hour of candles, the ECB's rates, Coinbase's ticks coalesced into few writes, a point a minute,
 // an alert that rings once, symbols added and removed while live, the demo.
@@ -58,21 +61,18 @@ describe("Ticker — the app", () => {
     expect(app.quickActions).toEqual([]);
   });
 
-  it("carries all six languages, in its declared words and in its code", () => {
-    expect(app.languages).toEqual(LANGUAGES);
-    expect(checkWords(app)).toEqual([]);
-    expect(wordGaps(app)).toEqual([]);
-    const maps = [...source.matchAll(/\{\s*en: /g)].map((m) => {
-      let depth = 0;
-      let i = m.index!;
-      for (; i < source.length; i++) {
-        if (source[i] === "{") depth++;
-        if (source[i] === "}" && --depth === 0) break;
+  it("carries a catalog for each other language, in step with its code, every word translated, every placeholder kept (docs/30)", async () => {
+    // Its source and the modules of its own it imports: their words are the app's.
+    const { source: code, modules } = readAppSources(fileURLToPath(new URL("../ticker.app.ts", import.meta.url)));
+    const read = (l: string): string | undefined => {
+      try {
+        return readFileSync(new URL(`../locales/${l}.po`, import.meta.url), "utf8");
+      } catch {
+        return undefined;
       }
-      return source.slice(m.index!, i + 1);
-    });
-    expect(maps.length).toBeGreaterThan(60);
-    for (const map of maps) for (const l of ['"pt-BR":', " de:", " es:", " pl:", " it:"]) expect(map, map.slice(0, 80)).toContain(l);
+    };
+    const catalogs = Object.fromEntries(["pt-BR", "de", "es", "pl", "it"].map((l) => [l, read(l)]));
+    expect(await catalogProblems({ source: code, modules, catalogs, same: /^(\S{1,5}|Ticker|Bitcoin|Ether|Coinbase)$/ })).toEqual([]);
   });
 });
 

@@ -12,26 +12,26 @@
 //
 // In six languages (docs/20); every language but English is a model's draft (#297).
 
-import { defineApp, type AggregateRow, type Ctx, type Resolved } from "potyro";
+import { defineApp, type AggregateRow, type Ctx, type Resolved, msg } from "potyro";
 import { addSymbol, clearDemo, isDemoRunning, liveState, playDemo, removeSymbol, setAlert, stopWatching, wasStartedHere, watchLive } from "./feed.js";
 import { COINBASE_REST_HOST, COINBASE_WS_HOST, FX_HOST, toDate } from "./prices.js";
 import { agoText, changeText, ECB_NOTE, priceText, STATE_HINTS, STATE_WORDS, type FeedState } from "./words.js";
 
 const ACTIONS = {
-  watch: { label: { en: "Watch live", "pt-BR": "Ver ao vivo", de: "Live verfolgen", es: "Ver en vivo", pl: "Oglądaj na żywo", it: "Segui in diretta" }, icon: "▶", run: watchLive },
-  stop: { label: { en: "Stop", "pt-BR": "Parar", de: "Stopp", es: "Parar", pl: "Zatrzymaj", it: "Ferma" }, icon: "■", run: stopWatching },
-  add: { label: { en: "Add", "pt-BR": "Adicionar", de: "Hinzufügen", es: "Añadir", pl: "Dodaj", it: "Aggiungi" }, icon: "＋", run: addSymbol },
+  watch: { label: msg("Watch live"), icon: "▶", run: watchLive },
+  stop: { label: msg("Stop"), icon: "■", run: stopWatching },
+  add: { label: msg("Add"), icon: "＋", run: addSymbol },
   demo: {
-    label: { en: "Demo", "pt-BR": "Demo", de: "Demo", es: "Demo", pl: "Demo", it: "Demo" },
+    label: msg("Demo"),
     icon: "✨",
     run: async (ctx: Ctx) => {
       const demos = await ctx.query("point", { filter: (r) => r.demo === true, limit: 1 });
       if (!demos.length) return playDemo(ctx);
       const pick = await ctx.ui.menu({
-        title: { en: "Demo", "pt-BR": "Demo", de: "Demo", es: "Demo", pl: "Demo", it: "Demo" },
+        title: ctx.t("Demo"),
         items: [
-          { id: "play", icon: "✨", label: { en: "Play the demo again", "pt-BR": "Ver a demo de novo", de: "Demo noch einmal", es: "Ver la demo otra vez", pl: "Odtwórz demo jeszcze raz", it: "Rivedi la demo" }, detail: { en: "A made-up market, played here. Nothing is sent.", "pt-BR": "Um mercado inventado, tocado aqui. Nada é enviado.", de: "Ein erfundener Markt, hier abgespielt. Nichts wird gesendet.", es: "Un mercado inventado, reproducido aquí. No se envía nada.", pl: "Wymyślony rynek odtwarzany tutaj. Nic nie jest wysyłane.", it: "Un mercato inventato, riprodotto qui. Non viene inviato nulla." } },
-          { id: "clear", icon: "🧹", destructive: true, label: { en: "Clear the demo", "pt-BR": "Limpar a demo", de: "Demo löschen", es: "Borrar la demo", pl: "Usuń demo", it: "Cancella la demo" } },
+          { id: "play", icon: "✨", label: ctx.t("Play the demo again"), detail: ctx.t("A made-up market, played here. Nothing is sent.") },
+          { id: "clear", icon: "🧹", destructive: true, label: ctx.t("Clear the demo") },
         ],
       });
       if (pick === "play") await playDemo(ctx);
@@ -65,23 +65,23 @@ const STATUS_VIEW = { type: "aggregate" as const, entity: "feed", rows: statusRo
  */
 function symbolLine(r: Resolved, ctx: Ctx): string {
   const updated = toDate(r.updated);
-  if (typeof r.price !== "number") return ctx.t({ en: "No price yet", "pt-BR": "Ainda sem preço", de: "Noch kein Kurs", es: "Aún sin precio", pl: "Brak ceny", it: "Ancora nessun prezzo" });
+  if (typeof r.price !== "number") return ctx.t("No price yet");
   const change = changeText(r.change as number | null, ctx);
-  const since = r.kind === "fx" ? ctx.t({ en: "since the day before", "pt-BR": "desde o dia anterior", de: "zum Vortag", es: "desde el día anterior", pl: "od poprzedniego dnia", it: "dal giorno prima" }) : ctx.t({ en: "in 24 h", "pt-BR": "em 24 h", de: "in 24 Std.", es: "en 24 h", pl: "w 24 godz.", it: "in 24 h" });
+  const since = r.kind === "fx" ? ctx.t("since the day before") : ctx.t("in 24 h");
   const stale = updated && Date.now() - updated.getTime() > 60_000;
   const when = updated ? (r.kind === "fx" ? `ECB ${ctx.format.date(updated, { day: "numeric", month: "short" })}` : stale ? agoText(updated, new Date(), ctx) : "") : "";
   return [change ? `${change} ${since}` : "", when].filter(Boolean).join(" · ");
 }
 
 const TREND = {
-  up: { en: "Up", "pt-BR": "Alta", de: "Steigt", es: "Sube", pl: "Wzrost", it: "Su" },
-  down: { en: "Down", "pt-BR": "Baixa", de: "Fällt", es: "Baja", pl: "Spadek", it: "Giù" },
-  flat: { en: "Flat", "pt-BR": "Estável", de: "Gleich", es: "Estable", pl: "Bez zmian", it: "Stabile" },
+  up: msg("Up"),
+  down: msg("Down"),
+  flat: msg("Flat"),
 };
 
 export default defineApp({
   id: "ticker",
-  name: { en: "Ticker", "pt-BR": "Cotações", de: "Kurse", es: "Cotizaciones", pl: "Notowania", it: "Quotazioni" },
+  name: "Ticker",
   icon: "📈",
   version: "1.0.0",
   schemaVersion: 1,
@@ -95,81 +95,81 @@ export default defineApp({
     symbol: {
       // The feed and the app's own actions (Add, Set an alert, Remove) write these; a form never does (docs/03 editableBy).
       editableBy: "app",
-      label: { en: "Symbol", "pt-BR": "Ativo", de: "Wert", es: "Valor", pl: "Symbol", it: "Simbolo" },
+      label: "Symbol",
       icon: "📈",
       displayField: "code",
       fields: {
-        code: { type: "text", required: true, label: { en: "Symbol", "pt-BR": "Código", de: "Kürzel", es: "Símbolo", pl: "Symbol", it: "Simbolo" } },
-        name: { type: "text", label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" } },
+        code: { type: "text", required: true, label: { text: "Symbol", context: "symbol code" } },
+        name: { type: "text", label: "Name" },
         kind: {
           type: "enum",
           options: ["crypto", "fx"],
-          labels: { crypto: { en: "Crypto · Coinbase", "pt-BR": "Cripto · Coinbase", de: "Krypto · Coinbase", es: "Cripto · Coinbase", pl: "Krypto · Coinbase", it: "Cripto · Coinbase" }, fx: { en: "Currency · ECB", "pt-BR": "Moeda · BCE", de: "Währung · EZB", es: "Divisa · BCE", pl: "Waluta · EBC", it: "Valuta · BCE" } },
-          label: { en: "Kind", "pt-BR": "Tipo", de: "Art", es: "Tipo", pl: "Rodzaj", it: "Tipo" },
+          labels: { crypto: "Crypto · Coinbase", fx: "Currency · ECB" },
+          label: "Kind",
         },
-        price: { type: "number", label: { en: "Price", "pt-BR": "Preço", de: "Kurs", es: "Precio", pl: "Cena", it: "Prezzo" } },
-        base: { type: "number", hidden: true, label: { en: "Compared with", "pt-BR": "Comparado com", de: "Verglichen mit", es: "Comparado con", pl: "W porównaniu z", it: "Confrontato con" } },
-        change: { type: "number", label: { en: "Change (%)", "pt-BR": "Variação (%)", de: "Änderung (%)", es: "Cambio (%)", pl: "Zmiana (%)", it: "Variazione (%)" } },
-        trend: { type: "enum", options: ["up", "down", "flat"], colors: { up: "green", down: "red", flat: "grey" }, labels: TREND, label: { en: "Today", "pt-BR": "Hoje", de: "Heute", es: "Hoy", pl: "Dziś", it: "Oggi" } },
-        spark: { type: "text", label: { en: "Last hour", "pt-BR": "Última hora", de: "Letzte Stunde", es: "Última hora", pl: "Ostatnia godzina", it: "Ultima ora" } },
-        updated: { type: "datetime", precision: "minute", label: { en: "Updated", "pt-BR": "Atualizado", de: "Aktualisiert", es: "Actualizado", pl: "Zaktualizowano", it: "Aggiornato" } },
-        above: { type: "number", min: 0, label: { en: "Alert above", "pt-BR": "Alerta acima de", de: "Alarm über", es: "Alerta por encima de", pl: "Alert powyżej", it: "Avviso sopra" } },
-        below: { type: "number", min: 0, label: { en: "Alert below", "pt-BR": "Alerta abaixo de", de: "Alarm unter", es: "Alerta por debajo de", pl: "Alert poniżej", it: "Avviso sotto" } },
-        demo: { type: "boolean", hidden: true, label: { en: "Demo", "pt-BR": "Demo", de: "Demo", es: "Demo", pl: "Demo", it: "Demo" } },
+        price: { type: "number", label: "Price" },
+        base: { type: "number", hidden: true, label: "Compared with" },
+        change: { type: "number", label: "Change (%)" },
+        trend: { type: "enum", options: ["up", "down", "flat"], colors: { up: "green", down: "red", flat: "grey" }, labels: TREND, label: "Today" },
+        spark: { type: "text", label: "Last hour" },
+        updated: { type: "datetime", precision: "minute", label: "Updated" },
+        above: { type: "number", min: 0, label: "Alert above" },
+        below: { type: "number", min: 0, label: "Alert below" },
+        demo: { type: "boolean", hidden: true, label: "Demo" },
       },
       computed: {
         shown: {
           value: (r, ctx) => (typeof r.price === "number" ? priceText(r.price, String(r.code), ctx) : "–"),
-          label: { en: "Now", "pt-BR": "Agora", de: "Jetzt", es: "Ahora", pl: "Teraz", it: "Ora" },
+          label: "Now",
         },
-        line: { value: (r, ctx) => symbolLine(r, ctx), label: { en: "Change", "pt-BR": "Variação", de: "Änderung", es: "Cambio", pl: "Zmiana", it: "Variazione" } },
+        line: { value: (r, ctx) => symbolLine(r, ctx), label: "Change" },
       },
       actions: {
-        alert: { label: { en: "Set an alert", "pt-BR": "Criar alerta", de: "Alarm setzen", es: "Crear alerta", pl: "Ustaw alert", it: "Imposta avviso" }, description: "Set a price above or below which to be told, once.", run: setAlert },
-        remove: { label: { en: "Remove", "pt-BR": "Remover", de: "Entfernen", es: "Quitar", pl: "Usuń", it: "Rimuovi" }, description: "Take the symbol off the watchlist.", run: removeSymbol },
+        alert: { label: "Set an alert", description: "Set a price above or below which to be told, once.", run: setAlert },
+        remove: { label: "Remove", description: "Take the symbol off the watchlist.", run: removeSymbol },
       },
     },
     point: {
       editableBy: "app",
-      label: { en: "Price point", "pt-BR": "Ponto de preço", de: "Kurspunkt", es: "Punto de precio", pl: "Punkt cenowy", it: "Punto di prezzo" },
+      label: "Price point",
       displayField: "code",
       fields: {
-        code: { type: "text", label: { en: "Symbol", "pt-BR": "Código", de: "Kürzel", es: "Símbolo", pl: "Symbol", it: "Simbolo" } },
-        at: { type: "datetime", precision: "minute", label: { en: "At", "pt-BR": "Em", de: "Um", es: "A las", pl: "O", it: "Alle" } },
-        price: { type: "number", label: { en: "Price", "pt-BR": "Preço", de: "Kurs", es: "Precio", pl: "Cena", it: "Prezzo" } },
-        demo: { type: "boolean", hidden: true, label: { en: "Demo", "pt-BR": "Demo", de: "Demo", es: "Demo", pl: "Demo", it: "Demo" } },
+        code: { type: "text", label: { text: "Symbol", context: "symbol code" } },
+        at: { type: "datetime", precision: "minute", label: "At" },
+        price: { type: "number", label: "Price" },
+        demo: { type: "boolean", hidden: true, label: "Demo" },
       },
     },
     alert: {
       editableBy: "app",
-      label: { en: "Alert", "pt-BR": "Alerta", de: "Alarm", es: "Alerta", pl: "Alert", it: "Avviso" },
+      label: "Alert",
       icon: "🔔",
       displayField: "code",
       fields: {
-        code: { type: "text", label: { en: "Symbol", "pt-BR": "Código", de: "Kürzel", es: "Símbolo", pl: "Symbol", it: "Simbolo" } },
-        name: { type: "text", label: { en: "Name", "pt-BR": "Nome", de: "Name", es: "Nombre", pl: "Nazwa", it: "Nome" } },
-        direction: { type: "enum", options: ["above", "below"], colors: { above: "green", below: "red" }, labels: { above: { en: "Went above", "pt-BR": "Passou de", de: "Darüber", es: "Superó", pl: "Powyżej", it: "Sopra" }, below: { en: "Dropped below", "pt-BR": "Caiu abaixo", de: "Darunter", es: "Bajó de", pl: "Poniżej", it: "Sotto" } }, label: { en: "What happened", "pt-BR": "O que aconteceu", de: "Was passiert ist", es: "Qué pasó", pl: "Co się stało", it: "Cosa è successo" } },
-        level: { type: "number", label: { en: "Line", "pt-BR": "Limite", de: "Grenze", es: "Límite", pl: "Próg", it: "Soglia" } },
-        price: { type: "number", label: { en: "Price then", "pt-BR": "Preço na hora", de: "Kurs da", es: "Precio entonces", pl: "Cena wtedy", it: "Prezzo allora" } },
-        at: { type: "datetime", precision: "minute", label: { en: "When", "pt-BR": "Quando", de: "Wann", es: "Cuándo", pl: "Kiedy", it: "Quando" } },
-        demo: { type: "boolean", hidden: true, label: { en: "Demo", "pt-BR": "Demo", de: "Demo", es: "Demo", pl: "Demo", it: "Demo" } },
+        code: { type: "text", label: { text: "Symbol", context: "symbol code" } },
+        name: { type: "text", label: "Name" },
+        direction: { type: "enum", options: ["above", "below"], colors: { above: "green", below: "red" }, labels: { above: "Went above", below: "Dropped below" }, label: "What happened" },
+        level: { type: "number", label: "Line" },
+        price: { type: "number", label: "Price then" },
+        at: { type: "datetime", precision: "minute", label: "When" },
+        demo: { type: "boolean", hidden: true, label: "Demo" },
       },
     },
     feed: {
       editableBy: "app",
-      label: { en: "Feed", "pt-BR": "Feed", de: "Feed", es: "Feed", pl: "Kanał", it: "Feed" },
+      label: "Feed",
       displayField: "state",
       fields: {
-        state: { type: "text", label: { en: "State", "pt-BR": "Estado", de: "Zustand", es: "Estado", pl: "Stan", it: "Stato" } },
-        since: { type: "datetime", precision: "minute", label: { en: "Since", "pt-BR": "Desde", de: "Seit", es: "Desde", pl: "Od", it: "Da" } },
-        fxOk: { type: "boolean", label: { en: "Currencies fetched", "pt-BR": "Moedas obtidas", de: "Währungen geladen", es: "Divisas obtenidas", pl: "Pobrano waluty", it: "Valute scaricate" } },
+        state: { type: "text", label: "State" },
+        since: { type: "datetime", precision: "minute", label: "Since" },
+        fxOk: { type: "boolean", label: "Currencies fetched" },
       },
     },
   },
   pages: [
     {
       id: "watchlist",
-      title: { en: "Watchlist", "pt-BR": "Minha lista", de: "Beobachtungsliste", es: "Mi lista", pl: "Obserwowane", it: "Lista" },
+      title: "Watchlist",
       icon: "📈",
       actions: [ACTIONS.watch, ACTIONS.stop, ACTIONS.add, ACTIONS.demo],
       layout: {
@@ -187,14 +187,7 @@ export default defineApp({
                 badges: ["trend"],
               },
               group: "kind",
-              emptyText: {
-                en: "Nothing on the watchlist. “Watch live” starts with Bitcoin, Ether and the euro in dollars; “Add” picks others.",
-                "pt-BR": "Nada na lista. “Ver ao vivo” começa com Bitcoin, Ether e o euro em dólares; “Adicionar” escolhe outros.",
-                de: "Nichts auf der Liste. „Live verfolgen“ beginnt mit Bitcoin, Ether und dem Euro in Dollar; „Hinzufügen“ wählt andere.",
-                es: "Nada en la lista. «Ver en vivo» empieza con Bitcoin, Ether y el euro en dólares; «Añadir» elige otros.",
-                pl: "Lista jest pusta. „Oglądaj na żywo” zaczyna od bitcoina, etheru i euro w dolarach; „Dodaj” wybiera inne.",
-                it: "Niente in lista. “Segui in diretta” parte con Bitcoin, Ether e l'euro in dollari; “Aggiungi” ne sceglie altri.",
-              },
+              emptyText: "Nothing on the watchlist. “Watch live” starts with Bitcoin, Ether and the euro in dollars; “Add” picks others.",
               onOpen: { page: "symbol", param: { symbolId: "id", code: "code" } },
             },
           },
@@ -203,7 +196,7 @@ export default defineApp({
     },
     {
       id: "alerts",
-      title: { en: "Alerts", "pt-BR": "Alertas", de: "Alarme", es: "Alertas", pl: "Alerty", it: "Avvisi" },
+      title: "Alerts",
       icon: "🔔",
       layout: {
         type: "stack",
@@ -212,7 +205,7 @@ export default defineApp({
             view: {
               type: "aggregate",
               entity: "symbol",
-              title: { en: "Waiting", "pt-BR": "Aguardando", de: "Wartet", es: "En espera", pl: "Oczekujące", it: "In attesa" },
+              title: "Waiting",
               rows: (rows, ctx) =>
                 rows
                   .filter((r) => typeof r.above === "number" || typeof r.below === "number")
@@ -221,24 +214,17 @@ export default defineApp({
                     label: String(r.code),
                     value: typeof r.price === "number" ? priceText(r.price, String(r.code), ctx) : undefined,
                     detail: [
-                      typeof r.above === "number" ? ctx.t({ en: "above {p}", "pt-BR": "acima de {p}", de: "über {p}", es: "por encima de {p}", pl: "powyżej {p}", it: "sopra {p}" }, { p: priceText(r.above, String(r.code), ctx) }) : "",
-                      typeof r.below === "number" ? ctx.t({ en: "below {p}", "pt-BR": "abaixo de {p}", de: "unter {p}", es: "por debajo de {p}", pl: "poniżej {p}", it: "sotto {p}" }, { p: priceText(r.below, String(r.code), ctx) }) : "",
+                      typeof r.above === "number" ? ctx.t("above {p}", { p: priceText(r.above, String(r.code), ctx) }) : "",
+                      typeof r.below === "number" ? ctx.t("below {p}", { p: priceText(r.below, String(r.code), ctx) }) : "",
                     ]
                       .filter(Boolean)
                       .join(" · "),
                   })),
-              emptyText: {
-                en: "No alerts waiting. Open a symbol on the watchlist and tap “Set an alert”.",
-                "pt-BR": "Nenhum alerta aguardando. Abra um ativo da lista e toque em “Criar alerta”.",
-                de: "Keine Alarme. Öffne einen Wert auf der Liste und tippe auf „Alarm setzen“.",
-                es: "No hay alertas en espera. Abre un valor de la lista y toca «Crear alerta».",
-                pl: "Brak oczekujących alertów. Otwórz symbol z listy i stuknij „Ustaw alert”.",
-                it: "Nessun avviso in attesa. Apri un simbolo della lista e tocca “Imposta avviso”.",
-              },
+              emptyText: "No alerts waiting. Open a symbol on the watchlist and tap “Set an alert”.",
             },
           },
           {
-            title: { en: "Rang", "pt-BR": "Disparados", de: "Ausgelöst", es: "Saltaron", pl: "Zadziałały", it: "Scattati" },
+            title: "Rang",
             view: {
               type: "list",
               entity: "alert",
@@ -247,11 +233,11 @@ export default defineApp({
                 primary: (r, ctx) => `${String(r.code)} · ${priceText(Number(r.level), String(r.code), ctx)}`,
                 secondary: (r, ctx) => {
                   const t = toDate(r.at);
-                  return [t ? ctx.format.date(t, { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "", ctx.t({ en: "at {p}", "pt-BR": "a {p}", de: "bei {p}", es: "a {p}", pl: "przy {p}", it: "a {p}" }, { p: priceText(Number(r.price), String(r.code), ctx) })].filter(Boolean).join(" · ");
+                  return [t ? ctx.format.date(t, { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "", ctx.t("at {p}", { p: priceText(Number(r.price), String(r.code), ctx) })].filter(Boolean).join(" · ");
                 },
                 badges: ["direction"],
               },
-              emptyText: { en: "Alerts that rang show here.", "pt-BR": "Os alertas disparados aparecem aqui.", de: "Ausgelöste Alarme stehen hier.", es: "Aquí aparecen las alertas que saltaron.", pl: "Tu pojawiają się alerty, które zadziałały.", it: "Qui compaiono gli avvisi scattati." },
+              emptyText: "Alerts that rang show here.",
             },
           },
         ],
@@ -259,7 +245,7 @@ export default defineApp({
     },
     {
       id: "symbol",
-      title: { en: "Symbol", "pt-BR": "Ativo", de: "Wert", es: "Valor", pl: "Symbol", it: "Simbolo" },
+      title: "Symbol",
       hidden: true,
       layout: {
         type: "stack",
@@ -270,7 +256,7 @@ export default defineApp({
               entity: "symbol",
               param: "symbolId",
               actions: ["alert", "remove"],
-              sections: [{ fields: ["shown", "line", "name", "kind"] }, { title: { en: "Alerts", "pt-BR": "Alertas", de: "Alarme", es: "Alertas", pl: "Alerty", it: "Avvisi" }, fields: ["above", "below"] }],
+              sections: [{ fields: ["shown", "line", "name", "kind"] }, { title: "Alerts", fields: ["above", "below"] }],
             },
           },
           {
@@ -278,15 +264,8 @@ export default defineApp({
               type: "chart",
               entity: "point",
               filter: (r, ctx) => r.code === ctx.params.code,
-              title: { en: "Above the low", "pt-BR": "Acima da mínima", de: "Über dem Tief", es: "Sobre el mínimo", pl: "Ponad minimum", it: "Sopra il minimo" },
-              subtitle: {
-                en: "How far each minute's price stood above the lowest shown — a working day a bar for a currency",
-                "pt-BR": "Quanto o preço de cada minuto ficou acima do menor mostrado — um dia útil por barra numa moeda",
-                de: "Wie weit der Kurs jeder Minute über dem tiefsten gezeigten lag — bei einer Währung ein Werktag pro Balken",
-                es: "Cuánto quedó el precio de cada minuto por encima del más bajo mostrado; en una divisa, un día hábil por barra",
-                pl: "O ile cena z każdej minuty była wyższa od najniższej pokazanej — przy walucie jeden dzień roboczy na słupek",
-                it: "Quanto il prezzo di ogni minuto era sopra il più basso mostrato — per una valuta un giorno lavorativo a barra",
-              },
+              title: "Above the low",
+              subtitle: "How far each minute's price stood above the lowest shown — a working day a bar for a currency",
               series: (rows, ctx) => {
                 const sorted = [...rows].sort((a, b) => (toDate(a.at)?.getTime() ?? 0) - (toDate(b.at)?.getTime() ?? 0)).slice(-40);
                 // Bars from the series' own low — a 0.3 % move is visible, not forty equal bars — and
@@ -302,7 +281,7 @@ export default defineApp({
                   };
                 });
               },
-              emptyText: { en: "No prices yet: “Watch live” or “Demo”.", "pt-BR": "Ainda sem preços: “Ver ao vivo” ou “Demo”.", de: "Noch keine Kurse: „Live verfolgen“ oder „Demo“.", es: "Aún sin precios: «Ver en vivo» o «Demo».", pl: "Brak cen: „Oglądaj na żywo” albo „Demo”.", it: "Ancora nessun prezzo: “Segui in diretta” o “Demo”." },
+              emptyText: "No prices yet: “Watch live” or “Demo”.",
             },
           },
         ],

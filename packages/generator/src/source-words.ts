@@ -31,6 +31,16 @@ function load(): Promise<Tools> {
   return tools;
 }
 
+/** A module of the app's own (`./words.ts`), parsed: its `ctx.t` and `msg` words are the app's too. */
+export async function parseModuleSource(source: string): Promise<{ source: string; ast: unknown } | null> {
+  const t = await load();
+  try {
+    return { source, ast: t.parse(source, { sourceType: "module", plugins: ["typescript", "jsx"] }) };
+  } catch {
+    return null;
+  }
+}
+
 /** Where a function sat in the source: its words are not data, they are in its body. */
 export const FN = "__potyro_fn__";
 /** Where code sat (a const, a helper call, a template with holes): words behind it cannot be spliced. */

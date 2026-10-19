@@ -1,3 +1,4 @@
+import { msg } from "potyro";
 // The live side of Word Watch: Bluesky's firehose in, a few words looked for, and only what matters
 // written down — every match counted per word and minute, the newest few posts per word kept, at
 // most every two seconds, and the store kept small.
@@ -205,7 +206,7 @@ function inBackground(ctx: Ctx, work: () => Promise<void>): void {
 /** For tests: when the work started so far is done. */
 export const idle = (): Promise<void> => busy;
 
-const NEED_WORDS = { en: "Add a word to watch first, under Words.", "pt-BR": "Adicione primeiro uma palavra para acompanhar, em Palavras.", de: "Leg zuerst unter Wörter ein Wort zum Beobachten an.", es: "Primero añade una palabra que seguir, en Palabras.", pl: "Najpierw dodaj słowo do obserwowania w zakładce Słowa.", it: "Prima aggiungi una parola da seguire, in Parole." };
+const NEED_WORDS = msg("Add a word to watch first, under Words.");
 
 export async function watchLive(ctx: Ctx): Promise<void> {
   stopDemo();
@@ -217,7 +218,7 @@ export async function watchLive(ctx: Ctx): Promise<void> {
     return;
   }
   if (live.state === "live" || live.state === "connecting") {
-    ctx.ui.toast(ctx.t({ en: "Already live.", "pt-BR": "Já está ao vivo.", de: "Läuft schon live.", es: "Ya está en vivo.", pl: "Już na żywo.", it: "Già in diretta." }));
+    ctx.ui.toast(ctx.t("Already live."));
     return;
   }
   sinceStart = 0;
@@ -315,7 +316,7 @@ async function clearing(ctx: Ctx): Promise<void> {
   await setState(ctx, live.state);
   ctx.ui.toast(
     ctx.t(
-      { en: "{n, plural, one {# sample post removed.} other {# sample posts removed.}}", "pt-BR": "{n, plural, one {# post de exemplo removido.} other {# posts de exemplo removidos.}}", de: "{n, plural, one {# Beispielbeitrag entfernt.} other {# Beispielbeiträge entfernt.}}", es: "{n, plural, one {# publicación de ejemplo borrada.} other {# publicaciones de ejemplo borradas.}}", pl: "{n, plural, one {Usunięto # przykładowy wpis.} few {Usunięto # przykładowe wpisy.} other {Usunięto # przykładowych wpisów.}}", it: "{n, plural, one {# post di esempio cancellato.} other {# post di esempio cancellati.}}" },
+      "{n, plural, one {# sample post removed.} other {# sample posts removed.}}",
       { n },
     ),
   );
@@ -323,13 +324,13 @@ async function clearing(ctx: Ctx): Promise<void> {
 
 /** Add a word to watch — at once, also while live (the next write reads the words again). */
 export async function addWord(ctx: Ctx): Promise<void> {
-  const typed = await ctx.ui.prompt(ctx.t({ en: "A word or a phrase to watch", "pt-BR": "Uma palavra ou frase para acompanhar", de: "Ein Wort oder Ausdruck zum Beobachten", es: "Una palabra o frase que seguir", pl: "Słowo lub fraza do obserwowania", it: "Una parola o frase da seguire" }));
+  const typed = await ctx.ui.prompt(ctx.t("A word or a phrase to watch"));
   const word = cleanWord(typed ?? "");
   if (!word) return;
   const have = await ctx.query("word", { filter: (r) => String(r.word ?? "").toLocaleLowerCase() === word.toLocaleLowerCase() });
   if (have.length) {
     if (have[0]!.on === false) await ctx.patch("word", String(have[0]!.id), { on: true });
-    ctx.ui.toast(ctx.t({ en: "Already watching “{word}”.", "pt-BR": "Já acompanhando “{word}”.", de: "„{word}“ wird schon beobachtet.", es: "Ya sigues «{word}».", pl: "„{word}” jest już obserwowane.", it: "Stai già seguendo “{word}”." }, { word }));
+    ctx.ui.toast(ctx.t("Already watching “{word}”.", { word }));
     return;
   }
   await ctx.create("word", { word, on: true, total: 0 });
@@ -338,8 +339,8 @@ export async function addWord(ctx: Ctx): Promise<void> {
 
 /** Stop watching a word: it goes, with its counts; posts already kept stay until they age out. */
 export async function removeWord(r: Resolved, ctx: Ctx): Promise<void> {
-  const ok = await ctx.ui.confirm(ctx.t({ en: "Stop watching “{word}”?", "pt-BR": "Parar de acompanhar “{word}”?", de: "„{word}“ nicht mehr beobachten?", es: "¿Dejar de seguir «{word}»?", pl: "Przestać obserwować „{word}”?", it: "Smettere di seguire “{word}”?" }, { word: String(r.word ?? "") }), {
-    ok: ctx.t({ en: "Stop watching", "pt-BR": "Parar", de: "Nicht mehr beobachten", es: "Dejar de seguir", pl: "Przestań obserwować", it: "Smetti di seguire" }),
+  const ok = await ctx.ui.confirm(ctx.t("Stop watching “{word}”?", { word: String(r.word ?? "") }), {
+    ok: ctx.t("Stop watching"),
     destructive: true,
   });
   if (!ok) return;

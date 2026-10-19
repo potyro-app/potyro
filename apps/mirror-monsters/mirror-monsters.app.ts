@@ -11,7 +11,7 @@
 // monster happily sits on a hand too. Drawing needs a page, so it runs as your own app.
 //
 // In six languages (#303); every language but English is a model's draft (#297).
-import { defineApp } from "potyro";
+import { defineApp, msg } from "potyro";
 import type { Ctx, Face, FileRef, LiveCamera, LiveCameraStop, LiveFrameInfo, Resolved, ViewProps, Words } from "potyro";
 import {
   MODES,
@@ -48,169 +48,36 @@ import { STYLES } from "./styles.js";
 // ---- words ----
 
 const MODE_WORDS: Record<Mode, Words> = {
-  monster: { en: "Monster", "pt-BR": "Monstro", de: "Monster", es: "Monstruo", pl: "Potwór", it: "Mostro" },
-  twin: { en: "Twin", "pt-BR": "Gêmeo", de: "Zwilling", es: "Gemelo", pl: "Bliźniak", it: "Gemello" },
-  kaleido: { en: "Kaleido", "pt-BR": "Caleido", de: "Kaleido", es: "Caleido", pl: "Kalejdo", it: "Caleido" },
-  trails: { en: "Trails", "pt-BR": "Rastros", de: "Spuren", es: "Estelas", pl: "Smugi", it: "Scie" },
-  pixel: { en: "Pixel", "pt-BR": "Pixel", de: "Pixel", es: "Píxel", pl: "Piksel", it: "Pixel" },
+  monster: msg("Monster"),
+  twin: msg("Twin"),
+  kaleido: msg("Kaleido"),
+  trails: msg("Trails"),
+  pixel: msg("Pixel"),
 };
 const MODE_FACE: Record<Mode, string> = { monster: "👹", twin: "🪞", kaleido: "🔮", trails: "✨", pixel: "👾" };
 
 const W = {
-  hello: {
-    en: "Meet your monster",
-    "pt-BR": "Conheça o seu monstro",
-    de: "Triff dein Monster",
-    es: "Conoce a tu monstruo",
-    pl: "Poznaj swojego potwora",
-    it: "Incontra il tuo mostro",
-  },
-  helloBody: {
-    en: "Turn on the camera and a monster moves into the mirror with you. Wiggle and its eyes wobble. Tap the picture for a new colour.",
-    "pt-BR": "Ligue a câmera e um monstro se muda para o espelho com você. Mexa-se e os olhos dele chacoalham. Toque na imagem para trocar a cor.",
-    de: "Schalt die Kamera ein, und ein Monster zieht mit dir in den Spiegel. Wackel, und seine Augen wackeln mit. Tipp aufs Bild für eine neue Farbe.",
-    es: "Enciende la cámara y un monstruo se muda al espejo contigo. Muévete y sus ojos bailan. Toca la imagen para cambiar de color.",
-    pl: "Włącz kamerę, a do lustra wprowadzi się z tobą potwór. Porusz się, a jego oczy zaczną latać. Stuknij obraz, by zmienić kolor.",
-    it: "Accendi la fotocamera e un mostro si trasferisce nello specchio con te. Muoviti e i suoi occhi ballano. Tocca l'immagine per un nuovo colore.",
-  },
-  start: {
-    en: "Turn on the camera",
-    "pt-BR": "Ligar a câmera",
-    de: "Kamera einschalten",
-    es: "Encender la cámara",
-    pl: "Włącz kamerę",
-    it: "Accendi la fotocamera",
-  },
-  private: {
-    en: "🔒 What the camera sees stays on this device. Only the snaps you keep are saved, in this app.",
-    "pt-BR": "🔒 O que a câmera vê fica neste aparelho. Só as fotos que você guardar são salvas, neste app.",
-    de: "🔒 Was die Kamera sieht, bleibt auf diesem Gerät. Gespeichert werden nur die Schnappschüsse, die du behältst – in dieser App.",
-    es: "🔒 Lo que ve la cámara se queda en este dispositivo. Solo se guardan las fotos que conserves, en esta app.",
-    pl: "🔒 To, co widzi kamera, zostaje na tym urządzeniu. Zapisują się tylko zachowane zdjęcia, w tej aplikacji.",
-    it: "🔒 Quello che vede la fotocamera resta su questo dispositivo. Si salvano solo gli scatti che tieni, in questa app.",
-  },
-  paused: {
-    en: "The camera is off",
-    "pt-BR": "A câmera está desligada",
-    de: "Die Kamera ist aus",
-    es: "La cámara está apagada",
-    pl: "Kamera jest wyłączona",
-    it: "La fotocamera è spenta",
-  },
-  pausedBody: {
-    en: "It turns off whenever you look away from the app, so nothing watches you by accident.",
-    "pt-BR": "Ela desliga sempre que você sai do app, para que nada fique te olhando sem querer.",
-    de: "Sie schaltet sich aus, sobald du die App verlässt – damit dich nichts aus Versehen beobachtet.",
-    es: "Se apaga cada vez que sales de la app, para que nada te mire sin querer.",
-    pl: "Wyłącza się, gdy tylko opuścisz aplikację, żeby nic cię przypadkiem nie podglądało.",
-    it: "Si spegne ogni volta che esci dall'app, così niente ti guarda per sbaglio.",
-  },
-  resume: {
-    en: "Turn it back on",
-    "pt-BR": "Ligar de novo",
-    de: "Wieder einschalten",
-    es: "Volver a encenderla",
-    pl: "Włącz ponownie",
-    it: "Riaccendila",
-  },
-  denied: {
-    en: "The camera was not allowed. You can allow it in your browser's or phone's settings for this site.",
-    "pt-BR": "A câmera não foi permitida. Você pode permiti-la nas configurações do navegador ou do celular para este site.",
-    de: "Die Kamera wurde nicht erlaubt. Du kannst sie in den Einstellungen deines Browsers oder Telefons für diese Seite erlauben.",
-    es: "No se permitió la cámara. Puedes permitirla en los ajustes del navegador o del teléfono para este sitio.",
-    pl: "Nie zezwolono na kamerę. Możesz na nią zezwolić w ustawieniach przeglądarki lub telefonu dla tej strony.",
-    it: "La fotocamera non è stata consentita. Puoi consentirla nelle impostazioni del browser o del telefono per questo sito.",
-  },
-  missing: {
-    en: "This device has no camera to look through.",
-    "pt-BR": "Este aparelho não tem uma câmera para usar.",
-    de: "Dieses Gerät hat keine Kamera.",
-    es: "Este dispositivo no tiene cámara.",
-    pl: "To urządzenie nie ma kamery.",
-    it: "Questo dispositivo non ha una fotocamera.",
-  },
-  busy: {
-    en: "Another app is using the camera. Close it and try again.",
-    "pt-BR": "Outro app está usando a câmera. Feche-o e tente de novo.",
-    de: "Eine andere App benutzt die Kamera. Schließ sie und versuch es noch einmal.",
-    es: "Otra app está usando la cámara. Ciérrala y vuelve a intentarlo.",
-    pl: "Inna aplikacja używa kamery. Zamknij ją i spróbuj ponownie.",
-    it: "Un'altra app sta usando la fotocamera. Chiudila e riprova.",
-  },
-  failed: {
-    en: "The camera would not start. Try again.",
-    "pt-BR": "A câmera não quis ligar. Tente de novo.",
-    de: "Die Kamera ließ sich nicht starten. Versuch es noch einmal.",
-    es: "La cámara no arrancó. Vuelve a intentarlo.",
-    pl: "Nie udało się uruchomić kamery. Spróbuj ponownie.",
-    it: "La fotocamera non è partita. Riprova.",
-  },
-  sealed: {
-    en: "The live camera isn’t here. It needs a Potyro that has it, and Mirror Monsters running as yours: add it with “I wrote this. Run it as mine.” ticked, or tap “Let it run as yours” in its menu.",
-    "pt-BR": "A câmera ao vivo não está disponível. Ela precisa de um Potyro que a tenha e do Monstros no Espelho rodando como seu: adicione-o marcando “Eu escrevi isto. Rodar como meu.” ou toque em “Deixar rodar como seu” no menu dele.",
-    de: "Die Live-Kamera ist hier nicht da. Sie braucht ein Potyro, das sie hat, und Spiegelmonster als deine eigene App: Füge sie mit „Das habe ich geschrieben. Als meine ausführen.“ hinzu oder tippe in ihrem Menü auf „Als deine eigene laufen lassen“.",
-    es: "La cámara en vivo no está disponible. Necesita un Potyro que la tenga y Monstruos del Espejo ejecutándose como tuya: añádela marcando «Lo escribí yo. Ejecutar como mía» o toca «Dejar que se ejecute como tuya» en su menú.",
-    pl: "Kamery na żywo tu nie ma. Potrzebny jest Potyro, który ją ma, i Potwory z Lustra uruchamiane jako twoje: dodaj je z zaznaczonym „Napisałem to. Uruchom jako moją” albo dotknij „Pozwól działać jako twoja” w ich menu.",
-    it: "La fotocamera dal vivo qui non c’è. Serve un Potyro che ce l’abbia e Mostri allo Specchio eseguita come tua: aggiungila spuntando “L’ho scritta io. Eseguila come mia.” o tocca “Lasciala eseguire come tua” nel suo menu.",
-  },
-  snap: { en: "Snap", "pt-BR": "Fotografar", de: "Knipsen", es: "Hacer foto", pl: "Pstryknij", it: "Scatta" },
-  flip: {
-    en: "Switch camera",
-    "pt-BR": "Trocar de câmera",
-    de: "Kamera wechseln",
-    es: "Cambiar de cámara",
-    pl: "Przełącz kamerę",
-    it: "Cambia fotocamera",
-  },
-  toGallery: {
-    en: "Open the Gallery",
-    "pt-BR": "Abrir a Galeria",
-    de: "Galerie öffnen",
-    es: "Abrir la Galería",
-    pl: "Otwórz galerię",
-    it: "Apri la Galleria",
-  },
-  monsters: { en: "Monsters", "pt-BR": "Monstros", de: "Monster", es: "Monstruos", pl: "Potwory", it: "Mostri" },
-  kept: {
-    en: "“{title}” is in your Gallery",
-    "pt-BR": "“{title}” está na sua Galeria",
-    de: "„{title}“ ist in deiner Galerie",
-    es: "«{title}» está en tu Galería",
-    pl: "„{title}” jest w galerii",
-    it: "“{title}” è nella tua Galleria",
-  },
-  notKept: {
-    en: "The snap could not be saved.",
-    "pt-BR": "Não foi possível salvar a foto.",
-    de: "Der Schnappschuss konnte nicht gespeichert werden.",
-    es: "No se pudo guardar la foto.",
-    pl: "Nie udało się zapisać zdjęcia.",
-    it: "Non è stato possibile salvare lo scatto.",
-  },
-  canvas: {
-    en: "The camera as a mirror, with a monster in it. Tap for a new colour.",
-    "pt-BR": "A câmera como espelho, com um monstro dentro. Toque para trocar a cor.",
-    de: "Die Kamera als Spiegel, mit einem Monster darin. Tippen für eine neue Farbe.",
-    es: "La cámara como espejo, con un monstruo dentro. Toca para cambiar de color.",
-    pl: "Kamera jako lustro, z potworem w środku. Stuknij, by zmienić kolor.",
-    it: "La fotocamera come specchio, con un mostro dentro. Tocca per un nuovo colore.",
-  },
-  noFaces: {
-    en: "The monster can’t see faces on this device, so it follows the colours of your skin instead.",
-    "pt-BR": "O monstro não consegue ver rostos neste aparelho, então segue as cores da sua pele.",
-    de: "Das Monster kann auf diesem Gerät keine Gesichter sehen und folgt stattdessen den Farben deiner Haut.",
-    es: "El monstruo no puede ver caras en este dispositivo, así que sigue los colores de tu piel.",
-    pl: "Potwór nie widzi twarzy na tym urządzeniu, więc podąża za kolorem twojej skóry.",
-    it: "Il mostro non riesce a vedere i volti su questo dispositivo, quindi segue i colori della tua pelle.",
-  },
-  canvasKaleido: {
-    en: "The camera as a kaleidoscope. Tap for more mirrors.",
-    "pt-BR": "A câmera como caleidoscópio. Toque para mais espelhos.",
-    de: "Die Kamera als Kaleidoskop. Tippen für mehr Spiegel.",
-    es: "La cámara como caleidoscopio. Toca para más espejos.",
-    pl: "Kamera jako kalejdoskop. Stuknij, by dodać lustra.",
-    it: "La fotocamera come caleidoscopio. Tocca per più specchi.",
-  },
+  hello: msg("Meet your monster"),
+  helloBody: msg("Turn on the camera and a monster moves into the mirror with you. Wiggle and its eyes wobble. Tap the picture for a new colour."),
+  start: msg("Turn on the camera"),
+  private: msg("🔒 What the camera sees stays on this device. Only the snaps you keep are saved, in this app."),
+  paused: msg("The camera is off"),
+  pausedBody: msg("It turns off whenever you look away from the app, so nothing watches you by accident."),
+  resume: msg("Turn it back on"),
+  denied: msg("The camera was not allowed. You can allow it in your browser's or phone's settings for this site."),
+  missing: msg("This device has no camera to look through."),
+  busy: msg("Another app is using the camera. Close it and try again."),
+  failed: msg("The camera would not start. Try again."),
+  sealed: msg("The live camera isn’t here. It needs a Potyro that has it, and Mirror Monsters running as yours: add it with “I wrote this. Run it as mine.” ticked, or tap “Let it run as yours” in its menu."),
+  snap: msg("Snap"),
+  flip: msg("Switch camera"),
+  toGallery: msg("Open the Gallery"),
+  monsters: msg("Monsters"),
+  kept: msg("“{title}” is in your Gallery"),
+  notKept: msg("The snap could not be saved."),
+  canvas: msg("The camera as a mirror, with a monster in it. Tap for a new colour."),
+  noFaces: msg("The monster can’t see faces on this device, so it follows the colours of your skin instead."),
+  canvasKaleido: msg("The camera as a kaleidoscope. Tap for more mirrors."),
 } satisfies Record<string, Words>;
 
 // ---- small helpers ----
@@ -871,11 +738,11 @@ function mountGallery(el: HTMLElement, props: ViewProps): () => void {
       opener?.focus();
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
-    const deleteWord = ctx.t({ en: "Delete", "pt-BR": "Excluir", de: "Löschen", es: "Eliminar", pl: "Usuń", it: "Elimina" });
-    const share = h("button", { class: "mm-plain mm-share", type: "button" }, `↗ ${ctx.t({ en: "Share", "pt-BR": "Compartilhar", de: "Teilen", es: "Compartir", pl: "Udostępnij", it: "Condividi" })}`);
-    const save = h("button", { class: "mm-plain", type: "button" }, ctx.t({ en: "Save a copy", "pt-BR": "Salvar uma cópia", de: "Kopie speichern", es: "Guardar una copia", pl: "Zapisz kopię", it: "Salva una copia" }));
+    const deleteWord = ctx.t("Delete");
+    const share = h("button", { class: "mm-plain mm-share", type: "button" }, `↗ ${ctx.t("Share")}`);
+    const save = h("button", { class: "mm-plain", type: "button" }, ctx.t("Save a copy"));
     const del = h("button", { class: "mm-plain mm-danger", type: "button" }, deleteWord);
-    const shut = h("button", { class: "mm-plain", type: "button" }, ctx.t({ en: "Close", "pt-BR": "Fechar", de: "Schließen", es: "Cerrar", pl: "Zamknij", it: "Chiudi" }));
+    const shut = h("button", { class: "mm-plain", type: "button" }, ctx.t("Close"));
     const box = h(
       "div",
       { class: "mm-lightbox", role: "dialog", "aria-modal": "true", "aria-label": String(r.title) },
@@ -888,19 +755,19 @@ function mountGallery(el: HTMLElement, props: ViewProps): () => void {
       void ctx.ui
         .share({
           title: String(r.title),
-          text: ctx.t({ en: "My monster from Mirror Monsters 👹", "pt-BR": "Meu monstro do Monstros no Espelho 👹", de: "Mein Monster aus Spiegelmonster 👹", es: "Mi monstruo de Monstruos del Espejo 👹", pl: "Mój potwór z Potworów z Lustra 👹", it: "Il mio mostro da Mostri allo Specchio 👹" }),
+          text: ctx.t("My monster from Mirror Monsters 👹"),
           files: [r.image as FileRef],
         })
-        .catch(() => ctx.ui.toast(ctx.t({ en: "It could not be shared.", "pt-BR": "Não deu para compartilhar.", de: "Es ließ sich nicht teilen.", es: "No se pudo compartir.", pl: "Nie udało się udostępnić.", it: "Non è stato possibile condividerlo." }))),
+        .catch(() => ctx.ui.toast(ctx.t("It could not be shared."))),
     );
     save.addEventListener("click", () =>
       void ctx.files.export(r.image as FileRef).catch(() =>
-        ctx.ui.toast(ctx.t({ en: "It could not be saved here.", "pt-BR": "Não deu para salvar aqui.", de: "Hier ließ es sich nicht speichern.", es: "No se pudo guardar aquí.", pl: "Nie udało się tu zapisać.", it: "Non è stato possibile salvarlo qui." })),
+        ctx.ui.toast(ctx.t("It could not be saved here.")),
       ),
     );
     del.addEventListener("click", async () => {
       const sure = await ctx.ui.confirm(
-        ctx.t({ en: "Delete “{title}”?", "pt-BR": "Excluir “{title}”?", de: "„{title}“ löschen?", es: "¿Eliminar «{title}»?", pl: "Usunąć „{title}”?", it: "Eliminare “{title}”?" }, { title: String(r.title) }),
+        ctx.t("Delete “{title}”?", { title: String(r.title) }),
         { ok: deleteWord, destructive: true },
       );
       if (!sure) return;
@@ -917,15 +784,15 @@ function mountGallery(el: HTMLElement, props: ViewProps): () => void {
     const mine = ++generation;
     const sorted = [...rows].sort((a, b) => String(b.date ?? "").localeCompare(String(a.date ?? "")));
     if (!sorted.length) {
-      const go = h("button", { class: "mm-btn", type: "button" }, ctx.t({ en: "Open the mirror", "pt-BR": "Abrir o espelho", de: "Spiegel öffnen", es: "Abrir el espejo", pl: "Otwórz lustro", it: "Apri lo specchio" }));
+      const go = h("button", { class: "mm-btn", type: "button" }, ctx.t("Open the mirror"));
       go.addEventListener("click", () => props.navigate("mirror"));
       root.replaceChildren(
         h(
           "div",
           { class: "mm-empty" },
           h("div", { class: "mm-big", "aria-hidden": "true" }, "👹"),
-          h("h3", {}, ctx.t({ en: "No monsters yet", "pt-BR": "Nenhum monstro ainda", de: "Noch keine Monster", es: "Aún no hay monstruos", pl: "Jeszcze żadnych potworów", it: "Ancora nessun mostro" })),
-          h("p", {}, ctx.t({ en: "Pull a face in the mirror and press the round button. Your snaps land here.", "pt-BR": "Faça uma careta no espelho e aperte o botão redondo. Suas fotos aparecem aqui.", de: "Schneid im Spiegel eine Grimasse und drück den runden Knopf. Deine Schnappschüsse landen hier.", es: "Pon una mueca en el espejo y pulsa el botón redondo. Tus fotos aparecen aquí.", pl: "Zrób minę w lustrze i naciśnij okrągły przycisk. Twoje zdjęcia trafią tutaj.", it: "Fai una smorfia allo specchio e premi il pulsante rotondo. I tuoi scatti finiscono qui." })),
+          h("h3", {}, ctx.t("No monsters yet")),
+          h("p", {}, ctx.t("Pull a face in the mirror and press the round button. Your snaps land here.")),
           go,
         ),
       );
@@ -939,11 +806,11 @@ function mountGallery(el: HTMLElement, props: ViewProps): () => void {
         const kind = isMode(r.monster) ? r.monster : "monster";
         const b = h(
           "button",
-          { class: "mm-piece", type: "button", "aria-label": ctx.t({ en: "{title}, open", "pt-BR": "{title}, abrir", de: "{title}, öffnen", es: "{title}, abrir", pl: "{title}, otwórz", it: "{title}, apri" }, { title: String(r.title) }) },
+          { class: "mm-piece", type: "button", "aria-label": ctx.t("{title}, open", { title: String(r.title) }) },
           h(
             "figure",
             {},
-            url ? h("img", { src: url, alt: "", loading: "lazy" }) : h("div", { class: "mm-empty" }, ctx.t({ en: "Not on this device yet", "pt-BR": "Ainda não está neste aparelho", de: "Noch nicht auf diesem Gerät", es: "Aún no está en este dispositivo", pl: "Jeszcze nie ma go na tym urządzeniu", it: "Non ancora su questo dispositivo" })),
+            url ? h("img", { src: url, alt: "", loading: "lazy" }) : h("div", { class: "mm-empty" }, ctx.t("Not on this device yet")),
             h("figcaption", {}, h("b", {}, `${MODE_FACE[kind]} ${String(r.title)}`), h("span", {}, when ? shortDate(when, ctx) : "")),
           ),
         );
@@ -953,7 +820,7 @@ function mountGallery(el: HTMLElement, props: ViewProps): () => void {
     );
     if (!alive || mine !== generation) return;
     root.replaceChildren(
-      h("p", { class: "mm-head" }, ctx.t({ en: "{n, plural, one {# snap} other {# snaps}}, newest first.", "pt-BR": "{n, plural, one {# foto} other {# fotos}}, as mais novas primeiro.", de: "{n, plural, one {# Schnappschuss} other {# Schnappschüsse}}, die neuesten zuerst.", es: "{n, plural, one {# foto} other {# fotos}}, las más recientes primero.", pl: "{n, plural, one {# zdjęcie} few {# zdjęcia} many {# zdjęć} other {# zdjęcia}}, najnowsze najpierw.", it: "{n, plural, one {# scatto} other {# scatti}}, i più recenti per primi." }, { n: sorted.length })),
+      h("p", { class: "mm-head" }, ctx.t("{n, plural, one {# snap} other {# snaps}}, newest first.", { n: sorted.length })),
       h("div", { class: "mm-wall" }, ...pieces),
     );
   };
@@ -976,7 +843,7 @@ function mountGallery(el: HTMLElement, props: ViewProps): () => void {
 
 export default defineApp({
   id: "mirror-monsters",
-  name: { en: "Mirror Monsters", "pt-BR": "Monstros no Espelho", de: "Spiegelmonster", es: "Monstruos del Espejo", pl: "Potwory z Lustra", it: "Mostri allo Specchio" },
+  name: "Mirror Monsters",
   icon: "👹",
   version: "1.0.0",
   schemaVersion: 1,
@@ -988,32 +855,32 @@ export default defineApp({
   permissions: { camera: true, haptics: true },
   entities: {
     snap: {
-      label: { en: "Snap", "pt-BR": "Foto", de: "Schnappschuss", es: "Foto", pl: "Zdjęcie", it: "Scatto" },
+      label: { text: "Snap", context: "snap" },
       displayField: "title",
       fields: {
-        title: { type: "text", required: true, label: { en: "Title", "pt-BR": "Título", de: "Titel", es: "Título", pl: "Tytuł", it: "Titolo" } },
+        title: { type: "text", required: true, label: "Title" },
         monster: {
           type: "enum",
           options: [...MODES],
           colors: { monster: "purple", twin: "blue", kaleido: "pink", trails: "orange", pixel: "green" },
-          label: { en: "Monster", "pt-BR": "Monstro", de: "Monster", es: "Monstruo", pl: "Potwór", it: "Mostro" },
+          label: "Monster",
           labels: MODE_WORDS,
         },
-        date: { type: "datetime", precision: "minute", label: { en: "Date", "pt-BR": "Data", de: "Datum", es: "Fecha", pl: "Data", it: "Data" } },
-        image: { type: "file", accept: ".png", folder: "snaps", label: { en: "Picture", "pt-BR": "Imagem", de: "Bild", es: "Imagen", pl: "Obraz", it: "Immagine" } },
+        date: { type: "datetime", precision: "minute", label: "Date" },
+        image: { type: "file", accept: ".png", folder: "snaps", label: "Picture" },
       },
     },
   },
   pages: [
     {
       id: "mirror",
-      title: { en: "Mirror", "pt-BR": "Espelho", de: "Spiegel", es: "Espejo", pl: "Lustro", it: "Specchio" },
+      title: "Mirror",
       icon: "🪞",
       view: { type: "custom", entity: "snap", mount: mountMirror },
     },
     {
       id: "gallery",
-      title: { en: "Gallery", "pt-BR": "Galeria", de: "Galerie", es: "Galería", pl: "Galeria", it: "Galleria" },
+      title: "Gallery",
       icon: "🖼",
       view: { type: "custom", entity: "snap", mount: mountGallery },
     },

@@ -1,0 +1,393 @@
+msgid ""
+msgstr ""
+"Language: pt-BR\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Earthquakes"
+msgstr "Terremotos"
+
+#: entities.quake.label
+#: pages.4.title
+msgid "Earthquake"
+msgstr "Terremoto"
+
+#: entities.quake.fields.place.label
+msgid "Where"
+msgstr "Onde"
+
+#: entities.quake.fields.mag.label
+msgid "Magnitude"
+msgstr "Magnitude"
+
+#: entities.quake.fields.strength.label
+msgid "Strength"
+msgstr "Intensidade"
+
+#: entities.quake.fields.magType.label
+msgid "Magnitude scale"
+msgstr "Escala"
+
+#: entities.quake.fields.depth.unit
+msgid "km"
+msgstr ""
+
+#: entities.quake.fields.depth.label
+msgid "Depth"
+msgstr "Profundidade"
+
+#: entities.quake.fields.time.label
+msgid "When"
+msgstr "Quando"
+
+#: entities.quake.fields.updated.label
+msgid "Revised"
+msgstr "Revisado"
+
+#: entities.quake.fields.where.label
+msgid "On the map"
+msgstr "No mapa"
+
+#: entities.quake.fields.authority.label
+msgid "Located by"
+msgstr "Localizado por"
+
+#: entities.quake.fields.link.label
+msgid "On EMSC"
+msgstr "No EMSC"
+
+#: entities.quake.fields.uid.label
+msgid "EMSC id"
+msgstr "ID no EMSC"
+
+#: entities.quake.fields.demo.label
+#: msg
+#: ctx.t
+msgid "Demo"
+msgstr "Demo"
+
+#: entities.quake.computed.ago.label
+msgid "How long ago"
+msgstr "Há quanto tempo"
+
+#: entities.feed.label
+msgid "Feed"
+msgstr "Feed"
+
+#: entities.feed.fields.state.label
+msgid "State"
+msgstr "Estado"
+
+#: entities.feed.fields.since.label
+msgid "Since"
+msgstr "Desde"
+
+#: entities.feed.fields.count.label
+msgid "New"
+msgstr "Novos"
+
+#: entities.feed.fields.lastPlace.label
+msgid "Latest"
+msgstr "Último"
+
+#: entities.feed.fields.lastMag.label
+msgid "Latest magnitude"
+msgstr "Última magnitude"
+
+#: entities.feed.fields.lastAt.label
+msgid "Latest at"
+msgstr "Último em"
+
+#: pages.0.title
+msgid "Map"
+msgstr "Mapa"
+
+#: pages.1.title
+msgctxt "title"
+msgid "Latest"
+msgstr "Recentes"
+
+#: pages.2.title
+msgid "Strongest"
+msgstr "Mais fortes"
+
+#: pages.2.summary.0.label
+msgid "In the last 24 h"
+msgstr "Nas últimas 24 h"
+
+#: pages.2.summary.1.label
+msgctxt "label"
+msgid "Strongest"
+msgstr "Mais forte"
+
+#: pages.2.summary.2.label
+msgid "Magnitude 5 and up"
+msgstr "Magnitude 5 ou mais"
+
+#: pages.2.view.emptyText
+msgid "Nothing in the last 24 hours yet. “Watch live” on the map fills the last day in."
+msgstr "Nada nas últimas 24 horas ainda. “Ver ao vivo” no mapa carrega o último dia."
+
+#: pages.3.title
+msgid "Near me"
+msgstr "Perto de mim"
+
+#: pages.3.actions.0.label
+msgid "Alerts…"
+msgstr "Alertas…"
+
+#: pages.3.view.filters.0.label
+msgid "Where I am"
+msgstr "Onde estou"
+
+#: pages.3.view.filters.1.label
+msgid "Within km"
+msgstr "Raio em km"
+
+#: pages.3.view.filters.1.placeholder
+msgid "Within km (1000)"
+msgstr "Raio em km (1000)"
+
+#: pages.4.view.sections.1.title
+msgid "Source"
+msgstr "Fonte"
+
+#: msg
+#: ctx.t
+msgid "From magnitude"
+msgstr "A partir da magnitude"
+
+#: msg
+msgid "Magnitude from…"
+msgstr "Magnitude a partir de…"
+
+#: msg
+msgid "Last 24 h"
+msgstr "Últimas 24 h"
+
+#: msg
+msgid "Watch live"
+msgstr "Ver ao vivo"
+
+#: msg
+msgid "Stop"
+msgstr "Parar"
+
+#: ctx.t
+msgid "Play the demo again"
+msgstr "Ver a demo de novo"
+
+#: ctx.t
+msgid "Real earthquakes from earlier, replayed here. Nothing is sent."
+msgstr "Terremotos reais de antes, repetidos aqui. Nada é enviado."
+
+#: ctx.t
+msgid "Clear the demo"
+msgstr "Limpar a demo"
+
+#: ctx.t
+msgid "{n} new"
+msgstr "{n} novos"
+
+#: ctx.t
+msgid "Latest: {place}"
+msgstr "Último: {place}"
+
+#: ctx.t
+msgid "Alerts near you"
+msgstr "Alertas perto de você"
+
+#: ctx.t
+msgid "Change them under Near me."
+msgstr "Mude em Perto de mim."
+
+#: ctx.t
+msgid "Off"
+msgstr "Desligados"
+
+#: msg
+msgid "No earthquakes here yet. Tap “Watch live” to follow EMSC's feed — the last day is filled in first — or “Demo” to see how it looks without connecting."
+msgstr "Ainda não há terremotos aqui. Toque em “Ver ao vivo” para acompanhar o feed do EMSC — o último dia vem primeiro — ou em “Demo” para ver como fica sem se conectar."
+
+#: ctx.t
+msgid "No earthquakes on this device that close. Widen “Within km”, or set an alert for the next one."
+msgstr "Nenhum terremoto tão perto neste aparelho. Aumente o “Raio em km” ou crie um alerta para o próximo."
+
+#: ctx.t
+msgid "Tap “Where I am” to see the earthquakes near you, nearest first in time. “Alerts…” tells you about a strong one close by while the app is open."
+msgstr "Toque em “Onde estou” para ver os terremotos perto de você. “Alertas…” avisa de um forte por perto enquanto o app está aberto."
+
+#: ctx.t
+msgid "Already live."
+msgstr "Já está ao vivo."
+
+#: ctx.t
+msgid "{n, plural, one {# sample quake removed.} other {# sample quakes removed.}}"
+msgstr "{n, plural, one {# terremoto de exemplo removido.} other {# terremotos de exemplo removidos.}}"
+
+#: ctx.t
+msgid "Tell me about strong earthquakes near me"
+msgstr "Avise-me de terremotos fortes perto de mim"
+
+#: ctx.t
+msgid "Within"
+msgstr "Num raio de"
+
+#: ctx.t
+msgid "Save"
+msgstr "Salvar"
+
+#: ctx.t
+msgid "Alerts need to know where you are; your location wasn't available."
+msgstr "Os alertas precisam saber onde você está; sua localização não estava disponível."
+
+#: ctx.t
+msgid "Alerts on: {mag} and up within {km} km, while the app is open."
+msgstr "Alertas ligados: {mag} ou mais num raio de {km} km, com o app aberto."
+
+#: ctx.t
+msgid "Alerts off."
+msgstr "Alertas desligados."
+
+#: msg
+msgid "Minor"
+msgstr "Fraco"
+
+#: msg
+msgid "Light"
+msgstr "Leve"
+
+#: msg
+msgid "Moderate"
+msgstr "Moderado"
+
+#: msg
+msgid "Strong"
+msgstr "Forte"
+
+#: msg
+msgid "Major"
+msgstr "Muito forte"
+
+#: msg
+msgid "Not live"
+msgstr "Fora do ar"
+
+#: msg
+msgid "Connecting…"
+msgstr "Conectando…"
+
+#: msg
+msgid "Live"
+msgstr "Ao vivo"
+
+#: msg
+msgid "Connection lost — trying again"
+msgstr "Conexão perdida — tentando de novo"
+
+#: msg
+msgid "Paused while you were away"
+msgstr "Pausado enquanto você estava fora"
+
+#: msg
+msgid "You're offline"
+msgstr "Você está sem internet"
+
+#: msg
+msgid "Can't reach EMSC right now"
+msgstr "Não foi possível alcançar o EMSC agora"
+
+#: msg
+msgid "Not allowed to connect"
+msgstr "Conexão não permitida"
+
+#: msg
+msgid "This copy can't reach EMSC"
+msgstr "Esta cópia não consegue alcançar o EMSC"
+
+#: msg
+msgid "Demo — a replay"
+msgstr "Demonstração — uma reprise"
+
+#: msg
+msgid "Demo finished"
+msgstr "Demonstração terminada"
+
+#: msg
+msgid "Tap “Watch live” to follow new earthquakes as EMSC reports them — or “Demo” to see how it looks."
+msgstr "Toque em “Ver ao vivo” para acompanhar os novos terremotos assim que o EMSC os informa — ou em “Demo” para ver como fica."
+
+#: msg
+msgid "Opening the connection to EMSC."
+msgstr "Abrindo a conexão com o EMSC."
+
+#: msg
+msgid "New earthquakes appear the moment EMSC reports them."
+msgstr "Os novos terremotos aparecem assim que o EMSC os informa."
+
+#: msg
+msgid "It picks up again by itself."
+msgstr "Ele volta sozinho."
+
+#: msg
+msgid "It carries on as soon as you are back."
+msgstr "Continua assim que você voltar."
+
+#: msg
+msgid "It connects again when you are back online. What you already have stays here."
+msgstr "Ele se conecta de novo quando a internet voltar. O que você já tem continua aqui."
+
+#: msg
+msgid "Trying again, a little less often each time. The demo works without it."
+msgstr "Tentando de novo, um pouco mais espaçado a cada vez. A demonstração funciona sem ele."
+
+#: msg
+msgid "Tap “Watch live” to be asked again."
+msgstr "Toque em “Ver ao vivo” para ser perguntado de novo."
+
+#: msg
+msgid "The demo still works."
+msgstr "A demonstração continua funcionando."
+
+#: msg
+msgid "Real earthquakes from earlier, replayed on this device. Nothing is sent anywhere."
+msgstr "Terremotos reais de antes, repetidos neste aparelho. Nada é enviado."
+
+#: msg
+msgid "“Watch live” follows the real feed; “Clear the demo” removes the sample quakes."
+msgstr "“Ver ao vivo” acompanha o feed real; “Limpar a demo” tira os terremotos de exemplo."
+
+#: msg
+msgid "M{mag}"
+msgstr "M{mag}"
+
+#: ctx.t
+msgid "{km} km deep"
+msgstr "{km} km de profundidade"
+
+#: ctx.t
+msgid "just now"
+msgstr "agora mesmo"
+
+#: ctx.t
+msgid "{n} min ago"
+msgstr "há {n} min"
+
+#: ctx.t
+msgid "{n} h ago"
+msgstr "há {n} h"
+
+#: ctx.t
+msgid "{n, plural, one {# day ago} other {# days ago}}"
+msgstr "há {n, plural, one {# dia} other {# dias}}"
+
+#: ctx.t
+msgid "{km} km away"
+msgstr "a {km} km"
+
+#: ctx.t
+msgid "{mag} earthquake {away}"
+msgstr "Terremoto {mag} {away}"
+

@@ -9,8 +9,9 @@
 //     the app's own language until someone checks it.
 // Nothing here edits the app's code.
 
+import { parse as parseIcu, TYPE, type MessageFormatElement } from "@formatjs/icu-messageformat-parser";
 import { readPo, writePo, type CatalogEntry } from "@potyro/i18n/app-catalogs";
-import { CODE, FN, readSourceWords, sourceSlots, type SourceWords } from "./source-words.js";
+import { CODE, FN, parseModuleSource, readSourceWords, sourceSlots } from "./source-words.js";
 
 /** One message the app shows, with where it is used. */
 export interface Message {
@@ -24,7 +25,12 @@ export interface Message {
 export interface ExtractProblem {
   line: number;
   text: string;
-  why: "not-literal" | "behind-code";
+  /**
+   * `not-literal`: `ctx.t(variable)`, fine when its words are marked with `msg` where they are written.
+   * `msg-not-literal`: `msg(variable)`, which marks nothing. `behind-code`: a slot's words behind a
+   * const or a helper, invisible unless marked with `msg`.
+   */
+  why: "not-literal" | "msg-not-literal" | "behind-code";
 }
 
 export interface Extracted {
@@ -69,9 +75,9 @@ function contextWords(node: Node | undefined): { text: string; context: string }
   return out.text !== undefined && out.context !== undefined ? { text: out.text, context: out.context } : null;
 }
 
-/** Every `x.t(…)` call in the source: `ctx.t`, and `runtime.ctx.t` in a custom view. */
-function tCalls(sw: SourceWords): Array<{ line: number; first: Node | undefined; raw: string }> {
-  const out: Array<{ line: number; first: Node | undefined; raw: string }> = [];
+/** Every `x.t(…)` call in the source (`ctx.t`, `runtime.ctx.t` in a custom view), and every `msg(…)`. */
+function tCalls(sw: { source: string; ast: unknown }): Array<{ line: number; first: Node | undefined; raw: string; marker: boolean }> {
+  const out: Array<{ line: number; first: Node | undefined; raw: string; marker: boolean }> = [];
   const visit = (n: unknown): void => {
     if (!n || typeof n !== "object") return;
     const node = n as Node;
@@ -79,10 +85,10 @@ function tCalls(sw: SourceWords): Array<{ line: number; first: Node | undefined;
     if (node.type === "CallExpression") {
       const callee = node.callee as Node;
       const name = callee?.type === "MemberExpression" && callee.computed !== true ? ((callee.property as Node)?.name as string | undefined) : undefined;
-      if (name === "t") {
-        const args = asArray(node.arguments);
-        out.push({ line: node.loc?.start.line ?? 0, first: args[0], raw: sw.source.slice(node.start, node.end).slice(0, 120) });
-      }
+      const args = asArray(node.arguments);
+      if (name === "t") out.push({ line: node.loc?.start.line ?? 0, first: args[0], raw: sw.source.slice(node.start, node.end).slice(0, 120), marker: false });
+      // `msg("…")`: words marked where they are written, translated by a `ctx.t(variable)` later.
+      if (callee?.type === "Identifier" && callee.name === "msg") out.push({ line: node.loc?.start.line ?? 0, first: args[0], raw: sw.source.slice(node.start, node.end).slice(0, 120), marker: true });
     }
     for (const [k, value] of Object.entries(node)) {
       if (k === "loc" || k === "leadingComments" || k === "trailingComments") continue;
@@ -94,11 +100,31 @@ function tCalls(sw: SourceWords): Array<{ line: number; first: Node | undefined;
   return out;
 }
 
+const isMsgCall = (node: Node | undefined): boolean => node?.type === "CallExpression" && (node.callee as Node | undefined)?.name === "msg";
+
+/** Names declared as `const NAME = msg("…")`: a slot that names one has its words marked. */
+function msgConsts(ast: unknown): Set<string> {
+  const names = new Set<string>();
+  const visit = (n: unknown): void => {
+    if (!n || typeof n !== "object") return;
+    const node = n as Node;
+    if (node.type === "VariableDeclarator" && (node.id as Node | undefined)?.type === "Identifier" && isMsgCall(node.init as Node | undefined)) names.add((node.id as Node).name as string);
+    for (const [k, value] of Object.entries(node)) {
+      if (k === "loc" || k === "leadingComments" || k === "trailingComments") continue;
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === "object") visit(value);
+    }
+  };
+  visit(ast);
+  return names;
+}
+
 /**
  * The app's messages, in the order its source has them: the definition's slots first, then the
- * strings in its functions. A message used in several places is listed once, with every place.
+ * strings in its functions, then those in its own modules (`modules`: their sources, as `./words.ts`
+ * and the like). A message used in several places is listed once, with every place.
  */
-export async function extractMessages(source: string): Promise<Extracted | null> {
+export async function extractMessages(source: string, modules: readonly string[] = []): Promise<Extracted | null> {
   const sw = await readSourceWords(source);
   if (!sw) return null;
   const language = typeof sw.data.language === "string" ? sw.data.language : undefined;
@@ -114,12 +140,17 @@ export async function extractMessages(source: string): Promise<Extracted | null>
     else byKey.set(key, { id, ...(context ? { context } : {}), references: [reference] });
   };
 
+  const markedConsts = msgConsts(sw.ast);
   for (const slot of sourceSlots(sw)) {
     if (slot.suggested !== undefined) continue; // no words written there: nothing to translate
     const v = slot.value;
     if (typeof v === "string") {
-      if (v === CODE) problems.push({ line: sw.nodes.get(slot.path)?.loc?.start.line ?? 0, text: slot.path, why: "behind-code" });
-      else if (v !== FN) add(v, slot.path);
+      const node = sw.nodes.get(slot.path);
+      const marked = isMsgCall(node) || (node?.type === "Identifier" && markedConsts.has(node.name as string));
+      // A marked const's words are taken where `msg` is called, below.
+      if (v === CODE) {
+        if (!marked) problems.push({ line: node?.loc?.start.line ?? 0, text: slot.path, why: "behind-code" });
+      } else if (v !== FN) add(v, slot.path);
     } else if (v && typeof v === "object" && typeof (v as { text?: unknown }).text === "string" && typeof (v as { context?: unknown }).context === "string" && Object.keys(v).length === 2) {
       add((v as { text: string }).text, slot.path, (v as { context: string }).context);
     } else if (v && typeof v === "object") {
@@ -129,20 +160,22 @@ export async function extractMessages(source: string): Promise<Extracted | null>
     }
   }
 
-  for (const call of tCalls(sw)) {
+  const parsed = [sw, ...(await Promise.all(modules.map((m) => parseModuleSource(m)))).filter((m): m is { source: string; ast: unknown } => m !== null)];
+  for (const call of parsed.flatMap((p) => tCalls(p))) {
     const withContext = contextWords(call.first);
     if (withContext) {
-      add(withContext.text, "ctx.t", withContext.context);
+      add(withContext.text, call.marker ? "msg" : "ctx.t", withContext.context);
       continue;
     }
     const text = literalText(call.first);
     if (text === null) {
-      // A map `ctx.t({ en, pl })` is legacy and has its words already; anything else is computed.
-      if (call.first?.type !== "ObjectExpression") problems.push({ line: call.line, text: call.raw, why: "not-literal" });
+      // A map `ctx.t({ en, pl })` is legacy and has its words already. `ctx.t(variable)` is fine when
+      // its words were marked with `msg` where they are written — which the extractor cannot check.
+      if (call.first?.type !== "ObjectExpression") problems.push({ line: call.line, text: call.raw, why: call.marker ? "msg-not-literal" : "not-literal" });
       continue;
     }
     // No line number: it would change with every edit above it, and churn every catalog (as Lingui's own).
-    add(text, "ctx.t");
+    add(text, call.marker ? "msg" : "ctx.t");
   }
   return { ...(language ? { language } : {}), messages: [...byKey.values()], problems };
 }
@@ -228,4 +261,66 @@ export function mergeCatalog(existing: string | null, language: string, messages
 /** The template: every message, nothing translated. */
 export function writeTemplate(messages: readonly Message[]): string {
   return writePo("", messages.map((m) => ({ id: m.id, ...(m.context ? { context: m.context } : {}), text: "", fuzzy: false, obsolete: false, references: [...m.references], notes: [] })));
+}
+
+// ── the check an app's own tests run ───────────────────────────────────────────────────────────
+
+/**
+ * A message's variables, `{name}` and `{n, plural, …}` alike, sorted: what every translation must keep.
+ * Read as ICU (the words inside a plural's branches are not variables). A message that is not valid ICU
+ * says so.
+ */
+function holes(text: string): string {
+  const names = new Set<string>();
+  const visit = (elements: readonly MessageFormatElement[]): void => {
+    for (const el of elements) {
+      if ("value" in el && typeof el.value === "string" && el.type !== TYPE.literal && el.type !== TYPE.pound) names.add(el.value);
+      if ("options" in el) for (const o of Object.values(el.options)) visit(o.value);
+      if ("children" in el) visit(el.children);
+    }
+  };
+  try {
+    visit(parseIcu(text, { ignoreTag: true }));
+  } catch {
+    return "(not a message ICU can read)";
+  }
+  return [...names].sort().join(",");
+}
+
+/**
+ * What is wrong with an app's translations, as an app's own test asks it (docs/30): an inline map left
+ * in the source, a catalog missing for a language the app carries, a catalog out of step with the
+ * source (run `pnpm i18n:app`), or a message left untranslated that is not one of the words that read
+ * the same everywhere (`same`: units, a name). Empty when all is well.
+ */
+export async function catalogProblems(opts: {
+  source: string;
+  /** The app's own modules' sources (`./words.ts`): their `ctx.t` and `msg` words are the app's. */
+  modules?: readonly string[];
+  /** language → the `.po` file's text, for every language the app carries but its own. */
+  catalogs: Readonly<Record<string, string | undefined>>;
+  /** Words a translator would leave alone: `/^(\S{1,5}|Breakout)$/`. */
+  same: RegExp;
+}): Promise<string[]> {
+  const out: string[] = [];
+  const extracted = await extractMessages(opts.source, opts.modules);
+  if (!extracted) return ["no defineApp({...}) in the source"];
+  for (const s of [opts.source, ...(opts.modules ?? [])]) {
+    if (/\{\s*en:\s*"/.test(s)) out.push("an inline translation map is left in the app's code: its words belong in locales/<lang>.po");
+  }
+  for (const p of extracted.problems) if (p.why !== "not-literal") out.push(`line ${p.line}: ${p.why}: ${p.text}`);
+  for (const [language, po] of Object.entries(opts.catalogs)) {
+    if (po === undefined) {
+      out.push(`locales/${language}.po is missing`);
+      continue;
+    }
+    if (mergeCatalog(po, language, extracted.messages).po !== po) out.push(`locales/${language}.po is out of step with the source: run pnpm i18n:app`);
+    for (const e of readPo(po).entries) {
+      if (e.obsolete) continue;
+      if (!e.text && !opts.same.test(e.id)) out.push(`${language}: "${e.id}" is not translated`);
+      // A translation keeps the message's {holes}: a missing one would show nothing, an extra one fail.
+      else if (e.text && holes(e.text) !== holes(e.id)) out.push(`${language}: "${e.id}" → "${e.text}" has other {placeholders}: ${holes(e.text) || "none"} for ${holes(e.id) || "none"}`);
+    }
+  }
+  return out;
 }

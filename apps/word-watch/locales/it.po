@@ -1,0 +1,335 @@
+msgid ""
+msgstr ""
+"Language: it\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Word Watch"
+msgstr "Sentinella di Parole"
+
+#: entities.word.label
+#: entities.minute.fields.word.label
+#: pages.4.title
+msgid "Word"
+msgstr "Parola"
+
+#: entities.word.fields.word.label
+msgid "Word or phrase"
+msgstr "Parola o frase"
+
+#: entities.word.fields.word.placeholder
+msgid "coffee"
+msgstr "caffè"
+
+#: entities.word.fields.on.label
+msgid "Watching"
+msgstr "Seguita"
+
+#: entities.word.fields.total.label
+msgid "Mentions so far"
+msgstr "Menzioni finora"
+
+#: entities.word.fields.lastAt.label
+msgid "Last seen"
+msgstr "Visto l'ultima volta"
+
+#: entities.word.fields.demo.label
+#: entities.post.fields.demo.label
+#: entities.minute.fields.demo.label
+#: msg
+#: ctx.t
+msgid "Demo"
+msgstr "Demo"
+
+#: entities.word.actions.toggle.label
+msgid "Pause or watch again"
+msgstr "Metti in pausa o riprendi"
+
+#: entities.word.actions.remove.label
+#: ctx.t
+msgid "Stop watching"
+msgstr "Smetti di seguire"
+
+#: entities.post.label
+#: entities.post.fields.text.label
+#: pages.3.title
+msgid "Post"
+msgstr "Post"
+
+#: entities.post.fields.handle.label
+msgid "By"
+msgstr "Di"
+
+#: entities.post.fields.words.label
+msgid "Mentions"
+msgstr "Cita"
+
+#: entities.post.fields.at.label
+msgid "Seen"
+msgstr "Visto"
+
+#: entities.post.fields.link.label
+msgid "On Bluesky"
+msgstr "Su Bluesky"
+
+#: entities.post.fields.did.label
+msgid "Author's id"
+msgstr "ID dell'autore"
+
+#: entities.post.computed.ago.label
+msgid "When"
+msgstr "Quando"
+
+#: entities.minute.label
+#: entities.minute.fields.at.label
+msgid "Minute"
+msgstr "Minuto"
+
+#: entities.minute.fields.wordId.label
+msgid "Word id"
+msgstr "ID della parola"
+
+#: entities.minute.fields.count.label
+msgctxt "minute count"
+msgid "Mentions"
+msgstr "Menzioni"
+
+#: entities.feed.label
+msgid "Feed"
+msgstr "Feed"
+
+#: entities.feed.fields.state.label
+msgid "State"
+msgstr "Stato"
+
+#: entities.feed.fields.since.label
+msgid "Since"
+msgstr "Da"
+
+#: entities.feed.fields.count.label
+msgid "Matches"
+msgstr "Menzioni"
+
+#: entities.feed.fields.lastText.label
+msgid "Latest"
+msgstr "Ultimo"
+
+#: entities.feed.fields.lastWord.label
+msgid "Latest word"
+msgstr "Ultima parola"
+
+#: pages.0.title
+#: msg
+msgid "Live"
+msgstr "Diretta"
+
+#: pages.1.title
+msgid "Per minute"
+msgstr "Al minuto"
+
+#: pages.1.layout.items.0.view.title
+msgid "Right now"
+msgstr "Adesso"
+
+#: pages.1.layout.items.0.view.emptyText
+msgid "No mentions counted yet."
+msgstr "Ancora nessuna menzione contata."
+
+#: pages.1.layout.items.1.view.title
+msgid "Mentions per minute"
+msgstr "Menzioni al minuto"
+
+#: pages.1.layout.items.1.view.subtitle
+msgid "All your words, last 30 minutes"
+msgstr "Tutte le tue parole, ultimi 30 minuti"
+
+#: pages.1.layout.items.1.view.emptyText
+msgid "The bars fill in minute by minute once you watch live."
+msgstr "Le barre si riempiono minuto per minuto quando segui in diretta."
+
+#: pages.2.title
+msgid "Words"
+msgstr "Parole"
+
+#: pages.2.actions.0.label
+msgid "Add a word"
+msgstr "Aggiungi parola"
+
+#: pages.2.view.emptyText
+msgid "Tap “Add a word” — “coffee”, “#rain”, a team, a town. Posts that mention any of them are kept; everything else streams past."
+msgstr "Tocca “Aggiungi parola”: “caffè”, “#pioggia”, una squadra, una città. Restano i post che ne citano una; il resto scorre via."
+
+#: msg
+msgid "Watch live"
+msgstr "Segui in diretta"
+
+#: msg
+msgid "Stop"
+msgstr "Ferma"
+
+#: ctx.t
+msgid "Play the demo again"
+msgstr "Rivedi la demo"
+
+#: ctx.t
+msgid "Invented posts, played here. Nothing is sent."
+msgstr "Post inventati, riprodotti qui. Non viene inviato nulla."
+
+#: ctx.t
+msgid "Clear the demo"
+msgstr "Cancella la demo"
+
+#: ctx.t
+msgid "{n, plural, one {# match} other {# matches}}"
+msgstr "{n, plural, one {# menzione} other {# menzioni}}"
+
+#: msg
+msgid "Posts that mention your words land here as they are written. Add words under Words, then “Watch live” — or try “Demo”."
+msgstr "I post che citano le tue parole arrivano qui appena vengono scritti. Aggiungi parole in Parole, poi “Segui in diretta”, oppure prova la “Demo”."
+
+#: ctx.t
+msgid "{n} at {time}"
+msgstr "{n} alle {time}"
+
+#: ctx.t
+msgid "{n, plural, one {# mention} other {# mentions}}"
+msgstr "{n, plural, one {# menzione} other {# menzioni}}"
+
+#: ctx.t
+msgid "paused"
+msgstr "in pausa"
+
+#: ctx.t
+msgid "seen {ago}"
+msgstr "vista {ago}"
+
+#: msg
+msgid "Add a word to watch first, under Words."
+msgstr "Prima aggiungi una parola da seguire, in Parole."
+
+#: ctx.t
+msgid "Already live."
+msgstr "Già in diretta."
+
+#: ctx.t
+msgid "{n, plural, one {# sample post removed.} other {# sample posts removed.}}"
+msgstr "{n, plural, one {# post di esempio cancellato.} other {# post di esempio cancellati.}}"
+
+#: ctx.t
+msgid "A word or a phrase to watch"
+msgstr "Una parola o frase da seguire"
+
+#: ctx.t
+msgid "Already watching “{word}”."
+msgstr "Stai già seguendo “{word}”."
+
+#: ctx.t
+msgid "Stop watching “{word}”?"
+msgstr "Smettere di seguire “{word}”?"
+
+#: msg
+msgid "Not live"
+msgstr "Non in diretta"
+
+#: msg
+msgid "Connecting…"
+msgstr "Connessione…"
+
+#: msg
+msgid "Connection lost — trying again"
+msgstr "Connessione persa — riprovo"
+
+#: msg
+msgid "Paused while you were away"
+msgstr "In pausa mentre eri via"
+
+#: msg
+msgid "You're offline"
+msgstr "Sei offline"
+
+#: msg
+msgid "Can't reach Bluesky right now"
+msgstr "Bluesky non è raggiungibile ora"
+
+#: msg
+msgid "Not allowed to connect"
+msgstr "Connessione non consentita"
+
+#: msg
+msgid "This copy can't reach Bluesky"
+msgstr "Questa copia non può raggiungere Bluesky"
+
+#: msg
+msgid "Demo — made-up posts"
+msgstr "Demo — post inventati"
+
+#: msg
+msgid "Demo finished"
+msgstr "Demo finita"
+
+#: msg
+msgid "Add a few words under Words, then tap “Watch live” — or “Demo” to see how it looks."
+msgstr "Aggiungi qualche parola in Parole e tocca “Segui in diretta”, oppure “Demo” per vedere come appare."
+
+#: msg
+msgid "Opening the connection to Bluesky."
+msgstr "Apro la connessione con Bluesky."
+
+#: msg
+msgid "Every new public post on Bluesky passes by; the ones with your words stay."
+msgstr "Passano tutti i nuovi post pubblici di Bluesky; restano quelli con le tue parole."
+
+#: msg
+msgid "It picks up again by itself."
+msgstr "Riprende da solo."
+
+#: msg
+msgid "It carries on as soon as you are back. Posts from while you were away are not caught up."
+msgstr "Riprende appena torni. I post di quando eri via non vengono recuperati."
+
+#: msg
+msgid "It connects again when you are back online."
+msgstr "Si ricollega quando torni online."
+
+#: msg
+msgid "Trying again, a little less often each time. The demo works without it."
+msgstr "Riprovo, ogni volta un po' meno spesso. La demo funziona anche senza."
+
+#: msg
+msgid "Tap “Watch live” to be asked again."
+msgstr "Tocca “Segui in diretta” per ricevere di nuovo la domanda."
+
+#: msg
+msgid "The demo still works."
+msgstr "La demo funziona comunque."
+
+#: msg
+msgid "Invented posts, played on this device. Nothing is sent anywhere."
+msgstr "Post inventati, riprodotti su questo dispositivo. Non viene inviato nulla."
+
+#: msg
+msgid "“Watch live” follows the real Bluesky; “Clear the demo” removes the sample posts."
+msgstr "“Segui in diretta” mostra il vero Bluesky; “Cancella la demo” toglie i post di esempio."
+
+#: ctx.t
+msgid "just now"
+msgstr "proprio ora"
+
+#: ctx.t
+msgid "{n} min ago"
+msgstr "{n} min fa"
+
+#: ctx.t
+msgid "{n} h ago"
+msgstr "{n} h fa"
+
+#: ctx.t
+msgid "{n} a minute"
+msgstr "{n} al minuto"
+
+#: ctx.t
+msgid "{n, plural, one {# in the last hour} other {# in the last hour}}"
+msgstr "{n, plural, one {# nell'ultima ora} other {# nell'ultima ora}}"
+

@@ -1,0 +1,419 @@
+msgid ""
+msgstr ""
+"Language: \n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Ticker"
+msgstr ""
+
+#: entities.symbol.label
+#: pages.2.title
+msgid "Symbol"
+msgstr ""
+
+#: entities.symbol.fields.code.label
+#: entities.point.fields.code.label
+#: entities.alert.fields.code.label
+msgctxt "symbol code"
+msgid "Symbol"
+msgstr ""
+
+#: entities.symbol.fields.name.label
+#: entities.alert.fields.name.label
+msgid "Name"
+msgstr ""
+
+#: entities.symbol.fields.kind.labels.crypto
+msgid "Crypto · Coinbase"
+msgstr ""
+
+#: entities.symbol.fields.kind.labels.fx
+msgid "Currency · ECB"
+msgstr ""
+
+#: entities.symbol.fields.kind.label
+msgid "Kind"
+msgstr ""
+
+#: entities.symbol.fields.price.label
+#: entities.point.fields.price.label
+msgid "Price"
+msgstr ""
+
+#: entities.symbol.fields.base.label
+msgid "Compared with"
+msgstr ""
+
+#: entities.symbol.fields.change.label
+msgid "Change (%)"
+msgstr ""
+
+#: entities.symbol.fields.trend.label
+msgid "Today"
+msgstr ""
+
+#: entities.symbol.fields.spark.label
+msgid "Last hour"
+msgstr ""
+
+#: entities.symbol.fields.updated.label
+msgid "Updated"
+msgstr ""
+
+#: entities.symbol.fields.above.label
+msgid "Alert above"
+msgstr ""
+
+#: entities.symbol.fields.below.label
+msgid "Alert below"
+msgstr ""
+
+#: entities.symbol.fields.demo.label
+#: entities.point.fields.demo.label
+#: entities.alert.fields.demo.label
+#: msg
+#: ctx.t
+msgid "Demo"
+msgstr ""
+
+#: entities.symbol.computed.shown.label
+msgid "Now"
+msgstr ""
+
+#: entities.symbol.computed.line.label
+msgid "Change"
+msgstr ""
+
+#: entities.symbol.actions.alert.label
+msgid "Set an alert"
+msgstr ""
+
+#: entities.symbol.actions.remove.label
+#: ctx.t
+msgid "Remove"
+msgstr ""
+
+#: entities.point.label
+msgid "Price point"
+msgstr ""
+
+#: entities.point.fields.at.label
+msgid "At"
+msgstr ""
+
+#: entities.alert.label
+msgid "Alert"
+msgstr ""
+
+#: entities.alert.fields.direction.labels.above
+msgid "Went above"
+msgstr ""
+
+#: entities.alert.fields.direction.labels.below
+msgid "Dropped below"
+msgstr ""
+
+#: entities.alert.fields.direction.label
+msgid "What happened"
+msgstr ""
+
+#: entities.alert.fields.level.label
+msgid "Line"
+msgstr ""
+
+#: entities.alert.fields.price.label
+msgid "Price then"
+msgstr ""
+
+#: entities.alert.fields.at.label
+msgid "When"
+msgstr ""
+
+#: entities.feed.label
+msgid "Feed"
+msgstr ""
+
+#: entities.feed.fields.state.label
+msgid "State"
+msgstr ""
+
+#: entities.feed.fields.since.label
+msgid "Since"
+msgstr ""
+
+#: entities.feed.fields.fxOk.label
+msgid "Currencies fetched"
+msgstr ""
+
+#: pages.0.title
+msgid "Watchlist"
+msgstr ""
+
+#: pages.0.layout.items.1.view.emptyText
+msgid "Nothing on the watchlist. “Watch live” starts with Bitcoin, Ether and the euro in dollars; “Add” picks others."
+msgstr ""
+
+#: pages.1.title
+#: pages.2.layout.items.0.view.sections.1.title
+msgid "Alerts"
+msgstr ""
+
+#: pages.1.layout.items.0.view.title
+msgid "Waiting"
+msgstr ""
+
+#: pages.1.layout.items.0.view.emptyText
+msgid "No alerts waiting. Open a symbol on the watchlist and tap “Set an alert”."
+msgstr ""
+
+#: pages.1.layout.items.1.view.emptyText
+msgid "Alerts that rang show here."
+msgstr ""
+
+#: pages.1.layout.items.1.title
+msgid "Rang"
+msgstr ""
+
+#: pages.2.layout.items.1.view.title
+msgid "Above the low"
+msgstr ""
+
+#: pages.2.layout.items.1.view.subtitle
+msgid "How far each minute's price stood above the lowest shown — a working day a bar for a currency"
+msgstr ""
+
+#: pages.2.layout.items.1.view.emptyText
+msgid "No prices yet: “Watch live” or “Demo”."
+msgstr ""
+
+#: msg
+msgid "Watch live"
+msgstr ""
+
+#: msg
+msgid "Stop"
+msgstr ""
+
+#: msg
+msgid "Add"
+msgstr ""
+
+#: ctx.t
+msgid "Play the demo again"
+msgstr ""
+
+#: ctx.t
+msgid "A made-up market, played here. Nothing is sent."
+msgstr ""
+
+#: ctx.t
+msgid "Clear the demo"
+msgstr ""
+
+#: ctx.t
+msgid "No price yet"
+msgstr ""
+
+#: ctx.t
+msgid "since the day before"
+msgstr ""
+
+#: ctx.t
+msgid "in 24 h"
+msgstr ""
+
+#: msg
+msgid "Up"
+msgstr ""
+
+#: msg
+msgid "Down"
+msgstr ""
+
+#: msg
+msgid "Flat"
+msgstr ""
+
+#: ctx.t
+msgid "above {p}"
+msgstr ""
+
+#: ctx.t
+msgid "below {p}"
+msgstr ""
+
+#: ctx.t
+msgid "at {p}"
+msgstr ""
+
+#: ctx.t
+msgid "Already live."
+msgstr ""
+
+#: ctx.t
+msgid "Currencies updated: the ECB's rates, which change once a working day."
+msgstr ""
+
+#: ctx.t
+msgid "Couldn't fetch the currencies right now."
+msgstr ""
+
+#: ctx.t
+msgid "Add to the watchlist"
+msgstr ""
+
+#: ctx.t
+msgid "Take {code} off the watchlist?"
+msgstr ""
+
+#: ctx.t
+msgid "Now {price}. Leave empty for none."
+msgstr ""
+
+#: ctx.t
+msgid "Alert for {code}"
+msgstr ""
+
+#: ctx.t
+msgid "Tell me when it goes above"
+msgstr ""
+
+#: ctx.t
+msgid "Tell me when it drops below"
+msgstr ""
+
+#: ctx.t
+msgid "Save"
+msgstr ""
+
+#: ctx.t
+msgid "Alert set. It rings once, while the app is open."
+msgstr ""
+
+#: ctx.t
+msgid "No alert for {code}."
+msgstr ""
+
+#: ctx.t
+msgid "Demo prices cleared."
+msgstr ""
+
+#: msg
+msgid "Not live"
+msgstr ""
+
+#: msg
+msgid "Connecting…"
+msgstr ""
+
+#: msg
+msgid "Live"
+msgstr ""
+
+#: msg
+msgid "Connection lost — trying again"
+msgstr ""
+
+#: msg
+msgid "Paused while you were away"
+msgstr ""
+
+#: msg
+msgid "You're offline"
+msgstr ""
+
+#: msg
+msgid "Can't reach the prices right now"
+msgstr ""
+
+#: msg
+msgid "Not allowed to connect"
+msgstr ""
+
+#: msg
+msgid "This copy can't reach Coinbase"
+msgstr ""
+
+#: msg
+msgid "Demo — made-up prices"
+msgstr ""
+
+#: msg
+msgid "Demo finished"
+msgstr ""
+
+#: msg
+msgid "Currencies: the ECB's reference rates, which change once a working day — fetched every 30 minutes."
+msgstr ""
+
+#: msg
+msgid "Tap “Watch live” for live prices — or “Demo” to see how it looks. Add symbols with “Add”."
+msgstr ""
+
+#: msg
+msgid "Opening the connection to Coinbase."
+msgstr ""
+
+#: msg
+msgid "Crypto: every trade on Coinbase, shown at most every 3 seconds. "
+msgstr ""
+
+#: msg
+msgid "It picks up again by itself."
+msgstr ""
+
+#: msg
+msgid "It carries on as soon as you are back."
+msgstr ""
+
+#: msg
+msgid "It connects again when you are back online. The last prices stay here."
+msgstr ""
+
+#: msg
+msgid "Trying again, a little less often each time. The demo works without it."
+msgstr ""
+
+#: msg
+msgid "Tap “Watch live” to be asked again."
+msgstr ""
+
+#: msg
+msgid "The demo still works."
+msgstr ""
+
+#: msg
+msgid "A made-up market on this device, ticking several times a second. Nothing is sent anywhere."
+msgstr ""
+
+#: msg
+msgid "“Watch live” shows real prices; “Clear the demo” removes the made-up ones."
+msgstr ""
+
+#: ctx.t
+msgid "{code} went above {level}"
+msgstr ""
+
+#: ctx.t
+msgid "{code} dropped below {level}"
+msgstr ""
+
+#: ctx.t
+msgid "just now"
+msgstr ""
+
+#: ctx.t
+msgid "{n} s ago"
+msgstr ""
+
+#: ctx.t
+msgid "{n} min ago"
+msgstr ""
+
+#: ctx.t
+msgid "{n} h ago"
+msgstr ""
+
