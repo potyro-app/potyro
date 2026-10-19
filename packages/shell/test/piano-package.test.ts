@@ -33,7 +33,8 @@ describe("the piano app's package", () => {
     const pkg = pack();
     expect(pkg.source).toBe(readFileSync(join(PIANO, "piano.app.tsx"), "utf8"));
     expect(pkg.modules.map((m) => m.path).sort()).toEqual(["plan.ts", "progress.ts", "styles.ts"]);
-    expect(pkg.files.map((f) => f.path)).toEqual(["plan.json"]);
+    // Its catalogs too (docs/30): files it ships, beside the plan.
+    expect(pkg.files.map((f) => f.path).sort()).toEqual(["locales/de.po", "locales/es.po", "locales/it.po", "locales/pl.po", "locales/pt-BR.po", "plan.json"]);
     expect(pkg.lock).toBeUndefined();
   });
 

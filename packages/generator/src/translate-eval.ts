@@ -22,7 +22,7 @@
 // cheap proxy for "it actually translated": under 10% of the PHRASES may read the same, and under 25%
 // of all the words — single words are often the same on purpose ("Name", "Winter" in German).
 
-import { humanizeKey, localize, wordGaps, wordSlots, wordsPathText, type AppDefinition, type Field, type Words } from "potyro";
+import { humanizeKey, localize, wordGaps, wordSlots, wordsPathText, type AppDefinition, type Field, type Words, type WordsMap } from "potyro";
 import { readSourceWords, sourceLanguages, sourceSlots, tMapGaps } from "./source-words.js";
 
 export type TranslateKind = "translate" | "rename" | "add-field" | "one-lang" | "polish-ask";
@@ -97,7 +97,7 @@ export function sameEverywhere(path: string, text: string): boolean {
   return (/\.unit$/.test(path) && /^\S{1,8}$/.test(t)) || /^\S{1,3}$/.test(t);
 }
 
-const text = (w: Words | undefined, lang: string): string | undefined => (w === undefined ? undefined : typeof w === "string" ? w : w[lang]);
+const text = (w: Words | undefined, lang: string): string | undefined => (w === undefined ? undefined : typeof w === "string" ? w : (w as WordsMap)[lang]);
 
 /** Score one case: `before` and `after` are sources; `load` bundles and validates one. */
 export async function scoreTranslate(c: TranslateCase, before: string, after: string, load: LoadDefinition): Promise<TranslateScore> {
@@ -152,8 +152,9 @@ export async function scoreTranslate(c: TranslateCase, before: string, after: st
       let samePhrases = 0;
       let phrases = 0;
       const equal: string[] = [];
-      for (const [p, w] of after_) {
-        if (typeof w === "string" || /\.placeholder$/.test(p)) continue;
+      for (const [p, ww] of after_) {
+        if (typeof ww === "string" || /\.placeholder$/.test(p)) continue;
+        const w = ww as WordsMap;
         const there = w[lang];
         if (there === undefined || (w[own] !== undefined && sameEverywhere(p, w[own]!))) continue;
         const phrase = /\s/.test((w[own] ?? "").trim());
@@ -196,7 +197,7 @@ export async function scoreTranslate(c: TranslateCase, before: string, after: st
       const want = c.kind === "polish-ask" ? ["en", "pl"] : langs;
       for (const f of added) {
         const label = after_.get(`entities.${entity}.fields.${f}.label`);
-        const ok = label !== undefined && typeof label !== "string" && want.every((l) => typeof label[l] === "string" && label[l]!.trim() !== "");
+        const ok = label !== undefined && typeof label !== "string" && want.every((l) => typeof (label as WordsMap)[l] === "string" && (label as WordsMap)[l]!.trim() !== "");
         check(`the new field "${f}" has a label in ${want.join(" and ")}`, ok, JSON.stringify(label));
       }
       const newGaps = wordGaps(b).filter((g) => !wordGaps(a).some((x) => x.path === g.path));

@@ -1,5 +1,10 @@
 # 20 · Multi-language apps — an app carries translations of its own words
 
+> **Replaced (2026-10-19) by docs/30:** the owner rejected inline maps. An app's source is in one
+> language and its other languages are catalogs (`locales/<lang>.po`) beside it; maps are still read,
+> but nothing writes them, and the `translate` tool of §5.1 is retired from the Studio. `ctx.locale`, `ctx.format` and "records are never
+> translated" stay as below.
+
 **Status: built in #302 (part of the i18n epic #297).** The owner approved this design on
 2026-10-13 with every recommendation of §8 as written. §10 lists where the build differs from the
 text below, and why; everything else is as written.

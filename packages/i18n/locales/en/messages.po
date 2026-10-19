@@ -902,6 +902,10 @@ msgstr "{title}: choose"
 msgid "{title}: more"
 msgstr "{title}: more"
 
+#: ../shell/src/App.tsx
+msgid "{translationGaps, plural, one {# word missing} other {# words missing}}"
+msgstr "{translationGaps, plural, one {# word missing} other {# words missing}}"
+
 #: ../shell/src/device-files.tsx
 msgid "{used} of {budget} is used, and this needs {needed} more. Removing files or earlier copies would not make room: the relay keeps every version ever shared. You can keep it on this device only — it stays in {appName}’s Files here, but the app and the people you share it with will not see it."
 msgstr "{used} of {budget} is used, and this needs {needed} more. Removing files or earlier copies would not make room: the relay keeps every version ever shared. You can keep it on this device only — it stays in {appName}’s Files here, but the app and the people you share it with will not see it."
@@ -1936,6 +1940,7 @@ msgstr "Can view"
 #: ../shell/src/App.tsx
 #: ../shell/src/ask-sources-panel.tsx
 #: ../shell/src/dialog.tsx
+#: ../shell/src/file-viewer.tsx
 #: ../shell/src/guests-panel.tsx
 #: ../shell/src/inline-edit.tsx
 #: ../shell/src/picker.tsx
@@ -2828,7 +2833,9 @@ msgid "edit"
 msgstr "edit"
 
 #. Data table: edit this record
+#. Files viewer: change the words of an app's translation file
 #: ../shell/src/data-table.tsx
+#: ../shell/src/file-viewer.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
@@ -4816,6 +4823,10 @@ msgstr "Only {site} mentions it; nothing else confirmed it."
 msgid "Only allow an address that belongs to that service."
 msgstr "Only allow an address that belongs to that service."
 
+#: ../shell/src/app-folder.ts
+msgid "Only an app's translations can be changed here."
+msgstr "Only an app's translations can be changed here."
+
 #: ../shell/src/add-app.ts
 msgid "Only http and https links can be fetched"
 msgstr "Only http and https links can be fetched"
@@ -5539,6 +5550,8 @@ msgstr "Same person"
 msgid "Same person as…"
 msgstr "Same person as…"
 
+#. Files viewer: save the changed translation file
+#: ../shell/src/file-viewer.tsx
 #: ../shell/src/inline-edit.tsx
 #: ../shell/src/tile-editor.tsx
 msgid "Save"
@@ -5607,6 +5620,10 @@ msgstr "Saved the files"
 #: ../shell/src/move-banner.tsx
 msgid "Saved. Open {site} with the button below and choose this file there. Who you are does not go in a file: to be the same person there, enter your recovery words under You."
 msgstr "Saved. Open {site} with the button below and choose this file there. Who you are does not go in a file: to be the same person there, enter your recovery words under You."
+
+#: ../shell/src/file-viewer.tsx
+msgid "Saved. The app shows the new words when it opens again."
+msgstr "Saved. The app shows the new words when it opens again."
 
 #: ../shell/src/inline-edit.tsx
 #: ../views/src/record-form.tsx
@@ -6518,6 +6535,12 @@ msgstr "The Studio, on your remix"
 msgid "the top"
 msgstr "the top"
 
+#. App menu: translating the app's words failed; the reason follows
+#. placeholder {0}: e instanceof Error ? e.message : String(e)
+#: ../shell/src/App.tsx
+msgid "The translation could not be made: {0}"
+msgstr "The translation could not be made: {0}"
+
 #: ../shell/src/studio.tsx
 msgid "The versions after it stay in History."
 msgstr "The versions after it stay in History."
@@ -6554,6 +6577,10 @@ msgstr "These are on your account. Anything you leave unticked stays there — y
 #: ../shell/src/add-app.ts
 msgid "These files did not land in its folder: {list}."
 msgstr "These files did not land in its folder: {list}."
+
+#: ../shell/src/app-folder.ts
+msgid "These translations can't be read, so they were not saved ({problem})."
+msgstr "These translations can't be read, so they were not saved ({problem})."
 
 #: ../shell/src/thinking-settings.tsx
 msgid "Think hard when stuck"
@@ -6980,9 +7007,14 @@ msgstr "Tomorrow"
 msgid "Translate into {into}"
 msgstr "Translate into {into}"
 
+#. App menu: the app's words are being translated, which takes a moment
 #: ../shell/src/App.tsx
-msgid "Translate this app into {intoName} ({intoTag})."
-msgstr "Translate this app into {intoName} ({intoTag})."
+msgid "Translating into {languageLabel}…"
+msgstr "Translating into {languageLabel}…"
+
+#: ../shell/src/file-viewer.tsx
+msgid "Translations in {name}"
+msgstr "Translations in {name}"
 
 #. A launcher tile group
 #: ../shell/src/launcher-groups.ts
@@ -7153,6 +7185,11 @@ msgstr "Update the shared data now? {who} will need to update their copy too —
 #: ../shell/src/version-gate.ts
 msgid "Update to keep making changes. Until you do, it stays open read-only, so your older copy can’t damage the shared data."
 msgstr "Update to keep making changes. Until you do, it stays open read-only, so your older copy can’t damage the shared data."
+
+#. App menu: translate the app's words that are new or changed since it was translated
+#: ../shell/src/App.tsx
+msgid "Update translations"
+msgstr "Update translations"
 
 #: ../shell/src/version-gate.ts
 msgid "Update your copy? Your version is kept in History, so you can go back."

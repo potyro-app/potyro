@@ -1,0 +1,172 @@
+msgid ""
+msgstr ""
+"Language: de\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Groceries"
+msgstr "Einkäufe"
+
+#: entities.list.label
+#: entities.item.fields.list.label
+#: pages.0.title
+msgid "List"
+msgstr "Liste"
+
+#: entities.list.fields.name.label
+#: entities.aisle.fields.name.label
+#: entities.item.fields.name.label
+msgid "Name"
+msgstr "Name"
+
+#: entities.list.fields.name.placeholder
+msgid "Weekly shop"
+msgstr "Wocheneinkauf"
+
+#: entities.aisle.label
+#: entities.item.fields.aisle.label
+msgid "Aisle"
+msgstr "Abteilung"
+
+#: entities.aisle.fields.name.placeholder
+msgid "Produce"
+msgstr "Obst & Gemüse"
+
+#: entities.aisle.fields.order.label
+msgid "Order"
+msgstr "Reihenfolge"
+
+#: entities.item.label
+#: entities.item.groups.0.title
+#: pages.1.title
+#: pages.1.view.sections.0.title
+msgid "Item"
+msgstr "Artikel"
+
+#: entities.item.fields.name.placeholder
+msgid "Milk"
+msgstr "Milch"
+
+#: entities.item.fields.quantity.label
+msgid "Quantity"
+msgstr "Menge"
+
+#: entities.item.fields.quantity.help
+msgid "How much, in your own words"
+msgstr "Wie viel, in deinen eigenen Worten"
+
+#: entities.item.fields.quantity.placeholder
+msgid "2 × 1 l"
+msgstr ""
+
+#: entities.item.fields.for.label
+msgid "For"
+msgstr "Für"
+
+#: entities.item.fields.for.help
+msgid "Whose it is, when it is not the household's"
+msgstr "Für wen, wenn es nicht für alle ist"
+
+#: entities.item.fields.bought.label
+#: pages.0.view.doneLabel
+msgid "In the basket"
+msgstr "Im Korb"
+
+#: entities.item.fields.position.label
+msgid "Position"
+msgstr "Position"
+
+#: entities.item.fields.note.label
+#: pages.1.view.sections.2.title
+msgid "Note"
+msgstr "Notiz"
+
+#: entities.item.fields.note.placeholder
+msgid "The oat one, not barista"
+msgstr "Die mit Hafer, nicht Barista"
+
+#: entities.item.fields.onList.label
+msgid "On the list"
+msgstr "Auf der Liste"
+
+#: entities.item.fields.timesBought.label
+msgid "Times bought"
+msgstr "Wie oft gekauft"
+
+#: entities.item.fields.lastBought.label
+msgid "Last bought"
+msgstr "Zuletzt gekauft"
+
+#: entities.item.groups.1.title
+msgid "More"
+msgstr "Mehr"
+
+#: entities.item.computed.line.label
+msgid "Details"
+msgstr "Details"
+
+#: entities.item.computed.memory.label
+msgid "Bought"
+msgstr "Gekauft"
+
+#: entities.item.actions.again.label
+msgid "Add"
+msgstr "Hinzufügen"
+
+#: pages.0.description
+msgid "Tick things as they go in the basket. Done shopping puts them away for next time."
+msgstr "Hak ab, was in den Korb kommt. Fertig eingekauft merkt es sich fürs nächste Mal."
+
+#: pages.0.summary.0.label
+msgid "to buy"
+msgstr "zu kaufen"
+
+#: pages.0.summary.1.label
+msgid "in the basket"
+msgstr "im Korb"
+
+#: pages.0.actions.0.label
+msgid "Done shopping"
+msgstr "Fertig eingekauft"
+
+#: pages.0.view.emptyText
+msgid "Nothing on the list. Add the first thing below — tap the box for your usuals."
+msgstr "Die Liste ist leer. Füge unten das Erste hinzu — tippe ins Feld für dein Übliches."
+
+#: pages.1.view.sections.1.title
+msgid "Memory"
+msgstr "Erinnerung"
+
+#: ctx.t
+msgid "Tick what went in the basket first."
+msgstr "Hake zuerst ab, was im Korb ist."
+
+#: ctx.t
+msgid "{n, plural, one {Put # thing away} other {Put # things away}}. Next time, tap the add box to bring them back."
+msgstr "{n, plural, one {# Sache weggeräumt} other {# Sachen weggeräumt}}. Nächstes Mal tippst du ins Eingabefeld, um sie zurückzuholen."
+
+#: ctx.t
+msgid "{n, plural, =0 {All bought} one {# to buy} other {# to buy}}"
+msgstr "{n, plural, =0 {Alles gekauft} one {# zu kaufen} other {# zu kaufen}}"
+
+#: ctx.t
+msgid "Not yet"
+msgstr "Noch nie"
+
+#: ctx.t
+msgid "{n, plural, one {once} other {# times}}, last {when}"
+msgstr "{n, plural, one {einmal} other {# Mal}}, zuletzt {when}"
+
+#: ctx.t
+msgid "{name} is already on the list"
+msgstr "{name} steht schon auf der Liste"
+
+#: ctx.t
+msgid "{name} is on the list"
+msgstr "{name} steht auf der Liste"
+
+#~ msgid "Emoji"
+#~ msgstr "Emoji"
+

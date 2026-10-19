@@ -105,9 +105,9 @@ export function createRealmLoader(opts: RealmLoaderOptions) {
     onKill: opts.onKill,
     views: opts.views,
   };
-  return async function loadRealm(args: { code: string; provenance: Provenance }): Promise<LoadedApp> {
+  return async function loadRealm(args: { code: string; provenance: Provenance; catalogs?: Readonly<Record<string, Readonly<Record<string, string>>>> }): Promise<LoadedApp> {
     if (args.provenance !== "untrusted") throw new Error("the realm runner is for untrusted apps");
-    const app = new RealmLoadedApp(args.code, o);
+    const app = new RealmLoadedApp(args.code, o, args.catalogs);
     await app.start();
     return app;
   };
@@ -237,6 +237,7 @@ export class RealmLoadedApp implements LoadedApp {
   constructor(
     private readonly code: string,
     private readonly o: ResolvedOptions,
+    private readonly catalogs?: Readonly<Record<string, Readonly<Record<string, string>>>>,
   ) {}
 
   // ---------------------------------------------------------------- lifecycle
@@ -270,7 +271,7 @@ export class RealmLoadedApp implements LoadedApp {
           else if (m?.t === "ready") (m.error != null ? reject(m.start ? new RealmStartError(m.error) : new Error(m.error)) : resolve(String(m.definition)));
         };
       });
-      port.postMessage({ t: "load", code: this.code });
+      port.postMessage({ t: "load", code: this.code, ...(this.catalogs ? { catalogs: this.catalogs } : {}) });
       const raw = JSON.parse(await Promise.race([ready, late])) as AppDefinition;
       if (this.disposed) throw new Error("this app was closed");
       // The same normalisation the isolate does after reading the definition out (#105).
@@ -831,6 +832,7 @@ export class RealmLoadedApp implements LoadedApp {
         runtimeSource: () => views.runtimeSource(),
         newCtxId: () => ++this.ctxSeq,
         baseOf: (ctx, id) => this.baseOf(ctx, id),
+        catalogFor: (language) => (language ? this.catalogs?.[language] : undefined),
         answer: (m, ch) => void this.answer(m, ch),
         releaseHolds: (prefix) => this.releaseHolds(prefix),
         stopped: (kind, reason) => {

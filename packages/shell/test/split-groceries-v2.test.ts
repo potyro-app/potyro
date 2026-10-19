@@ -69,7 +69,8 @@ describe("Split", () => {
     const e = await runtime.ctx.create("expense", { description: "Taxi", amount: 3000, paidBy: BO.id, split: "exact", group: group.id, exact: [{ person: ANA.id, amount: 2000 }, { person: CY.id, amount: 700 }] });
     const row = (await runtime.ctx.get("expense", e.id))!;
     expect(String(row.breakdown).split(" · ").sort()).toEqual(["Bo €1.00", "Cy €8.00", "You €21.00"].sort());
-    expect(row.kind).toBe("transport"); // guessed from "Taxi"
+    // No category picked: "other". Nothing is guessed from what the person typed (docs/30 §6).
+    expect(row.kind).toBe("other");
   });
 
   it("settles up from a suggested transfer: the payment it records clears the board", async () => {
@@ -261,9 +262,6 @@ describe("Groceries", () => {
     expect(usuals).not.toContain("Basil"); // never bought: not a usual yet
     expect(usuals).not.toContain("Milk"); // on the list, not in memory
     const items = await runtime.ctx.query("item");
-    expect(items.find((r) => r.name === "Toilet paper")!.emoji).toBe("🧻");
-    expect(items.find((r) => r.name === "Cheddar")!.emoji).toBe("🧀");
-    expect(items.find((r) => r.name === "Peanut butter")!.emoji).toBe("🥜");
     // From an item's own page, "Add" puts it back at the end of its aisle, on the list being shown.
     const coffee = items.find((r) => r.name === "Coffee beans")!;
     await runtime.runAction("item", "again", coffee.id);
@@ -274,15 +272,14 @@ describe("Groceries", () => {
     expect(Math.max(...pantry.map((i) => Number(i.position)))).toBe(back.position);
   });
 
-  it("quick add puts a new name in its aisle: the dictionary's, matched to YOUR aisle names", async () => {
+  it("quick add learns an item's aisle from you, in your words; nothing is guessed from a word list", async () => {
+    // People write items in their own language (owner, 2026-10-19): an item lands in the aisle it was in
+    // last time (`remember`), and a new one asks with one tap. There is no dictionary to guess from.
     const { runtime } = await open(groceries as unknown as AppDefinition, "groceries", { seed: seeded });
-    const aisles = await runtime.ctx.query("aisle");
-    const of = (name: string) => aisles.find((a) => a.name === name)!.id;
-    const defaults = (runtime.definition.pages.find((p) => p.id === "shopping")!.view as unknown as { quickAdd: { defaults: (t: string, c: unknown) => Promise<{ aisle?: string }> } }).quickAdd.defaults;
-    expect((await defaults("Leite", runtime.ctx)).aisle).toBe(of("Dairy")); // Portuguese, never bought
-    expect((await defaults("Brötchen", runtime.ctx)).aisle).toBe(of("Bakery"));
-    expect((await defaults("Waschmittel", runtime.ctx)).aisle).toBe(of("Household"));
-    expect(await defaults("Something odd", runtime.ctx)).toEqual({}); // the list asks with one tap instead
+    const quickAdd = (runtime.definition.pages.find((p) => p.id === "shopping")!.view as unknown as { quickAdd: { remember?: string[]; defaults?: unknown } }).quickAdd;
+    expect(quickAdd.remember).toEqual(["aisle"]);
+    expect(quickAdd.defaults).toBeUndefined();
+    expect(Object.keys(runtime.definition.entities.item!.computed ?? {})).not.toContain("emoji");
   });
 
   it("migrates 2.x records: everything already there stays on the list, and the list is one list", async () => {

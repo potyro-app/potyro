@@ -142,6 +142,8 @@ export interface ViewInit {
   /** The app's definition in the language it is shown in, functions left out (JSON). */
   definition: string;
   language: { current?: string; default?: string; available: string[] };
+  /** The app's translations for the shown language (docs/30), for `ctx.t` in the view. */
+  catalog?: Readonly<Record<string, string>>;
   entity: string;
   param: Record<string, string>;
   /** CSS custom properties and a few computed values of where the view sits: the theme. */
@@ -176,7 +178,8 @@ export type ViewToHost =
 
 // ---- host → realm (on the app's port) ----
 export type HostToRealm =
-  | { t: "load"; code: string }
+  /** `catalogs`: the app's translations by language (docs/30), for `ctx.t` in the box. Data, not code. */
+  | { t: "load"; code: string; catalogs?: Readonly<Record<string, Readonly<Record<string, string>>>> }
   | { t: "call"; id: number; kind: CallKind; args: unknown[]; base: CtxBase }
   /** `code`: an Error's own code (a socket's "denied", AI's "offline"…), so the app reads the same as a trusted one. */
   | { t: "reply"; id: number; ok: boolean; value?: unknown; error?: string; code?: string }

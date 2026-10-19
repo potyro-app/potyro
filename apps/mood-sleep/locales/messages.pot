@@ -1,0 +1,294 @@
+msgid ""
+msgstr ""
+"Language: \n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Sleep & Mood"
+msgstr ""
+
+#: quickActions.0.label
+msgid "Log last night"
+msgstr ""
+
+#: entities.checkin.label
+msgid "Check-in"
+msgstr ""
+
+#: entities.checkin.fields.date.label
+msgid "Date"
+msgstr ""
+
+#: entities.checkin.fields.date.help
+msgid "The morning you are checking in"
+msgstr ""
+
+#: entities.checkin.fields.hours.unit
+msgid "h"
+msgstr ""
+
+#: entities.checkin.fields.hours.label
+msgid "Hours slept"
+msgstr ""
+
+#: entities.checkin.fields.mood.label
+#: ctx.t
+msgid "Mood"
+msgstr ""
+
+#: entities.checkin.fields.mood.help
+msgid "1 rough · 3 okay · 5 great"
+msgstr ""
+
+#: entities.checkin.fields.tags.labels.exercise
+#: ctx.t
+msgid "exercise"
+msgstr ""
+
+#: entities.checkin.fields.tags.labels.coffee
+#: ctx.t
+msgid "coffee"
+msgstr ""
+
+#: entities.checkin.fields.tags.labels.alcohol
+#: ctx.t
+msgid "alcohol"
+msgstr ""
+
+#: entities.checkin.fields.tags.labels.late screen
+#: ctx.t
+msgid "late screen"
+msgstr ""
+
+#: entities.checkin.fields.tags.labels.nap
+#: ctx.t
+msgid "nap"
+msgstr ""
+
+#: entities.checkin.fields.tags.labels.stressed
+#: ctx.t
+msgid "stressed"
+msgstr ""
+
+#: entities.checkin.fields.tags.label
+msgid "The day had"
+msgstr ""
+
+#: entities.checkin.fields.note.label
+msgid "A short note"
+msgstr ""
+
+#: entities.checkin.fields.note.placeholder
+msgid "Late dinner, woke at four…"
+msgstr ""
+
+#: pages.0.title
+msgid "Patterns"
+msgstr ""
+
+#: pages.1.title
+msgid "Nights"
+msgstr ""
+
+#: pages.1.view.emptyText
+msgid "No nights logged yet. Tap “Log last night”."
+msgstr ""
+
+#: pages.2.title
+msgid "Night"
+msgstr ""
+
+#: ctx.t
+msgid "{h}h goal"
+msgstr ""
+
+#: ctx.t
+msgid "Slept {h}"
+msgstr ""
+
+#: ctx.t
+msgid "Mood {v} · {word} {face}"
+msgstr ""
+
+#: ctx.t
+msgid "hours slept"
+msgstr ""
+
+#: ctx.t
+msgid "mood"
+msgstr ""
+
+#: ctx.t
+msgid "{h} · mood {m} {face}"
+msgstr ""
+
+#: ctx.t
+msgid "How did you sleep?"
+msgstr ""
+
+#: ctx.t
+msgid "Save"
+msgstr ""
+
+#: ctx.t
+msgid "Logged {h} · {face}"
+msgstr ""
+
+#: ctx.t
+msgid "🌙  Log last night"
+msgstr ""
+
+#: ctx.t
+msgid "Sleep"
+msgstr ""
+
+#: ctx.t
+msgid "Hours slept and mood for each day, up to the last 30"
+msgstr ""
+
+#: ctx.t
+msgid "Night by night"
+msgstr ""
+
+#: ctx.t
+msgid "Sleep on the left, mood on the right"
+msgstr ""
+
+#: ctx.t
+msgid "Each night as a dot: hours slept across, mood up, coloured by what the day had"
+msgstr ""
+
+#: ctx.t
+msgid "Show nights by tag"
+msgstr ""
+
+#: ctx.t
+msgid "Does a long night lift the day?"
+msgstr ""
+
+#: ctx.t
+msgid "Every dot is a night, coloured by what the day had"
+msgstr ""
+
+#: ctx.t
+msgid "The dashed line is the trend: the steeper it climbs, the more sleep shows in your mood."
+msgstr ""
+
+#: ctx.t
+msgid "{n, plural, one {# check-in} other {# check-ins}} · {range}"
+msgstr ""
+
+#: ctx.t
+msgid "Your nights"
+msgstr ""
+
+#: ctx.t
+msgid "Average sleep"
+msgstr ""
+
+#: ctx.t
+msgid "Average mood"
+msgstr ""
+
+#: ctx.t
+msgid "Nights ≥ {h}h"
+msgstr ""
+
+#: ctx.t
+msgid "Last night"
+msgstr ""
+
+#: ctx.t
+msgid "Week: {avg} a night"
+msgstr ""
+
+#: ctx.t
+msgid "{h} slept"
+msgstr ""
+
+#: ctx.t
+msgid "nothing tagged"
+msgstr ""
+
+#: ctx.t
+msgid "rough"
+msgstr ""
+
+#: ctx.t
+msgid "low"
+msgstr ""
+
+#: ctx.t
+msgid "okay"
+msgstr ""
+
+#: ctx.t
+msgid "good"
+msgstr ""
+
+#: ctx.t
+msgid "great"
+msgstr ""
+
+#: ctx.t
+msgid "{h}h"
+msgstr ""
+
+#: ctx.t
+msgid "{n, plural, one {# hour} other {# hours}}"
+msgstr ""
+
+#: ctx.t
+msgid "Long nights or short, your mood stays close to {m}. Sleep is not what moves it."
+msgstr ""
+
+#: ctx.t
+msgid "On nights of {long} or more your mood averages {a}. Under {short}, it's {b}."
+msgstr ""
+
+#: ctx.t
+msgid "On days you exercise"
+msgstr ""
+
+#: ctx.t
+msgid "On coffee days"
+msgstr ""
+
+#: ctx.t
+msgid "After a drink"
+msgstr ""
+
+#: ctx.t
+msgid "After late screens"
+msgstr ""
+
+#: ctx.t
+msgid "On days with a nap"
+msgstr ""
+
+#: ctx.t
+msgid "On stressful days"
+msgstr ""
+
+#: ctx.t
+msgid "On days tagged “{tag}”"
+msgstr ""
+
+#: msg
+msgid "{lead} your mood averages {a}, against {b} without."
+msgstr ""
+
+#: msg
+msgid "{lead} you sleep {a} on average, against {b} without."
+msgstr ""
+
+#: ctx.t
+msgid "{have, plural, one {# check-in} other {# check-ins}} so far. A few more nights — about {need} — and a pattern starts to show."
+msgstr ""
+
+#: ctx.t
+msgid "Log how you slept tonight. After a week or so, this is where the pattern shows up."
+msgstr ""
+

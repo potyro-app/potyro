@@ -31,7 +31,8 @@
     "test:e2e:firefox": "POTYRO_FIREFOX=1 playwright test --project=trusted-firefox --project=sandbox-firefox",
     "pack:app": "node scripts/pack-app.mjs",
     "gallery:build": "node gallery/src/build.mjs",
-    "gallery:publish": "node gallery/src/publish.mjs"
+    "gallery:publish": "node gallery/src/publish.mjs",
+    "i18n:app": "pnpm --filter @potyro/generator i18n:app"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

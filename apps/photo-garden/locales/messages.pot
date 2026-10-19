@@ -1,0 +1,179 @@
+msgid ""
+msgstr ""
+"Language: \n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Photo Garden"
+msgstr ""
+
+#: entities.artwork.label
+msgid "Artwork"
+msgstr ""
+
+#: entities.artwork.fields.title.label
+msgid "Title"
+msgstr ""
+
+#: entities.artwork.fields.style.labels.flow
+#: ctx.t
+msgid "Flow"
+msgstr ""
+
+#: entities.artwork.fields.style.labels.points
+#: ctx.t
+msgid "Points"
+msgstr ""
+
+#: entities.artwork.fields.style.labels.mosaic
+#: ctx.t
+msgid "Mosaic"
+msgstr ""
+
+#: entities.artwork.fields.style.label
+#: ctx.t
+msgid "Style"
+msgstr ""
+
+#: entities.artwork.fields.date.label
+msgid "Date"
+msgstr ""
+
+#: entities.artwork.fields.image.label
+msgid "Image"
+msgstr ""
+
+#: pages.0.title
+msgid "Studio"
+msgstr ""
+
+#: pages.1.title
+msgid "Gallery"
+msgstr ""
+
+#: ctx.t
+msgid "Take a photo"
+msgstr ""
+
+#: ctx.t
+msgid "Choose one"
+msgstr ""
+
+#: ctx.t
+msgid "Grow a garden from a photo"
+msgstr ""
+
+#: ctx.t
+msgid "Take a picture of something you love — a face, a plant, a street at night. It becomes thousands of drifting specks that remember it. Touch them and they scatter."
+msgstr ""
+
+#: ctx.t
+msgid "Drag across it to scatter the specks"
+msgstr ""
+
+#: ctx.t
+msgid "Density"
+msgstr ""
+
+#: ctx.t
+msgid "New photo"
+msgstr ""
+
+#: ctx.t
+msgid "Keep this"
+msgstr ""
+
+#: ctx.t
+msgid "Sparse"
+msgstr ""
+
+#: ctx.t
+msgid "Dense"
+msgstr ""
+
+#: ctx.t
+msgid "A living picture made of drifting specks of colour. Drag across it to scatter them."
+msgstr ""
+
+#: ctx.t
+msgid "This device does not let apps take photos."
+msgstr ""
+
+#: ctx.t
+msgid "That file could not be read as a picture."
+msgstr ""
+
+#: ctx.t
+msgid "A new photo"
+msgstr ""
+
+#: ctx.t
+msgid "Choose from your photos"
+msgstr ""
+
+#: ctx.t
+msgid "The picture could not be saved."
+msgstr ""
+
+#: ctx.t
+msgid "Kept “{title}” in your gallery"
+msgstr ""
+
+#: ctx.t
+msgid "Delete"
+msgstr ""
+
+#: ctx.t
+msgid "Share"
+msgstr ""
+
+#: ctx.t
+msgid "Save a copy"
+msgstr ""
+
+#: ctx.t
+msgid "Close"
+msgstr ""
+
+#: ctx.t
+msgid "It could not be saved here."
+msgstr ""
+
+#: ctx.t
+msgid "It could not be shared."
+msgstr ""
+
+#: ctx.t
+msgid "Delete “{title}”?"
+msgstr ""
+
+#: ctx.t
+msgid "The picture is removed from this app."
+msgstr ""
+
+#: ctx.t
+msgid "{n} kept, newest first. Tap one to see it large."
+msgstr ""
+
+#: ctx.t
+msgid "Open the Studio"
+msgstr ""
+
+#: ctx.t
+msgid "Nothing kept yet"
+msgstr ""
+
+#: ctx.t
+msgid "Grow a garden from a photo, then press “Keep this”. It lands here."
+msgstr ""
+
+#: ctx.t
+msgid "{title}, open"
+msgstr ""
+
+#: ctx.t
+msgid "Not on this device yet"
+msgstr ""
+

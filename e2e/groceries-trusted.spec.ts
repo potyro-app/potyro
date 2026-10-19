@@ -51,12 +51,13 @@ test.describe("phone", () => {
     await expect(scope(page)).toContainText("Weekly shop", { timeout: 30_000 });
     await expect(page.locator(".k-check-done summary")).toHaveText("In the basket (3)");
 
-    // Quick add: type, Enter, next — into the aisle the app knows it from.
+    // Quick add: type, Enter, next — into the aisle it was in last time. The app learns aisles from
+    // you, in your words; it guesses nothing from a list of words (docs/30 §6).
     const input = page.getByRole("textbox", { name: "Add an item" });
     await input.tap();
-    await input.fill("Coffee");
+    await input.fill("Coffee beans");
     await page.keyboard.press("Enter");
-    const coffee = page.getByRole("checkbox", { name: "Coffee", exact: true });
+    const coffee = page.getByRole("checkbox", { name: "Coffee beans", exact: true });
     await expect(coffee).toBeVisible();
     await expect(input).toHaveValue("");
     await expect(input).toBeFocused();

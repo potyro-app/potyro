@@ -189,7 +189,7 @@ describe("the checklist's add box", () => {
     await waitFor(async () => expect((await runtime.ctx.query("item")).find((r) => r.name === "Oats")?.aisle).toBe("pantry"));
     // The same words as an item already on the list: a second one, in its aisle, though the app
     // would not have guessed it.
-    const again = screen.getByRole("textbox", { name: "Add an item" });
+    const again = await screen.findByRole("textbox", { name: "Add an item" });
     fireEvent.change(again, { target: { value: "Yoghurt" } });
     fireEvent.submit(again.closest("form")!);
     await waitFor(async () => expect((await runtime.ctx.query("item")).filter((r) => r.name === "Yoghurt").map((r) => r.aisle)).toEqual(["dairy", "dairy"]));

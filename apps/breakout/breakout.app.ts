@@ -261,14 +261,7 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
     g.fillRect(0, 0, W, H);
     if (error) {
       text(
-        ctx.t({
-          en: "levels.json has a problem",
-          "pt-BR": "O levels.json tem um problema",
-          de: "levels.json hat ein Problem",
-          es: "levels.json tiene un problema",
-          pl: "Problem z plikiem levels.json",
-          it: "levels.json ha un problema",
-        }),
+        ctx.t("levels.json has a problem"),
         H / 2 - 12,
         16,
       );
@@ -278,7 +271,7 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
     }
     if (state === "loading") {
       return text(
-        ctx.t({ en: "Loading levels…", "pt-BR": "Carregando níveis…", de: "Level werden geladen…", es: "Cargando niveles…", pl: "Wczytywanie poziomów…", it: "Caricamento livelli…" }),
+        ctx.t("Loading levels…"),
         H / 2,
         16,
       );
@@ -292,7 +285,7 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
     // Lives and best on the left under the score: the top-right corner is where the shell keeps its ✕.
     g.textAlign = "left";
     g.font = `400 12px system-ui, sans-serif`;
-    const bestText = ctx.t({ en: "best {n}", "pt-BR": "recorde {n}", de: "Rekord {n}", es: "récord {n}", pl: "rekord {n}", it: "record {n}" }, { n: best });
+    const bestText = ctx.t("best {n}", { n: best });
     g.fillText(`${"●".repeat(Math.max(lives, 0))}  ${bestText}`, 12, 44);
     for (const b of bricks) {
       if (b.hits <= 0) continue;
@@ -317,27 +310,13 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
     g.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
     g.fill();
     const again = (): string =>
-      ctx.t({
-        en: "Tap to play again",
-        "pt-BR": "Toque para jogar de novo",
-        de: "Tippen für ein neues Spiel",
-        es: "Toca para volver a jugar",
-        pl: "Stuknij, by zagrać znowu",
-        it: "Tocca per giocare ancora",
-      });
+      ctx.t("Tap to play again");
     if (state === "ready") {
-      text(ctx.t({ en: "Tap to launch", "pt-BR": "Toque para lançar", de: "Tippen zum Starten", es: "Toca para lanzar", pl: "Stuknij, by wystrzelić", it: "Tocca per lanciare" }), H / 2 + 40, 15);
+      text(ctx.t("Tap to launch"), H / 2 + 40, 15);
     }
     if (state === "paused") {
       text(
-        ctx.t({
-          en: "Paused — tap to go on",
-          "pt-BR": "Pausado — toque para continuar",
-          de: "Pause — tippen zum Weiterspielen",
-          es: "En pausa — toca para seguir",
-          pl: "Pauza — stuknij, by grać dalej",
-          it: "In pausa — tocca per continuare",
-        }),
+        ctx.t("Paused — tap to go on"),
         H / 2 + 40,
         15,
       );
@@ -345,7 +324,7 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
     if (state === "won") {
       text(
         ctx.t(
-          { en: "You cleared it! {score}", "pt-BR": "Você conseguiu! {score}", de: "Geschafft! {score}", es: "¡Lo lograste! {score}", pl: "Udało się! {score}", it: "Ce l'hai fatta! {score}" },
+          "You cleared it! {score}",
           { score },
         ),
         H / 2,
@@ -356,7 +335,7 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
     }
     if (state === "over") {
       text(
-        ctx.t({ en: "Game over · {score}", "pt-BR": "Fim de jogo · {score}", de: "Spiel vorbei · {score}", es: "Fin del juego · {score}", pl: "Koniec gry · {score}", it: "Fine partita · {score}" }, { score }),
+        ctx.t("Game over · {score}", { score }),
         H / 2,
         20,
       );
@@ -421,14 +400,7 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
       const raw = await ctx.files.json("levels.json");
       if (raw == null) {
         throw new Error(
-          ctx.t({
-            en: "levels.json has not reached this device yet",
-            "pt-BR": "O levels.json ainda não chegou a este aparelho",
-            de: "levels.json ist noch nicht auf diesem Gerät",
-            es: "levels.json aún no ha llegado a este dispositivo",
-            pl: "Plik levels.json jeszcze nie dotarł na to urządzenie",
-            it: "levels.json non è ancora arrivato su questo dispositivo",
-          }),
+          ctx.t("levels.json has not reached this device yet"),
         );
       }
       levels = checkLevels(raw);
@@ -464,20 +436,20 @@ export default defineApp({
   permissions: { haptics: true },
   entities: {
     run: {
-      label: { en: "Game", "pt-BR": "Partida", de: "Spiel", es: "Partida", pl: "Gra", it: "Partita" },
+      label: "Game",
       displayField: "levelName",
       fields: {
-        score: { type: "number", integer: true, label: { en: "Score", "pt-BR": "Pontos", de: "Punkte", es: "Puntos", pl: "Wynik", it: "Punteggio" } },
-        level: { type: "number", integer: true, label: { en: "Level", "pt-BR": "Nível", de: "Level", es: "Nivel", pl: "Poziom", it: "Livello" } },
+        score: { type: "number", integer: true, label: "Score" },
+        level: { type: "number", integer: true, label: "Level" },
         levelName: {
           type: "text",
-          label: { en: "Level Name", "pt-BR": "Nome do nível", de: "Levelname", es: "Nombre del nivel", pl: "Nazwa poziomu", it: "Nome del livello" },
+          label: "Level Name",
         },
-        won: { type: "boolean", label: { en: "Won", "pt-BR": "Venceu", de: "Gewonnen", es: "Ganada", pl: "Wygrana", it: "Vinta" } },
+        won: { type: "boolean", label: "Won" },
         playedAt: {
           type: "datetime",
           precision: "minute",
-          label: { en: "Played At", "pt-BR": "Jogada em", de: "Gespielt am", es: "Jugada el", pl: "Rozegrano", it: "Giocata il" },
+          label: "Played At",
         },
       },
     },
@@ -485,14 +457,14 @@ export default defineApp({
   pages: [
     {
       id: "play",
-      title: { en: "Play", "pt-BR": "Jogar", de: "Spielen", es: "Jugar", pl: "Graj", it: "Gioca" },
+      title: "Play",
       icon: "🎮",
       fullscreen: true,
       view: { type: "custom", entity: "run", mount: mountGame },
     },
     {
       id: "scores",
-      title: { en: "Scores", "pt-BR": "Pontuações", de: "Punktestände", es: "Puntuaciones", pl: "Wyniki", it: "Punteggi" },
+      title: "Scores",
       icon: "🏆",
       view: {
         type: "list",
@@ -501,29 +473,15 @@ export default defineApp({
         display: {
           primary: (r, ctx) =>
             ctx.t(
-              {
-                en: "{n, plural, one {# point} other {# points}}",
-                "pt-BR": "{n, plural, one {# ponto} other {# pontos}}",
-                de: "{n, plural, one {# Punkt} other {# Punkte}}",
-                es: "{n, plural, one {# punto} other {# puntos}}",
-                pl: "{n, plural, one {# punkt} few {# punkty} many {# punktów} other {# punktu}}",
-                it: "{n, plural, one {# punto} other {# punti}}",
-              },
+              "{n, plural, one {# point} other {# points}}",
               { n: Number(r.score) || 0 },
             ),
           // The level's name is the record's, in the language the game was played in.
           secondary: (r, ctx) =>
             r.won
-              ? ctx.t({
-                  en: "Cleared every level",
-                  "pt-BR": "Passou por todos os níveis",
-                  de: "Alle Level geschafft",
-                  es: "Todos los niveles superados",
-                  pl: "Wszystkie poziomy ukończone",
-                  it: "Tutti i livelli superati",
-                })
+              ? ctx.t("Cleared every level")
               : ctx.t(
-                  { en: "Reached {level}", "pt-BR": "Chegou a: {level}", de: "Bis {level} gekommen", es: "Llegó a: {level}", pl: "Poziom: {level}", it: "Fino a: {level}" },
+                  "Reached {level}",
                   { level: String(r.levelName ?? "") },
                 ),
         },

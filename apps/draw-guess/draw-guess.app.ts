@@ -16,7 +16,7 @@ import { mountPlay } from "./play.js";
 
 export default defineApp({
   id: "draw-guess",
-  name: { en: "Draw & Guess", "pt-BR": "Desenhe e Adivinhe", de: "Malen & Raten", es: "Dibuja y Adivina", pl: "Rysuj i Zgaduj", it: "Disegna e Indovina" },
+  name: "Draw & Guess",
   icon: "✏️",
   version: "1.0.0",
   schemaVersion: 1,
@@ -28,22 +28,22 @@ export default defineApp({
   permissions: { network: { rooms: true } },
   entities: {
     game: {
-      label: { en: "Game", "pt-BR": "Jogo", de: "Spiel", es: "Partida", pl: "Gra", it: "Partita" },
+      label: "Game",
       icon: "🏆",
       displayField: "title",
       fields: {
-        title: { type: "text", required: true, label: { en: "Winner", "pt-BR": "Vencedor", de: "Gewinner", es: "Ganador", pl: "Zwycięzca", it: "Vincitore" } },
-        date: { type: "datetime", precision: "minute", label: { en: "Played", "pt-BR": "Jogado em", de: "Gespielt", es: "Jugada", pl: "Rozegrana", it: "Giocata" } },
-        players: { type: "text", label: { en: "Scores", "pt-BR": "Pontos", de: "Punkte", es: "Puntos", pl: "Wyniki", it: "Punteggi" } },
-        place: { type: "number", label: { en: "Your place", "pt-BR": "Sua posição", de: "Dein Platz", es: "Tu puesto", pl: "Twoje miejsce", it: "Il tuo posto" } },
-        score: { type: "number", label: { en: "Your score", "pt-BR": "Seus pontos", de: "Deine Punkte", es: "Tus puntos", pl: "Twój wynik", it: "Il tuo punteggio" } },
+        title: { type: "text", required: true, label: "Winner" },
+        date: { type: "datetime", precision: "minute", label: "Played" },
+        players: { type: "text", label: "Scores" },
+        place: { type: "number", label: "Your place" },
+        score: { type: "number", label: "Your score" },
       },
     },
   },
   pages: [
     {
       id: "play",
-      title: { en: "Play", "pt-BR": "Jogar", de: "Spielen", es: "Jugar", pl: "Graj", it: "Gioca" },
+      title: "Play",
       icon: "✏️",
       // An invite link opens this page with the game's code (docs/24 §11): it fills the box, and the
       // person taps Join. Nothing joins by itself.
@@ -52,21 +52,14 @@ export default defineApp({
     },
     {
       id: "games",
-      title: { en: "Past games", "pt-BR": "Jogos anteriores", de: "Frühere Spiele", es: "Partidas anteriores", pl: "Poprzednie gry", it: "Partite passate" },
+      title: "Past games",
       icon: "🏆",
       view: {
         type: "list",
         entity: "game",
         sort: (a, b) => String(b.date ?? "").localeCompare(String(a.date ?? "")),
         display: { primary: "title", secondary: "players" },
-        emptyText: {
-          en: "Finished games land here, with everyone's scores.",
-          "pt-BR": "Os jogos terminados aparecem aqui, com os pontos de todos.",
-          de: "Fertige Spiele landen hier, mit allen Punkten.",
-          es: "Las partidas terminadas aparecen aquí, con los puntos de todos.",
-          pl: "Zakończone gry trafiają tutaj, z wynikami wszystkich.",
-          it: "Le partite finite arrivano qui, con i punteggi di tutti.",
-        },
+        emptyText: "Finished games land here, with everyone's scores.",
       },
     },
   ],
