@@ -12,25 +12,25 @@
 //
 // In six languages (docs/20); every language but English is a model's draft (#297).
 
-import { defineApp, type AggregateRow, type Ctx, type Resolved } from "potyro";
+import { defineApp, type AggregateRow, type Ctx, type Resolved, msg } from "potyro";
 import { addWord, clearDemo, isDemoRunning, liveState, playDemo, removeWord, stopWatching, toggleWord, wasStartedHere, watchLive, wordMinutes } from "./feed.js";
 import { JETSTREAM_HOST, PROFILE_HOST, sparkline, toDate } from "./watch.js";
 import { agoText, lastHourText, perMinuteText, STATE_HINTS, STATE_WORDS, type FeedState } from "./words.js";
 
 const ACTIONS = {
-  watch: { label: { en: "Watch live", "pt-BR": "Ver ao vivo", de: "Live verfolgen", es: "Ver en vivo", pl: "Oglądaj na żywo", it: "Segui in diretta" }, icon: "▶", run: watchLive },
-  stop: { label: { en: "Stop", "pt-BR": "Parar", de: "Stopp", es: "Parar", pl: "Zatrzymaj", it: "Ferma" }, icon: "■", run: stopWatching },
+  watch: { label: msg("Watch live"), icon: "▶", run: watchLive },
+  stop: { label: msg("Stop"), icon: "■", run: stopWatching },
   demo: {
-    label: { en: "Demo", "pt-BR": "Demo", de: "Demo", es: "Demo", pl: "Demo", it: "Demo" },
+    label: msg("Demo"),
     icon: "✨",
     run: async (ctx: Ctx) => {
       const demos = await ctx.query("post", { filter: (r) => r.demo === true, limit: 1 });
       if (!demos.length) return playDemo(ctx);
       const pick = await ctx.ui.menu({
-        title: { en: "Demo", "pt-BR": "Demo", de: "Demo", es: "Demo", pl: "Demo", it: "Demo" },
+        title: ctx.t("Demo"),
         items: [
-          { id: "play", icon: "✨", label: { en: "Play the demo again", "pt-BR": "Ver a demo de novo", de: "Demo noch einmal", es: "Ver la demo otra vez", pl: "Odtwórz demo jeszcze raz", it: "Rivedi la demo" }, detail: { en: "Invented posts, played here. Nothing is sent.", "pt-BR": "Posts inventados, tocados aqui. Nada é enviado.", de: "Erfundene Beiträge, hier abgespielt. Nichts wird gesendet.", es: "Publicaciones inventadas, reproducidas aquí. No se envía nada.", pl: "Wymyślone wpisy odtwarzane tutaj. Nic nie jest wysyłane.", it: "Post inventati, riprodotti qui. Non viene inviato nulla." } },
-          { id: "clear", icon: "🧹", destructive: true, label: { en: "Clear the demo", "pt-BR": "Limpar a demo", de: "Demo löschen", es: "Borrar la demo", pl: "Usuń demo", it: "Cancella la demo" } },
+          { id: "play", icon: "✨", label: ctx.t("Play the demo again"), detail: ctx.t("Invented posts, played here. Nothing is sent.") },
+          { id: "clear", icon: "🧹", destructive: true, label: ctx.t("Clear the demo") },
         ],
       });
       if (pick === "play") await playDemo(ctx);
@@ -62,7 +62,7 @@ function statusRows(rows: Resolved[], ctx: Ctx): AggregateRow[] {
       detail: ctx.t(STATE_HINTS[state]),
       value:
         (state === "live" || state === "demo") && n > 0
-          ? ctx.t({ en: "{n, plural, one {# match} other {# matches}}", "pt-BR": "{n, plural, one {# menção} other {# menções}}", de: "{n, plural, one {# Treffer} other {# Treffer}}", es: "{n, plural, one {# mención} other {# menciones}}", pl: "{n, plural, one {# trafienie} few {# trafienia} other {# trafień}}", it: "{n, plural, one {# menzione} other {# menzioni}}" }, { n })
+          ? ctx.t("{n, plural, one {# match} other {# matches}}", { n })
           : undefined,
       tone: TONE[state] ?? "neutral",
     },
@@ -89,20 +89,13 @@ function perWordRows(rows: Resolved[], ctx: Ctx): AggregateRow[] {
     .map((x) => x.row);
 }
 
-const EMPTY_POSTS = {
-  en: "Posts that mention your words land here as they are written. Add words under Words, then “Watch live” — or try “Demo”.",
-  "pt-BR": "Os posts que mencionam suas palavras chegam aqui assim que são escritos. Adicione palavras em Palavras e toque em “Ver ao vivo” — ou teste a “Demo”.",
-  de: "Beiträge mit deinen Wörtern landen hier, sobald sie geschrieben werden. Leg unter Wörter welche an, dann „Live verfolgen“ — oder probier die „Demo“.",
-  es: "Las publicaciones que mencionan tus palabras llegan aquí en cuanto se escriben. Añade palabras en Palabras y toca «Ver en vivo», o prueba la «Demo».",
-  pl: "Wpisy z twoimi słowami trafiają tu, gdy tylko powstaną. Dodaj słowa w zakładce Słowa, potem „Oglądaj na żywo” — albo wypróbuj „Demo”.",
-  it: "I post che citano le tue parole arrivano qui appena vengono scritti. Aggiungi parole in Parole, poi “Segui in diretta”, oppure prova la “Demo”.",
-};
+const EMPTY_POSTS = msg("Posts that mention your words land here as they are written. Add words under Words, then “Watch live” — or try “Demo”.");
 
 const byAt = (a: Resolved, b: Resolved) => (toDate(b.at)?.getTime() ?? 0) - (toDate(a.at)?.getTime() ?? 0);
 
 export default defineApp({
   id: "word-watch",
-  name: { en: "Word Watch", "pt-BR": "Vigia de Palavras", de: "Wortwache", es: "Vigía de Palabras", pl: "Słowostróż", it: "Sentinella di Parole" },
+  name: "Word Watch",
   icon: "🦋",
   version: "1.0.0",
   schemaVersion: 1,
@@ -114,24 +107,24 @@ export default defineApp({
   quickActions: [],
   entities: {
     word: {
-      label: { en: "Word", "pt-BR": "Palavra", de: "Wort", es: "Palabra", pl: "Słowo", it: "Parola" },
+      label: "Word",
       icon: "🔤",
       displayField: "word",
       fields: {
-        word: { type: "text", required: true, label: { en: "Word or phrase", "pt-BR": "Palavra ou frase", de: "Wort oder Ausdruck", es: "Palabra o frase", pl: "Słowo lub fraza", it: "Parola o frase" }, placeholder: { en: "coffee", "pt-BR": "café", de: "Kaffee", es: "café", pl: "kawa", it: "caffè" } },
-        on: { type: "boolean", default: true, label: { en: "Watching", "pt-BR": "Acompanhando", de: "Beobachtet", es: "Siguiendo", pl: "Obserwowane", it: "Seguita" } },
-        total: { type: "number", integer: true, default: 0, label: { en: "Mentions so far", "pt-BR": "Menções até agora", de: "Erwähnungen bisher", es: "Menciones hasta ahora", pl: "Dotychczasowe wzmianki", it: "Menzioni finora" } },
-        lastAt: { type: "datetime", precision: "minute", label: { en: "Last seen", "pt-BR": "Visto por último", de: "Zuletzt gesehen", es: "Visto por última vez", pl: "Ostatnio", it: "Visto l'ultima volta" } },
-        demo: { type: "boolean", hidden: true, label: { en: "Demo", "pt-BR": "Demo", de: "Demo", es: "Demo", pl: "Demo", it: "Demo" } },
+        word: { type: "text", required: true, label: "Word or phrase", placeholder: "coffee" },
+        on: { type: "boolean", default: true, label: "Watching" },
+        total: { type: "number", integer: true, default: 0, label: "Mentions so far" },
+        lastAt: { type: "datetime", precision: "minute", label: "Last seen" },
+        demo: { type: "boolean", hidden: true, label: "Demo" },
       },
       actions: {
         toggle: {
-          label: { en: "Pause or watch again", "pt-BR": "Pausar ou voltar a acompanhar", de: "Pausieren oder wieder beobachten", es: "Pausar o volver a seguir", pl: "Wstrzymaj lub wznów", it: "Metti in pausa o riprendi" },
+          label: "Pause or watch again",
           description: "Pause watching this word, or watch it again.",
           run: toggleWord,
         },
         remove: {
-          label: { en: "Stop watching", "pt-BR": "Parar de acompanhar", de: "Nicht mehr beobachten", es: "Dejar de seguir", pl: "Przestań obserwować", it: "Smetti di seguire" },
+          label: "Stop watching",
           description: "Remove the word and its counts.",
           run: removeWord,
         },
@@ -140,17 +133,17 @@ export default defineApp({
     post: {
       // Only the feed writes these: no Add, Edit or Delete for people (docs/03 editableBy).
       editableBy: "app",
-      label: { en: "Post", "pt-BR": "Post", de: "Beitrag", es: "Publicación", pl: "Wpis", it: "Post" },
+      label: "Post",
       icon: "💬",
       displayField: "text",
       fields: {
-        text: { type: "text", multiline: true, required: true, label: { en: "Post", "pt-BR": "Post", de: "Beitrag", es: "Publicación", pl: "Wpis", it: "Post" } },
-        handle: { type: "text", label: { en: "By", "pt-BR": "De", de: "Von", es: "De", pl: "Autor", it: "Di" } },
-        words: { type: "tags", label: { en: "Mentions", "pt-BR": "Menciona", de: "Erwähnt", es: "Menciona", pl: "Wspomina", it: "Cita" } },
-        at: { type: "datetime", precision: "minute", label: { en: "Seen", "pt-BR": "Visto", de: "Gesehen", es: "Visto", pl: "Zobaczono", it: "Visto" } },
-        link: { type: "url", label: { en: "On Bluesky", "pt-BR": "No Bluesky", de: "Auf Bluesky", es: "En Bluesky", pl: "Na Bluesky", it: "Su Bluesky" } },
-        did: { type: "text", hidden: true, label: { en: "Author's id", "pt-BR": "ID do autor", de: "ID des Autors", es: "ID del autor", pl: "ID autora", it: "ID dell'autore" } },
-        demo: { type: "boolean", hidden: true, label: { en: "Demo", "pt-BR": "Demo", de: "Demo", es: "Demo", pl: "Demo", it: "Demo" } },
+        text: { type: "text", multiline: true, required: true, label: "Post" },
+        handle: { type: "text", label: "By" },
+        words: { type: "tags", label: "Mentions" },
+        at: { type: "datetime", precision: "minute", label: "Seen" },
+        link: { type: "url", label: "On Bluesky" },
+        did: { type: "text", hidden: true, label: "Author's id" },
+        demo: { type: "boolean", hidden: true, label: "Demo" },
       },
       computed: {
         ago: {
@@ -158,39 +151,39 @@ export default defineApp({
             const t = toDate(r.at);
             return t ? agoText(t, ctx.now(), ctx) : "";
           },
-          label: { en: "When", "pt-BR": "Quando", de: "Wann", es: "Cuándo", pl: "Kiedy", it: "Quando" },
+          label: "When",
         },
       },
     },
     minute: {
       editableBy: "app",
-      label: { en: "Minute", "pt-BR": "Minuto", de: "Minute", es: "Minuto", pl: "Minuta", it: "Minuto" },
+      label: "Minute",
       displayField: "word",
       fields: {
-        word: { type: "text", label: { en: "Word", "pt-BR": "Palavra", de: "Wort", es: "Palabra", pl: "Słowo", it: "Parola" } },
-        wordId: { type: "text", hidden: true, label: { en: "Word id", "pt-BR": "ID da palavra", de: "Wort-ID", es: "ID de la palabra", pl: "ID słowa", it: "ID della parola" } },
-        at: { type: "datetime", precision: "minute", label: { en: "Minute", "pt-BR": "Minuto", de: "Minute", es: "Minuto", pl: "Minuta", it: "Minuto" } },
-        count: { type: "number", integer: true, label: { en: "Mentions", "pt-BR": "Menções", de: "Erwähnungen", es: "Menciones", pl: "Wzmianki", it: "Menzioni" } },
-        demo: { type: "boolean", hidden: true, label: { en: "Demo", "pt-BR": "Demo", de: "Demo", es: "Demo", pl: "Demo", it: "Demo" } },
+        word: { type: "text", label: "Word" },
+        wordId: { type: "text", hidden: true, label: "Word id" },
+        at: { type: "datetime", precision: "minute", label: "Minute" },
+        count: { type: "number", integer: true, label: { text: "Mentions", context: "minute count" } },
+        demo: { type: "boolean", hidden: true, label: "Demo" },
       },
     },
     feed: {
       editableBy: "app",
-      label: { en: "Feed", "pt-BR": "Feed", de: "Feed", es: "Feed", pl: "Kanał", it: "Feed" },
+      label: "Feed",
       displayField: "state",
       fields: {
-        state: { type: "text", label: { en: "State", "pt-BR": "Estado", de: "Zustand", es: "Estado", pl: "Stan", it: "Stato" } },
-        since: { type: "datetime", precision: "minute", label: { en: "Since", "pt-BR": "Desde", de: "Seit", es: "Desde", pl: "Od", it: "Da" } },
-        count: { type: "number", integer: true, label: { en: "Matches", "pt-BR": "Menções", de: "Treffer", es: "Menciones", pl: "Trafienia", it: "Menzioni" } },
-        lastText: { type: "text", label: { en: "Latest", "pt-BR": "Último", de: "Zuletzt", es: "Último", pl: "Ostatni", it: "Ultimo" } },
-        lastWord: { type: "text", label: { en: "Latest word", "pt-BR": "Última palavra", de: "Letztes Wort", es: "Última palabra", pl: "Ostatnie słowo", it: "Ultima parola" } },
+        state: { type: "text", label: "State" },
+        since: { type: "datetime", precision: "minute", label: "Since" },
+        count: { type: "number", integer: true, label: "Matches" },
+        lastText: { type: "text", label: "Latest" },
+        lastWord: { type: "text", label: "Latest word" },
       },
     },
   },
   pages: [
     {
       id: "live",
-      title: { en: "Live", "pt-BR": "Ao vivo", de: "Live", es: "En vivo", pl: "Na żywo", it: "Diretta" },
+      title: "Live",
       icon: "📡",
       actions: [ACTIONS.watch, ACTIONS.stop, ACTIONS.demo],
       layout: {
@@ -219,7 +212,7 @@ export default defineApp({
     },
     {
       id: "trend",
-      title: { en: "Per minute", "pt-BR": "Por minuto", de: "Pro Minute", es: "Por minuto", pl: "Na minutę", it: "Al minuto" },
+      title: "Per minute",
       icon: "📊",
       layout: {
         type: "stack",
@@ -228,27 +221,27 @@ export default defineApp({
             view: {
               type: "aggregate",
               entity: "minute",
-              title: { en: "Right now", "pt-BR": "Agora", de: "Gerade", es: "Ahora mismo", pl: "Teraz", it: "Adesso" },
+              title: "Right now",
               rows: perWordRows,
-              emptyText: { en: "No mentions counted yet.", "pt-BR": "Nenhuma menção contada ainda.", de: "Noch keine Erwähnungen gezählt.", es: "Aún no hay menciones contadas.", pl: "Nie policzono jeszcze żadnych wzmianek.", it: "Ancora nessuna menzione contata." },
+              emptyText: "No mentions counted yet.",
             },
           },
           {
             view: {
               type: "chart",
               entity: "minute",
-              title: { en: "Mentions per minute", "pt-BR": "Menções por minuto", de: "Erwähnungen pro Minute", es: "Menciones por minuto", pl: "Wzmianki na minutę", it: "Menzioni al minuto" },
-              subtitle: { en: "All your words, last 30 minutes", "pt-BR": "Todas as suas palavras, últimos 30 minutos", de: "Alle deine Wörter, letzte 30 Minuten", es: "Todas tus palabras, últimos 30 minutos", pl: "Wszystkie twoje słowa, ostatnie 30 minut", it: "Tutte le tue parole, ultimi 30 minuti" },
+              title: "Mentions per minute",
+              subtitle: "All your words, last 30 minutes",
               series: (rows, ctx) => {
                 const now = new Date();
                 const ids = [...new Set(rows.map((r) => String(r.wordId)))];
                 const sums = Array.from({ length: 30 }, (_, i) => ids.reduce((a, id) => a + (wordMinutes(rows, id, now, 30)[i] ?? 0), 0));
                 return sums.map((value, i) => {
                   const at = new Date(Math.floor(now.getTime() / 60_000) * 60_000 - (29 - i) * 60_000);
-                  return { label: i % 5 === 4 ? ctx.format.date(at, { hour: "2-digit", minute: "2-digit" }) : "", value, text: ctx.t({ en: "{n} at {time}", "pt-BR": "{n} às {time}", de: "{n} um {time}", es: "{n} a las {time}", pl: "{n} o {time}", it: "{n} alle {time}" }, { n: value, time: ctx.format.date(at, { hour: "2-digit", minute: "2-digit" }) }) };
+                  return { label: i % 5 === 4 ? ctx.format.date(at, { hour: "2-digit", minute: "2-digit" }) : "", value, text: ctx.t("{n} at {time}", { n: value, time: ctx.format.date(at, { hour: "2-digit", minute: "2-digit" }) }) };
                 });
               },
-              emptyText: { en: "The bars fill in minute by minute once you watch live.", "pt-BR": "As barras se enchem minuto a minuto quando você acompanha ao vivo.", de: "Die Balken füllen sich Minute für Minute, sobald du live verfolgst.", es: "Las barras se llenan minuto a minuto cuando sigues en vivo.", pl: "Słupki zapełniają się minuta po minucie, gdy oglądasz na żywo.", it: "Le barre si riempiono minuto per minuto quando segui in diretta." },
+              emptyText: "The bars fill in minute by minute once you watch live.",
             },
           },
         ],
@@ -256,9 +249,9 @@ export default defineApp({
     },
     {
       id: "words",
-      title: { en: "Words", "pt-BR": "Palavras", de: "Wörter", es: "Palabras", pl: "Słowa", it: "Parole" },
+      title: "Words",
       icon: "🔤",
-      actions: [{ label: { en: "Add a word", "pt-BR": "Adicionar palavra", de: "Wort hinzufügen", es: "Añadir palabra", pl: "Dodaj słowo", it: "Aggiungi parola" }, icon: "＋", run: addWord }],
+      actions: [{ label: "Add a word", icon: "＋", run: addWord }],
       view: {
         type: "list",
         entity: "word",
@@ -268,25 +261,18 @@ export default defineApp({
           secondary: (r, ctx) => {
             const t = toDate(r.lastAt);
             const n = Number(r.total ?? 0);
-            const seen = ctx.t({ en: "{n, plural, one {# mention} other {# mentions}}", "pt-BR": "{n, plural, one {# menção} other {# menções}}", de: "{n, plural, one {# Erwähnung} other {# Erwähnungen}}", es: "{n, plural, one {# mención} other {# menciones}}", pl: "{n, plural, one {# wzmianka} few {# wzmianki} other {# wzmianek}}", it: "{n, plural, one {# menzione} other {# menzioni}}" }, { n });
-            const paused = r.on === false ? ctx.t({ en: "paused", "pt-BR": "pausada", de: "pausiert", es: "en pausa", pl: "wstrzymane", it: "in pausa" }) : "";
-            return [seen, t ? ctx.t({ en: "seen {ago}", "pt-BR": "vista {ago}", de: "gesehen {ago}", es: "vista {ago}", pl: "widziane {ago}", it: "vista {ago}" }, { ago: agoText(t, ctx.now(), ctx) }) : "", paused].filter(Boolean).join(" · ");
+            const seen = ctx.t("{n, plural, one {# mention} other {# mentions}}", { n });
+            const paused = r.on === false ? ctx.t("paused") : "";
+            return [seen, t ? ctx.t("seen {ago}", { ago: agoText(t, ctx.now(), ctx) }) : "", paused].filter(Boolean).join(" · ");
           },
         },
-        emptyText: {
-          en: "Tap “Add a word” — “coffee”, “#rain”, a team, a town. Posts that mention any of them are kept; everything else streams past.",
-          "pt-BR": "Toque em “Adicionar palavra” — “café”, “#chuva”, um time, uma cidade. Os posts que mencionam alguma delas ficam; o resto passa direto.",
-          de: "Tippe auf „Wort hinzufügen“ — „Kaffee“, „#Regen“, ein Verein, eine Stadt. Beiträge, die eins davon erwähnen, bleiben; alles andere zieht vorbei.",
-          es: "Toca «Añadir palabra»: «café», «#lluvia», un equipo, una ciudad. Se quedan las publicaciones que mencionan alguna; lo demás pasa de largo.",
-          pl: "Stuknij „Dodaj słowo” — „kawa”, „#deszcz”, drużyna, miasto. Wpisy, które o nich wspominają, zostają; reszta przepływa.",
-          it: "Tocca “Aggiungi parola”: “caffè”, “#pioggia”, una squadra, una città. Restano i post che ne citano una; il resto scorre via.",
-        },
+        emptyText: "Tap “Add a word” — “coffee”, “#rain”, a team, a town. Posts that mention any of them are kept; everything else streams past.",
         onOpen: { page: "word", param: { wordId: "id" } },
       },
     },
     {
       id: "post",
-      title: { en: "Post", "pt-BR": "Post", de: "Beitrag", es: "Publicación", pl: "Wpis", it: "Post" },
+      title: "Post",
       hidden: true,
       view: {
         type: "detail",
@@ -297,7 +283,7 @@ export default defineApp({
     },
     {
       id: "word",
-      title: { en: "Word", "pt-BR": "Palavra", de: "Wort", es: "Palabra", pl: "Słowo", it: "Parola" },
+      title: "Word",
       hidden: true,
       view: { type: "detail", entity: "word", param: "wordId", actions: ["toggle", "remove"], sections: [{ fields: ["word", "on", "total", "lastAt"] }] },
     },

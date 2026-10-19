@@ -14,7 +14,7 @@
 //
 // In six languages (docs/20); every language but English is a model's draft (#297).
 
-import { defineApp, type AggregateRow, type Ctx, type FilterChip, type Resolved } from "potyro";
+import { defineApp, type AggregateRow, type Ctx, type FilterChip, type Resolved, msg } from "potyro";
 import { alertSettings, clearDemo, editAlerts, isDemoRunning, liveState, playDemo, quakeLine, stopWatching, wasStartedHere, watchLive, type FeedState } from "./feed.js";
 import { distanceKm, EMSC_HOST, strength, STRENGTH_COLOURS, STRENGTHS, toDate } from "./quakes.js";
 import { agoText, awayText, magText, STATE_HINTS, STATE_WORDS, STRENGTH_WORDS } from "./words.js";
@@ -22,8 +22,8 @@ import { agoText, awayText, magText, STATE_HINTS, STATE_WORDS, STRENGTH_WORDS } 
 const DAY_MS = 86_400_000;
 
 const FILTERS: FilterChip[] = [
-  { label: { en: "From magnitude", "pt-BR": "A partir da magnitude", de: "Ab Magnitude", es: "Desde la magnitud", pl: "Od magnitudy", it: "Da magnitudo" }, param: "min", type: "number", placeholder: { en: "Magnitude from…", "pt-BR": "Magnitude a partir de…", de: "Magnitude ab …", es: "Magnitud desde…", pl: "Magnituda od…", it: "Magnitudo da…" } },
-  { label: { en: "Last 24 h", "pt-BR": "Últimas 24 h", de: "Letzte 24 Std.", es: "Últimas 24 h", pl: "Ostatnie 24 godz.", it: "Ultime 24 h" }, param: "day", type: "boolean" },
+  { label: msg("From magnitude"), param: "min", type: "number", placeholder: msg("Magnitude from…") },
+  { label: msg("Last 24 h"), param: "day", type: "boolean" },
 ];
 
 /** The chips: at least this strong, and (when ticked) in the last day. */
@@ -37,19 +37,19 @@ function chipFilter(r: Resolved, ctx: Ctx): boolean {
 const byTime = (a: Resolved, b: Resolved) => (toDate(b.time)?.getTime() ?? 0) - (toDate(a.time)?.getTime() ?? 0);
 
 const ACTIONS = {
-  watch: { label: { en: "Watch live", "pt-BR": "Ver ao vivo", de: "Live verfolgen", es: "Ver en vivo", pl: "Oglądaj na żywo", it: "Segui in diretta" }, icon: "▶", run: watchLive },
-  stop: { label: { en: "Stop", "pt-BR": "Parar", de: "Stopp", es: "Parar", pl: "Zatrzymaj", it: "Ferma" }, icon: "■", run: stopWatching },
+  watch: { label: msg("Watch live"), icon: "▶", run: watchLive },
+  stop: { label: msg("Stop"), icon: "■", run: stopWatching },
   demo: {
-    label: { en: "Demo", "pt-BR": "Demo", de: "Demo", es: "Demo", pl: "Demo", it: "Demo" },
+    label: msg("Demo"),
     icon: "✨",
     run: async (ctx: Ctx) => {
       const demos = await ctx.query("quake", { filter: (r) => r.demo === true, limit: 1 });
       if (!demos.length) return playDemo(ctx);
       const pick = await ctx.ui.menu({
-        title: { en: "Demo", "pt-BR": "Demo", de: "Demo", es: "Demo", pl: "Demo", it: "Demo" },
+        title: ctx.t("Demo"),
         items: [
-          { id: "play", icon: "✨", label: { en: "Play the demo again", "pt-BR": "Ver a demo de novo", de: "Demo noch einmal", es: "Ver la demo otra vez", pl: "Odtwórz demo jeszcze raz", it: "Rivedi la demo" }, detail: { en: "Real earthquakes from earlier, replayed here. Nothing is sent.", "pt-BR": "Terremotos reais de antes, repetidos aqui. Nada é enviado.", de: "Echte Erdbeben von früher, hier nachgespielt. Nichts wird gesendet.", es: "Terremotos reales de antes, repetidos aquí. No se envía nada.", pl: "Prawdziwe trzęsienia z przeszłości, odtworzone tutaj. Nic nie jest wysyłane.", it: "Terremoti veri di prima, riprodotti qui. Non viene inviato nulla." } },
-          { id: "clear", icon: "🧹", destructive: true, label: { en: "Clear the demo", "pt-BR": "Limpar a demo", de: "Demo löschen", es: "Borrar la demo", pl: "Usuń demo", it: "Cancella la demo" } },
+          { id: "play", icon: "✨", label: ctx.t("Play the demo again"), detail: ctx.t("Real earthquakes from earlier, replayed here. Nothing is sent.") },
+          { id: "clear", icon: "🧹", destructive: true, label: ctx.t("Clear the demo") },
         ],
       });
       if (pick === "play") await playDemo(ctx);
@@ -92,7 +92,7 @@ async function statusRows(rows: Resolved[], ctx: Ctx): Promise<AggregateRow[]> {
       id: "state",
       label: `${STATE_GLYPH[state]} ${ctx.t(STATE_WORDS[state])}`,
       detail: ctx.t(STATE_HINTS[state]),
-      value: (state === "live" || state === "demo") && n > 0 ? ctx.t({ en: "{n} new", "pt-BR": "{n} novos", de: "{n} neu", es: "{n} nuevos", pl: "{n} nowych", it: "{n} nuovi" }, { n }) : undefined,
+      value: (state === "live" || state === "demo") && n > 0 ? ctx.t("{n} new", { n }) : undefined,
       tone: TONE[state] ?? "neutral",
     },
   ];
@@ -100,7 +100,7 @@ async function statusRows(rows: Resolved[], ctx: Ctx): Promise<AggregateRow[]> {
   if (feed?.lastPlace && lastAt && state !== "off") {
     out.push({
       id: "latest",
-      label: ctx.t({ en: "Latest: {place}", "pt-BR": "Último: {place}", de: "Zuletzt: {place}", es: "Último: {place}", pl: "Ostatnie: {place}", it: "Ultimo: {place}" }, { place: String(feed.lastPlace) }),
+      label: ctx.t("Latest: {place}", { place: String(feed.lastPlace) }),
       detail: agoText(lastAt, new Date(), ctx),
       value: magText(Number(feed.lastMag), ctx),
     });
@@ -108,9 +108,9 @@ async function statusRows(rows: Resolved[], ctx: Ctx): Promise<AggregateRow[]> {
   const alerts = await alertSettings(ctx);
   out.push({
     id: "alerts",
-    label: ctx.t({ en: "Alerts near you", "pt-BR": "Alertas perto de você", de: "Warnungen in deiner Nähe", es: "Alertas cerca de ti", pl: "Alerty w pobliżu", it: "Avvisi vicino a te" }),
-    detail: ctx.t({ en: "Change them under Near me.", "pt-BR": "Mude em Perto de mim.", de: "Ändern unter In meiner Nähe.", es: "Cámbialas en Cerca de mí.", pl: "Zmień w zakładce W pobliżu.", it: "Cambiali in Vicino a me." }),
-    value: alerts.on && alerts.home ? `${magText(alerts.above, ctx)}+ · ${ctx.format.number(alerts.withinKm)} km` : ctx.t({ en: "Off", "pt-BR": "Desligados", de: "Aus", es: "Desactivadas", pl: "Wyłączone", it: "Disattivati" }),
+    label: ctx.t("Alerts near you"),
+    detail: ctx.t("Change them under Near me."),
+    value: alerts.on && alerts.home ? `${magText(alerts.above, ctx)}+ · ${ctx.format.number(alerts.withinKm)} km` : ctx.t("Off"),
   });
   return out;
 }
@@ -124,18 +124,11 @@ const QUAKE_DISPLAY = {
   badges: ["strength"],
 };
 
-const EMPTY = {
-  en: "No earthquakes here yet. Tap “Watch live” to follow EMSC's feed — the last day is filled in first — or “Demo” to see how it looks without connecting.",
-  "pt-BR": "Ainda não há terremotos aqui. Toque em “Ver ao vivo” para acompanhar o feed do EMSC — o último dia vem primeiro — ou em “Demo” para ver como fica sem se conectar.",
-  de: "Noch keine Erdbeben hier. Tippe auf „Live verfolgen“, um dem Feed von EMSC zu folgen — der letzte Tag wird zuerst geladen — oder auf „Demo“, um es ohne Verbindung zu sehen.",
-  es: "Aún no hay terremotos aquí. Toca «Ver en vivo» para seguir el feed del EMSC (primero se carga el último día) o «Demo» para verlo sin conectarte.",
-  pl: "Nie ma tu jeszcze trzęsień. Stuknij „Oglądaj na żywo”, by śledzić kanał EMSC — najpierw wczyta się ostatnia doba — albo „Demo”, by zobaczyć to bez łączenia.",
-  it: "Ancora nessun terremoto qui. Tocca “Segui in diretta” per seguire il feed di EMSC (prima arriva l'ultimo giorno) oppure “Demo” per vederlo senza collegarti.",
-};
+const EMPTY = msg("No earthquakes here yet. Tap “Watch live” to follow EMSC's feed — the last day is filled in first — or “Demo” to see how it looks without connecting.");
 
 export default defineApp({
   id: "earthquakes",
-  name: { en: "Earthquakes", "pt-BR": "Terremotos", de: "Erdbeben", es: "Terremotos", pl: "Trzęsienia ziemi", it: "Terremoti" },
+  name: "Earthquakes",
   icon: "🌍",
   version: "1.0.0",
   schemaVersion: 1,
@@ -150,29 +143,29 @@ export default defineApp({
     quake: {
       // Only the feed writes these: no Add, Edit or Delete for people (docs/03 editableBy).
       editableBy: "app",
-      label: { en: "Earthquake", "pt-BR": "Terremoto", de: "Erdbeben", es: "Terremoto", pl: "Trzęsienie ziemi", it: "Terremoto" },
+      label: "Earthquake",
       icon: "🌍",
       displayField: "place",
       fields: {
-        place: { type: "text", required: true, label: { en: "Where", "pt-BR": "Onde", de: "Wo", es: "Dónde", pl: "Gdzie", it: "Dove" } },
-        mag: { type: "number", required: true, step: 0.1, label: { en: "Magnitude", "pt-BR": "Magnitude", de: "Magnitude", es: "Magnitud", pl: "Magnituda", it: "Magnitudo" } },
+        place: { type: "text", required: true, label: "Where" },
+        mag: { type: "number", required: true, step: 0.1, label: "Magnitude" },
         // Stored rather than computed so that it can wear its colour on a badge and group a list.
         strength: {
           type: "enum",
           options: [...STRENGTHS],
           colors: { major: "purple", strong: "red", moderate: "orange", light: "yellow", minor: "grey" },
           labels: STRENGTH_WORDS,
-          label: { en: "Strength", "pt-BR": "Intensidade", de: "Stärke", es: "Intensidad", pl: "Siła", it: "Intensità" },
+          label: "Strength",
         },
-        magType: { type: "text", label: { en: "Magnitude scale", "pt-BR": "Escala", de: "Skala", es: "Escala", pl: "Skala", it: "Scala" } },
-        depth: { type: "number", unit: "km", label: { en: "Depth", "pt-BR": "Profundidade", de: "Tiefe", es: "Profundidad", pl: "Głębokość", it: "Profondità" } },
-        time: { type: "datetime", precision: "minute", required: true, label: { en: "When", "pt-BR": "Quando", de: "Wann", es: "Cuándo", pl: "Kiedy", it: "Quando" } },
-        updated: { type: "datetime", precision: "minute", hidden: true, label: { en: "Revised", "pt-BR": "Revisado", de: "Überarbeitet", es: "Revisado", pl: "Zaktualizowano", it: "Rivisto" } },
-        where: { type: "geo", label: { en: "On the map", "pt-BR": "No mapa", de: "Auf der Karte", es: "En el mapa", pl: "Na mapie", it: "Sulla mappa" } },
-        authority: { type: "text", label: { en: "Located by", "pt-BR": "Localizado por", de: "Geortet von", es: "Localizado por", pl: "Zlokalizowało", it: "Localizzato da" } },
-        link: { type: "url", label: { en: "On EMSC", "pt-BR": "No EMSC", de: "Bei EMSC", es: "En el EMSC", pl: "W EMSC", it: "Su EMSC" } },
-        uid: { type: "text", hidden: true, label: { en: "EMSC id", "pt-BR": "ID no EMSC", de: "EMSC-ID", es: "ID del EMSC", pl: "ID w EMSC", it: "ID EMSC" } },
-        demo: { type: "boolean", hidden: true, label: { en: "Demo", "pt-BR": "Demo", de: "Demo", es: "Demo", pl: "Demo", it: "Demo" } },
+        magType: { type: "text", label: "Magnitude scale" },
+        depth: { type: "number", unit: "km", label: "Depth" },
+        time: { type: "datetime", precision: "minute", required: true, label: "When" },
+        updated: { type: "datetime", precision: "minute", hidden: true, label: "Revised" },
+        where: { type: "geo", label: "On the map" },
+        authority: { type: "text", label: "Located by" },
+        link: { type: "url", label: "On EMSC" },
+        uid: { type: "text", hidden: true, label: "EMSC id" },
+        demo: { type: "boolean", hidden: true, label: "Demo" },
       },
       computed: {
         ago: {
@@ -180,28 +173,28 @@ export default defineApp({
             const t = toDate(r.time);
             return t ? agoText(t, ctx.now(), ctx) : "";
           },
-          label: { en: "How long ago", "pt-BR": "Há quanto tempo", de: "Wie lange her", es: "Hace cuánto", pl: "Jak dawno", it: "Quanto tempo fa" },
+          label: "How long ago",
         },
       },
     },
     feed: {
       editableBy: "app",
-      label: { en: "Feed", "pt-BR": "Feed", de: "Feed", es: "Feed", pl: "Kanał", it: "Feed" },
+      label: "Feed",
       displayField: "state",
       fields: {
-        state: { type: "text", label: { en: "State", "pt-BR": "Estado", de: "Zustand", es: "Estado", pl: "Stan", it: "Stato" } },
-        since: { type: "datetime", precision: "minute", label: { en: "Since", "pt-BR": "Desde", de: "Seit", es: "Desde", pl: "Od", it: "Da" } },
-        count: { type: "number", integer: true, label: { en: "New", "pt-BR": "Novos", de: "Neu", es: "Nuevos", pl: "Nowe", it: "Nuovi" } },
-        lastPlace: { type: "text", label: { en: "Latest", "pt-BR": "Último", de: "Zuletzt", es: "Último", pl: "Ostatnie", it: "Ultimo" } },
-        lastMag: { type: "number", label: { en: "Latest magnitude", "pt-BR": "Última magnitude", de: "Letzte Magnitude", es: "Última magnitud", pl: "Ostatnia magnituda", it: "Ultima magnitudo" } },
-        lastAt: { type: "datetime", precision: "minute", label: { en: "Latest at", "pt-BR": "Último em", de: "Zuletzt um", es: "Último a las", pl: "Ostatnie o", it: "Ultimo alle" } },
+        state: { type: "text", label: "State" },
+        since: { type: "datetime", precision: "minute", label: "Since" },
+        count: { type: "number", integer: true, label: "New" },
+        lastPlace: { type: "text", label: "Latest" },
+        lastMag: { type: "number", label: "Latest magnitude" },
+        lastAt: { type: "datetime", precision: "minute", label: "Latest at" },
       },
     },
   },
   pages: [
     {
       id: "live",
-      title: { en: "Map", "pt-BR": "Mapa", de: "Karte", es: "Mapa", pl: "Mapa", it: "Mappa" },
+      title: "Map",
       icon: "🗺️",
       actions: [ACTIONS.watch, ACTIONS.stop, ACTIONS.demo],
       layout: {
@@ -229,7 +222,7 @@ export default defineApp({
     },
     {
       id: "latest",
-      title: { en: "Latest", "pt-BR": "Recentes", de: "Neueste", es: "Recientes", pl: "Najnowsze", it: "Recenti" },
+      title: { text: "Latest", context: "title" },
       icon: "⏱️",
       actions: [ACTIONS.watch, ACTIONS.stop, ACTIONS.demo],
       layout: {
@@ -253,16 +246,16 @@ export default defineApp({
     },
     {
       id: "strongest",
-      title: { en: "Strongest", "pt-BR": "Mais fortes", de: "Stärkste", es: "Más fuertes", pl: "Najsilniejsze", it: "Più forti" },
+      title: "Strongest",
       icon: "📈",
       summary: [
-        { label: { en: "In the last 24 h", "pt-BR": "Nas últimas 24 h", de: "In den letzten 24 Std.", es: "En las últimas 24 h", pl: "W ostatnich 24 godz.", it: "Nelle ultime 24 h" }, op: "count" },
+        { label: "In the last 24 h", op: "count" },
         {
-          label: { en: "Strongest", "pt-BR": "Mais forte", de: "Stärkstes", es: "Más fuerte", pl: "Najsilniejsze", it: "Più forte" },
+          label: { text: "Strongest", context: "label" },
           value: (rows, ctx) => (rows.length ? magText(Math.max(...rows.map((r) => Number(r.mag))), ctx) : null),
         },
         {
-          label: { en: "Magnitude 5 and up", "pt-BR": "Magnitude 5 ou mais", de: "Ab Magnitude 5", es: "Magnitud 5 o más", pl: "Magnituda 5 i więcej", it: "Magnitudo 5 e oltre" },
+          label: "Magnitude 5 and up",
           value: (rows) => rows.filter((r) => Number(r.mag) >= 5).length,
         },
       ],
@@ -273,28 +266,21 @@ export default defineApp({
         sort: (a, b) => Number(b.mag) - Number(a.mag) || byTime(a, b),
         display: QUAKE_DISPLAY,
         group: "strength",
-        emptyText: {
-          en: "Nothing in the last 24 hours yet. “Watch live” on the map fills the last day in.",
-          "pt-BR": "Nada nas últimas 24 horas ainda. “Ver ao vivo” no mapa carrega o último dia.",
-          de: "Noch nichts in den letzten 24 Stunden. „Live verfolgen“ auf der Karte lädt den letzten Tag.",
-          es: "Aún nada en las últimas 24 horas. «Ver en vivo» en el mapa carga el último día.",
-          pl: "Na razie nic z ostatnich 24 godzin. „Oglądaj na żywo” na mapie wczyta ostatnią dobę.",
-          it: "Ancora niente nelle ultime 24 ore. “Segui in diretta” sulla mappa carica l'ultimo giorno.",
-        },
+        emptyText: "Nothing in the last 24 hours yet. “Watch live” on the map fills the last day in.",
         onOpen: { page: "quake", param: { quakeId: "id" } },
       },
     },
     {
       id: "near",
-      title: { en: "Near me", "pt-BR": "Perto de mim", de: "In meiner Nähe", es: "Cerca de mí", pl: "W pobliżu", it: "Vicino a me" },
+      title: "Near me",
       icon: "📍",
-      actions: [{ label: { en: "Alerts…", "pt-BR": "Alertas…", de: "Warnungen …", es: "Alertas…", pl: "Alerty…", it: "Avvisi…" }, icon: "🔔", run: editAlerts }],
+      actions: [{ label: "Alerts…", icon: "🔔", run: editAlerts }],
       view: {
         type: "list",
         entity: "quake",
         filters: [
-          { label: { en: "Where I am", "pt-BR": "Onde estou", de: "Wo ich bin", es: "Dónde estoy", pl: "Gdzie jestem", it: "Dove sono" }, param: "me", type: "geo" },
-          { label: { en: "Within km", "pt-BR": "Raio em km", de: "Umkreis in km", es: "Radio en km", pl: "Promień w km", it: "Entro km" }, param: "km", type: "number", placeholder: { en: "Within km (1000)", "pt-BR": "Raio em km (1000)", de: "Umkreis in km (1000)", es: "Radio en km (1000)", pl: "Promień w km (1000)", it: "Entro km (1000)" } },
+          { label: "Where I am", param: "me", type: "geo" },
+          { label: "Within km", param: "km", type: "number", placeholder: "Within km (1000)" },
         ],
         filter: (r, ctx) => {
           const me = ctx.params.me as { lat: number; lng: number } | undefined;
@@ -315,14 +301,14 @@ export default defineApp({
         },
         emptyText: (ctx) =>
           ctx.params.me
-            ? ctx.t({ en: "No earthquakes on this device that close. Widen “Within km”, or set an alert for the next one.", "pt-BR": "Nenhum terremoto tão perto neste aparelho. Aumente o “Raio em km” ou crie um alerta para o próximo.", de: "Keine Erdbeben so nah auf diesem Gerät. Vergrößere den „Umkreis in km“ oder stell eine Warnung für das nächste ein.", es: "No hay terremotos tan cerca en este dispositivo. Amplía el «Radio en km» o crea una alerta para el próximo.", pl: "Na tym urządzeniu nie ma tak bliskich trzęsień. Zwiększ „Promień w km” albo ustaw alert na następne.", it: "Nessun terremoto così vicino su questo dispositivo. Allarga “Entro km” o imposta un avviso per il prossimo." })
-            : ctx.t({ en: "Tap “Where I am” to see the earthquakes near you, nearest first in time. “Alerts…” tells you about a strong one close by while the app is open.", "pt-BR": "Toque em “Onde estou” para ver os terremotos perto de você. “Alertas…” avisa de um forte por perto enquanto o app está aberto.", de: "Tippe auf „Wo ich bin“, um die Erdbeben in deiner Nähe zu sehen. „Warnungen …“ meldet ein starkes in der Nähe, solange die App offen ist.", es: "Toca «Dónde estoy» para ver los terremotos cerca de ti. «Alertas…» te avisa de uno fuerte cercano mientras la app está abierta.", pl: "Stuknij „Gdzie jestem”, by zobaczyć trzęsienia w pobliżu. „Alerty…” powiadomią o silnym w okolicy, gdy aplikacja jest otwarta.", it: "Tocca “Dove sono” per vedere i terremoti vicino a te. “Avvisi…” ti avvisa di uno forte nelle vicinanze mentre l'app è aperta." }),
+            ? ctx.t("No earthquakes on this device that close. Widen “Within km”, or set an alert for the next one.")
+            : ctx.t("Tap “Where I am” to see the earthquakes near you, nearest first in time. “Alerts…” tells you about a strong one close by while the app is open."),
         onOpen: { page: "quake", param: { quakeId: "id" } },
       },
     },
     {
       id: "quake",
-      title: { en: "Earthquake", "pt-BR": "Terremoto", de: "Erdbeben", es: "Terremoto", pl: "Trzęsienie ziemi", it: "Terremoto" },
+      title: "Earthquake",
       hidden: true,
       view: {
         type: "detail",
@@ -330,7 +316,7 @@ export default defineApp({
         param: "quakeId",
         sections: [
           { fields: ["strength", "mag", "ago", "time", "depth"] },
-          { title: { en: "Source", "pt-BR": "Fonte", de: "Quelle", es: "Fuente", pl: "Źródło", it: "Fonte" }, fields: ["authority", "magType", "link"] },
+          { title: "Source", fields: ["authority", "magType", "link"] },
         ],
       },
     },

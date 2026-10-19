@@ -13,6 +13,8 @@
     "potyro": "workspace:*"
   },
   "devDependencies": {
+    "@potyro/generator": "workspace:*",
+    "@potyro/i18n": "workspace:*",
     "chart.js": "4.5.1",
     "intl-messageformat": "^10.7.18"
   }

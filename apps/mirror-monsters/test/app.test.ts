@@ -1,3 +1,6 @@
+import { fileURLToPath } from "node:url";
+import { catalogProblems } from "@potyro/generator/app-catalog";
+import { readAppSources } from "@potyro/generator/app-sources";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { checkReferences, checkWords, isPotyroApp, structureSchema, wordGaps, wordSlots } from "potyro";
@@ -42,17 +45,17 @@ describe("in six languages (#303)", () => {
     expect(wordGaps(app)).toEqual([]);
   });
 
-  it("has no plain words in its declared slots", () => {
-    const plain = wordSlots(app)
-      .filter((s) => typeof s.value === "string")
-      .map((s) => s.value as string);
-    for (const p of plain) expect(p, p).toMatch(/^\S{1,5}$/);
-  });
-
-  it("says every word the screens show in all six languages", () => {
-    // ctx.t({ en: …, … }) maps in the source: each has the five other languages beside English.
-    const maps = [...source.matchAll(/\{\s*en: "[^"]*"[^{}]*\}/g)].map((m) => m[0]);
-    expect(maps.length).toBeGreaterThan(20);
-    for (const m of maps) for (const lang of ['"pt-BR":', "de:", "es:", "pl:", "it:"]) expect(m, m).toContain(lang);
+  it("carries a catalog for each other language, in step with its code, every word translated, every placeholder kept (docs/30)", async () => {
+    // Its source and the modules of its own it imports: their words are the app's.
+    const { source: code, modules } = readAppSources(fileURLToPath(new URL("../mirror-monsters.app.ts", import.meta.url)));
+    const read = (l: string): string | undefined => {
+      try {
+        return readFileSync(new URL(`../locales/${l}.po`, import.meta.url), "utf8");
+      } catch {
+        return undefined;
+      }
+    };
+    const catalogs = Object.fromEntries(["pt-BR", "de", "es", "pl", "it"].map((l) => [l, read(l)]));
+    expect(await catalogProblems({ source: code, modules, catalogs, same: /^(\S{1,5}|Mirror Monsters)$/ })).toEqual([]);
   });
 });

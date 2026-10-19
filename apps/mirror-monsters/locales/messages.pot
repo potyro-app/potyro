@@ -1,0 +1,197 @@
+msgid ""
+msgstr ""
+"Language: \n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Mirror Monsters"
+msgstr ""
+
+#: entities.snap.label
+msgctxt "snap"
+msgid "Snap"
+msgstr ""
+
+#: entities.snap.fields.title.label
+msgid "Title"
+msgstr ""
+
+#: entities.snap.fields.monster.label
+#: msg
+msgid "Monster"
+msgstr ""
+
+#: entities.snap.fields.date.label
+msgid "Date"
+msgstr ""
+
+#: entities.snap.fields.image.label
+msgid "Picture"
+msgstr ""
+
+#: pages.0.title
+msgid "Mirror"
+msgstr ""
+
+#: pages.1.title
+msgid "Gallery"
+msgstr ""
+
+#: msg
+msgid "Twin"
+msgstr ""
+
+#: msg
+msgid "Kaleido"
+msgstr ""
+
+#: msg
+msgid "Trails"
+msgstr ""
+
+#: msg
+msgid "Pixel"
+msgstr ""
+
+#: msg
+msgid "Meet your monster"
+msgstr ""
+
+#: msg
+msgid "Turn on the camera and a monster moves into the mirror with you. Wiggle and its eyes wobble. Tap the picture for a new colour."
+msgstr ""
+
+#: msg
+msgid "Turn on the camera"
+msgstr ""
+
+#: msg
+msgid "🔒 What the camera sees stays on this device. Only the snaps you keep are saved, in this app."
+msgstr ""
+
+#: msg
+msgid "The camera is off"
+msgstr ""
+
+#: msg
+msgid "It turns off whenever you look away from the app, so nothing watches you by accident."
+msgstr ""
+
+#: msg
+msgid "Turn it back on"
+msgstr ""
+
+#: msg
+msgid "The camera was not allowed. You can allow it in your browser's or phone's settings for this site."
+msgstr ""
+
+#: msg
+msgid "This device has no camera to look through."
+msgstr ""
+
+#: msg
+msgid "Another app is using the camera. Close it and try again."
+msgstr ""
+
+#: msg
+msgid "The camera would not start. Try again."
+msgstr ""
+
+#: msg
+msgid "The live camera isn’t here. It needs a Potyro that has it, and Mirror Monsters running as yours: add it with “I wrote this. Run it as mine.” ticked, or tap “Let it run as yours” in its menu."
+msgstr ""
+
+#: msg
+msgid "Snap"
+msgstr ""
+
+#: msg
+msgid "Switch camera"
+msgstr ""
+
+#: msg
+msgid "Open the Gallery"
+msgstr ""
+
+#: msg
+msgid "Monsters"
+msgstr ""
+
+#: msg
+msgid "“{title}” is in your Gallery"
+msgstr ""
+
+#: msg
+msgid "The snap could not be saved."
+msgstr ""
+
+#: msg
+msgid "The camera as a mirror, with a monster in it. Tap for a new colour."
+msgstr ""
+
+#: msg
+msgid "The monster can’t see faces on this device, so it follows the colours of your skin instead."
+msgstr ""
+
+#: msg
+msgid "The camera as a kaleidoscope. Tap for more mirrors."
+msgstr ""
+
+#: ctx.t
+msgid "Delete"
+msgstr ""
+
+#: ctx.t
+msgid "Share"
+msgstr ""
+
+#: ctx.t
+msgid "Save a copy"
+msgstr ""
+
+#: ctx.t
+msgid "Close"
+msgstr ""
+
+#: ctx.t
+msgid "My monster from Mirror Monsters 👹"
+msgstr ""
+
+#: ctx.t
+msgid "It could not be shared."
+msgstr ""
+
+#: ctx.t
+msgid "It could not be saved here."
+msgstr ""
+
+#: ctx.t
+msgid "Delete “{title}”?"
+msgstr ""
+
+#: ctx.t
+msgid "Open the mirror"
+msgstr ""
+
+#: ctx.t
+msgid "No monsters yet"
+msgstr ""
+
+#: ctx.t
+msgid "Pull a face in the mirror and press the round button. Your snaps land here."
+msgstr ""
+
+#: ctx.t
+msgid "{title}, open"
+msgstr ""
+
+#: ctx.t
+msgid "Not on this device yet"
+msgstr ""
+
+#: ctx.t
+msgid "{n, plural, one {# snap} other {# snaps}}, newest first."
+msgstr ""
+

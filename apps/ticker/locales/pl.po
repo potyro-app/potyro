@@ -1,0 +1,419 @@
+msgid ""
+msgstr ""
+"Language: pl\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+msgid "Ticker"
+msgstr "Notowania"
+
+#: entities.symbol.label
+#: pages.2.title
+msgid "Symbol"
+msgstr "Symbol"
+
+#: entities.symbol.fields.code.label
+#: entities.point.fields.code.label
+#: entities.alert.fields.code.label
+msgctxt "symbol code"
+msgid "Symbol"
+msgstr "Symbol"
+
+#: entities.symbol.fields.name.label
+#: entities.alert.fields.name.label
+msgid "Name"
+msgstr "Nazwa"
+
+#: entities.symbol.fields.kind.labels.crypto
+msgid "Crypto · Coinbase"
+msgstr "Krypto · Coinbase"
+
+#: entities.symbol.fields.kind.labels.fx
+msgid "Currency · ECB"
+msgstr "Waluta · EBC"
+
+#: entities.symbol.fields.kind.label
+msgid "Kind"
+msgstr "Rodzaj"
+
+#: entities.symbol.fields.price.label
+#: entities.point.fields.price.label
+msgid "Price"
+msgstr "Cena"
+
+#: entities.symbol.fields.base.label
+msgid "Compared with"
+msgstr "W porównaniu z"
+
+#: entities.symbol.fields.change.label
+msgid "Change (%)"
+msgstr "Zmiana (%)"
+
+#: entities.symbol.fields.trend.label
+msgid "Today"
+msgstr "Dziś"
+
+#: entities.symbol.fields.spark.label
+msgid "Last hour"
+msgstr "Ostatnia godzina"
+
+#: entities.symbol.fields.updated.label
+msgid "Updated"
+msgstr "Zaktualizowano"
+
+#: entities.symbol.fields.above.label
+msgid "Alert above"
+msgstr "Alert powyżej"
+
+#: entities.symbol.fields.below.label
+msgid "Alert below"
+msgstr "Alert poniżej"
+
+#: entities.symbol.fields.demo.label
+#: entities.point.fields.demo.label
+#: entities.alert.fields.demo.label
+#: msg
+#: ctx.t
+msgid "Demo"
+msgstr "Demo"
+
+#: entities.symbol.computed.shown.label
+msgid "Now"
+msgstr "Teraz"
+
+#: entities.symbol.computed.line.label
+msgid "Change"
+msgstr "Zmiana"
+
+#: entities.symbol.actions.alert.label
+msgid "Set an alert"
+msgstr "Ustaw alert"
+
+#: entities.symbol.actions.remove.label
+#: ctx.t
+msgid "Remove"
+msgstr "Usuń"
+
+#: entities.point.label
+msgid "Price point"
+msgstr "Punkt cenowy"
+
+#: entities.point.fields.at.label
+msgid "At"
+msgstr "O"
+
+#: entities.alert.label
+msgid "Alert"
+msgstr "Alert"
+
+#: entities.alert.fields.direction.labels.above
+msgid "Went above"
+msgstr "Powyżej"
+
+#: entities.alert.fields.direction.labels.below
+msgid "Dropped below"
+msgstr "Poniżej"
+
+#: entities.alert.fields.direction.label
+msgid "What happened"
+msgstr "Co się stało"
+
+#: entities.alert.fields.level.label
+msgid "Line"
+msgstr "Próg"
+
+#: entities.alert.fields.price.label
+msgid "Price then"
+msgstr "Cena wtedy"
+
+#: entities.alert.fields.at.label
+msgid "When"
+msgstr "Kiedy"
+
+#: entities.feed.label
+msgid "Feed"
+msgstr "Kanał"
+
+#: entities.feed.fields.state.label
+msgid "State"
+msgstr "Stan"
+
+#: entities.feed.fields.since.label
+msgid "Since"
+msgstr "Od"
+
+#: entities.feed.fields.fxOk.label
+msgid "Currencies fetched"
+msgstr "Pobrano waluty"
+
+#: pages.0.title
+msgid "Watchlist"
+msgstr "Obserwowane"
+
+#: pages.0.layout.items.1.view.emptyText
+msgid "Nothing on the watchlist. “Watch live” starts with Bitcoin, Ether and the euro in dollars; “Add” picks others."
+msgstr "Lista jest pusta. „Oglądaj na żywo” zaczyna od bitcoina, etheru i euro w dolarach; „Dodaj” wybiera inne."
+
+#: pages.1.title
+#: pages.2.layout.items.0.view.sections.1.title
+msgid "Alerts"
+msgstr "Alerty"
+
+#: pages.1.layout.items.0.view.title
+msgid "Waiting"
+msgstr "Oczekujące"
+
+#: pages.1.layout.items.0.view.emptyText
+msgid "No alerts waiting. Open a symbol on the watchlist and tap “Set an alert”."
+msgstr "Brak oczekujących alertów. Otwórz symbol z listy i stuknij „Ustaw alert”."
+
+#: pages.1.layout.items.1.view.emptyText
+msgid "Alerts that rang show here."
+msgstr "Tu pojawiają się alerty, które zadziałały."
+
+#: pages.1.layout.items.1.title
+msgid "Rang"
+msgstr "Zadziałały"
+
+#: pages.2.layout.items.1.view.title
+msgid "Above the low"
+msgstr "Ponad minimum"
+
+#: pages.2.layout.items.1.view.subtitle
+msgid "How far each minute's price stood above the lowest shown — a working day a bar for a currency"
+msgstr "O ile cena z każdej minuty była wyższa od najniższej pokazanej — przy walucie jeden dzień roboczy na słupek"
+
+#: pages.2.layout.items.1.view.emptyText
+msgid "No prices yet: “Watch live” or “Demo”."
+msgstr "Brak cen: „Oglądaj na żywo” albo „Demo”."
+
+#: msg
+msgid "Watch live"
+msgstr "Oglądaj na żywo"
+
+#: msg
+msgid "Stop"
+msgstr "Zatrzymaj"
+
+#: msg
+msgid "Add"
+msgstr "Dodaj"
+
+#: ctx.t
+msgid "Play the demo again"
+msgstr "Odtwórz demo jeszcze raz"
+
+#: ctx.t
+msgid "A made-up market, played here. Nothing is sent."
+msgstr "Wymyślony rynek odtwarzany tutaj. Nic nie jest wysyłane."
+
+#: ctx.t
+msgid "Clear the demo"
+msgstr "Usuń demo"
+
+#: ctx.t
+msgid "No price yet"
+msgstr "Brak ceny"
+
+#: ctx.t
+msgid "since the day before"
+msgstr "od poprzedniego dnia"
+
+#: ctx.t
+msgid "in 24 h"
+msgstr "w 24 godz."
+
+#: msg
+msgid "Up"
+msgstr "Wzrost"
+
+#: msg
+msgid "Down"
+msgstr "Spadek"
+
+#: msg
+msgid "Flat"
+msgstr "Bez zmian"
+
+#: ctx.t
+msgid "above {p}"
+msgstr "powyżej {p}"
+
+#: ctx.t
+msgid "below {p}"
+msgstr "poniżej {p}"
+
+#: ctx.t
+msgid "at {p}"
+msgstr "przy {p}"
+
+#: ctx.t
+msgid "Already live."
+msgstr "Już na żywo."
+
+#: ctx.t
+msgid "Currencies updated: the ECB's rates, which change once a working day."
+msgstr "Zaktualizowano waluty: kursy EBC, zmieniane raz na dzień roboczy."
+
+#: ctx.t
+msgid "Couldn't fetch the currencies right now."
+msgstr "Nie udało się teraz pobrać walut."
+
+#: ctx.t
+msgid "Add to the watchlist"
+msgstr "Dodaj do listy"
+
+#: ctx.t
+msgid "Take {code} off the watchlist?"
+msgstr "Usunąć {code} z listy?"
+
+#: ctx.t
+msgid "Now {price}. Leave empty for none."
+msgstr "Teraz {price}. Zostaw puste, by nie ustawiać."
+
+#: ctx.t
+msgid "Alert for {code}"
+msgstr "Alert dla {code}"
+
+#: ctx.t
+msgid "Tell me when it goes above"
+msgstr "Powiadom, gdy przekroczy"
+
+#: ctx.t
+msgid "Tell me when it drops below"
+msgstr "Powiadom, gdy spadnie poniżej"
+
+#: ctx.t
+msgid "Save"
+msgstr "Zapisz"
+
+#: ctx.t
+msgid "Alert set. It rings once, while the app is open."
+msgstr "Alert ustawiony. Zadziała raz, gdy aplikacja jest otwarta."
+
+#: ctx.t
+msgid "No alert for {code}."
+msgstr "Brak alertu dla {code}."
+
+#: ctx.t
+msgid "Demo prices cleared."
+msgstr "Usunięto ceny z demo."
+
+#: msg
+msgid "Not live"
+msgstr "Nie na żywo"
+
+#: msg
+msgid "Connecting…"
+msgstr "Łączenie…"
+
+#: msg
+msgid "Live"
+msgstr "Na żywo"
+
+#: msg
+msgid "Connection lost — trying again"
+msgstr "Utracono połączenie — ponawiam"
+
+#: msg
+msgid "Paused while you were away"
+msgstr "Wstrzymano, gdy cię nie było"
+
+#: msg
+msgid "You're offline"
+msgstr "Jesteś offline"
+
+#: msg
+msgid "Can't reach the prices right now"
+msgstr "Nie można teraz pobrać cen"
+
+#: msg
+msgid "Not allowed to connect"
+msgstr "Brak zgody na połączenie"
+
+#: msg
+msgid "This copy can't reach Coinbase"
+msgstr "Ta kopia nie może połączyć się z Coinbase"
+
+#: msg
+msgid "Demo — made-up prices"
+msgstr "Demo — wymyślone ceny"
+
+#: msg
+msgid "Demo finished"
+msgstr "Demo zakończone"
+
+#: msg
+msgid "Currencies: the ECB's reference rates, which change once a working day — fetched every 30 minutes."
+msgstr "Waluty: kursy referencyjne EBC, zmieniane raz na dzień roboczy — pobierane co 30 minut."
+
+#: msg
+msgid "Tap “Watch live” for live prices — or “Demo” to see how it looks. Add symbols with “Add”."
+msgstr "Stuknij „Oglądaj na żywo”, by widzieć ceny na żywo — albo „Demo”, by zobaczyć, jak to wygląda. Dodawaj symbole przez „Dodaj”."
+
+#: msg
+msgid "Opening the connection to Coinbase."
+msgstr "Otwieram połączenie z Coinbase."
+
+#: msg
+msgid "Crypto: every trade on Coinbase, shown at most every 3 seconds. "
+msgstr "Krypto: każda transakcja na Coinbase, pokazywana najwyżej co 3 sekundy. "
+
+#: msg
+msgid "It picks up again by itself."
+msgstr "Wznowi się samo."
+
+#: msg
+msgid "It carries on as soon as you are back."
+msgstr "Wznowi się, gdy tylko wrócisz."
+
+#: msg
+msgid "It connects again when you are back online. The last prices stay here."
+msgstr "Połączy się znowu, gdy wrócisz do sieci. Ostatnie ceny zostają."
+
+#: msg
+msgid "Trying again, a little less often each time. The demo works without it."
+msgstr "Ponawiam, za każdym razem nieco rzadziej. Demo działa i bez tego."
+
+#: msg
+msgid "Tap “Watch live” to be asked again."
+msgstr "Stuknij „Oglądaj na żywo”, by zapytać ponownie."
+
+#: msg
+msgid "The demo still works."
+msgstr "Demo nadal działa."
+
+#: msg
+msgid "A made-up market on this device, ticking several times a second. Nothing is sent anywhere."
+msgstr "Wymyślony rynek na tym urządzeniu, kilka razy na sekundę. Nic nie jest wysyłane."
+
+#: msg
+msgid "“Watch live” shows real prices; “Clear the demo” removes the made-up ones."
+msgstr "„Oglądaj na żywo” pokazuje prawdziwe ceny; „Usuń demo” usuwa wymyślone."
+
+#: ctx.t
+msgid "{code} went above {level}"
+msgstr "{code} przekroczył {level}"
+
+#: ctx.t
+msgid "{code} dropped below {level}"
+msgstr "{code} spadł poniżej {level}"
+
+#: ctx.t
+msgid "just now"
+msgstr "przed chwilą"
+
+#: ctx.t
+msgid "{n} s ago"
+msgstr "{n} s temu"
+
+#: ctx.t
+msgid "{n} min ago"
+msgstr "{n} min temu"
+
+#: ctx.t
+msgid "{n} h ago"
+msgstr "{n} godz. temu"
+

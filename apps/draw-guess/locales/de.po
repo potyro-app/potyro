@@ -1,0 +1,444 @@
+msgid ""
+msgstr ""
+"Language: de\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+#: msg
+msgid "Draw & Guess"
+msgstr "Malen & Raten"
+
+#: entities.game.label
+msgid "Game"
+msgstr "Spiel"
+
+#: entities.game.fields.title.label
+msgid "Winner"
+msgstr "Gewinner"
+
+#: entities.game.fields.date.label
+msgid "Played"
+msgstr "Gespielt"
+
+#: entities.game.fields.players.label
+msgid "Scores"
+msgstr "Punkte"
+
+#: entities.game.fields.place.label
+msgid "Your place"
+msgstr "Dein Platz"
+
+#: entities.game.fields.score.label
+msgid "Your score"
+msgstr "Deine Punkte"
+
+#: pages.0.title
+msgid "Play"
+msgstr "Spielen"
+
+#: pages.1.title
+msgid "Past games"
+msgstr "Frühere Spiele"
+
+#: pages.1.view.emptyText
+msgid "Finished games land here, with everyone's scores."
+msgstr "Fertige Spiele landen hier, mit allen Punkten."
+
+#: msg
+msgid "Draw it. Guess it!"
+msgstr "Malen. Raten!"
+
+#: msg
+msgid "One draws, everyone guesses. First to get it scores."
+msgstr "Einer malt, alle raten. Wer es zuerst errät, punktet."
+
+#: msg
+msgid "Your name"
+msgstr "Dein Name"
+
+#: msg
+msgid "What should we call you?"
+msgstr "Wie sollen wir dich nennen?"
+
+#: msg
+msgid "Type your name first."
+msgstr "Gib zuerst deinen Namen ein."
+
+#: msg
+msgid "New game"
+msgstr "Neues Spiel"
+
+#: msg
+msgid "You get a code to send to your friends."
+msgstr "Du bekommst einen Code für deine Freunde."
+
+#: msg
+msgid "Got a code?"
+msgstr "Hast du einen Code?"
+
+#: msg
+msgid "Game code"
+msgstr "Spielcode"
+
+#: msg
+msgid "Join"
+msgstr "Mitspielen"
+
+#: msg
+msgid "A code is 12 letters and numbers, like KQ7M-XR4P-2DHC."
+msgstr "Ein Code hat 12 Buchstaben und Ziffern, etwa KQ7M-XR4P-2DHC."
+
+#: msg
+msgid "How friends join"
+msgstr "So spielen Freunde mit"
+
+#: msg
+msgid "Start a new game and tap Invite friends: it sends a link that opens the game with its code."
+msgstr "Starte ein neues Spiel und tippe auf Freunde einladen: Das schickt einen Link, der das Spiel mit seinem Code öffnet."
+
+#: msg
+msgid "A friend without the game taps Keep this app and lets it run as theirs. The drawing board is the app's own code, which Potyro runs only for apps you call yours — and anyone can read it first."
+msgstr "Wer das Spiel noch nicht hat, tippt auf Diese App behalten und lässt sie als eigene laufen. Die Zeichenfläche ist der eigene Code der App, den Potyro nur für Apps ausführt, die du deine nennst – und jeder kann ihn vorher lesen."
+
+#: msg
+msgid "The link lands on the game with the code filled in: they tap Join. Typing the code works too."
+msgstr "Der Link öffnet das Spiel mit eingetragenem Code: Sie tippen auf Mitspielen. Den Code einzutippen geht auch."
+
+#: msg
+msgid "You're invited to a game. Say your name and tap Join."
+msgstr "Du bist zu einem Spiel eingeladen. Sag deinen Namen und tippe auf Mitspielen."
+
+#: msg
+msgid "Opening the game…"
+msgstr "Spiel wird geöffnet…"
+
+#: msg
+msgid "Saying hello…"
+msgstr "Sage Hallo…"
+
+#: msg
+msgid "Lost the connection. Trying again…"
+msgstr "Verbindung verloren. Neuer Versuch…"
+
+#: msg
+msgid "You stepped out of the game"
+msgstr "Du hast das Spiel verlassen"
+
+#: msg
+msgid "Potyro closes the game's connection when you leave the app or put it away for a while. Your score waits for you."
+msgstr "Potyro schließt die Verbindung, wenn du die App verlässt oder eine Weile weglegst. Deine Punkte warten auf dich."
+
+#: msg
+msgid "Rejoin"
+msgstr "Wieder einsteigen"
+
+#: msg
+msgid "Back"
+msgstr "Zurück"
+
+#: msg
+msgid "Nobody is playing with that code right now. Check it, or start a new game."
+msgstr "Gerade spielt niemand mit diesem Code. Prüf ihn oder starte ein neues Spiel."
+
+#: msg
+msgid "That game is full: 16 players already."
+msgstr "Das Spiel ist voll: schon 16 Leute."
+
+#: msg
+msgid "You're offline. Connect to the internet and try again."
+msgstr "Du bist offline. Verbinde dich mit dem Internet und versuch es noch einmal."
+
+#: msg
+msgid "Potyro's rooms can't be reached right now. Try again in a moment."
+msgstr "Potyros Räume sind gerade nicht erreichbar. Versuch es gleich noch einmal."
+
+#: msg
+msgid "Draw & Guess wasn't allowed to use Potyro's rooms. It asks again next time."
+msgstr "Malen & Raten durfte Potyros Räume nicht nutzen. Beim nächsten Mal fragt es wieder."
+
+#: msg
+msgid "The game wouldn't open. Try again."
+msgstr "Das Spiel ließ sich nicht öffnen. Versuch es noch einmal."
+
+#: msg
+msgid "The game closed after 30 minutes with nothing happening."
+msgstr "Das Spiel wurde nach 30 Minuten ohne Aktivität geschlossen."
+
+#: msg
+msgid "Live games aren't available here: this Potyro has no rooms."
+msgstr "Live-Spiele gibt es hier nicht: Dieses Potyro hat keine Räume."
+
+#: msg
+msgid "Draw & Guess needs to run as yours: its drawing board is the app's own code."
+msgstr "Malen & Raten muss als deine App laufen: Die Zeichenfläche ist der eigene Code der App."
+
+#: msg
+msgid "Waiting for players"
+msgstr "Warten auf Mitspieler"
+
+#: msg
+msgid "Read it out, or send it:"
+msgstr "Lies ihn vor oder schick ihn:"
+
+#: msg
+msgid "Invite friends"
+msgstr "Freunde einladen"
+
+#: msg
+msgid "Play Draw & Guess with me"
+msgstr "Spiel Malen & Raten mit mir"
+
+#: msg
+msgid "Come play Draw & Guess with me! Open the link to join — or, in Potyro, open Draw & Guess, tap Join and type the code {code}"
+msgstr "Spiel Malen & Raten mit mir! Öffne den Link zum Mitspielen – oder öffne in Potyro Malen & Raten, tippe auf Mitspielen und gib den Code {code} ein"
+
+#: msg
+msgid "{n, plural, one {# player} other {# players}}"
+msgstr "{n, plural, one {# Person} other {# Personen}}"
+
+#: msg
+msgid "you"
+msgstr "du"
+
+#: msg
+msgid "host"
+msgstr "Gastgeber"
+
+#: msg
+msgid "away"
+msgstr "weg"
+
+#: msg
+msgid "Words in"
+msgstr "Wörter auf"
+
+#: msg
+msgid "Rounds"
+msgstr "Runden"
+
+#: msg
+msgid "Seconds to draw"
+msgstr "Sekunden zum Malen"
+
+#: msg
+msgid "Start the game"
+msgstr "Spiel starten"
+
+#: msg
+msgid "It takes two. Invite someone!"
+msgstr "Zu zweit macht's Spaß. Lad jemanden ein!"
+
+#: msg
+msgid "{name} starts the game when everyone's in."
+msgstr "{name} startet das Spiel, wenn alle da sind."
+
+#: msg
+msgid "Leave"
+msgstr "Verlassen"
+
+#: msg
+msgid "Leave the game?"
+msgstr "Spiel verlassen?"
+
+#: msg
+msgid "The others play on without you."
+msgstr "Die anderen spielen ohne dich weiter."
+
+#: msg
+msgid "Stay"
+msgstr "Bleiben"
+
+#: msg
+msgid "Round {n} of {total}"
+msgstr "Runde {n} von {total}"
+
+#: msg
+msgid "Pick a word to draw"
+msgstr "Such dir ein Wort zum Malen aus"
+
+#: msg
+msgid "Only you can see these. If you wait, the first one is chosen for you."
+msgstr "Nur du siehst sie. Wenn du wartest, wird das erste für dich gewählt."
+
+#: msg
+msgid "Your turn to draw!"
+msgstr "Du bist dran mit Malen!"
+
+#: msg
+msgid "{name} is picking a word…"
+msgstr "{name} sucht sich ein Wort aus…"
+
+#: msg
+msgid "Draw"
+msgstr "Male"
+
+#: msg
+msgid "{name} is drawing"
+msgstr "{name} malt"
+
+#: msg
+msgid "Type your guess…"
+msgstr "Dein Tipp…"
+
+#: msg
+msgid "Guess"
+msgstr "Raten"
+
+#: msg
+msgid "The others are guessing. Keep drawing!"
+msgstr "Die anderen raten. Mal weiter!"
+
+#: msg
+msgid "“{text}” is so close!"
+msgstr "„{text}“ ist ganz nah dran!"
+
+#: msg
+msgid "{name} guessed it!"
+msgstr "{name} hat es erraten!"
+
+#: msg
+msgid "You guessed it!"
+msgstr "Du hast es erraten!"
+
+#: msg
+msgid "{name} joined"
+msgstr "{name} ist dabei"
+
+#: msg
+msgid "{name} left"
+msgstr "{name} ist gegangen"
+
+#: msg
+msgid "The word was"
+msgstr "Das Wort war"
+
+#: msg
+msgid "Time's up!"
+msgstr "Die Zeit ist um!"
+
+#: msg
+msgid "{name} left, so on to the next turn."
+msgstr "{name} ist gegangen, also weiter zum nächsten Zug."
+
+#: msg
+msgid "{name} didn't pick a word in time."
+msgstr "{name} hat nicht rechtzeitig ein Wort gewählt."
+
+#: msg
+msgid "Next up: {name}"
+msgstr "Als Nächstes: {name}"
+
+#: msg
+msgid "Game over!"
+msgstr "Spiel vorbei!"
+
+#: msg
+msgid "{name} wins!"
+msgstr "{name} gewinnt!"
+
+#: msg
+msgid "You win!"
+msgstr "Du gewinnst!"
+
+#: msg
+msgid "It's a tie!"
+msgstr "Unentschieden!"
+
+#: msg
+msgid "{n} pts"
+msgstr "{n} Pkt."
+
+#: msg
+msgid "Play again"
+msgstr "Noch eine Runde"
+
+#: msg
+msgid "{name} can start another game."
+msgstr "{name} kann ein neues Spiel starten."
+
+#: msg
+msgid "The drawing"
+msgstr "Die Zeichnung"
+
+#: msg
+msgid "Pens"
+msgstr "Stifte"
+
+#: msg
+msgid "Black"
+msgstr "Schwarz"
+
+#: msg
+msgid "Red"
+msgstr "Rot"
+
+#: msg
+msgid "Orange"
+msgstr "Orange"
+
+#: msg
+msgid "Yellow"
+msgstr "Gelb"
+
+#: msg
+msgid "Green"
+msgstr "Grün"
+
+#: msg
+msgid "Blue"
+msgstr "Blau"
+
+#: msg
+msgid "Purple"
+msgstr "Lila"
+
+#: msg
+msgid "Brown"
+msgstr "Braun"
+
+#: msg
+msgid "Eraser"
+msgstr "Radiergummi"
+
+#: msg
+msgid "Thin"
+msgstr "Dünn"
+
+#: msg
+msgid "Medium"
+msgstr "Mittel"
+
+#: msg
+msgid "Thick"
+msgstr "Dick"
+
+#: msg
+msgid "Undo"
+msgstr "Rückgängig"
+
+#: msg
+msgid "Clear"
+msgstr "Leeren"
+
+#: msg
+msgid "Sounds on"
+msgstr "Töne an"
+
+#: msg
+msgid "Sounds off"
+msgstr "Töne aus"
+
+#: msg
+msgid "{n, plural, one {# second left} other {# seconds left}}"
+msgstr "{n, plural, one {noch # Sekunde} other {noch # Sekunden}}"
+
+#: msg
+msgid "{n, plural, one {# letter} other {# letters}}"
+msgstr "{n, plural, one {# Buchstabe} other {# Buchstaben}}"
+
+#: msg
+msgid "English"
+msgstr "Deutsch"
+

@@ -319,7 +319,7 @@ export async function watchLive(ctx: Ctx): Promise<void> {
   stopDemo();
   startedHere = true;
   if (live.state === "live" || live.state === "connecting") {
-    ctx.ui.toast(ctx.t({ en: "Already live.", "pt-BR": "Já está ao vivo.", de: "Läuft schon live.", es: "Ya está en vivo.", pl: "Już na żywo.", it: "Già in diretta." }));
+    ctx.ui.toast(ctx.t("Already live."));
     return;
   }
   inBackground(ctx, () => starting(ctx));
@@ -340,8 +340,8 @@ async function starting(ctx: Ctx): Promise<void> {
     await setState(ctx, "off");
     ctx.ui.toast(
       fxOk
-        ? ctx.t({ en: "Currencies updated: the ECB's rates, which change once a working day.", "pt-BR": "Moedas atualizadas: as taxas do BCE, que mudam uma vez por dia útil.", de: "Währungen aktualisiert: die Kurse der EZB, die sich einmal pro Werktag ändern.", es: "Divisas actualizadas: los tipos del BCE, que cambian una vez por día hábil.", pl: "Zaktualizowano waluty: kursy EBC, zmieniane raz na dzień roboczy.", it: "Valute aggiornate: i tassi della BCE, che cambiano una volta per giorno lavorativo." })
-        : ctx.t({ en: "Couldn't fetch the currencies right now.", "pt-BR": "Não foi possível obter as moedas agora.", de: "Die Währungen konnten gerade nicht geladen werden.", es: "No se pudieron obtener las divisas ahora.", pl: "Nie udało się teraz pobrać walut.", it: "Non è stato possibile scaricare le valute ora." }),
+        ? ctx.t("Currencies updated: the ECB's rates, which change once a working day.")
+        : ctx.t("Couldn't fetch the currencies right now."),
     );
     return;
   }
@@ -368,7 +368,7 @@ function stopDemo(): void {
 export async function addSymbol(ctx: Ctx): Promise<void> {
   const have = new Set((await ctx.query("symbol")).map((r) => String(r.code)));
   const pick = await ctx.ui.sheet<string>({
-    title: { en: "Add to the watchlist", "pt-BR": "Adicionar à lista", de: "Zur Liste hinzufügen", es: "Añadir a la lista", pl: "Dodaj do listy", it: "Aggiungi alla lista" },
+    title: ctx.t("Add to the watchlist"),
     items: CHOICES.filter((c) => !have.has(c.code)).map((c) => ({
       id: c.code,
       label: c.code,
@@ -388,8 +388,8 @@ export async function addSymbol(ctx: Ctx): Promise<void> {
 
 /** Take a symbol off the watchlist, with its points. */
 export async function removeSymbol(r: Resolved, ctx: Ctx): Promise<void> {
-  const ok = await ctx.ui.confirm(ctx.t({ en: "Take {code} off the watchlist?", "pt-BR": "Tirar {code} da lista?", de: "{code} von der Liste nehmen?", es: "¿Quitar {code} de la lista?", pl: "Usunąć {code} z listy?", it: "Togliere {code} dalla lista?" }, { code: String(r.code) }), {
-    ok: ctx.t({ en: "Remove", "pt-BR": "Remover", de: "Entfernen", es: "Quitar", pl: "Usuń", it: "Rimuovi" }),
+  const ok = await ctx.ui.confirm(ctx.t("Take {code} off the watchlist?", { code: String(r.code) }), {
+    ok: ctx.t("Remove"),
     destructive: true,
   });
   if (!ok) return;
@@ -405,15 +405,15 @@ export async function removeSymbol(r: Resolved, ctx: Ctx): Promise<void> {
 /** Price alerts: a line above, a line below; either may be left empty. */
 export async function setAlert(r: Resolved, ctx: Ctx): Promise<void> {
   const unit = String(r.code).split(/[-/]/)[1] ?? "";
-  const help = ctx.t({ en: "Now {price}. Leave empty for none.", "pt-BR": "Agora {price}. Deixe vazio para nenhum.", de: "Jetzt {price}. Leer lassen für keinen.", es: "Ahora {price}. Déjalo vacío para ninguno.", pl: "Teraz {price}. Zostaw puste, by nie ustawiać.", it: "Ora {price}. Lascia vuoto per nessuno." }, { price: typeof r.price === "number" ? priceText(r.price, String(r.code), ctx) : "–" });
+  const help = ctx.t("Now {price}. Leave empty for none.", { price: typeof r.price === "number" ? priceText(r.price, String(r.code), ctx) : "–" });
   const answer = await ctx.ui.form<{ above?: number | null; below?: number | null }>({
-    title: ctx.t({ en: "Alert for {code}", "pt-BR": "Alerta para {code}", de: "Alarm für {code}", es: "Alerta para {code}", pl: "Alert dla {code}", it: "Avviso per {code}" }, { code: String(r.code) }),
+    title: ctx.t("Alert for {code}", { code: String(r.code) }),
     fields: {
-      above: { type: "number", min: 0, unit, help, label: { en: "Tell me when it goes above", "pt-BR": "Avise quando passar de", de: "Sag Bescheid, wenn es über", es: "Avísame cuando suba de", pl: "Powiadom, gdy przekroczy", it: "Avvisami quando supera" } },
-      below: { type: "number", min: 0, unit, label: { en: "Tell me when it drops below", "pt-BR": "Avise quando cair abaixo de", de: "Sag Bescheid, wenn es unter", es: "Avísame cuando baje de", pl: "Powiadom, gdy spadnie poniżej", it: "Avvisami quando scende sotto" } },
+      above: { type: "number", min: 0, unit, help, label: ctx.t("Tell me when it goes above") },
+      below: { type: "number", min: 0, unit, label: ctx.t("Tell me when it drops below") },
     },
     initial: { above: typeof r.above === "number" ? r.above : undefined, below: typeof r.below === "number" ? r.below : undefined },
-    submit: { en: "Save", "pt-BR": "Salvar", de: "Speichern", es: "Guardar", pl: "Zapisz", it: "Salva" },
+    submit: ctx.t("Save"),
   });
   if (!answer) return;
   const above = typeof answer.above === "number" && answer.above > 0 ? answer.above : null;
@@ -423,8 +423,8 @@ export async function setAlert(r: Resolved, ctx: Ctx): Promise<void> {
   if (s) Object.assign(s, { above, below });
   ctx.ui.toast(
     above || below
-      ? ctx.t({ en: "Alert set. It rings once, while the app is open.", "pt-BR": "Alerta criado. Ele toca uma vez, com o app aberto.", de: "Alarm gesetzt. Er meldet sich einmal, solange die App offen ist.", es: "Alerta creada. Suena una vez, con la app abierta.", pl: "Alert ustawiony. Zadziała raz, gdy aplikacja jest otwarta.", it: "Avviso impostato. Suona una volta, con l'app aperta." })
-      : ctx.t({ en: "No alert for {code}.", "pt-BR": "Sem alerta para {code}.", de: "Kein Alarm für {code}.", es: "Sin alerta para {code}.", pl: "Brak alertu dla {code}.", it: "Nessun avviso per {code}." }, { code: String(r.code) }),
+      ? ctx.t("Alert set. It rings once, while the app is open.")
+      : ctx.t("No alert for {code}.", { code: String(r.code) }),
   );
 }
 
@@ -516,7 +516,7 @@ async function clearing(ctx: Ctx): Promise<void> {
   }
   await loadSymbols(ctx);
   await setState(ctx, live.state);
-  ctx.ui.toast(ctx.t({ en: "Demo prices cleared.", "pt-BR": "Preços da demo apagados.", de: "Demo-Preise gelöscht.", es: "Precios de la demo borrados.", pl: "Usunięto ceny z demo.", it: "Prezzi della demo cancellati." }));
+  ctx.ui.toast(ctx.t("Demo prices cleared."));
 }
 
 /** For tests. */

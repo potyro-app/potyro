@@ -1,0 +1,444 @@
+msgid ""
+msgstr ""
+"Language: \n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"MIME-Version: 1.0\n"
+
+#: name
+#: msg
+msgid "Draw & Guess"
+msgstr ""
+
+#: entities.game.label
+msgid "Game"
+msgstr ""
+
+#: entities.game.fields.title.label
+msgid "Winner"
+msgstr ""
+
+#: entities.game.fields.date.label
+msgid "Played"
+msgstr ""
+
+#: entities.game.fields.players.label
+msgid "Scores"
+msgstr ""
+
+#: entities.game.fields.place.label
+msgid "Your place"
+msgstr ""
+
+#: entities.game.fields.score.label
+msgid "Your score"
+msgstr ""
+
+#: pages.0.title
+msgid "Play"
+msgstr ""
+
+#: pages.1.title
+msgid "Past games"
+msgstr ""
+
+#: pages.1.view.emptyText
+msgid "Finished games land here, with everyone's scores."
+msgstr ""
+
+#: msg
+msgid "Draw it. Guess it!"
+msgstr ""
+
+#: msg
+msgid "One draws, everyone guesses. First to get it scores."
+msgstr ""
+
+#: msg
+msgid "Your name"
+msgstr ""
+
+#: msg
+msgid "What should we call you?"
+msgstr ""
+
+#: msg
+msgid "Type your name first."
+msgstr ""
+
+#: msg
+msgid "New game"
+msgstr ""
+
+#: msg
+msgid "You get a code to send to your friends."
+msgstr ""
+
+#: msg
+msgid "Got a code?"
+msgstr ""
+
+#: msg
+msgid "Game code"
+msgstr ""
+
+#: msg
+msgid "Join"
+msgstr ""
+
+#: msg
+msgid "A code is 12 letters and numbers, like KQ7M-XR4P-2DHC."
+msgstr ""
+
+#: msg
+msgid "How friends join"
+msgstr ""
+
+#: msg
+msgid "Start a new game and tap Invite friends: it sends a link that opens the game with its code."
+msgstr ""
+
+#: msg
+msgid "A friend without the game taps Keep this app and lets it run as theirs. The drawing board is the app's own code, which Potyro runs only for apps you call yours — and anyone can read it first."
+msgstr ""
+
+#: msg
+msgid "The link lands on the game with the code filled in: they tap Join. Typing the code works too."
+msgstr ""
+
+#: msg
+msgid "You're invited to a game. Say your name and tap Join."
+msgstr ""
+
+#: msg
+msgid "Opening the game…"
+msgstr ""
+
+#: msg
+msgid "Saying hello…"
+msgstr ""
+
+#: msg
+msgid "Lost the connection. Trying again…"
+msgstr ""
+
+#: msg
+msgid "You stepped out of the game"
+msgstr ""
+
+#: msg
+msgid "Potyro closes the game's connection when you leave the app or put it away for a while. Your score waits for you."
+msgstr ""
+
+#: msg
+msgid "Rejoin"
+msgstr ""
+
+#: msg
+msgid "Back"
+msgstr ""
+
+#: msg
+msgid "Nobody is playing with that code right now. Check it, or start a new game."
+msgstr ""
+
+#: msg
+msgid "That game is full: 16 players already."
+msgstr ""
+
+#: msg
+msgid "You're offline. Connect to the internet and try again."
+msgstr ""
+
+#: msg
+msgid "Potyro's rooms can't be reached right now. Try again in a moment."
+msgstr ""
+
+#: msg
+msgid "Draw & Guess wasn't allowed to use Potyro's rooms. It asks again next time."
+msgstr ""
+
+#: msg
+msgid "The game wouldn't open. Try again."
+msgstr ""
+
+#: msg
+msgid "The game closed after 30 minutes with nothing happening."
+msgstr ""
+
+#: msg
+msgid "Live games aren't available here: this Potyro has no rooms."
+msgstr ""
+
+#: msg
+msgid "Draw & Guess needs to run as yours: its drawing board is the app's own code."
+msgstr ""
+
+#: msg
+msgid "Waiting for players"
+msgstr ""
+
+#: msg
+msgid "Read it out, or send it:"
+msgstr ""
+
+#: msg
+msgid "Invite friends"
+msgstr ""
+
+#: msg
+msgid "Play Draw & Guess with me"
+msgstr ""
+
+#: msg
+msgid "Come play Draw & Guess with me! Open the link to join — or, in Potyro, open Draw & Guess, tap Join and type the code {code}"
+msgstr ""
+
+#: msg
+msgid "{n, plural, one {# player} other {# players}}"
+msgstr ""
+
+#: msg
+msgid "you"
+msgstr ""
+
+#: msg
+msgid "host"
+msgstr ""
+
+#: msg
+msgid "away"
+msgstr ""
+
+#: msg
+msgid "Words in"
+msgstr ""
+
+#: msg
+msgid "Rounds"
+msgstr ""
+
+#: msg
+msgid "Seconds to draw"
+msgstr ""
+
+#: msg
+msgid "Start the game"
+msgstr ""
+
+#: msg
+msgid "It takes two. Invite someone!"
+msgstr ""
+
+#: msg
+msgid "{name} starts the game when everyone's in."
+msgstr ""
+
+#: msg
+msgid "Leave"
+msgstr ""
+
+#: msg
+msgid "Leave the game?"
+msgstr ""
+
+#: msg
+msgid "The others play on without you."
+msgstr ""
+
+#: msg
+msgid "Stay"
+msgstr ""
+
+#: msg
+msgid "Round {n} of {total}"
+msgstr ""
+
+#: msg
+msgid "Pick a word to draw"
+msgstr ""
+
+#: msg
+msgid "Only you can see these. If you wait, the first one is chosen for you."
+msgstr ""
+
+#: msg
+msgid "Your turn to draw!"
+msgstr ""
+
+#: msg
+msgid "{name} is picking a word…"
+msgstr ""
+
+#: msg
+msgid "Draw"
+msgstr ""
+
+#: msg
+msgid "{name} is drawing"
+msgstr ""
+
+#: msg
+msgid "Type your guess…"
+msgstr ""
+
+#: msg
+msgid "Guess"
+msgstr ""
+
+#: msg
+msgid "The others are guessing. Keep drawing!"
+msgstr ""
+
+#: msg
+msgid "“{text}” is so close!"
+msgstr ""
+
+#: msg
+msgid "{name} guessed it!"
+msgstr ""
+
+#: msg
+msgid "You guessed it!"
+msgstr ""
+
+#: msg
+msgid "{name} joined"
+msgstr ""
+
+#: msg
+msgid "{name} left"
+msgstr ""
+
+#: msg
+msgid "The word was"
+msgstr ""
+
+#: msg
+msgid "Time's up!"
+msgstr ""
+
+#: msg
+msgid "{name} left, so on to the next turn."
+msgstr ""
+
+#: msg
+msgid "{name} didn't pick a word in time."
+msgstr ""
+
+#: msg
+msgid "Next up: {name}"
+msgstr ""
+
+#: msg
+msgid "Game over!"
+msgstr ""
+
+#: msg
+msgid "{name} wins!"
+msgstr ""
+
+#: msg
+msgid "You win!"
+msgstr ""
+
+#: msg
+msgid "It's a tie!"
+msgstr ""
+
+#: msg
+msgid "{n} pts"
+msgstr ""
+
+#: msg
+msgid "Play again"
+msgstr ""
+
+#: msg
+msgid "{name} can start another game."
+msgstr ""
+
+#: msg
+msgid "The drawing"
+msgstr ""
+
+#: msg
+msgid "Pens"
+msgstr ""
+
+#: msg
+msgid "Black"
+msgstr ""
+
+#: msg
+msgid "Red"
+msgstr ""
+
+#: msg
+msgid "Orange"
+msgstr ""
+
+#: msg
+msgid "Yellow"
+msgstr ""
+
+#: msg
+msgid "Green"
+msgstr ""
+
+#: msg
+msgid "Blue"
+msgstr ""
+
+#: msg
+msgid "Purple"
+msgstr ""
+
+#: msg
+msgid "Brown"
+msgstr ""
+
+#: msg
+msgid "Eraser"
+msgstr ""
+
+#: msg
+msgid "Thin"
+msgstr ""
+
+#: msg
+msgid "Medium"
+msgstr ""
+
+#: msg
+msgid "Thick"
+msgstr ""
+
+#: msg
+msgid "Undo"
+msgstr ""
+
+#: msg
+msgid "Clear"
+msgstr ""
+
+#: msg
+msgid "Sounds on"
+msgstr ""
+
+#: msg
+msgid "Sounds off"
+msgstr ""
+
+#: msg
+msgid "{n, plural, one {# second left} other {# seconds left}}"
+msgstr ""
+
+#: msg
+msgid "{n, plural, one {# letter} other {# letters}}"
+msgstr ""
+
+#: msg
+msgid "English"
+msgstr ""
+
