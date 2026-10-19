@@ -1,6 +1,6 @@
 # 30 · App translations: one language in the source, catalogs beside it
 
-**Status: approved, 2026-10-19 (§9).** It replaces how docs/20 (#302) stores an app's words. docs/20's
+**Status: approved, 2026-10-19 (§9); built on `feat/app-catalogs`.** It replaces how docs/20 (#302) stores an app's words. docs/20's
 `ctx.locale`, `ctx.format`, the resolution order and "records are never translated" stay.
 
 The owner reviewed the examples' source on 2026-10-19 and rejected the inline maps: "we need to have a
@@ -66,8 +66,14 @@ msgstr "Co {n, plural, one {dzień} few {# dni} many {# dni} other {# dnia}}"
 ```
 
 **Same words, different meaning.** Rarely, one English string needs two translations ("Water" the verb,
-"Water" the noun). `ctx.t("Water", vars, { context: "verb" })` and, in a slot, the object form
-`{ text: "Water", context: "verb" }` add a `msgctxt`. The model uses it only when the check (§5) asks.
+"Water" the noun). The object form `{ text: "Water", context: "verb" }` adds a `msgctxt`, in a slot and
+in code alike: `ctx.t({ text: "Water", context: "verb" })`.
+
+**Words kept behind a const.** The extractor reads literals. Words written once and shown elsewhere
+(`const EMPTY = …`, a table of state names in `./words.ts`, a helper with no `ctx`) are marked where they
+are written with `msg("…")`, gettext's `N_`: it returns its text unchanged, and the extractor takes it.
+They are shown through `ctx.t(EMPTY)`, or as the slot's value. A slot that names an unmarked const is
+reported (`behind-code`), because a translator would never see its words.
 
 ## 2. Where catalogs live
 
@@ -75,7 +81,8 @@ msgstr "Co {n, plural, one {dzień} few {# dni} many {# dni} other {# dnia}}"
 |---|---|---|
 | Package (`potyro-app/1` zip) | words inside `app.ts` | `locales/<lang>.po` at the top level, beside `src/` and `lock.json`; listed in the manifest |
 | Saved app (`UserApp`) | words inside `source` | `catalogs`: one entry per language, stored and synced like the app's modules, by file and digest |
-| Bundled example | words inside `examples/<id>.app.ts` | `examples/locales/<id>/<lang>.po`, bundled with the source |
+| Bundled example | words inside `examples/<id>.app.ts` | `examples/files/<id>/locales/<lang>.po`, seeded into the app's Files |
+| Showcase app | words inside `apps/<id>/<id>.app.ts` | `apps/<id>/locales/<lang>.po`, shipped in its package by `pack-app` |
 | Demo / share link | words inside the source | the catalogs ride with the source, as its modules do |
 | Sealed box | the definition, already localized | the same, plus the ONE catalog of the shown language for `ctx.t`, passed as data at load |
 
@@ -93,13 +100,18 @@ record keeps the compiled form, a `{ msgid → msgstr }` map, so opening an app 
 
 ## 4. Extract and compile
 
-`pnpm i18n:app <app>` (and the same code inside the Studio):
+`pnpm i18n:app <app source> <locales folder>` (`--check` fails when a catalog is out of step), and the
+same code inside the Studio (`packages/generator/src/app-catalog.ts`). An app's own test asks the shared
+`catalogProblems` check: no map left in the code, a catalog per language, in step, every word translated
+and every `{placeholder}` kept (read as ICU, so words inside plural branches are not placeholders).
 
 - **Slots**: the schema walker visits every `zWords` slot of the definition and collects its string. The
   list of slots is the schema itself, so it cannot drift (docs/20 §1.2).
-- **Functions**: a parse of the source (`@babel/parser`, already used by the translate tool) collects
-  every `ctx.t(...)` whose first argument is a string literal. A non-literal argument is reported: a
-  catalog cannot know a word that is only computed.
+- **Functions**: a parse of the source and of the app's own modules (`./words.ts`, followed through its
+  relative imports) collects every `ctx.t(...)` and `msg(...)` whose first argument is a string literal
+  or a `{ text, context }` object. `ctx.t(variable)` is fine when its words were marked with `msg`.
+- **References** name the slot (`pages.0.title`) or just `ctx.t` / `msg`, never a line number, so an
+  edit above a message does not churn every catalog.
 - **Merge**: new msgids are added untranslated. A msgid that disappeared is marked obsolete (`#~`) and
   kept, so a rename that comes back finds its translation. A msgid that changed only a little is matched
   to its old entry and marked `fuzzy`. A fuzzy entry shows the source text until it is translated again.
@@ -116,8 +128,10 @@ record keeps the compiled form, a `{ msgid → msgstr }` map, so opening an app 
 - **Translating is on request** (owner, 2026-10-19: not automatic). Where the app's languages are
   listed, "Translate into…" adds a language, and "Update translations" appears when a catalog has new,
   fuzzy or missing messages ("4 missing in Polish"). Both run the **translate step**: extraction, then
-  ONLY the messages that need it, each with its slot or its `ctx.t` call as context, to the model in one
-  structured answer per language. It writes the catalogs and never the code, through the app's AI
+  ONLY the messages that need it (new, or fuzzy after their text changed), numbered, each with where it
+  shows and any older translation, to the model in one JSON answer per 120 messages
+  (`packages/generator/src/app-translate.ts`). A translation that changes a message's `{placeholders}`
+  is left out, so the app shows the source text there rather than a broken message. It writes the catalogs and never the code, through the app's AI
   allowance like any other Studio call.
 - Until then, the app works and shows the source text for what is missing.
 - `check` reports a literal-free `ctx.t`, a slot map in a new app (deprecated), and `msgctxt` needs.
@@ -138,12 +152,16 @@ record keeps the compiled form, a `{ msgid → msgstr }` map, so opening an app 
 
 - **Back-compat**: inline maps keep working, read as in docs/20. A shared app made before this opens
   unchanged. No `schemaVersion` moves: no records change.
-- **Codemod** (`scripts/maps-to-po.mjs`), for the 6 examples and 9 showcase apps:
+- **Codemod** (`pnpm --filter @potyro/generator maps-to-po <source> <locales folder>`), for the 6
+  examples and 9 showcase apps, and their own modules:
   - every slot map becomes its default-language string, and the other languages become entries in
     `locales/<lang>.po`;
   - every `ctx.t({ en: …, … }, vars)` call becomes `ctx.t("…", vars)` the same way;
-  - the result is checked by rendering each example in all six languages, before and after, and
-    comparing the visible words. They must match exactly, apart from the dictionary removed in §6.
+  - one text translated two ways in one file gets a `msgctxt` per meaning; words behind a const are
+    marked with `msg`, and the import added;
+  - checked: the examples localize identically before and after in all six languages, apart from the
+    dictionary removed in §6; the showcase apps' 3,475 translations re-derived from the old maps match
+    their catalogs but for 2, one English word translated two ways in two files, now one.
 - Expected effect: the examples' source shrinks by about a fifth to a third (measured 2026-10-19: up to
   33% of an app's source was other languages).
 

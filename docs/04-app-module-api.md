@@ -46,7 +46,7 @@ tile: async (ctx) => {
   const due = (await ctx.query("plant")).filter((p) => p.active && nextWatering(p) <= ctx.now());
   return {
     count: due.length,
-    title: ctx.t({ en: "{n, plural, =0 {All watered} other {# to water}}", pl: "…" }, { n: due.length }),
+    title: ctx.t("{n, plural, =0 {All watered} other {# to water}}", { n: due.length }),
     lines: due.slice(0, 3).map((p) => p.name),
     image: due.find((p) => p.photo)?.photo,
   };
@@ -143,7 +143,7 @@ express is a `value` that returns the words itself (`ctx.t`, `ctx.format`).
 computed: {
   calories: (r) => r.ingredients.reduce(…),                       // used only by other logic
   caloriesPerServing: {                                            // shown in "Nutrition & cost"
-    label: { en: "Calories per serving", pl: "Kalorie na porcję" },
+    label: "Calories per serving",
     value: (r) => r.calories / Math.max(r.servings, 1),
   },
 }
@@ -188,9 +188,12 @@ interface Ctx {
   // pass keeps the value it started with.)
   scope: Readonly<Record<string, Resolved | undefined>>;
 
-  // ---- the app's words and the person's formats (#302, docs/20) ----
+  // ---- the app's words and the person's formats (#302, docs/20, docs/30) ----
   // `locale` is the language the app's words are shown in — one of its `languages` — fixed per pass.
-  // `t` picks a map's words for it; with `vars` the words are an ICU message (plurals agree).
+  // `t` looks its text up in that language's catalog (locales/<lang>.po), else shows it as written;
+  // `{ text, context }` tells apart one text with two meanings; with `vars` the words are an ICU
+  // message (plurals agree). An app's words are written in its own `language` only — a legacy map
+  // `{ en, pl }` is still read. `msg("…")` (imported from "potyro") marks words kept in a const.
   // `format` formats for the person, and works the same in the sealed box (see below).
   locale: Language;
   t(words: Words, vars?: Record<string, string | number | Date>): string;
@@ -260,7 +263,7 @@ interface Ctx {
     export(f): Promise<void>;                             // save a copy outside the app
   };
 
-  // ---- UI affordances provided by the shell (every word may be `Words`: a map shows in ctx.locale) ----
+  // ---- UI affordances provided by the shell (every word may be `Words`, shown in ctx.locale) ----
   ui: { toast(msg: Words): void;
         confirm(msg: Words, opts?: { detail?: Words; ok?: Words; cancel?: Words; destructive?: boolean }): Promise<boolean>;
         prompt(msg: Words, opts?: { default?: string }): Promise<string | null>;
