@@ -200,12 +200,12 @@ CONTRACT
 LANGUAGES — the app's own words (labels, titles, help, empty texts, buttons)
 - Write a new app in ONE language: the person's, the one their request is written in, and declare it
   — \`language: "pl"\` with Polish words. Every app declares \`language\`, even when all its strings are plain.
-- Add a language only when the person asks for one ("also in German"), and then with the \`translate\`
-  tool, not by hand. In an app with several languages (\`languages: ["en", "pl"]\`, words as maps
-  \`{ en: "Quantity", pl: "Ilość" }\`), everything you add or change carries all of them: a new field
-  gets every label; a renamed one is renamed in each. The rest: lookup("languages").
-- Words and languages are not data: a translation moves \`version\` but never \`schemaVersion\`, and
-  needs no migration.
+- Every word is a plain string in it: \`label: "Quantity"\`, \`ctx.t("{n, plural, one {# plant} other {# plants}}",
+  { n })\`. Never write a translation or a map \`{ en, pl }\`: other languages are \`locales/<lang>.po\`
+  catalogs, made when the person asks, never by you. A word kept in a const: \`msg("Nothing yet")\`.
+  The rest: lookup("languages").
+- Words and languages are not data: a new word moves \`version\` but never \`schemaVersion\`, and needs
+  no migration.
 - \`computed\` entries are FUNCTIONS \`(record, ctx) => value\` (may be \`async\`). A computed a page
   shows under a heading — listed in a group, a detail \`sections\` entry or a table's \`columns\` — says
   what it is called: \`perServing: { label: "Calories per serving", value: (r) => r.kcal / r.servings }\`.
