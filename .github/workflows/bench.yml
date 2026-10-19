@@ -1,0 +1,42 @@
+# The CI benchmark (scripts/bench-ci.sh) on several runner types at once, to choose where CI runs
+# on measurements: each job runs the same workload on the same commit and reports its timings in the
+# job summary and as an artifact. Started by hand only.
+name: bench
+on:
+  workflow_dispatch:
+    inputs:
+      runners:
+        description: "JSON list of runs-on labels"
+        default: '["ubicloud-standard-4", "ubicloud-standard-4-arm", "ubicloud-standard-8", "blacksmith-4vcpu-ubuntu-2404", "blacksmith-4vcpu-ubuntu-2404-arm"]'
+jobs:
+  bench:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: ${{ fromJSON(inputs.runners || '["ubicloud-standard-4", "ubicloud-standard-4-arm", "ubicloud-standard-8", "blacksmith-4vcpu-ubuntu-2404", "blacksmith-4vcpu-ubuntu-2404-arm"]') }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.5.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Chromium for Playwright
+        run: pnpm install --frozen-lockfile && pnpm exec playwright install --with-deps chromium && rm -rf node_modules
+      - name: Benchmark
+        run: BENCH_HOST="${{ matrix.runner }}" bash scripts/bench-ci.sh
+      - name: Summary
+        if: always()
+        run: |
+          echo "### ${{ matrix.runner }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat bench-result.json >> "$GITHUB_STEP_SUMMARY" || echo "no result" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-${{ matrix.runner }}
+          path: bench-*.json
