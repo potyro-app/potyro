@@ -56,7 +56,7 @@ import { ShareSheet } from "./share-sheet.js";
 import { takeStudioHandoff } from "./studio-handoff.js";
 import { canRemix, RemixDialog } from "./remix.js";
 import { LockBanner, WRITE_CONTROLS, useAppLock, type AppLock } from "./app-lock.js";
-import { isRtl, languageNote, shownName } from "./app-words.js";
+import { isRtl, languageName, languageNote, shownName } from "./app-words.js";
 import { languagePrefs } from "./locale.js";
 import { optionLabel } from "@potyro/views";
 import { acceptLinkParams } from "potyro";
@@ -682,6 +682,47 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   // on screen (inline-edit.tsx). Only for your own saved apps (editable source). No model: anything
   // bigger goes to the Studio.
   const canEdit = Boolean(generator && currentKind === "user" && appId);
+  // The app's catalog for the language it shows in, behind its words (docs/30): "Update translations"
+  // offers to catch it up. Counted once per opening, from the saved source and the app's folder.
+  const shownLanguage = runtime.language.current;
+  const ownLanguage = runtime.core.app.definition.language;
+  const [translationGaps, setTranslationGaps] = useState(0);
+  const [translating, setTranslating] = useState(false);
+  useEffect(() => {
+    const source = canEdit && appId ? getUserApp(appId)?.source : undefined;
+    if (!source || !shownLanguage || !ownLanguage || shownLanguage === ownLanguage) return;
+    let live = true;
+    void import("./translate-app.js")
+      .then((m) => m.translationGaps(runtime.core.store, source, shownLanguage))
+      .then((n) => live && setTranslationGaps(n))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [canEdit, appId, shownLanguage, ownLanguage, runtime]);
+  /** Fill the app's catalog for `language` (the person asked), then open the app again in it. */
+  const translateInto = async (language: string, languageLabel: string): Promise<void> => {
+    const source = appId ? getUserApp(appId)?.source : undefined;
+    if (!source || translating) return;
+    setTranslating(true);
+    toaster.push(t({ message: `Translating into ${languageLabel}…`, comment: "App menu: the app's words are being translated, which takes a moment" }));
+    try {
+      const [{ translateApp }, { createAppAi }, { STUDIO_VOICE_ID }, { getEngineConfig }, { deviceId }] = await Promise.all([
+        import("./translate-app.js"),
+        import("./app-ai.js"),
+        import("./studio-voice.js"),
+        import("./engine-store.js"),
+        import("./device-id.js"),
+      ]);
+      const ai = createAppAi({ appId: STUDIO_VOICE_ID, ownKey: () => getEngineConfig().openrouterKey, device: deviceId, language: currentLocale });
+      await translateApp({ store: runtime.core.store, source, language, ai });
+      // The catalog is read when the app opens, so it opens again, now in that language.
+      location.reload();
+    } catch (e) {
+      setTranslating(false);
+      toaster.push(t({ message: `The translation could not be made: ${e instanceof Error ? e.message : String(e)}`, comment: "App menu: translating the app's words failed; the reason follows" }));
+    }
+  };
   // Whether the app names people at all (a `member` field): then People is worth a place in the menu
   // before it is shared, to set up its guests.
   const namesPeople = Object.values(runtime.definition.entities).some((e) => Object.values(e.fields).some((f) => f.type === "member"));
@@ -958,16 +999,26 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     ...(onData ? [{ key: "data", label: t({ message: "Data", comment: "The page with every app's records" }), icon: <DatabaseIcon />, hint: t`every record`, onSelect: onData }] : []),
     ...(onImport ? [{ key: "import", label: t`Import`, icon: "⇣", onSelect: onImport }] : []),
     ...(onExport ? [{ key: "export", label: t`Export`, icon: "⇡", onSelect: onExport }] : []),
-    // "This app is in English." Where it can be changed, the line offers the translation, which the
-    // Studio makes (docs/20 §3.3); elsewhere it only says so.
+    // "This app is in English." Where it can be changed, the line offers the translation: a catalog
+    // made on request, the code untouched (docs/30 §5); elsewhere it only says so.
     ...(langNote
       ? [
-          // (the person's own request, so in their language; the tag says exactly which)
           canEdit
-            ? { key: "language", label: langNote.offer, icon: "🌐", hint: langNote.line, onSelect: () => askStudioAbout(t`Translate this app into ${intoName} (${intoTag}).`) }
+            ? { key: "language", label: langNote.offer, icon: "🌐", hint: langNote.line, disabled: translating, onSelect: () => void translateInto(intoTag, intoName) }
             : { key: "language", label: langNote.line, icon: "🌐", disabled: true, onSelect: () => {} },
         ]
-      : []),
+      : canEdit && translationGaps > 0 && shownLanguage
+        ? [
+            {
+              key: "language",
+              label: t({ message: "Update translations", comment: "App menu: translate the app's words that are new or changed since it was translated" }),
+              icon: "🌐",
+              hint: plural(translationGaps, { one: "# word missing", other: "# words missing" }),
+              disabled: translating,
+              onSelect: () => void translateInto(shownLanguage, languageName(shownLanguage)),
+            },
+          ]
+        : []),
   ];
   const chromeReport: ChromeTool[] = appId
     ? recording

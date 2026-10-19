@@ -54,6 +54,18 @@ describe("translateCatalog", () => {
     expect(catalog.Plants).toBe("Rośliny");
   });
 
+  it("sends batches no larger than asked, each with its answer's keys", async () => {
+    const keys: string[][] = [];
+    const ask: AskModel = async (r) => {
+      keys.push([...r.keys]);
+      const list = JSON.parse(r.user) as Array<{ n: string; text: string }>;
+      return JSON.stringify(Object.fromEntries(list.map((m) => [m.n, POLISH[m.text]])));
+    };
+    const out = await translateCatalog({ source: SOURCE, language: "pl", ask, batch: 4 });
+    expect(keys).toEqual([["1", "2", "3", "4"], ["1", "2"]]);
+    expect(out.translated).toBe(6);
+  });
+
   it("asks nothing when the catalog is complete", async () => {
     const first = await translateCatalog({ source: SOURCE, language: "pl", ask: fakeModel(POLISH, []) });
     const asked: string[][] = [];

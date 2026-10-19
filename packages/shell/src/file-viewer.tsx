@@ -1,6 +1,7 @@
 // A file from an app's folder, opened to look at (#254). Read-only: a text file is shown as text, a
 // picture, a sound or a video plays, anything else says what it is and offers a copy to open
-// elsewhere. Changing a file is the app's business, or Replace's; this only shows what is there.
+// elsewhere. Changing a file is the app's business, or Replace's — except an app's translations
+// (`locales/<lang>.po`, docs/30), which a person can open and fix a word in, here.
 //
 // In a shared app (#255) opening a file is what brings it to this device: the read asks for it, the
 // viewer says it is on its way (or that it will come once this device is online), and shows it the
@@ -13,7 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { FileInfo } from "potyro";
 import type { EarlierCopy, Store } from "@potyro/store";
 import { formatSize } from "@potyro/views";
-import { earlierCopies, readForView, restoreCopy, watchArrival, type FileView } from "./app-folder.js";
+import { earlierCopies, isCatalogFile, readForView, restoreCopy, saveCatalogText, watchArrival, type FileView } from "./app-folder.js";
 import { shellDialogs } from "./dialog.js";
 
 export interface FileViewerProps {
@@ -34,6 +35,9 @@ export function FileViewer({ store, file, onSave, onChanged, onClose }: FileView
   const [online, setOnline] = useState(isOnline);
   const [earlier, setEarlier] = useState<EarlierCopy[]>([]);
   const [version, setVersion] = useState(0);
+  /** The catalog's text being changed, or null while it is only shown. */
+  const [draft, setDraft] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const url = useRef<string | null>(null);
 
@@ -98,6 +102,21 @@ export function FileViewer({ store, file, onSave, onChanged, onClose }: FileView
     }
   };
 
+  const editable = isCatalogFile(file.path) && view?.kind === "text" && !view.cut;
+  const save = async (): Promise<void> => {
+    if (draft === null) return;
+    try {
+      await saveCatalogText(store, file.id, draft);
+      setDraft(null);
+      setSaved(true);
+      setFailed(null);
+      setVersion((n) => n + 1);
+      onChanged?.();
+    } catch (e) {
+      setFailed(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   const name = file.name;
   const size = formatSize(file.size);
   return (
@@ -123,6 +142,18 @@ export function FileViewer({ store, file, onSave, onChanged, onClose }: FileView
               {size}
             </p>
           </div>
+          {editable && draft === null && view?.kind === "text" ? (
+            <button
+              type="button"
+              className="k-add"
+              onClick={() => {
+                setDraft(view.text);
+                setSaved(false);
+              }}
+            >
+              <span aria-hidden>✎</span> <Trans comment="Files viewer: change the words of an app's translation file">Edit</Trans>
+            </button>
+          ) : null}
           <button type="button" className="k-add" onClick={onSave} disabled={view?.kind === "missing"}>
             <span aria-hidden>⤓</span> <Trans>Save a copy</Trans>
           </button>
@@ -133,7 +164,24 @@ export function FileViewer({ store, file, onSave, onChanged, onClose }: FileView
         <div className="k-viewer-body" data-kind={view?.kind}>
           {failed ? <p className="k-files-error">{failed}</p> : null}
           {!view && !failed ? <p className="k-muted">{t`Opening ${name}…`}</p> : null}
-          {view?.kind === "text" ? (
+          {saved ? (
+            <p className="k-viewer-note" role="status">
+              <Trans>Saved. The app shows the new words when it opens again.</Trans>
+            </p>
+          ) : null}
+          {draft !== null ? (
+            <>
+              <textarea className="k-viewer-text k-viewer-edit" value={draft} onChange={(e) => setDraft(e.target.value)} aria-label={t`Translations in ${name}`} spellCheck={false} autoFocus />
+              <div className="k-viewer-edit-actions">
+                <button type="button" className="k-add" onClick={() => setDraft(null)}>
+                  <Trans>Cancel</Trans>
+                </button>
+                <button type="button" className="k-add k-primary-action" onClick={() => void save()}>
+                  <Trans comment="Files viewer: save the changed translation file">Save</Trans>
+                </button>
+              </div>
+            </>
+          ) : view?.kind === "text" ? (
             <>
               <pre className="k-viewer-text" tabIndex={0} aria-label={t`Contents of ${name}`}>
                 {view.text}

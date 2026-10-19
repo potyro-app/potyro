@@ -35,6 +35,20 @@ export function catalogLanguage(path: string): string | null {
   return m ? m[1]! : null;
 }
 
+const PO_STRING = String.raw`"(?:[^"\\]|\\.)*"`;
+const PO_LINE = new RegExp(String.raw`^(?:#.*|(?:#~\s*)?(?:msgctxt|msgid|msgid_plural|msgstr(?:\[\d+\])?)\s+${PO_STRING}|(?:#~\s*)?${PO_STRING})?\s*$`);
+
+/**
+ * The first line of `text` that a `.po` file cannot have, as "line N: …", or null when every line is
+ * a keyword and a quoted string, a continued string, a comment or blank. The parser forgives a broken
+ * line by dropping words, so a catalog a person edited is held to this before it is saved.
+ */
+export function poLineProblem(text: string): string | null {
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) if (!PO_LINE.test(lines[i]!.trim())) return `line ${i + 1}: ${lines[i]!.trim().slice(0, 60)}`;
+  return null;
+}
+
 /** A `.po` file's messages. Throws a readable error for a file that is not one. */
 export function readPo(text: string): { language?: string; entries: CatalogEntry[] } {
   let po: PO;

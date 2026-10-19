@@ -11,8 +11,16 @@
 import { readPo, writePo, type CatalogEntry } from "@potyro/i18n/app-catalogs";
 import { extractMessages, mergeCatalog, messageHoles } from "./app-catalog.js";
 
-/** One model call: a system and a user message in, the model's reply out. */
-export type AskModel = (request: { system: string; user: string; signal?: AbortSignal }) => Promise<string>;
+/**
+ * One model call: a system and a user message in, the model's reply out. `keys` are the answer's keys,
+ * every one required, for a backend that holds the answer to a JSON schema (`answerSchema`).
+ */
+export type AskModel = (request: { system: string; user: string; keys: readonly string[]; signal?: AbortSignal }) => Promise<string>;
+
+/** The JSON schema of an answer with exactly `keys`, each a string: strict, as a structured-output backend wants it. */
+export function answerSchema(keys: readonly string[]): Record<string, unknown> {
+  return { type: "object", properties: Object.fromEntries(keys.map((k) => [k, { type: "string" }])), required: [...keys], additionalProperties: false };
+}
 
 export interface TranslateCatalogRequest {
   /** The app's main source, and its own modules' sources. */
@@ -24,6 +32,8 @@ export interface TranslateCatalogRequest {
   po?: string | null;
   ask: AskModel;
   signal?: AbortSignal;
+  /** Messages per call (default `TRANSLATE_BATCH`): fewer where a backend caps an answer's length. */
+  batch?: number;
 }
 
 export interface TranslateCatalogResult {
@@ -76,9 +86,10 @@ export async function translateCatalog(req: TranslateCatalogRequest): Promise<Tr
   const filled = new Map<string, string>();
   const left: string[] = [];
 
-  for (let at = 0; at < needed.length; at += TRANSLATE_BATCH) {
+  const size = Math.max(1, req.batch ?? TRANSLATE_BATCH);
+  for (let at = 0; at < needed.length; at += size) {
     req.signal?.throwIfAborted();
-    const batch = needed.slice(at, at + TRANSLATE_BATCH);
+    const batch = needed.slice(at, at + size);
     const listed = batch.map((e, i) => ({
       n: String(i + 1),
       text: e.id,
@@ -86,7 +97,7 @@ export async function translateCatalog(req: TranslateCatalogRequest): Promise<Tr
       ...(e.references[0] ? { where: e.references[0] } : {}),
       ...(e.fuzzy && e.text ? { was: e.text } : {}),
     }));
-    const reply = await req.ask({ system: translateSystem(from, req.language), user: JSON.stringify(listed, null, 1), ...(req.signal ? { signal: req.signal } : {}) });
+    const reply = await req.ask({ system: translateSystem(from, req.language), user: JSON.stringify(listed, null, 1), keys: listed.map((m) => m.n), ...(req.signal ? { signal: req.signal } : {}) });
     const answer = readAnswer(reply);
     batch.forEach((e, i) => {
       const text = answer[String(i + 1)];

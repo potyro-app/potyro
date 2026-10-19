@@ -274,7 +274,7 @@ export function messageHoles(text: string): string {
   const names = new Set<string>();
   const visit = (elements: readonly MessageFormatElement[]): void => {
     for (const el of elements) {
-      if ("value" in el && typeof el.value === "string" && el.type !== TYPE.literal && el.type !== TYPE.pound) names.add(el.value);
+      if ("value" in el && typeof el.value === "string" && el.type !== TYPE.literal) names.add(el.value);
       if ("options" in el) for (const o of Object.values(el.options)) visit(o.value);
       if ("children" in el) visit(el.children);
     }
