@@ -438,7 +438,3 @@ msgstr "{n, plural, one {manca # secondo} other {mancano # secondi}}"
 msgid "{n, plural, one {# letter} other {# letters}}"
 msgstr "{n, plural, one {# lettera} other {# lettere}}"
 
-#: msg
-msgid "English"
-msgstr "Italiano"
-

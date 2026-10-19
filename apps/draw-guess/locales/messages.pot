@@ -438,7 +438,3 @@ msgstr ""
 msgid "{n, plural, one {# letter} other {# letters}}"
 msgstr ""
 
-#: msg
-msgid "English"
-msgstr ""
-

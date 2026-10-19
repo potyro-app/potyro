@@ -99,6 +99,12 @@ export function convert(source: string, own = "en"): Converted {
     const node = n as Node;
     if (!node.type) return;
     const map = asMap(node, own);
+    // `{ en: "English", pl: "Polski" } as const`: data looked up by language (each language's own name),
+    // not words to translate. Left as it is.
+    if (map && parent?.type === "TSAsExpression") {
+      reports.push(`line ${node.loc?.start.line}: a map under \`as const\` is left as it is: data looked up by language, not words`);
+      return;
+    }
     if (map) {
       const isTArg = parent?.type === "CallExpression" && (parent.callee as Node)?.type === "MemberExpression" && ((parent.callee as Node).property as Node)?.name === "t" && asArray(parent.arguments)[0] === node;
       const meaningful = keys.filter((k) => !GENERIC.has(k) && !/^\d+$/.test(k));
