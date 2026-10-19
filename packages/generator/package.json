@@ -9,6 +9,7 @@
     "./agent": "./src/agent/index.ts",
     "./language": "./src/language.ts",
     "./app-catalog": "./src/app-catalog.ts",
+    "./app-translate": "./src/app-translate.ts",
     "./app-sources": "./src/app-sources.ts"
   },
   "types": "./src/index.ts",
