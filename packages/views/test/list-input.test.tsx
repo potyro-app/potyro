@@ -75,6 +75,14 @@ describe("the cards", () => {
     expect(screen.getByRole("button", { name: "＋ Add: step" })).toBeTruthy();
   });
 
+  it("names each card's line field for a screen reader, not by its placeholder", async () => {
+    const runtime = await makeRuntime();
+    const named: ListField = { type: "list", label: "Items", of: { name: { type: "text", label: "What", placeholder: "Milk" }, grams: { type: "number" } } };
+    render(<FieldInput runtime={runtime} field={named} value={[{ name: "Rice", grams: 500 }, { name: "Eggs" }]} onChange={() => {}} label="Items" />);
+    const boxes = screen.getAllByRole("textbox", { name: "What" }) as HTMLInputElement[];
+    expect(boxes.map((b) => b.value)).toEqual(["Rice", "Eggs"]);
+  });
+
   it("removes a row from the card's menu, not from a bare ✕", async () => {
     const runtime = await makeRuntime();
     const onChange = vi.fn();

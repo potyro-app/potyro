@@ -189,6 +189,9 @@ function FieldByType({ runtime, field, value }: { runtime: PotyroRuntime; field:
       const precision = precisionOf(field as DateTimeField);
       return <span title={formatDateAbsolute(d, precision)}>{formatDateAbsolute(d, precision)}</span>;
     }
+    case "text":
+      // Its own line breaks, kept: "1. Brown the chicken\n2. …" is two lines, not one run-on.
+      return field.multiline ? <span className="k-text-lines">{String(value)}</span> : <>{formatValue(value)}</>;
     case "boolean":
       return value ? <Trans comment="A ticked yes/no field">Yes</Trans> : <Trans comment="An unticked yes/no field">No</Trans>;
     case "url":

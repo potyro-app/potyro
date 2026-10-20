@@ -3561,6 +3561,10 @@ th.k-data-raw {
   font-size: 1rem;
   overflow-wrap: anywhere;
 }
+/* A multiline text field reads back with its own line breaks: steps, a note in paragraphs. */
+.k-text-lines {
+  white-space: pre-line;
+}
 /* labelled table for all-scalar list rows (e.g. ingredients, sets) */
 .k-list-table {
   border-collapse: collapse;
@@ -5600,6 +5604,11 @@ button.k-fold-head {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  min-width: 0;
+}
+.k-row-head {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 .k-row-sub {
