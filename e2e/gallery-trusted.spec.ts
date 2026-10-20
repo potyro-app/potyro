@@ -118,7 +118,8 @@ test("the gallery page: accessible, asks nothing of anyone else, Try it and Make
     expect(await mine.getAttribute("href")).toBe(`${link}&remix=1`);
     await expect(page.getByRole("link", { name: "Report a link" })).toHaveAttribute("href", /^mailto:contact@potyro\.com\?subject=/);
     await expect(page.getByRole("link", { name: "Open Potyro" })).toHaveAttribute("href", "https://potyro.app/");
-    await expect(page.getByRole("heading", { name: "On the workbench" })).toBeVisible();
+    // The workbench is empty since 2026-10-20: the page leaves the section out, heading and all.
+    await expect(page.getByRole("heading", { name: "On the workbench" })).toHaveCount(0);
 
     // Measure colours once the cards have finished rising in: mid-animation text is half transparent,
     // and on a busy CI machine axe caught it there as low contrast.
