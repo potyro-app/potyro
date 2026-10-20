@@ -95,6 +95,18 @@ export class ViewWatchdog {
     this.lastPong = t;
   }
 
+  /**
+   * The page went off screen (`visibilitychange`), told the moment it happens. A check cannot be
+   * relied on to see the page hidden: on Android a tab put behind the camera runs no timer at all,
+   * so the first check after it comes back is late by the whole absence — and read that as the view
+   * blocking the thread (the owner's Firefox, 2026-10-20: every camera photo ended the sealed Palette
+   * Catcher, while a photo from the library, a sheet over a running page, was fine).
+   */
+  hidden(): void {
+    this.wasVisible = false;
+    this.forgive(this.now());
+  }
+
   /** Called every `checkMs`. `visible`: the page is on screen (a hidden tab's timers are throttled). */
   check(visible: boolean): ViewVerdict {
     const t = this.now();
