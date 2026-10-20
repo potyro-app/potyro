@@ -237,3 +237,103 @@ describe("SqliteStore durability (OPFS reload simulated via export/import)", () 
     reopened.destroy();
   });
 });
+
+// A read of an entity that has not changed is the first read's rows again (one statement for
+// sixteen readers); any change forgets it; and what a read hands out stays a clone of its own.
+describe("SqliteStore remembers what it read", () => {
+  type Counted = SqliteStoreFactoryResult & { selects: () => number };
+  async function counted(): Promise<Counted> {
+    const made = await createMemorySqliteStore("counted");
+    const db = (made.store as unknown as { db: { selectObjects: (...a: unknown[]) => unknown } }).db;
+    let selects = 0;
+    const real = db.selectObjects.bind(db);
+    db.selectObjects = (...a: unknown[]) => {
+      if (typeof a[0] === "string" && a[0].startsWith("SELECT") && a[0].includes("FROM records")) selects++;
+      return real(...a);
+    };
+    return { ...made, selects: () => selects };
+  }
+
+  it("reads an unchanged entity from the database once, however many times it is asked", async () => {
+    const { store: s, selects } = await counted();
+    await s.insert("task", { title: "a" });
+    await s.insert("task", { title: "b" });
+    const before = selects();
+    const first = await s.all("task");
+    await s.all("task");
+    await s.all("task");
+    expect(selects() - before).toBe(1);
+    expect(first.map((r) => r.title)).toEqual(["a", "b"]);
+    // Two reads in flight at once are one statement too.
+    const two = await Promise.all([s.all("note"), s.all("note")]);
+    expect(two).toEqual([[], []]);
+    expect(selects() - before).toBe(2);
+  });
+
+  it("hands out a clone each time, so a caller changing a row changes nothing", async () => {
+    const { store: s } = await counted();
+    await s.insert("task", { title: "a" });
+    const one = await s.all("task");
+    one[0]!.title = "changed";
+    const again = await s.all("task");
+    expect(again[0]!.title).toBe("a");
+    expect(again[0]).not.toBe(one[0]);
+  });
+
+  it("forgets an entity on its insert, update and delete, and only that entity", async () => {
+    const { store: s, selects } = await counted();
+    const r = await s.insert("task", { title: "a" });
+    await s.insert("note", { body: "n" });
+    await s.all("task");
+    await s.all("note");
+    const before = selects();
+    await s.update("task", r.id, { title: "b" });
+    expect((await s.all("task")).map((t) => t.title)).toEqual(["b"]);
+    await s.all("note");
+    expect(selects() - before).toBe(1); // task again; note as before
+    await s.delete("task", r.id);
+    expect(await s.all("task")).toEqual([]);
+    await s.insert("task", { title: "c" });
+    expect((await s.all("task")).map((t) => t.title)).toEqual(["c"]);
+  });
+
+  it("reads a set of ids once too, and forgets it with the entity", async () => {
+    const { store: s, selects } = await counted();
+    const a = await s.insert("aisle", { name: "dairy" });
+    const b = await s.insert("aisle", { name: "bread" });
+    const before = selects();
+    await s.all("aisle", { ids: [a.id, b.id] });
+    await s.all("aisle", { ids: [b.id, a.id] });
+    expect(selects() - before).toBe(1);
+    await s.update("aisle", a.id, { name: "milk" });
+    expect((await s.all("aisle", { ids: [a.id] }))[0]!.name).toBe("milk");
+  });
+
+  it("a listener told of a change reads the change, not what was read before", async () => {
+    const { store: s } = await counted();
+    await s.all("task");
+    let seen: string[] = [];
+    s.subscribe("task", () => void s.all("task").then((rows) => (seen = rows.map((r) => String(r.title)))));
+    await s.insert("task", { title: "new" });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(seen).toEqual(["new"]);
+  });
+
+  it("trusts nothing read before a transaction, and reads afresh after it", async () => {
+    const { store: s, selects } = await counted();
+    await s.insert("task", { title: "a" });
+    await s.all("task");
+    await s.transaction(async (tx) => {
+      await tx.insert("task", { title: "b" });
+      expect((await tx.all("task")).map((t) => t.title)).toEqual(["a", "b"]);
+    });
+    expect((await s.all("task")).map((t) => t.title)).toEqual(["a", "b"]);
+    await s.transaction(async (tx) => {
+      await tx.insert("task", { title: "c" });
+      throw new Error("no");
+    }).catch(() => undefined);
+    const before = selects();
+    expect((await s.all("task")).map((t) => t.title)).toEqual(["a", "b"]);
+    expect(selects() - before).toBe(1);
+  });
+});

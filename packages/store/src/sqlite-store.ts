@@ -66,6 +66,23 @@ export class SqliteStore implements Store {
   // outermost SAVEPOINT commits — so a rolled-back transaction never leaks phantom notifications.
   private txDepth = 0;
   private pendingEmits: string[] = [];
+  /**
+   * Rows as the database gave them, by what was asked (`entity`, or `entity` and a set of ids),
+   * kept until that entity changes.
+   *
+   * One change to a list made the runtime read the whole entity again some sixteen times — once
+   * per page, watcher and tile that follows it — and each of those is a round trip to the storage
+   * worker. Chrome answers one in a few milliseconds and the sixteen went unnoticed; Firefox takes
+   * twenty or more for each and a tap on a phone paid half a second. The second read of an entity
+   * that has not changed is now the first read's rows, parsed again: parsed, because a read hands
+   * out a clone the caller may change (the contract every store keeps), and strings are what the
+   * database returned anyway.
+   *
+   * Forgotten for an entity before any of its writes starts and again when the write is announced,
+   * for everything at a transaction's edges, and on close. The promise is kept, not its value, so
+   * two reads in flight at once are one statement.
+   */
+  private readonly reads = new Map<string, Promise<Array<{ seq?: number; doc: string }>>>();
 
   /**
    * `db` must be an already-opened SQLite database handle (in-memory or OPFS-backed). `exporter`,
@@ -89,6 +106,7 @@ export class SqliteStore implements Store {
     if (this.closed) return; // idempotent; double-close of the wasm DB would throw
     this.closed = true;
     this.appId = null;
+    this.reads.clear();
     await this.db.close?.();
   }
 
@@ -96,7 +114,7 @@ export class SqliteStore implements Store {
   async all(entity: string, narrow?: Narrow): Promise<PotyroRecord[]> {
     const out = narrow?.ids
       ? await this.byIds(entity, narrow.ids)
-      : (await this.db.selectObjects("SELECT doc FROM records WHERE entity=? ORDER BY seq", [entity])).map((r) => JSON.parse(r.doc as string) as PotyroRecord);
+      : (await this.remembered(entity, () => this.db.selectObjects("SELECT doc FROM records WHERE entity=? ORDER BY seq", [entity]) as Promise<Array<{ doc: string }>>)).map((r) => JSON.parse(r.doc) as PotyroRecord);
     const offset = narrow?.offset ?? 0;
     const end = narrow?.limit != null ? offset + narrow.limit : undefined;
     return out.slice(offset, end);
@@ -111,13 +129,36 @@ export class SqliteStore implements Store {
    */
   private async byIds(entity: string, ids: readonly Id[]): Promise<PotyroRecord[]> {
     const unique = [...new Set(ids)];
-    const found: Array<{ seq: number; doc: string }> = [];
-    for (let at = 0; at < unique.length; at += IDS_PER_STATEMENT) {
-      const chunk = unique.slice(at, at + IDS_PER_STATEMENT);
-      const rows = await this.db.selectObjects(`SELECT seq, doc FROM records WHERE entity=? AND id IN (${chunk.map(() => "?").join(",")})`, [entity, ...chunk]);
-      for (const r of rows) found.push({ seq: Number(r.seq), doc: r.doc as string });
+    const found = await this.remembered(`${entity}\0${[...unique].sort().join("\0")}`, async () => {
+      const rows: Array<{ seq: number; doc: string }> = [];
+      for (let at = 0; at < unique.length; at += IDS_PER_STATEMENT) {
+        const chunk = unique.slice(at, at + IDS_PER_STATEMENT);
+        const got = await this.db.selectObjects(`SELECT seq, doc FROM records WHERE entity=? AND id IN (${chunk.map(() => "?").join(",")})`, [entity, ...chunk]);
+        for (const r of got) rows.push({ seq: Number(r.seq), doc: r.doc as string });
+      }
+      return rows.sort((a, b) => a.seq - b.seq);
+    });
+    return found.map((r) => JSON.parse(r.doc) as PotyroRecord);
+  }
+
+  /** The rows for `key` (an entity, or an entity and its ids): the ones already read, else `read()`'s, kept. */
+  private remembered<R extends { doc: string }>(key: string, read: () => Promise<R[]>): Promise<R[]> {
+    const kept = this.reads.get(key) as Promise<R[]> | undefined;
+    if (kept) return kept;
+    const rows = Promise.resolve(read()); // a handle may answer synchronously (in memory, in tests)
+    this.reads.set(key, rows);
+    // A read that failed is not kept: the next one asks again.
+    rows.catch(() => this.reads.delete(key));
+    return rows;
+  }
+
+  /** Forget what was read of `entity` (its whole table and every set of its ids), or of everything. */
+  private forget(entity?: string): void {
+    if (entity === undefined) {
+      this.reads.clear();
+      return;
     }
-    return found.sort((a, b) => a.seq - b.seq).map((r) => JSON.parse(r.doc) as PotyroRecord);
+    for (const key of this.reads.keys()) if (key === entity || key.startsWith(`${entity}\0`)) this.reads.delete(key);
   }
 
   async get(entity: string, id: Id): Promise<PotyroRecord | null> {
@@ -142,6 +183,7 @@ export class SqliteStore implements Store {
       createdAt: (data.createdAt as string) ?? ts,
       updatedAt: ts,
     };
+    this.forget(entity);
     await this.db.exec({
       sql: "INSERT INTO records(entity, id, doc) VALUES(?, ?, ?) ON CONFLICT(entity, id) DO UPDATE SET doc=excluded.doc",
       bind: [entity, id, JSON.stringify(record)],
@@ -160,12 +202,14 @@ export class SqliteStore implements Store {
       createdAt: existing.createdAt,
       updatedAt: nowIso(),
     };
+    this.forget(entity);
     await this.db.exec({ sql: "UPDATE records SET doc=? WHERE entity=? AND id=?", bind: [JSON.stringify(next), entity, id] });
     this.emit(entity);
     return structuredClone(next);
   }
 
   async delete(entity: string, id: Id): Promise<void> {
+    this.forget(entity);
     await this.db.exec({ sql: "DELETE FROM records WHERE entity=? AND id=?", bind: [entity, id] });
     if (Number(await this.db.selectValue("SELECT changes()")) > 0) this.emit(entity);
   }
@@ -173,18 +217,23 @@ export class SqliteStore implements Store {
   async transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T> {
     const name = `potyro_tx_${++this.txCounter}`;
     const mark = this.pendingEmits.length; // notifications buffered before this (nested) level
+    // Nothing read before is trusted across a transaction: what it writes is announced only at
+    // the end, and what it rolls back was never there.
+    this.forget();
     await this.db.exec(`SAVEPOINT ${name}`);
     this.txDepth++;
     try {
       const out = await fn(this);
       await this.db.exec(`RELEASE ${name}`);
       this.txDepth--;
+      this.forget();
       if (this.txDepth === 0) this.flushPending();
       return out;
     } catch (err) {
       await this.db.exec(`ROLLBACK TO ${name}`);
       await this.db.exec(`RELEASE ${name}`);
       this.txDepth--;
+      this.forget();
       this.pendingEmits.length = mark; // discard notifications from the rolled-back level(s)
       throw err;
     }
@@ -210,6 +259,7 @@ export class SqliteStore implements Store {
   }
 
   private fire(entity: string): void {
+    this.forget(entity); // before anyone is told, so a listener that reads at once reads the change
     for (const cb of this.listeners.get(entity) ?? []) cb();
   }
 
@@ -355,6 +405,7 @@ export class SqliteStore implements Store {
 
   /** Replace the entire record table from an in-memory set, re-establishing creation order. */
   private async writeBack(records: EntityRecords): Promise<void> {
+    this.forget();
     await this.db.exec("DELETE FROM records");
     for (const [entity, m] of records) {
       for (const [id, rec] of m) {
