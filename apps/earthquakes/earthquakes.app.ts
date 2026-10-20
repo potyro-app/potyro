@@ -138,6 +138,8 @@ export default defineApp({
   nav: "tabs",
   // The feed and the catalogue are one host. Location and notifications only for the near-me alert.
   permissions: { network: { hosts: [EMSC_HOST] }, geo: true, notifications: true, haptics: true },
+  // A demo link opens with the replay already playing (docs/04 §Demo): the same as the Demo button.
+  demo: playDemo,
   quickActions: [],
   entities: {
     quake: {

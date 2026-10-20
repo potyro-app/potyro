@@ -227,7 +227,7 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     key: "ctx.caps.network.socket",
     summary:
-      "live data both ways (prices, a home hub, chat): `const s = await ctx.caps.network.socket(\"wss://…\")`, `s.onMessage(d => …)`, `s.send(…)`, `s.onClose(c => …)`; `ctx.caps.network.room(id?)` joins Potyro's rooms for multiplayer (`permissions: { network: { hosts: [\"…\"], rooms: true } }`)",
+      "live data both ways (prices, a home hub, chat): `const s = await ctx.caps.network.socket(\"wss://…\")`, `s.onMessage(d => …)`, `s.send(…)`, `s.onClose(c => …)`; `ctx.caps.network.room(id?)` joins a room for multiplayer (`permissions: { network: { hosts: [\"…\"], rooms: true } }`)",
     declarations: ["SocketFailure", "SocketSendFailure", "SocketCloseWhy", "SocketClose", "SocketData", "KeepWhileHidden", "SocketOptions", "Socket", "RoomMember", "RoomPresence", "RoomOptions", "Room"],
     notes: [
       "Open a connection from an action, a page action or a custom view, and keep it in a module-level variable: it outlives the call.",
@@ -354,7 +354,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     key: "ctx.views",
-    summary: "`ctx.views.map(pageId).flyTo({ center, zoom? })` / `.fit()` / `.select(id)` / `.open(id)`: reach a map that is on screen, from a page action (\"Centre on me\") or from the map's own `onSelect: (record, ctx) => …` (a pin or strip card tapped); any view's `onOpen` may be a function `(record, ctx) => …` instead of a page",
+    summary: "`ctx.views.map(pageId).flyTo({ center, zoom? })` / `.fit()` / `.select(id)` / `.open(id)`: reach a map on screen, from a page action (\"Centre on me\") or the map's own `onSelect: (record, ctx) => …` (a pin or card tapped); any view's `onOpen` may be a function `(record, ctx) => …` instead of a page",
     // Also what the built-in views do beyond rows: a record page's related records, aggregate rows
     // that open or act, the checklist's add box, a record's own glyph — cut out of the core, read here.
     notes: [
@@ -420,7 +420,7 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     key: "stats",
     summary:
-      "\"how am I doing\" figures (this week vs last, totals): `{ type: \"stats\", entity, items: [{ label, op: \"sum\", field }] }`, or `value: (rows, ctx) => …` and `compare`; a page's `summary: [...]` takes the same items. Stack it with a `chart` in a page `layout`",
+      "\"how am I doing\" figures (this week vs last, totals): `{ type: \"stats\", entity, items: [{ label, op: \"sum\", field }] }`, or `value: (rows, ctx) => …` and `compare`; a page's `summary: [...]` takes the same items",
     declarations: ["SummaryOp", "SummaryValue", "StatItem", "StatsView"],
     cues: /type:\s*["']stats["']|\bsummary\s*:|\b(stats|statistics?|totals?|averages?|sum|how (?:much|many|often)|per (?:day|week|month|year)|this (?:week|month)|streaks?|dashboard|overview|figures?|progress|statystyk\w*|suma|średni\w*|estatístic\w*|média|total\w*|statistik\w*|summe|durchschnitt|estadístic\w*|promedio|statistich\w*|media)\b/i,
     uses: /type:\s*["']stats["']|\bsummary\s*:\s*\[/,
@@ -478,7 +478,7 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     key: "ctx.scope",
     summary:
-      "the one record everything else belongs to (the current trip, project, season, child): `scope: { entity: \"trip\", required: true }` gives a header picker; functions read it synchronously as `ctx.scope.trip` and each page narrows itself: `filter: (e, ctx) => e.trip?.id === ctx.scope.trip?.id`",
+      "the one record everything else belongs to (the current trip, project, season): `scope: { entity: \"trip\", required: true }` gives a header picker; functions read `ctx.scope.trip` and each page narrows itself: `filter: (e, ctx) => e.trip?.id === ctx.scope.trip?.id`",
     declarations: ["ScopeDef"],
     members: [{ of: "Ctx", name: "scope" }],
     cues: /\bscope\s*:|ctx\.scope\b|\b(trips?|travels?|holidays?|vacations?|projects?|seasons?|semesters?|each (?:child|kid|class|event)|current (?:trip|project|season)|podróż\w*|wyjazd\w*|projekt\w*|sezon\w*|viage\w*|projeto\w*|temporada\w*|reise\w*|saison|viaje\w*|proyecto\w*|viaggi\w*|progett\w*|stagion\w*)\b/i,
@@ -493,9 +493,17 @@ export const CAPABILITIES: readonly Capability[] = [
     uses: /\bsources\s*:\s*\{/,
   },
   {
+    key: "demo",
+    summary: "`demo: (ctx) => playDemo(ctx)`: a demo link's replay, when records cannot show a live feed",
+    declarations: [],
+    members: [{ of: "AppDefinition", name: "demo" }],
+    cues: /\bdemo\s*:|\b(demo|replay\w*|sample (?:feed|stream)|wersj[aę] demo|demonstra\w*|anteprima|vorführ\w*)\b/i,
+    uses: /^\s*demo\s*:/m,
+  },
+  {
     key: "ctx.ui.form",
     summary:
-      "`await ctx.ui.form({ title, fields: { kg: { type: \"number\", unit: \"kg\" } }, initial, submit })` when an action needs several values (null = cancelled); `sheet`/`menu({ title, items: [{ id, label, detail, destructive }] })` for a short choice; `progress(label)` → `{ update(0..1), done() }`",
+      "`await ctx.ui.form({ title, fields: { kg: { type: \"number\", unit: \"kg\" } }, initial, submit })` for several values at once (null = cancelled); `sheet`/`menu({ title, items: [{ id, label, detail, destructive }] })` for a short choice; `progress(label)` → `{ update(0..1), done() }`",
     declarations: ["UiItem", "UiProgress"],
     members: [
       { of: "CtxUi", name: "sheet" },

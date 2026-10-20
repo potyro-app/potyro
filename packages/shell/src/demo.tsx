@@ -17,7 +17,7 @@ import type { Capabilities } from "@potyro/capabilities";
 import { App } from "./App.js";
 import { capsForApp } from "./app-ai-caps.js";
 import { AddAppDialog } from "./add-app-dialog.js";
-import { applySeed, applyShippedFiles } from "./add-app.js";
+import { applySeed, applyShippedFiles, fileFieldsOf } from "./add-app.js";
 import { compose, type Composed } from "./compose.js";
 import { askToFetch } from "./open-libraries.js";
 import { inspectLibraries, prepareCode } from "./package-libraries.js";
@@ -143,10 +143,14 @@ export async function openDemo(pkg: AppPackage, caps: Capabilities, opts: { link
   // The demo records, once the app has said which entities it keeps. Never anyone's real records:
   // the device that made the link wrote them from the app's own sample data (docs/24 §3).
   declaredId = composed.runtime.definition.id || declaredId;
-  await applySeed(store, pkg.seed, Object.keys(composed.runtime.definition.entities ?? {}));
+  const entities = composed.runtime.definition.entities ?? {};
+  await applySeed(store, pkg.seed, Object.keys(entities), fileFieldsOf(entities));
   // An app shown "for a group" opens on one of the demo's groups, not on "choose a group".
   await chooseDemoScope(composed.runtime);
   composed.runtime.core.invalidate();
+  // A demo that is a process, not records (docs/24 §3): what the app plays when its demo link opens —
+  // a feed's replay. Not waited for: it goes on in the background, like one of the app's actions.
+  composed.loaded.callDemo(composed.runtime.ctx).catch((e: unknown) => console.warn("[potyro] the app's demo did not start:", e));
   return { composed, navHost, picker, questions, toaster };
 }
 

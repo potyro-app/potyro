@@ -104,6 +104,8 @@ export default defineApp({
   theme: { accent: "#1d6fe0" },
   nav: "tabs",
   permissions: { network: { hosts: [JETSTREAM_HOST, PROFILE_HOST] } },
+  // A demo link opens with the replay already playing (docs/04 §Demo): the same as the Demo button.
+  demo: playDemo,
   quickActions: [],
   entities: {
     word: {
