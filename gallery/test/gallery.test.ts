@@ -38,15 +38,13 @@ describe("the gallery's data", () => {
     // the examples follow, then the live feeds and Notes, whose demos open on a replay and on notes
     // (#389). An app on an open PR waits for it.
     expect(publishable(g).map((a) => a.id)).toEqual([
-      "mood-sleep", "draw-guess", "mirror-monsters", "photo-garden", "piano",
+      "mood-sleep", "draw-guess", "mirror-monsters", "photo-garden", "daily", "photo-puzzle", "palette-catcher", "piano",
       "recipes", "groceries", "plants", "places", "split", "workout", "receipt-split",
-      "earthquakes", "word-watch", "ticker", "markdown-notes",
+      "pantry", "plant-doctor", "poster-event", "earthquakes", "word-watch", "ticker", "markdown-notes",
     ]);
+    // The workbench is empty (2026-10-20): every app that was on it has shipped.
     const soon = g.apps.filter((a) => a.status === "coming-soon");
-    for (const id of ["daily", "palette-catcher", "photo-puzzle", "pantry", "plant-doctor", "poster-event"]) {
-      expect(soon.map((a) => a.id)).toContain(id);
-    }
-    expect(soon.every((a) => a.waitsFor && !a.link)).toBe(true);
+    expect(soon).toEqual([]);
     expect(publishable(g, ["plants"]).map((a) => a.id)).toEqual(["plants"]);
   });
 
@@ -116,8 +114,9 @@ describe("the page", () => {
     expect(page).toContain('aria-label="Try Groceries en"');
     expect(page).toContain('aria-label="Make Groceries en mine"');
     expect(page).toContain('width="412" height="860"');
-    expect(shownApps(published()).soon.length).toBeGreaterThan(4);
-    expect(page).toContain("On the workbench");
+    // The workbench is empty since 2026-10-20: the page leaves the section out rather than show a bare heading.
+    expect(shownApps(published()).soon).toEqual([]);
+    expect(page).not.toContain('<section class="soon"');
   });
 
   it("has no inline style: potyro.com's CSP is style-src 'self', and the browser blocks one with an error", () => {

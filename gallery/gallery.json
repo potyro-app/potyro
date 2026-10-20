@@ -226,6 +226,87 @@
       }
     },
     {
+      "id": "daily",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/daily-puzzle/daily-puzzle.app.ts"
+        ]
+      },
+      "category": "play",
+      "icon": "🎨",
+      "name": {
+        "en": "Potyro Daily",
+        "pt-BR": "Potyro Diário",
+        "de": "Potyro Täglich",
+        "es": "Potyro Diario",
+        "pl": "Potyro Codziennie",
+        "it": "Potyro Quotidiano"
+      },
+      "line": {
+        "en": "One colour puzzle a day, the same for everyone.",
+        "pt-BR": "Um desafio de cores por dia, o mesmo para todo mundo.",
+        "de": "Ein Farbrätsel am Tag, für alle dasselbe.",
+        "es": "Un reto de colores al día, el mismo para todos.",
+        "pl": "Jedna kolorowa łamigłówka dziennie, ta sama dla wszystkich.",
+        "it": "Un rompicapo di colori al giorno, lo stesso per tutti."
+      }
+    },
+    {
+      "id": "photo-puzzle",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/photo-puzzle/photo-puzzle.app.ts"
+        ]
+      },
+      "category": "play",
+      "icon": "🧩",
+      "name": {
+        "en": "Photo Puzzle",
+        "pt-BR": "Quebra-cabeça de foto",
+        "de": "Fotopuzzle",
+        "es": "Puzle de fotos",
+        "pl": "Fotopuzzle",
+        "it": "Puzzle di foto"
+      },
+      "line": {
+        "en": "Any photo becomes a jigsaw you can send to a friend.",
+        "pt-BR": "Qualquer foto vira um quebra-cabeça para mandar a um amigo.",
+        "de": "Jedes Foto wird ein Puzzle, das du jemandem schicken kannst.",
+        "es": "Cualquier foto se convierte en un puzle que puedes mandar a un amigo.",
+        "pl": "Każde zdjęcie staje się układanką, którą wyślesz znajomemu.",
+        "it": "Qualsiasi foto diventa un puzzle da mandare a un amico."
+      }
+    },
+    {
+      "id": "palette-catcher",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/palette-catcher/palette-catcher.app.ts"
+        ]
+      },
+      "category": "creative",
+      "icon": "🎨",
+      "name": {
+        "en": "Palette Catcher",
+        "pt-BR": "Caça-paletas",
+        "de": "Palettenfänger",
+        "es": "Cazapaletas",
+        "pl": "Łowca palet",
+        "it": "Acchiappa palette"
+      },
+      "line": {
+        "en": "Catch the colours of a photo, then keep and share the palette.",
+        "pt-BR": "Capture as cores de uma foto, depois guarde e compartilhe a paleta.",
+        "de": "Fang die Farben eines Fotos ein, dann behalte und teile die Palette.",
+        "es": "Atrapa los colores de una foto, y guarda y comparte la paleta.",
+        "pl": "Złap kolory ze zdjęcia, a potem zachowaj i udostępnij paletę.",
+        "it": "Cattura i colori di una foto, poi tieni e condividi la palette."
+      }
+    },
+    {
       "id": "piano",
       "status": "ready",
       "from": {
@@ -456,6 +537,87 @@
       "publishedAt": "2026-10-17T21:53:50.207Z"
     },
     {
+      "id": "pantry",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/pantry/pantry.app.ts"
+        ]
+      },
+      "category": "food",
+      "icon": "🥫",
+      "name": {
+        "en": "Pantry",
+        "pt-BR": "Despensa",
+        "de": "Vorrat",
+        "es": "Despensa",
+        "pl": "Spiżarnia",
+        "it": "Dispensa"
+      },
+      "line": {
+        "en": "Photograph a shelf or a receipt: what is in your kitchen, by what goes off first.",
+        "pt-BR": "Fotografe uma prateleira ou uma nota: o que tem na sua cozinha, pelo que vence primeiro.",
+        "de": "Fotografiere ein Regal oder einen Bon: was in deiner Küche ist, nach dem, was zuerst verdirbt.",
+        "es": "Fotografía un estante o un tique: lo que hay en tu cocina, por lo que caduca antes.",
+        "pl": "Zrób zdjęcie półki albo paragonu: co masz w kuchni, od tego, co psuje się najpierw.",
+        "it": "Fotografa uno scaffale o uno scontrino: cosa c’è in cucina, da ciò che scade prima."
+      }
+    },
+    {
+      "id": "plant-doctor",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/plant-doctor/plant-doctor.app.ts"
+        ]
+      },
+      "category": "garden",
+      "icon": "🩺",
+      "name": {
+        "en": "Plant Doctor",
+        "pt-BR": "Médico de plantas",
+        "de": "Pflanzendoktor",
+        "es": "Doctor de plantas",
+        "pl": "Doktor roślin",
+        "it": "Dottore delle piante"
+      },
+      "line": {
+        "en": "Photograph a plant and hear what might be wrong with it, in plain words.",
+        "pt-BR": "Fotografe uma planta e saiba o que pode estar errado, em palavras simples.",
+        "de": "Fotografiere eine Pflanze und erfahre in einfachen Worten, was ihr fehlen könnte.",
+        "es": "Fotografía una planta y entérate de qué le puede pasar, con palabras sencillas.",
+        "pl": "Zrób zdjęcie rośliny i dowiedz się prostymi słowami, co może jej dolegać.",
+        "it": "Fotografa una pianta e scopri cosa potrebbe avere, in parole semplici."
+      }
+    },
+    {
+      "id": "poster-event",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/poster-event/poster-event.app.ts"
+        ]
+      },
+      "category": "plans",
+      "icon": "🗓️",
+      "name": {
+        "en": "Poster to Calendar",
+        "pt-BR": "Do cartaz à agenda",
+        "de": "Vom Plakat in den Kalender",
+        "es": "Del cartel al calendario",
+        "pl": "Z plakatu do kalendarza",
+        "it": "Dal poster al calendario"
+      },
+      "line": {
+        "en": "Photograph a poster or a ticket, and it becomes an event in your calendar.",
+        "pt-BR": "Fotografe um cartaz ou um ingresso, e ele vira um evento na sua agenda.",
+        "de": "Fotografiere ein Plakat oder ein Ticket, und es wird ein Termin in deinem Kalender.",
+        "es": "Fotografía un cartel o una entrada, y se convierte en un evento en tu calendario.",
+        "pl": "Zrób zdjęcie plakatu albo biletu, a stanie się wydarzeniem w twoim kalendarzu.",
+        "it": "Fotografa un poster o un biglietto, e diventa un evento nel tuo calendario."
+      }
+    },
+    {
       "id": "earthquakes",
       "status": "ready",
       "from": {
@@ -563,144 +725,6 @@
         "es": "Notas escritas en Markdown, guardadas como archivos que te llevas a cualquier parte.",
         "pl": "Notatki w Markdownie, zapisane jako pliki, które zabierzesz wszędzie.",
         "it": "Note scritte in Markdown, salvate come file che puoi portare ovunque."
-      }
-    },
-    {
-      "id": "pantry",
-      "status": "coming-soon",
-      "waitsFor": "#342",
-      "category": "food",
-      "icon": "🥫",
-      "name": {
-        "en": "Pantry",
-        "pt-BR": "Despensa",
-        "de": "Vorrat",
-        "es": "Despensa",
-        "pl": "Spiżarnia",
-        "it": "Dispensa"
-      },
-      "line": {
-        "en": "Photograph a shelf or a receipt: what is in your kitchen, by what goes off first.",
-        "pt-BR": "Fotografe uma prateleira ou uma nota: o que tem na sua cozinha, pelo que vence primeiro.",
-        "de": "Fotografiere ein Regal oder einen Bon: was in deiner Küche ist, nach dem, was zuerst verdirbt.",
-        "es": "Fotografía un estante o un tique: lo que hay en tu cocina, por lo que caduca antes.",
-        "pl": "Zrób zdjęcie półki albo paragonu: co masz w kuchni, od tego, co psuje się najpierw.",
-        "it": "Fotografa uno scaffale o uno scontrino: cosa c’è in cucina, da ciò che scade prima."
-      }
-    },
-    {
-      "id": "plant-doctor",
-      "status": "coming-soon",
-      "waitsFor": "#343",
-      "category": "garden",
-      "icon": "🩺",
-      "name": {
-        "en": "Plant Doctor",
-        "pt-BR": "Médico de plantas",
-        "de": "Pflanzendoktor",
-        "es": "Doctor de plantas",
-        "pl": "Doktor roślin",
-        "it": "Dottore delle piante"
-      },
-      "line": {
-        "en": "Photograph a plant and hear what might be wrong with it, in plain words.",
-        "pt-BR": "Fotografe uma planta e saiba o que pode estar errado, em palavras simples.",
-        "de": "Fotografiere eine Pflanze und erfahre in einfachen Worten, was ihr fehlen könnte.",
-        "es": "Fotografía una planta y entérate de qué le puede pasar, con palabras sencillas.",
-        "pl": "Zrób zdjęcie rośliny i dowiedz się prostymi słowami, co może jej dolegać.",
-        "it": "Fotografa una pianta e scopri cosa potrebbe avere, in parole semplici."
-      }
-    },
-    {
-      "id": "poster-event",
-      "status": "coming-soon",
-      "waitsFor": "#340",
-      "category": "plans",
-      "icon": "🗓️",
-      "name": {
-        "en": "Poster to Calendar",
-        "pt-BR": "Do cartaz à agenda",
-        "de": "Vom Plakat in den Kalender",
-        "es": "Del cartel al calendario",
-        "pl": "Z plakatu do kalendarza",
-        "it": "Dal poster al calendario"
-      },
-      "line": {
-        "en": "Photograph a poster or a ticket, and it becomes an event in your calendar.",
-        "pt-BR": "Fotografe um cartaz ou um ingresso, e ele vira um evento na sua agenda.",
-        "de": "Fotografiere ein Plakat oder ein Ticket, und es wird ein Termin in deinem Kalender.",
-        "es": "Fotografía un cartel o una entrada, y se convierte en un evento en tu calendario.",
-        "pl": "Zrób zdjęcie plakatu albo biletu, a stanie się wydarzeniem w twoim kalendarzu.",
-        "it": "Fotografa un poster o un biglietto, e diventa un evento nel tuo calendario."
-      }
-    },
-    {
-      "id": "daily",
-      "status": "coming-soon",
-      "waitsFor": "#267",
-      "category": "play",
-      "icon": "🎨",
-      "name": {
-        "en": "Potyro Daily",
-        "pt-BR": "Potyro Diário",
-        "de": "Potyro Täglich",
-        "es": "Potyro Diario",
-        "pl": "Potyro Codziennie",
-        "it": "Potyro Quotidiano"
-      },
-      "line": {
-        "en": "One colour puzzle a day, the same for everyone.",
-        "pt-BR": "Um desafio de cores por dia, o mesmo para todo mundo.",
-        "de": "Ein Farbrätsel am Tag, für alle dasselbe.",
-        "es": "Un reto de colores al día, el mismo para todos.",
-        "pl": "Jedna kolorowa łamigłówka dziennie, ta sama dla wszystkich.",
-        "it": "Un rompicapo di colori al giorno, lo stesso per tutti."
-      }
-    },
-    {
-      "id": "palette-catcher",
-      "status": "coming-soon",
-      "waitsFor": "#267",
-      "category": "creative",
-      "icon": "🎨",
-      "name": {
-        "en": "Palette Catcher",
-        "pt-BR": "Caça-paletas",
-        "de": "Palettenfänger",
-        "es": "Cazapaletas",
-        "pl": "Łowca palet",
-        "it": "Acchiappa palette"
-      },
-      "line": {
-        "en": "Catch the colours of a photo, then keep and share the palette.",
-        "pt-BR": "Capture as cores de uma foto, depois guarde e compartilhe a paleta.",
-        "de": "Fang die Farben eines Fotos ein, dann behalte und teile die Palette.",
-        "es": "Atrapa los colores de una foto, y guarda y comparte la paleta.",
-        "pl": "Złap kolory ze zdjęcia, a potem zachowaj i udostępnij paletę.",
-        "it": "Cattura i colori di una foto, poi tieni e condividi la palette."
-      }
-    },
-    {
-      "id": "photo-puzzle",
-      "status": "coming-soon",
-      "waitsFor": "#267",
-      "category": "play",
-      "icon": "🧩",
-      "name": {
-        "en": "Photo Puzzle",
-        "pt-BR": "Quebra-cabeça de foto",
-        "de": "Fotopuzzle",
-        "es": "Puzle de fotos",
-        "pl": "Fotopuzzle",
-        "it": "Puzzle di foto"
-      },
-      "line": {
-        "en": "Any photo becomes a jigsaw you can send to a friend.",
-        "pt-BR": "Qualquer foto vira um quebra-cabeça para mandar a um amigo.",
-        "de": "Jedes Foto wird ein Puzzle, das du jemandem schicken kannst.",
-        "es": "Cualquier foto se convierte en un puzle que puedes mandar a un amigo.",
-        "pl": "Każde zdjęcie staje się układanką, którą wyślesz znajomemu.",
-        "it": "Qualsiasi foto diventa un puzzle da mandare a un amico."
       }
     }
   ]
