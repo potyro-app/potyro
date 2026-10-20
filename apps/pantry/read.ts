@@ -161,6 +161,16 @@ async function trySample(ctx: Ctx): Promise<void> {
   await fromAnswer(ctx, sampleReading(ctx.now(), ctx), photo, "sample");
 }
 
+/**
+ * A demo link's first look (docs/04 §Demo): the sample shelf, read and kept as it is — what "Try it
+ * on a sample photo" shows, without the check — so the link opens on a kitchen, not an empty one.
+ */
+export async function demo(ctx: Ctx): Promise<void> {
+  const today = ctx.now();
+  const photo = await ctx.media.put(new Blob([sampleShelfSvg(today, ctx)], { type: "image/svg+xml" }));
+  for (const r of toDrafts(sampleReading(today, ctx), today)) await ctx.create("item", { ...r, status: "in", photo });
+}
+
 /** Reading cannot happen: say why, and offer what still works. */
 async function offerInstead(ctx: Ctx, why: Words): Promise<void> {
   const next = await ctx.ui.sheet<"sample" | "manual">({

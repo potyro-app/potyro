@@ -17,7 +17,7 @@ import { defineApp, type Ctx, type Resolved } from "potyro";
 import { buildIcs, icsName, remindAt } from "./calendar.js";
 import { toDate } from "./dates.js";
 import { FIELDS } from "./fields.js";
-import { readPoster } from "./read.js";
+import { readPoster, demo } from "./read.js";
 import { bucket, doorsText, endTime, over, pastBucket, reminderText, rowText, shareText, startTime, whenText } from "./words.js";
 
 const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
@@ -78,6 +78,8 @@ export default defineApp({
   theme: { accent: "#d9603b" },
   nav: "tabs",
   permissions: { ai: true, camera: true, notifications: true },
+  // A demo link opens on the sample poster's event (docs/04 §Demo).
+  demo,
   quickActions: [
     {
       id: "type-in",

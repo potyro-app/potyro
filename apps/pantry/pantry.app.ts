@@ -17,7 +17,7 @@
 import { defineApp, type Ctx, type Resolved } from "potyro";
 import { ideaShareText, whatCanICook } from "./cook.js";
 import { FIELDS } from "./fields.js";
-import { addFromPhoto } from "./read.js";
+import { addFromPhoto, demo } from "./read.js";
 import { byExpiry, finishedIn, freshness, lastMonths, remindAt, toDate, wasteShare } from "./shelf-life.js";
 import { expiryText, finishedText, FRESHNESS_WORDS, REMINDER_BODY, reminderText, reminderTitle, rowText } from "./words.js";
 
@@ -50,6 +50,8 @@ export default defineApp({
   theme: { accent: "#3f8f4f" },
   nav: "tabs",
   permissions: { ai: true, camera: true, notifications: true },
+  // A demo link opens on the sample shelf, already read (docs/04 §Demo).
+  demo,
   quickActions: [
     {
       id: "add",

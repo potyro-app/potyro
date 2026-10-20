@@ -14,7 +14,7 @@
 import { defineApp, type Ctx, type Resolved } from "potyro";
 import { checkRemindAt, checkupDue, isHealth, needsWater, toDate, waterRemindAt } from "./care.js";
 import { CHECK_FIELDS, PLANT_FIELDS } from "./fields.js";
-import { checkAPlant, checkUp, plantIdOf, watered } from "./read.js";
+import { checkAPlant, checkUp, plantIdOf, watered, demo } from "./read.js";
 import { carePlanShare, checkShare, checkText, expertText, headline, HEALTH_WORDS, planText, plantLine, remindersText, trendText, waterText } from "./words.js";
 
 const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
@@ -50,6 +50,8 @@ export default defineApp({
   theme: { accent: "#3d8b5a" },
   nav: "tabs",
   permissions: { ai: true, camera: true, notifications: true },
+  // A demo link opens on the sample plant, already looked at (docs/04 §Demo).
+  demo,
   // The way in is a photo (the page's own button); this is for a plant you would rather just type in.
   quickActions: [
     {

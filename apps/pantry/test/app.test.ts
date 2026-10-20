@@ -399,3 +399,14 @@ describe("What can I cook?", () => {
     expect(log.shared).toEqual([{ title: "Chicken rice", text: "Chicken rice (30 min)\n\nUses: Chicken thighs and Rice\n\n1. Fry\n2. Simmer" }]);
   });
 });
+
+describe("a demo link (docs/04 §Demo)", () => {
+  it("keeps the sample reading without a question, so the link opens on something", async () => {
+    const { ctx, log } = fakeCtx();
+    await app.demo!(ctx as never);
+    expect(log.forms).toEqual([]);
+    expect(log.sheets).toEqual([]);
+    expect(log.created.length).toBeGreaterThan(0);
+    expect(log.created.every((c) => (c.data as { photo?: unknown; poster?: unknown }).photo || (c.data as { poster?: unknown }).poster || c.entity === "check")).toBe(true);
+  });
+});
