@@ -273,11 +273,12 @@ by the account's billing; third-party runners are not). Two tiers, measured on t
 
 | | When | What | Wall time |
 |---|---|---|---|
-| **CI** (`ci.yml`) | every push to a branch | the checks (build, unit, typecheck, lint) and a ten-file browser smoke | **5 min** |
-| **Ship gate** (`ship.yml`) | `pnpm ship <pr>`, and every push to main | the checks, and the browser specs the change needs (below); on main, always everything, then the deploy | **9 min** for everything (8 shards) |
+| **CI** (`ci.yml`) | every push to a branch | the checks (unit, typecheck, lint) and a ten-file browser smoke | **~4 min** |
+| **Ship gate** (`ship.yml`) | `pnpm ship <pr>`, and every push to main | the checks, and the browser specs the change needs (below); on main, always everything, then the deploy | **under 4 min** for everything (16 shards, 2026-10-20) |
 
 **What a change needs** is decided by `scripts/ci-select.mjs` from the files it touches: the full
-suite as eight shards (ci-local's deal by measured duration, `e2e/timings.json`) when it touches
+suite as sixteen shards (ci-local's deal by measured duration, `e2e/timings.json` — refreshed from a
+main run's own measurements with `node scripts/ci-timings.mjs <run-id>`) when it touches
 what every spec boots — `packages/{shell,views,runtime,host,store,schema,i18n,capabilities,
 identity,share-links}`, the e2e helpers, the configs; a named few for one app (`apps/<id>` → its
 specs), one example (its specs, the languages sweep, the gallery, the launcher's home), one surface

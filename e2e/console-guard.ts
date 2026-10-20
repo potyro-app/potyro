@@ -123,6 +123,14 @@ function watchPage(page: Page): PageLog {
     log.pending.push(withErrorMessages(m).then((text) => void (log.entries[at] = text)));
   });
   page.on("pageerror", (e) => log.entries.push(`${e.name}: ${e.message}`));
+  // The machine's network changed under the page (a container or a VPN coming and going adds and
+  // removes an interface): Chromium aborts every request in flight, and an app caught mid-boot is left
+  // blank. Its test would then wait out its whole timeout — up to 180 s — for something that can never
+  // appear. Say why and end the page now; the retry starts clean.
+  page.on("requestfailed", (r) => {
+    if (!/ERR_NETWORK_CHANGED/.test(r.failure()?.errorText ?? "") || !/^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(r.url())) return;
+    void page.close({ reason: `the machine's network changed while the page loaded (${r.url()} was aborted), so its app never started — not a fault of the code under test` }).catch(() => {});
+  });
   return log;
 }
 
