@@ -74,6 +74,12 @@ importers:
         specifier: ^10.7.18
         version: 10.7.18
 
+  apps/daily-puzzle:
+    dependencies:
+      potyro:
+        specifier: workspace:*
+        version: link:../../packages/schema
+
   apps/markdown-notes:
     dependencies:
       potyro:
