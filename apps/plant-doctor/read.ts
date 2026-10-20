@@ -193,6 +193,30 @@ export function summary(f: Finding, ctx: Pick<Ctx, "t" | "format">): string {
     .join("\n\n");
 }
 
+/**
+ * A demo link's first look (docs/04 §Demo): the sample plant, looked at and kept with its care plan
+ * and first check-up — what "Try it on a sample photo" leads to, without the questions.
+ */
+export async function demo(ctx: Ctx): Promise<void> {
+  const now = ctx.now();
+  const f = toFinding(sampleReading(ctx), false);
+  if (f === "not a plant" || f === "unclear") return;
+  const light: Light = f.light ?? "medium";
+  const ref = await ctx.media.put(new Blob([samplePlantSvg(ctx)], { type: "image/svg+xml" }));
+  const health = f.health ?? "okay";
+  const plant = await ctx.create("plant", {
+    name: f.plantName || ctx.t(W.myPlant),
+    light,
+    waterEvery: f.waterEvery ?? WATER_DAYS[light],
+    ...(f.latin || f.plantName ? { species: f.latin || f.plantName } : {}),
+    photo: ref,
+    watch: bullets(f.watch),
+    health,
+    nextCheck: nextCheckup(health, now),
+  });
+  await ctx.create("check", checkRecord(ctx, f, String(plant.id), ref, now, true));
+}
+
 /** The care plan form, filled in from the finding (or empty, for a plant added without a photo). */
 async function savePlant(ctx: Ctx, f: Finding | null, photo: Blob | null, sample: boolean): Promise<void> {
   const now = ctx.now();
