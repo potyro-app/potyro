@@ -97,6 +97,24 @@ describe("the view watchdog", () => {
     expect(dog.check(true)).toMatchObject({ stop: true, kind: "blocked" });
   });
 
+  it("told the page went away, it forgives the whole absence even when no check ran while hidden (Android: the camera in front)", () => {
+    // On Firefox for Android a tab put behind the camera runs no timer at all: no check sees the page
+    // hidden, and the first check after it comes back is late by the whole photo. The owner's sealed
+    // Palette Catcher lost its screen on every camera photo that way (2026-10-20), while a photo from
+    // the library — a sheet over the page, timers running — was fine.
+    const c = clock();
+    const dog = new ViewWatchdog(c.now, { silenceMs: 2000, blockedMs: 2000, checkMs: 100 });
+    dog.mounted();
+    dog.ping();
+    expect(dog.check(true)).toEqual({ stop: false });
+    dog.hidden(); // `visibilitychange`, the moment it fires; then nothing runs for eight seconds
+    c.tick(8000);
+    expect(dog.check(true)).toEqual({ stop: false });
+    // Back on screen, a real block still stops it.
+    c.tick(3100);
+    expect(dog.check(true)).toMatchObject({ stop: true, kind: "blocked" });
+  });
+
   it("pauses the mount budget while the page is hidden: a link opened in a background tab", () => {
     const c = clock();
     const dog = new ViewWatchdog(c.now, { mountMs: 10_000, checkMs: 100 });
