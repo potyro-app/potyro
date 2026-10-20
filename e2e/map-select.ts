@@ -26,6 +26,14 @@ export async function openMapSelect(page: Page, mine: boolean): Promise<void> {
   await skipWithoutMaps(page);
   await addPackage(page, "map-select", packMapSelect(), mine);
   await page.getByRole("button", { name: "Add three spots" }).click();
+  // The three spots are made one after another while the map is already up. The map frames its
+  // markers once, on first open, and never again under a person (docs/04): on a slow runner that
+  // first framing has seen one spot, and the strip — the places in view — rightly showed one card
+  // (the gate, 2026-10-20, three runs). What these specs check is the tap, not the first framing: so
+  // the page is opened again once all three are there, and the one framing takes them all in.
+  await expect(page.locator(".maplibregl-marker")).toHaveCount(3, { timeout: 30_000 });
+  await page.reload();
+  await expect(page.locator(".maplibregl-marker")).toHaveCount(3, { timeout: 30_000 });
 }
 
 export async function mapSelectClaims(page: Page): Promise<void> {
