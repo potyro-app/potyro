@@ -235,6 +235,21 @@ async function trySample(ctx: Ctx): Promise<void> {
   await fromAnswer(ctx, { legible: true, events: [sampleReading(ctx.now(), ctx)] }, poster, "sample");
 }
 
+/**
+ * A demo link's first look (docs/04 §Demo): the sample poster, read and kept as an event with its
+ * reminder — what "Try it on a sample poster" leads to, without the check.
+ */
+export async function demo(ctx: Ctx): Promise<void> {
+  const now = ctx.now();
+  const d = toDraft(sampleReading(now, ctx), now);
+  const poster = await ctx.media.put(new Blob([samplePosterSvg(now, ctx)], { type: "image/svg+xml" }));
+  const event: Record<string, unknown> = { remind: DEFAULT_REMIND, allDay: d.allDay, poster };
+  for (const k of ["title", "start", "end", "doors", "venue", "address", "price", "link", "description"] as const) {
+    if (d[k] !== null && d[k] !== "") event[k] = d[k];
+  }
+  await ctx.create("event", event);
+}
+
 async function offerWithoutAi(ctx: Ctx): Promise<void> {
   const next = await ctx.ui.sheet<"sample" | "manual">({
     title: W.noAi,

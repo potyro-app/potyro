@@ -390,3 +390,17 @@ describe("pages and reminders", () => {
     expect(rem.when(at(new Date(2026, 9, 8, 20, 0)), ctx)).toBeNull();
   });
 });
+
+describe("a demo link (docs/04 §Demo)", () => {
+  it("keeps the sample reading without a question, so the link opens on something", async () => {
+    const { ctx, log } = fakeCtx();
+    await app.demo!(ctx as never);
+    expect(log.forms).toEqual([]);
+    expect("sheets" in log ? (log as { sheets?: unknown[] }).sheets : (log as { sheetTitles?: string[] }).sheetTitles).toEqual([]);
+    expect(log.created).toHaveLength(1);
+    const rec = log.created[0] as Record<string, unknown>;
+    expect(rec.title).toBeTruthy();
+    expect(rec.start).toBeInstanceOf(Date);
+    expect(rec.poster).toBeTruthy();
+  });
+});
