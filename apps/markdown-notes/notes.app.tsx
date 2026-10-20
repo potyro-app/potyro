@@ -14,7 +14,7 @@
 // put a script on the page.
 import { defineApp } from "potyro";
 import type { Ctx, FileInfo, FileRef, Resolved, ViewProps } from "potyro";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 const FOLDER = "notes";
 const ACCEPT = ".md,.markdown,.txt";
@@ -147,23 +147,269 @@ async function newNote(ctx: Ctx): Promise<void> {
   ctx.navigate("note", { noteId: note.id });
 }
 
+/** Writing a note is its own screen (the editor page), not a box in a dialog. */
 async function editNote(n: Resolved, ctx: Ctx): Promise<void> {
   const doc = n.doc as FileRef | null;
-  const text = doc ? await ctx.files.text(doc) : "";
-  if (text === null) return ctx.ui.toast("This note has not reached this device yet. Try again in a moment.");
-  const answer = await ctx.ui.form<{ text: string }>({
-    title: `Edit: ${String(n.title)}`,
-    fields: { text: { type: "text", multiline: true, label: "Text" } },
-    initial: { text },
-    submit: "Save",
-  });
-  if (!answer) return;
-  // Written where the file is NOW (it may have been renamed since the note pointed at it). Replacing a
-  // file keeps its id, so `doc` still points at it.
+  if (doc && (await ctx.files.text(doc)) === null) return ctx.ui.toast("This note has not reached this device yet. Try again in a moment.");
+  ctx.navigate("edit", { noteId: String(n.id) });
+}
+
+/** The note's text, written where its file is NOW (it may have been renamed since the note pointed at
+ *  it). Replacing a file keeps its id, so `doc` still points at it; the title follows the first heading. */
+export async function saveNote(n: Resolved, text: string, ctx: Ctx): Promise<void> {
+  const doc = n.doc as FileRef | null;
   const current = doc ? await ctx.files.stat(doc) : null;
   const path = current?.path ?? `${FOLDER}/${fileNameFor(String(n.title))}`;
-  const file = await ctx.files.write(path, answer.text, { mime: "text/markdown" });
-  await ctx.patch("note", n.id, { title: titleOf(answer.text, file.name), doc: refOf(file) });
+  const file = await ctx.files.write(path, text, { mime: "text/markdown" });
+  await ctx.patch("note", n.id, { title: titleOf(text, file.name), doc: refOf(file) });
+}
+
+// ---- the editor's marks ----
+
+export type Mark = "bold" | "italic" | "code" | "link" | "heading" | "bullets" | "numbers" | "tasks" | "quote";
+
+/** Where the text and the selection are, before and after a mark. */
+export interface Edit {
+  text: string;
+  start: number;
+  end: number;
+}
+
+const WRAP: Record<"bold" | "italic" | "code", string> = { bold: "**", italic: "*", code: "`" };
+const LINE: Record<"bullets" | "numbers" | "tasks" | "quote", RegExp> = {
+  bullets: /^(\s*)[-*+] (?!\[[ xX]\] )/,
+  numbers: /^(\s*)\d+[.)] /,
+  tasks: /^(\s*)[-*+] \[[ xX]\] /,
+  quote: /^(\s*)> ?/,
+};
+/** Any mark a line may start with: a heading, a list item, a task, a quote. */
+const ANY_LINE = /^(\s*)(#{1,6} |[-*+] \[[ xX]\] |[-*+] |\d+[.)] |> ?)/;
+
+/**
+ * `mark` applied to the selection `[start, end)` of `text`: wrapped, or each of its lines prefixed —
+ * and taken off again when it is already there, so every button is a switch. Pure, so the editor's
+ * buttons and keys are one function and the tests can read it.
+ */
+export function applyMark(e: Edit, mark: Mark): Edit {
+  const { text } = e;
+  const start = Math.min(e.start, e.end);
+  const end = Math.max(e.start, e.end);
+  if (mark === "bold" || mark === "italic" || mark === "code") {
+    const w = WRAP[mark];
+    const picked = text.slice(start, end);
+    const before = text.slice(start - w.length, start);
+    const after = text.slice(end, end + w.length);
+    if (before === w && after === w && (mark !== "italic" || text.slice(start - 2, start) !== "**" || picked.length > 0)) {
+      // Already wrapped: unwrap.
+      return { text: text.slice(0, start - w.length) + picked + text.slice(end + w.length), start: start - w.length, end: end - w.length };
+    }
+    if (picked.startsWith(w) && picked.endsWith(w) && picked.length >= 2 * w.length) {
+      const inner = picked.slice(w.length, -w.length);
+      return { text: text.slice(0, start) + inner + text.slice(end), start, end: start + inner.length };
+    }
+    return { text: text.slice(0, start) + w + picked + w + text.slice(end), start: start + w.length, end: end + w.length };
+  }
+  if (mark === "link") {
+    const picked = text.slice(start, end);
+    if (picked) {
+      // The address is what is selected next, ready to be typed over.
+      const out = `[${picked}](url)`;
+      return { text: text.slice(0, start) + out + text.slice(end), start: start + picked.length + 3, end: start + picked.length + 6 };
+    }
+    const out = "[text](url)";
+    return { text: text.slice(0, start) + out + text.slice(end), start: start + 1, end: start + 5 };
+  }
+  // Line marks: every line the selection touches.
+  const lineStart = text.lastIndexOf("\n", start - 1) + 1;
+  const lineEndAt = text.indexOf("\n", Math.max(end, start) - (end > start ? 1 : 0));
+  const lineEnd = lineEndAt === -1 ? text.length : lineEndAt;
+  const lines = text.slice(lineStart, lineEnd).split("\n");
+  let changed: string[];
+  if (mark === "heading") {
+    // One button, three levels, then none: "# " → "## " → "### " → plain.
+    const level = /^(#{1,6}) /.exec(lines[0]!)?.[1].length ?? 0;
+    const next = level >= 3 ? 0 : level + 1;
+    changed = lines.map((l) => (next ? `${"#".repeat(next)} ` : "") + l.replace(/^#{1,6} /, ""));
+  } else {
+    const re = LINE[mark];
+    const all = lines.every((l) => re.test(l) || !l.trim());
+    changed = lines.map((l, i) => {
+      if (!l.trim() && lines.length > 1) return l;
+      const bare = l.replace(ANY_LINE, "$1");
+      if (all) return bare;
+      const prefix = mark === "bullets" ? "- " : mark === "numbers" ? `${i + 1}. ` : mark === "tasks" ? "- [ ] " : "> ";
+      return bare.replace(/^(\s*)/, `$1${prefix}`);
+    });
+  }
+  const block = changed.join("\n");
+  const delta = block.length - (lineEnd - lineStart);
+  const out = text.slice(0, lineStart) + block + text.slice(lineEnd);
+  // The selection follows the text: the same lines, now marked.
+  const newStart = start === lineStart ? lineStart : Math.max(lineStart, start + (changed[0]!.length - lines[0]!.length));
+  return { text: out, start: Math.min(newStart, out.length), end: Math.max(newStart, end + delta) };
+}
+
+/** What a key does in the editor, or null: B, I, K (link), E (code) with Ctrl or ⌘; Ctrl/⌘+S saves. */
+export function markForKey(key: string, mod: boolean): Mark | "save" | null {
+  if (!mod) return null;
+  switch (key.toLowerCase()) {
+    case "b":
+      return "bold";
+    case "i":
+      return "italic";
+    case "k":
+      return "link";
+    case "e":
+      return "code";
+    case "s":
+      return "save";
+    default:
+      return null;
+  }
+}
+
+const TOOLS: Array<{ mark: Mark; label: string; title: string }> = [
+  { mark: "bold", label: "B", title: "Bold (Ctrl+B)" },
+  { mark: "italic", label: "I", title: "Italic (Ctrl+I)" },
+  { mark: "heading", label: "H", title: "Heading" },
+  { mark: "bullets", label: "•", title: "Bulleted list" },
+  { mark: "numbers", label: "1.", title: "Numbered list" },
+  { mark: "tasks", label: "☑", title: "Checklist" },
+  { mark: "quote", label: "❝", title: "Quote" },
+  { mark: "code", label: "<>", title: "Code (Ctrl+E)" },
+  { mark: "link", label: "🔗", title: "Link (Ctrl+K)" },
+];
+
+const EDITOR_CSS = `
+.mn-edit { display: flex; flex-direction: column; height: 100dvh; max-height: 100%; min-height: 0; background: var(--paper, #faf7f1); color: var(--ink, #2b241e); }
+.mn-head { flex: none; background: var(--surface, #fff); border-bottom: 1px solid var(--line, #e2dcd2); }
+.mn-row { display: flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; overflow-x: auto; scrollbar-width: none; }
+.mn-row::-webkit-scrollbar { display: none; }
+/* The shell's own way out of full screen sits at the top right: the first row leaves it room. */
+.mn-actions { padding-right: 3.4rem; border-bottom: 1px solid color-mix(in oklab, var(--line, #e2dcd2) 60%, transparent); }
+.mn-row button { flex: none; min-width: 2.4rem; height: 2.4rem; padding: 0 0.6rem; border: 1px solid var(--line, #e2dcd2); border-radius: 0.6rem; background: var(--surface, #fff); color: inherit; font: inherit; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+.mn-row button:active { transform: scale(0.95); }
+.mn-row button:disabled { opacity: 0.45; cursor: default; }
+.mn-row button[aria-pressed="true"] { background: var(--ink, #2b241e); color: var(--surface, #fff); border-color: transparent; }
+.mn-row .mn-i { font-style: italic; font-family: Georgia, serif; }
+.mn-row .mn-code { font-family: ui-monospace, monospace; font-weight: 600; }
+.mn-row .mn-gap { flex: 1; min-width: 0.5rem; }
+.mn-row .mn-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; padding-right: 0.4rem; }
+.mn-row .mn-save { background: var(--accent, #2b241e); color: var(--on-accent, #fff); border-color: transparent; }
+.mn-text { flex: 1; min-height: 0; width: 100%; margin: 0; padding: 1rem calc(1rem + var(--k-safe-right, 0px)) calc(1rem + var(--k-safe-bottom, 0px)) calc(1rem + var(--k-safe-left, 0px)); border: 0; outline: 0; resize: none; background: transparent; color: inherit; font: 1.05rem/1.6 var(--font-ui, system-ui, sans-serif); box-sizing: border-box; }
+.mn-preview { flex: 1; min-height: 0; overflow: auto; padding: 0 1rem 2rem; max-width: 44rem; width: 100%; margin: 0 auto; box-sizing: border-box; line-height: 1.55; }
+.mn-wait { padding: 1rem; }
+`;
+
+/** The note's text, the whole screen: a bar of marks above, the text below, Preview to read it as it will show. */
+function NoteEditor({ runtime, param, navigate }: ViewProps) {
+  const ctx = runtime.ctx;
+  const { record, loading } = runtime.useRecord("note", param?.noteId ?? "");
+  const doc = (record?.doc ?? null) as FileRef | null;
+  const [initial, setInitial] = useState<string | null | undefined>(undefined);
+  const [text, setText] = useState("");
+  const [preview, setPreview] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const area = useRef<HTMLTextAreaElement>(null);
+  // The selection to restore after a mark: set with the text, applied once the textarea has it.
+  const pending = useRef<{ start: number; end: number } | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    if (!doc) {
+      setInitial("");
+      setText("");
+      return;
+    }
+    ctx.files.text(doc).then(
+      (t) => {
+        if (!live) return;
+        setInitial(t);
+        setText(t ?? "");
+      },
+      () => live && setInitial(""),
+    );
+    return () => {
+      live = false;
+    };
+  }, [doc?.id]);
+
+  useEffect(() => {
+    const sel = pending.current;
+    const el = area.current;
+    if (!sel || !el) return;
+    pending.current = null;
+    el.focus();
+    el.setSelectionRange(sel.start, sel.end);
+  }, [text]);
+
+  const back = () => navigate("note", { noteId: param?.noteId ?? "" });
+  const dirty = initial != null && text !== initial;
+
+  const mark = (m: Mark) => {
+    const el = area.current;
+    if (!el) return;
+    const next = applyMark({ text, start: el.selectionStart, end: el.selectionEnd }, m);
+    pending.current = { start: next.start, end: next.end };
+    setText(next.text);
+  };
+  const save = async () => {
+    if (!record || saving) return;
+    setSaving(true);
+    try {
+      await saveNote(record, text, ctx);
+      back();
+    } catch (e) {
+      setSaving(false);
+      ctx.ui.toast(`Could not save: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+  const cancel = async () => {
+    if (dirty && !(await ctx.ui.confirm("Leave without saving?", { detail: "What you changed here will be lost.", ok: "Leave", destructive: true }))) return;
+    back();
+  };
+  const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    const what = markForKey(e.key, e.ctrlKey || e.metaKey);
+    if (!what) return;
+    e.preventDefault();
+    if (what === "save") void save();
+    else mark(what);
+  };
+
+  if (loading || initial === undefined) return <p className="mn-wait">Opening…</p>;
+  if (!record) return <p className="mn-wait">This note is gone.</p>;
+  if (initial === null) return <p className="mn-wait">This note has not reached this device yet.</p>;
+  return (
+    <div className="mn-edit">
+      <style>{EDITOR_CSS}</style>
+      <div className="mn-head">
+        <div className="mn-row mn-actions">
+          <button type="button" onClick={() => void cancel()}>
+            Cancel
+          </button>
+          <span className="mn-title">{String(record.title)}</span>
+          <button type="button" aria-pressed={preview} onClick={() => setPreview((p) => !p)}>
+            Preview
+          </button>
+          <button type="button" className="mn-save" disabled={!dirty || saving} onClick={() => void save()}>
+            Save
+          </button>
+        </div>
+        <div className="mn-row" role="toolbar" aria-label="Markdown">
+          {TOOLS.map((t) => (
+            <button key={t.mark} type="button" title={t.title} aria-label={t.title} className={t.mark === "italic" ? "mn-i" : t.mark === "code" ? "mn-code" : undefined} disabled={preview} onMouseDown={(e) => e.preventDefault()} onClick={() => mark(t.mark)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {preview ? (
+        <div className="mn-preview">{text.trim() ? renderMarkdown(text) : <p>Nothing written yet.</p>}</div>
+      ) : (
+        <textarea ref={area} className="mn-text" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} aria-label="Note text" autoFocus spellCheck />
+      )}
+    </div>
+  );
 }
 
 // ---- reading a note ----
@@ -252,5 +498,7 @@ export default defineApp({
       },
     },
     { id: "note", title: "Note", hidden: true, view: { type: "custom", entity: "note", param: "noteId", render: (props) => <NoteView {...props} /> } },
+    // Writing takes the whole screen: no bars, a toolbar of marks, the text underneath.
+    { id: "edit", title: "Edit note", hidden: true, fullscreen: true, view: { type: "custom", entity: "note", param: "noteId", render: (props) => <NoteEditor {...props} /> } },
   ],
 });
