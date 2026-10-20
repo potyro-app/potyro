@@ -197,9 +197,9 @@ test("the sample shelf works with no key at all, sends nothing, and the sample i
   // How much and where ride through the form unseen: the card only asks what needs checking.
   await expect(main.getByText("Expires tomorrow · 500 g · Fridge")).toBeVisible();
 
-  // The photo is on the item's page, and it says SAMPLE across its top.
+  // The photo is the item page's cover (the entity's photo field fills the top of the page, and its
+  // "From this photo" section is not shown twice), and it says SAMPLE across its top.
   await main.locator(".k-list-row", { hasText: "Milk" }).click();
-  await page.getByRole("button", { name: "From this photo" }).click();
   const img = page.getByRole("main").locator("img").first();
   await expect(img).toBeVisible();
   const svg = await img.evaluate(async (el: HTMLImageElement) => (await fetch(el.src)).text());
