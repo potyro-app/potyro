@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { checkReferences, checkWords, isPotyroApp, structureSchema, wordGaps } from "potyro";
+import { checkReferences, checkWords, isPotyroApp, structureSchema, word, wordGaps } from "potyro";
 import type { Ctx, Words } from "potyro";
 import app from "../palette-catcher.app.js";
 import { colorWords, paletteName, slug } from "../names.js";
@@ -13,7 +13,7 @@ const LANGS = ["en", "pt-BR", "de", "es", "pl", "it"] as const;
 
 /** `ctx.t` for one language, without ICU: enough for names, which have no variables. */
 const sayIn = (lang: (typeof LANGS)[number]): Pick<Ctx, "t"> => ({
-  t: (w: Words) => (typeof w === "string" ? w : (w[lang] ?? w.en!)),
+  t: (w: Words) => word(w, lang, app),
 });
 
 describe("Palette Catcher", () => {
