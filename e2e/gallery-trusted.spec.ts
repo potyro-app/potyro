@@ -63,8 +63,8 @@ test("gallery:publish makes each link through the share flow, checks it opens fo
     expect(app.screenshot).toBe(`shots/${id}.jpg`);
     expect(readFileSync(join(dir, app.screenshot)).subarray(0, 2)).toEqual(Buffer.from([0xff, 0xd8]));
   }
-  // Coming-soon apps are left alone, and said to be.
-  expect(lines.join("\n")).toMatch(/coming soon, not published: .*pantry/);
+  // Nothing is on the workbench any more (2026-10-20): the publisher names none as left alone.
+  expect(lines.join("\n")).not.toMatch(/coming soon, not published/);
   expect(g.apps.filter((a: { status: string; link?: string }) => a.status === "coming-soon" && a.link)).toEqual([]);
 
   // Again: nothing new is made.
@@ -118,7 +118,8 @@ test("the gallery page: accessible, asks nothing of anyone else, Try it and Make
     expect(await mine.getAttribute("href")).toBe(`${link}&remix=1`);
     await expect(page.getByRole("link", { name: "Report a link" })).toHaveAttribute("href", /^mailto:contact@potyro\.com\?subject=/);
     await expect(page.getByRole("link", { name: "Open Potyro" })).toHaveAttribute("href", "https://potyro.app/");
-    await expect(page.getByRole("heading", { name: "On the workbench" })).toBeVisible();
+    // The workbench is empty since 2026-10-20: the page leaves the section out, heading and all.
+    await expect(page.getByRole("heading", { name: "On the workbench" })).toHaveCount(0);
 
     // Measure colours once the cards have finished rising in: mid-animation text is half transparent,
     // and on a busy CI machine axe caught it there as low contrast.

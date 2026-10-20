@@ -172,7 +172,9 @@ async function verify(browser, link) {
     await page.waitForLoadState("networkidle").catch(() => {});
     // The demo bar is the shell's, not the app's: the card shows the app.
     await page.addStyleTag({ content: ".k-demo-bar { display: none !important; } * { caret-color: transparent !important; }" });
-    await page.waitForTimeout(600);
+    // A moment for the app to settle — a demo that PLAYS (docs/04 §Demo) is writing its first records
+    // now, and Word Watch's first posts took longer than the old 600 ms to land.
+    await page.waitForTimeout(2_500);
     const shot = await page.screenshot({ type: "jpeg", quality: 72 });
 
     const mine = await context.newPage();
