@@ -1,4 +1,4 @@
-import { test, expect, type Locator, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "./console-guard";
 import { addAsMine, packApp } from "./library-demos";
 import { dailyCode, feedback, puzzleNumber, shareText, type Mark } from "../apps/daily-puzzle/puzzle";
 
