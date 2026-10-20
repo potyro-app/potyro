@@ -229,6 +229,9 @@ export class SealedViewController implements SealedView {
     // ---- page visibility: a tab put away healthy is not a crash ----
     const onVisibility = (): void => {
       if (doc.hidden) {
+        // Told now, not at the next check: a tab Android puts behind the camera may run no check at
+        // all while it is hidden (view-watchdog.ts `hidden`).
+        dog?.hidden();
         if (healthy()) mark.pause();
       } else mark.resume();
     };

@@ -210,6 +210,38 @@ test("a tab that died with a screen mounting: the next start opens the plain ver
   expect(await page.evaluate(() => localStorage.getItem("potyro:sealed-view:off"))).toBeNull();
 });
 
+test("a page put away and frozen for seconds — Android behind the camera — keeps its screen when it comes back", async ({ page }) => {
+  // On Firefox for Android a tab behind the camera runs no timer at all: the watchdog's check never
+  // sees the page hidden, and the first check after it comes back is late by the whole photo. It used
+  // to read that as the view blocking the thread and drop the screen (the owner's sealed Palette
+  // Catcher, every camera photo, 2026-10-20). Here: hidden, then the thread held for 5 s so no check
+  // can run, then back.
+  await open(page);
+  const frame = await viewFrame(page);
+  // One task, as the OS does it: hidden, nothing runs for 5 s, visible again — the overdue check then
+  // runs with the page already back on screen, never having seen it hidden.
+  await page.evaluate(() => {
+    const visible = (v: boolean) => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => !v });
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => (v ? "visible" : "hidden") });
+      document.dispatchEvent(new Event("visibilitychange"));
+    };
+    visible(false);
+    const until = Date.now() + 5000;
+    while (Date.now() < until) {
+      // the page frozen: not a check, not a ping
+    }
+    visible(true);
+  });
+  await page.waitForTimeout(1500);
+  await expect(notice(page)).toHaveCount(0);
+  await expect(page.locator(".k-sealed-view iframe")).toHaveCount(1);
+  await expect(frame.locator("#sv-title")).toHaveText("Sealed board");
+  // And it is a live screen, not a leftover: a tap still lands.
+  await frame.locator("#sv-canvas").click({ position: { x: 5, y: 5 } });
+  await expect(frame.locator("#sv-count")).toHaveText("0 notes");
+});
+
 test("the screen follows the shell's theme, light and dark", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await open(page);
