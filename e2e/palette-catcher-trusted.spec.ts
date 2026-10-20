@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./console-guard";
 import { addAsMine, count, near, packApp, pixelsOf } from "./library-demos";
 
 // apps/palette-catcher, packed as its build packs it and added as the person's own app. The photo
