@@ -29,7 +29,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r build
       - run: pnpm -r test
       - run: pnpm typecheck
       - run: pnpm lint:boundaries
@@ -49,8 +48,16 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r build
+      - name: Chromium for Playwright (cached by its version)
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm exec playwright install --with-deps chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+      - run: pnpm exec playwright install-deps chromium
+        if: steps.pw-cache.outputs.cache-hit == 'true'
       # Ten files, about a minute of tests on the desktop: the shell's boot and launcher, an example
       # with a custom view, an example sealed, a sealed view's frame, a widget page, a demo link,
       # two devices syncing, a Studio save, an invite that joins a room, and files.
