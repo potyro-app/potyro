@@ -199,6 +199,33 @@
       "publishedAt": "2026-10-17T21:45:22.139Z"
     },
     {
+      "id": "photo-garden",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/photo-garden/photo-garden.app.ts"
+        ]
+      },
+      "category": "creative",
+      "icon": "🌸",
+      "name": {
+        "en": "Photo Garden",
+        "pt-BR": "Jardim de fotos",
+        "de": "Fotogarten",
+        "es": "Jardín de fotos",
+        "pl": "Ogród zdjęć",
+        "it": "Giardino di foto"
+      },
+      "line": {
+        "en": "A photo turns into thousands of drifting specks that scatter at your touch.",
+        "pt-BR": "Uma foto vira milhares de pontinhos que flutuam e se espalham ao seu toque.",
+        "de": "Ein Foto wird zu tausenden treibenden Punkten, die bei Berührung auseinanderstieben.",
+        "es": "Una foto se vuelve miles de motas a la deriva que se dispersan al tocarlas.",
+        "pl": "Zdjęcie zmienia się w tysiące dryfujących drobinek, które pierzchają pod palcem.",
+        "it": "Una foto diventa migliaia di granelli alla deriva che si disperdono al tocco."
+      }
+    },
+    {
       "id": "piano",
       "status": "ready",
       "from": {
@@ -429,32 +456,13 @@
       "publishedAt": "2026-10-17T21:53:50.207Z"
     },
     {
-      "id": "photo-garden",
-      "status": "coming-soon",
-      "waitsFor": "#388",
-      "category": "creative",
-      "icon": "🌸",
-      "name": {
-        "en": "Photo Garden",
-        "pt-BR": "Jardim de fotos",
-        "de": "Fotogarten",
-        "es": "Jardín de fotos",
-        "pl": "Ogród zdjęć",
-        "it": "Giardino di foto"
-      },
-      "line": {
-        "en": "A photo turns into thousands of drifting specks that scatter at your touch.",
-        "pt-BR": "Uma foto vira milhares de pontinhos que flutuam e se espalham ao seu toque.",
-        "de": "Ein Foto wird zu tausenden treibenden Punkten, die bei Berührung auseinanderstieben.",
-        "es": "Una foto se vuelve miles de motas a la deriva que se dispersan al tocarlas.",
-        "pl": "Zdjęcie zmienia się w tysiące dryfujących drobinek, które pierzchają pod palcem.",
-        "it": "Una foto diventa migliaia di granelli alla deriva che si disperdono al tocco."
-      }
-    },
-    {
       "id": "earthquakes",
-      "status": "coming-soon",
-      "waitsFor": "#389",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/earthquakes/earthquakes.app.ts"
+        ]
+      },
       "category": "world",
       "icon": "🌋",
       "name": {
@@ -476,8 +484,12 @@
     },
     {
       "id": "word-watch",
-      "status": "coming-soon",
-      "waitsFor": "#389",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/word-watch/word-watch.app.ts"
+        ]
+      },
       "category": "world",
       "icon": "💬",
       "name": {
@@ -499,8 +511,12 @@
     },
     {
       "id": "ticker",
-      "status": "coming-soon",
-      "waitsFor": "#389",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/ticker/ticker.app.ts"
+        ]
+      },
       "category": "world",
       "icon": "📈",
       "name": {
@@ -522,8 +538,14 @@
     },
     {
       "id": "markdown-notes",
-      "status": "coming-soon",
-      "waitsFor": "#389",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/markdown-notes/notes.app.tsx"
+        ],
+        "files": "apps/markdown-notes/files",
+        "seed": "apps/markdown-notes/seed.json"
+      },
       "category": "notes",
       "icon": "📝",
       "name": {

@@ -678,6 +678,34 @@ describe.each(RUNNERS)("untrusted runner: $name", (runner) => {
       loaded.dispose();
     });
   });
+
+  // The app's demo (docs/04 §Demo): a replay written from inside the box through ctx, like an action.
+  const DEMO_BUNDLE = `
+  globalThis.__potyroApp = {
+    id: "quakes", name: "Quakes", version: "1.0.0", schemaVersion: 1,
+    entities: { quake: { fields: { place: { type: "text" } } } },
+    pages: [{ id: "all", title: "All", view: { type: "list", entity: "quake" } }],
+    demo: async function(ctx){ await ctx.create("quake", { place: "Fiji" }); await ctx.create("quake", { place: "Vanuatu" }); },
+    reminders: []
+  };
+  `;
+
+  describe("the app's demo", () => {
+    it("runs the demo in the box, and its records land in the store", async () => {
+      const { loaded, ctx, store } = await setup(DEMO_BUNDLE, {});
+      expect((loaded.definition as unknown as { demo?: unknown }).demo).toBe("__potyro_fn__");
+      await loaded.callDemo(ctx);
+      expect((await store.all("quake")).map((r) => r.place).sort()).toEqual(["Fiji", "Vanuatu"]);
+      loaded.dispose();
+    });
+
+    it("does nothing for an app without one", async () => {
+      const { loaded, ctx, store } = await setup(DEFAULTS_BUNDLE, {});
+      await expect(loaded.callDemo(ctx)).resolves.toBeUndefined();
+      expect(await store.all("plant")).toEqual([]);
+      loaded.dispose();
+    });
+  });
 });
 
 afterAll(async () => {

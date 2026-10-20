@@ -3,6 +3,7 @@ import { test, expect, type Page } from "./console-guard";
 import { packApp } from "./library-demos";
 import { action, addPackage, allowLive, allowNetwork, connected, createFake, routeTo, setHidden, tab, type FakeService } from "./live-apps";
 import { expectMapPage } from "./engines";
+import { makeDemoLink, stranger } from "./share-demo";
 
 // apps/earthquakes, packed as its build packs it, against a local fake of EMSC that speaks its real
 // format: the live feed's `{ action, data: Feature }` messages (captured from
@@ -179,3 +180,27 @@ for (const mine of [false, true]) {
     expect(outside.filter((u) => !u.startsWith("ws://localhost"))).toEqual([]);
   });
 }
+
+test("a demo link opens with the replay already playing (docs/04 §Demo): a stranger sees quakes at once, and nothing is sent", async ({ page, browser, baseURL }) => {
+  test.setTimeout(120_000);
+  await addPackage(page, "earthquakes", packApp("earthquakes", "earthquakes.app.ts"), true);
+  const link = await makeDemoLink(page, "Earthquakes");
+
+  const { context, page: viewer } = await stranger(browser, baseURL!, { viewport: { width: 420, height: 900 } });
+  const outside: string[] = [];
+  viewer.on("request", (r) => {
+    if (r.url().includes("seismicportal")) outside.push(r.url());
+  });
+  viewer.on("websocket", (ws) => {
+    if (!ws.url().startsWith("ws://localhost")) outside.push(ws.url());
+  });
+  await viewer.goto(link);
+  await expect(viewer.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
+  // Nobody tapped Demo: the app's `demo` ran as the link opened, on the viewer's device.
+  await expect(status(viewer)).toContainText("Demo — a replay", { timeout: 30_000 });
+  await tab(viewer, "Latest").click();
+  await expect(rows(viewer).first()).toBeVisible({ timeout: 15_000 });
+  await expect.poll(() => rows(viewer).count()).toBeGreaterThan(10);
+  expect(outside).toEqual([]);
+  await context.close();
+});

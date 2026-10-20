@@ -23,7 +23,7 @@ export const MAX_LINE = 110;
 /**
  * @typedef {typeof LANGUAGES[number]} Language
  * @typedef {Record<Language, string>} Words
- * @typedef {{ example: string } | { package: string[]; seed?: string }} From
+ * @typedef {{ example: string } | { package: string[]; files?: string; seed?: string }} From
  * @typedef {{
  *   id: string;
  *   status: "ready" | "coming-soon";
@@ -110,6 +110,9 @@ export function galleryProblems(data, opts = {}) {
       if (!fromOk) out.push(`${where}: a ready app says where it comes from — { "example": "<id>" } or { "package": ["apps/…"] }`);
       const seed = isObject(from) ? from.seed : undefined;
       if (seed !== undefined && !(typeof seed === "string" && /^apps\/[^\s]+\.json$/.test(seed) && !seed.includes(".."))) out.push(`${where}: a seed is a JSON file under apps/`);
+      // The files it ships with (docs/24 §2), a folder packed whole: `apps/markdown-notes/files`.
+      const files = isObject(from) ? from.files : undefined;
+      if (files !== undefined && !(typeof files === "string" && /^apps\/[^\s]+[^/\s]$/.test(files) && !files.includes(".."))) out.push(`${where}: files is a folder under apps/`);
     } else {
       if (typeof app.waitsFor !== "string" || !app.waitsFor.trim()) out.push(`${where}: a coming-soon app says what it waits for`);
       if (app.link !== undefined) out.push(`${where}: a coming-soon app has no link yet`);

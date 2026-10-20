@@ -6,8 +6,10 @@
 // Drawn with p5.js in instance mode, imported by URL (#266): the shell fetches p5 once, when the app
 // is added, and runs it from the copy it keeps. The photo comes through `ctx.caps.camera` — the app
 // never touches the browser's camera itself (CLAUDE.md rule 2) — so it is a still, not a live
-// stream; the motion is the garden's. p5 needs a real web page, so this app runs as your own
-// (trusted) app only. What a speck does is decided in garden.ts, in plain functions with tests.
+// stream; the motion is the garden's. p5 reads `window` as it loads, and a shared app's logic runs
+// where there is none (its Worker, docs/22), so the Studio imports p5 when it mounts — in a page,
+// sealed or not (#388) — never at the top. What a speck does is decided in garden.ts, in plain
+// functions with tests.
 //
 // In six languages (#303); every language but English is a model's draft (#297). The screens say
 // their words through `ctx.t`. A kept picture's title ("Amber Drift") is a record — a name made
@@ -15,7 +17,7 @@
 // as it was named.
 import { defineApp } from "potyro";
 import type { Ctx, FileRef, Resolved, ViewProps } from "potyro";
-import p5 from "https://esm.sh/p5@1.11.11?bundle";
+import type p5 from "https://esm.sh/p5@1.11.11?bundle";
 import {
   coverCrop,
   dusk,
@@ -82,6 +84,11 @@ const styleName = (s: unknown, ctx: Ctx): string => {
   if (s === "mosaic") return ctx.t("Mosaic");
   return "";
 };
+
+/** The page's permissions policy, where the browser exposes it (Chromium: `document.permissionsPolicy`). */
+interface Policy {
+  allowsFeature(feature: string): boolean;
+}
 
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 const isPhone = (w: number) => w < 640 || (window.matchMedia?.("(pointer: coarse)").matches ?? false);
@@ -281,11 +288,25 @@ function mountStudio(el: HTMLElement, props: ViewProps): () => void {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
 
-  const start = () => {
-    p5.disableFriendlyErrors = true;
+  const start = async () => {
+    // p5 arrives only now, in the page the Studio draws in (see the top of the file).
+    const { default: P5 } = await import("https://esm.sh/p5@1.11.11?bundle");
+    if (!alive) return;
+    P5.disableFriendlyErrors = true;
     [W, H] = measure();
     paper = tokenRgb(el, "--surface-sunken", "#f1ebe1");
-    sketch = new p5((p) => {
+    // p5 listens for the device's motion as it starts. A sealed frame has no motion sensors (its
+    // permissions policy), and Chromium reports a listener for them as an error: where the policy
+    // says no, p5 is not handed that listener. The garden never used the sensors.
+    const addListener = window.addEventListener;
+    const policy = (document as Document & { permissionsPolicy?: Policy; featurePolicy?: Policy }).permissionsPolicy ?? (document as Document & { featurePolicy?: Policy }).featurePolicy;
+    if (policy && !policy.allowsFeature("accelerometer")) {
+      window.addEventListener = ((type: string, ...rest: unknown[]) => {
+        if (type === "devicemotion" || type === "deviceorientation") return;
+        (addListener as (...a: unknown[]) => void).call(window, type, ...rest);
+      }) as typeof window.addEventListener;
+    }
+    sketch = new P5((p) => {
       p.setup = () => {
         p.pixelDensity(Math.min(2, window.devicePixelRatio || 1));
         const c = p.createCanvas(W, H).elt;
@@ -311,6 +332,7 @@ function mountStudio(el: HTMLElement, props: ViewProps): () => void {
       };
       p.draw = () => drawFrame(p);
     }, stage);
+    window.addEventListener = addListener;
   };
 
   // ---- touch and mouse: our own listeners on the canvas, so the page still scrolls elsewhere ----
@@ -512,7 +534,7 @@ function mountStudio(el: HTMLElement, props: ViewProps): () => void {
       if (prefs && Number.isFinite(prefs.density)) density = Math.min(100, Math.max(0, prefs.density));
       slider.value = String(density);
       showStyle();
-      start();
+      start().catch((e: unknown) => ctx.log("photo-garden: the garden could not start", e instanceof Error ? e.message : String(e)));
     });
 
   return () => {

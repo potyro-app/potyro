@@ -26,6 +26,7 @@ export type CallKind =
   | "fold"
   | "fieldDefault"
   | "tile"
+  | "demo"
   | "reminderWhen";
 
 /**

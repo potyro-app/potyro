@@ -382,3 +382,30 @@ describe("the live tile (docs/04 §Tile)", () => {
     expect(() => defineApp({ ...app(), category: "Games!" } as never)).toThrow(/category/);
   });
 });
+
+describe("the app's demo (docs/04 §Demo)", () => {
+  const app = (demo?: (ctx: Ctx) => Promise<void>) =>
+    defineApp({
+      id: "quakes",
+      name: "Quakes",
+      version: "1.0.0",
+      schemaVersion: 1,
+      ...(demo ? { demo: demo as never } : {}),
+      entities: { quake: { fields: { place: { type: "text" } } } },
+      pages: [{ id: "all", title: "All", view: { type: "list", entity: "quake" } }],
+    });
+
+  it("runs the app's demo with ctx, so it can write its replay; does nothing without one", async () => {
+    const store = new MemoryStore();
+    await store.open("quakes");
+    const host = createHost();
+    const ui: UiBridge = { toast: () => {}, confirm: async () => false, prompt: async () => null, pick: async () => null };
+    const nav: NavBridge = { navigate: () => {} };
+    const loaded = await host.load({ kind: "module", app: app(async (ctx) => void (await ctx.create("quake", { place: "Fiji" }))), provenance: "trusted" });
+    await loaded.callDemo(host.makeCtx(loaded, { store, caps: new FakeCapabilities(), ui, nav }));
+    expect((await store.all("quake")).map((r) => r.place)).toEqual(["Fiji"]);
+    const plain = await host.load({ kind: "module", app: app(), provenance: "trusted" });
+    await expect(plain.callDemo(host.makeCtx(plain, { store, caps: new FakeCapabilities(), ui, nav }))).resolves.toBeUndefined();
+    expect(await store.all("quake")).toHaveLength(1);
+  });
+});

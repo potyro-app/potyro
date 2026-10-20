@@ -124,6 +124,8 @@ function run(app: DirectLoadedApp, kind: CallKind, a: unknown[], ctx: never): Pr
       return app.callFieldDefault(s(0), s(1), ctx);
     case "tile":
       return app.callTile(ctx);
+    case "demo":
+      return app.callDemo(ctx).then(() => null);
     case "reminderWhen":
       return app.reminderWhen(s(0), v(1), ctx);
     default:
