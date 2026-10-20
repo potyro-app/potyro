@@ -142,6 +142,20 @@ describe("libraries by URL (#266)", () => {
     expect(() => run(code)).toThrow(/needs-dom 2\.0\.0 needs a full web page/);
   });
 
+  it("the same library imported where it is used — `await import(url)` in a view — loads in the sealed box, and its code is in the bundle (#388)", async () => {
+    const DOM = "https://esm.sh/needs-dom@2.0.0?bundle";
+    const mods = await space({ libs: { [DOM]: `export const width = window.innerWidth;\n` } });
+    const source = `import { defineApp } from "potyro";
+const later = async () => (await import("${DOM}")).width;
+export default defineApp({ id: "t", name: "Lazy", version: "1.0.0", schemaVersion: 1, entities: {}, pages: [], tile: later } as never);`;
+    const code = await bundleAppSource(source, esbuild, stubs, mods);
+    // The library's code is carried, not fetched: the box has no network, and the lock still vouches for it.
+    expect(code).toContain("window.innerWidth");
+    expect(code).not.toMatch(/import\("https:/);
+    // It only runs when a screen asks for it: loading the app touches no `window`.
+    expect(run(code).name).toBe("Lazy");
+  });
+
   it("an app's own crash after its libraries loaded is not blamed on them", async () => {
     const mods = await space({ libs: LIBRARY });
     const code = await bundleAppSource(`import { sum } from "${LIB}";\nconst boom = (globalThis as any).nope.x;\nexport default sum;`, esbuild, stubs, mods);
