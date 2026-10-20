@@ -107,9 +107,11 @@ test.describe("looking at the seeded app", () => {
     // Same bug as the detail view had, in the other place actions are rendered: the button read
     // "startWorkout" rather than "Start Workout".
     await atWidth(page, 1280);
-    const labels = await page.locator(".k-row-actions button").allInnerTexts();
-    expect(labels).toContain("Snap Photo");
-    expect(labels).not.toContain("snapPhoto");
+    // Waited for, as the detail's are below: the rows' actions render once the records have loaded,
+    // and on the gate (2026-10-20) a read on the spot found none yet.
+    const buttons = page.locator(".k-row-actions button");
+    await expect(buttons.filter({ hasText: "Snap Photo" }).first()).toBeVisible();
+    expect(await buttons.allInnerTexts()).not.toContain("snapPhoto");
   });
 
   test("detail actions are labelled, not keyed", async () => {
