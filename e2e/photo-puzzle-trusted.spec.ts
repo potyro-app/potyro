@@ -1,8 +1,9 @@
-import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Page } from "./console-guard";
 import { readFileSync } from "node:fs";
 import { addAsMine, count, packApp, pixelsOf } from "./library-demos";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
+import { E2E_RELAY } from "./ports";
 
 // apps/photo-puzzle, packed as its build packs it and added as the person's own app. The photo goes in
 // the way a phone's would: ctx.caps.camera on the web is a file input, so the test answers its file
@@ -15,7 +16,6 @@ import { answerNamePrompt } from "./name-prompt.js";
 // to whoever opens it.
 
 const SHOTS = process.env.POTYRO_SHOTS;
-const RELAY = process.env.POTYRO_RELAY ?? "ws://localhost:4201";
 const FLOWER = readFileSync(new URL("./fixtures/garden-flower.png", import.meta.url));
 /** The flower's pink. */
 const pink = (r: number, g: number, b: number, a: number) => a > 100 && r > 170 && g < 140 && b > 80 && b < 190 && r - g > 70;
@@ -114,7 +114,7 @@ test("Photo Puzzle: a photo becomes a jigsaw, pieces dragged home click in, and 
 });
 
 async function device(context: BrowserContext): Promise<Page> {
-  await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), RELAY);
+  await context.addInitScript((relay) => localStorage.setItem("potyro:sync:relay", relay), E2E_RELAY);
   return context.newPage();
 }
 
@@ -147,7 +147,7 @@ test("Photo Puzzle: sent to a friend, they solve YOUR photo, and their time come
   const ctxB = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const b = await device(ctxB);
   await b.goto(link);
-  await b.locator(".k-dialog").getByRole("button", { name: /Join and trust/ }).click();
+  await b.locator(".k-dialog").getByRole("button", { name: /Join, run it as yours/ }).click(); // trust prompt
   await answerNamePrompt(b, "Ana");
   const gift = b.locator(".pp-card").first();
   await expect(gift).toContainText("From Vasco", { timeout: 90_000 });
