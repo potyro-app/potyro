@@ -63,8 +63,8 @@ test("gallery:publish makes each link through the share flow, checks it opens fo
     expect(app.screenshot).toBe(`shots/${id}.jpg`);
     expect(readFileSync(join(dir, app.screenshot)).subarray(0, 2)).toEqual(Buffer.from([0xff, 0xd8]));
   }
-  // Coming-soon apps are left alone, and said to be.
-  expect(lines.join("\n")).toMatch(/coming soon, not published: .*pantry/);
+  // Nothing is on the workbench any more (2026-10-20): the publisher names none as left alone.
+  expect(lines.join("\n")).not.toMatch(/coming soon, not published/);
   expect(g.apps.filter((a: { status: string; link?: string }) => a.status === "coming-soon" && a.link)).toEqual([]);
 
   // Again: nothing new is made.
