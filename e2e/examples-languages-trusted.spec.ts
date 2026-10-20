@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "./console-guard";
 import { skipWithoutMaps } from "./engines";
+import { pageOnce } from "./once.js";
 
 // Every example in Polish (#303): a Polish browser opens each one and reads the app's own words in
 // Polish, as rendered — the name in the header, the tabs, a heading or a button the app declares, and
@@ -8,8 +9,12 @@ import { skipWithoutMaps } from "./engines";
 //
 // What is NOT checked here is Potyro's own chrome ("More", "Cancel", "New …"): that is the shell's
 // catalog (#299/#300), which may still read in English.
+//
+// Every test only reads what the seed renders, so an app looked at by several tests (recipes,
+// workout) boots once for them, in a Polish context, and they share the page in order.
 
 test.use({ locale: "pl-PL" });
+const POLISH = { locale: "pl-PL" } as const;
 
 async function open(page: Page, app: string, name: string): Promise<void> {
   await page.goto(`/?user=${app}`);
@@ -53,58 +58,78 @@ test("places reads in Polish", async ({ page }) => {
   await expect(card).toContainText(/teraz otwarte|zamknięte|godziny nieznane/);
 });
 
-test("recipes reads in Polish, its custom cook-along view too", async ({ page }) => {
-  await open(page, "recipes", "Przepisy");
-  // "505 kcal · łatwy": a computed difficulty, put into Polish words by a function.
-  await expect(page.locator(".k-card").first()).toContainText(/kcal · (łatwy|średni|trudny)/);
-  // The page's one big button, in the app's words.
-  await expect(page.getByRole("button", { name: /Dodaj przepis/ }).first()).toBeVisible();
-  await page.locator(".k-card", { hasText: "Fluffy Pancakes" }).first().click();
-  await expect(page.locator("article.k-detail")).toBeVisible();
-  await page.getByRole("button", { name: /Zacznij gotować/ }).first().click();
-  await expect(page.locator("#cook-heading")).toHaveText("Gotujemy: Fluffy Pancakes", { timeout: 30_000 });
-  // The cook view's own words, from ctx.t inside a custom view.
-  await expect(page.getByRole("button", { name: "Następny krok" })).toBeVisible();
-  await expect(page.getByText(/Krok 1 z \d+/).first()).toBeVisible();
+test.describe("recipes", () => {
+  const shared = pageOnce((page) => open(page, "recipes", "Przepisy"), POLISH);
+
+  test("a recipe's diet badge reads in Polish, not as its stored value", async () => {
+    const page = shared();
+    // The cookbook's cards wear the diet badge.
+    const badges = page.locator(".k-card .k-badge");
+    await expect(badges.first()).toBeVisible({ timeout: 30_000 });
+    // `diet` is a computed returning "vegan" / "vegetarian" / "animal-based"; its `labels` say them in Polish.
+    for (const text of await badges.allTextContents()) expect(text).toMatch(/^(wegański|wegetariański|odzwierzęcy)$/);
+  });
+
+  test("a recipe's computed values are headed in Polish, not by their keys (#310)", async () => {
+    const page = shared();
+    // Chicken Caesar misses ingredients, so every computed in the group has something to show.
+    await page.locator(".k-card", { hasText: "Chicken Caesar" }).first().click();
+    const detail = page.locator("article.k-detail");
+    await expect(detail).toBeVisible();
+    // The "Nutrition & cost" group lists a field (servings) and the computed values beside it.
+    // Folded under the ingredients and steps: opened to read it.
+    await detail.getByRole("button", { name: /^Wartości odżywcze i koszt/ }).click();
+    await expect(detail.locator("dt", { hasText: "Kalorie na porcję" })).toBeVisible();
+    await expect(detail.locator("dt", { hasText: "Białko na porcję" })).toBeVisible();
+    await expect(detail.locator("dt", { hasText: "Szacowany koszt" })).toBeVisible();
+    await expect(detail.locator("dt", { hasText: "Brakujące składniki" })).toBeVisible();
+    // What every language read before: the key, humanised.
+    await expect(detail.getByText("Calories Per Serving")).toHaveCount(0);
+    await expect(detail.getByText("Estimated Cost")).toHaveCount(0);
+  });
+
+  test("recipes reads in Polish, its custom cook-along view too", async () => {
+    const page = shared();
+    // Back on the cookbook, from the recipe the test before left open.
+    await page.locator(".k-topbar-back").click();
+    // "505 kcal · łatwy": a computed difficulty, put into Polish words by a function.
+    await expect(page.locator(".k-card").first()).toContainText(/kcal · (łatwy|średni|trudny)/);
+    // The page's one big button, in the app's words.
+    await expect(page.getByRole("button", { name: /Dodaj przepis/ }).first()).toBeVisible();
+    await page.locator(".k-card", { hasText: "Fluffy Pancakes" }).first().click();
+    await expect(page.locator("article.k-detail")).toBeVisible();
+    await page.getByRole("button", { name: /Zacznij gotować/ }).first().click();
+    await expect(page.locator("#cook-heading")).toHaveText("Gotujemy: Fluffy Pancakes", { timeout: 30_000 });
+    // The cook view's own words, from ctx.t inside a custom view.
+    await expect(page.getByRole("button", { name: "Następny krok" })).toBeVisible();
+    await expect(page.getByText(/Krok 1 z \d+/).first()).toBeVisible();
+  });
 });
 
-test("a recipe's computed values are headed in Polish, not by their keys (#310)", async ({ page }) => {
-  await open(page, "recipes", "Przepisy");
-  // Chicken Caesar misses ingredients, so every computed in the group has something to show.
-  await page.locator(".k-card", { hasText: "Chicken Caesar" }).first().click();
-  const detail = page.locator("article.k-detail");
-  await expect(detail).toBeVisible();
-  // The "Nutrition & cost" group lists a field (servings) and the computed values beside it.
-  // Folded under the ingredients and steps: opened to read it.
-  await detail.getByRole("button", { name: /^Wartości odżywcze i koszt/ }).click();
-  await expect(detail.locator("dt", { hasText: "Kalorie na porcję" })).toBeVisible();
-  await expect(detail.locator("dt", { hasText: "Białko na porcję" })).toBeVisible();
-  await expect(detail.locator("dt", { hasText: "Szacowany koszt" })).toBeVisible();
-  await expect(detail.locator("dt", { hasText: "Brakujące składniki" })).toBeVisible();
-  // What every language read before: the key, humanised.
-  await expect(detail.getByText("Calories Per Serving")).toHaveCount(0);
-  await expect(detail.getByText("Estimated Cost")).toHaveCount(0);
-});
+test.describe("workout", () => {
+  const shared = pageOnce((page) => open(page, "workout", "Trening"), POLISH);
 
-test("a recipe's diet badge reads in Polish, not as its stored value", async ({ page }) => {
-  await open(page, "recipes", "Przepisy");
-  // The cookbook's cards wear the diet badge.
-  const badges = page.locator(".k-card .k-badge");
-  await expect(badges.first()).toBeVisible({ timeout: 30_000 });
-  // `diet` is a computed returning "vegan" / "vegetarian" / "animal-based"; its `labels` say them in Polish.
-  for (const text of await badges.allTextContents()) expect(text).toMatch(/^(wegański|wegetariański|odzwierzęcy)$/);
-});
+  test("workout reads in Polish, its live training screen too", async () => {
+    const page = shared();
+    await expect(page.getByRole("button", { name: /Nowe ćwiczenie/ }).first()).toBeVisible();
+    await tab(page, "Trenuj").click();
+    // The app's words in Polish; a routine's name is a record, so it stays as it was typed.
+    await expect(page.locator(".wk-eyebrow").first()).toContainText("Następny", { timeout: 30_000 });
+    await expect(page.locator(".wk-start-btn")).toHaveText("Zacznij: Pull A");
+    await expect(page.locator(".wk-streak")).toContainText("z rzędu");
+  });
 
-test("an exercise's rolling best reads as kg × reps, not as an object", async ({ page }) => {
-  await open(page, "workout", "Trening");
-  await tab(page, "Program").click();
-  await page.locator(".k-list-row", { hasText: "Squat" }).first().getByText("Squat", { exact: true }).click();
-  const detail = page.locator("article.k-detail");
-  await expect(detail).toBeVisible();
-  // The best squat set of the seed's last five legs days is 100 kg × 8; a computed returning an
-  // object read "…" before.
-  await expect(detail.locator("dd", { hasText: "100 kg × 8" })).toBeVisible({ timeout: 30_000 });
-  await expect(detail.locator("dd", { hasText: /^…$/ })).toHaveCount(0);
+  test("an exercise's rolling best reads as kg × reps, not as an object", async () => {
+    const page = shared();
+    await tab(page, "Program").click();
+    await page.locator(".k-list-row", { hasText: "Squat" }).first().getByText("Squat", { exact: true }).click();
+    const detail = page.locator("article.k-detail");
+    await expect(detail).toBeVisible();
+    // The best squat set of the seed's last five legs days is 100 kg × 8; a computed returning an
+    // object read "…" before.
+    await expect(detail.locator("dd", { hasText: "100 kg × 8" })).toBeVisible({ timeout: 30_000 });
+    await expect(detail.locator("dd", { hasText: /^…$/ })).toHaveCount(0);
+  });
 });
 
 test("split reads in Polish", async ({ page }) => {
@@ -114,14 +139,4 @@ test("split reads in Polish", async ({ page }) => {
   await expect(page.locator(".k-aggregate")).toContainText("ma ci oddać");
   await expect(page.getByRole("button", { name: /Dodaj wydatek/ }).first()).toBeVisible();
   await expect(tab(page, "Płatności")).toBeVisible();
-});
-
-test("workout reads in Polish, its live training screen too", async ({ page }) => {
-  await open(page, "workout", "Trening");
-  await expect(page.getByRole("button", { name: /Nowe ćwiczenie/ }).first()).toBeVisible();
-  await tab(page, "Trenuj").click();
-  // The app's words in Polish; a routine's name is a record, so it stays as it was typed.
-  await expect(page.locator(".wk-eyebrow").first()).toContainText("Następny", { timeout: 30_000 });
-  await expect(page.locator(".wk-start-btn")).toHaveText("Zacznij: Pull A");
-  await expect(page.locator(".wk-streak")).toContainText("z rzędu");
 });
