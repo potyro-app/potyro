@@ -89,9 +89,9 @@ test("Potyro Daily: a whole day — tap, type, crack it, share the grid, and com
   g1[2] = (g1[2]! + 3) % 7;
   await page.getByRole("button", { name: "Check" }).tap();
   await expectRow(page, 0, g1);
-  // The palette learnt something: a colour told "not in the code" is struck out.
-  const hint = await page.locator(".dp-key[data-hint]").count();
-  expect(hint).toBeGreaterThan(0);
+  // The palette learnt something: a colour told "not in the code" is struck out — once the row's
+  // reveal has played (the keys are painted after it, `paintKeysLater`), so this waits for it.
+  await expect.poll(() => page.locator(".dp-key[data-hint]").count(), { timeout: 10_000 }).toBeGreaterThan(0);
 
   // Guess 2, by keyboard: digits place, Backspace takes back, Enter checks.
   const g2 = wrong(2);
