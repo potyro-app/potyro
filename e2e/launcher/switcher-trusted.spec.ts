@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "../console-guard";
+import { pageOnce } from "../once.js";
 import { openApp, openSwitcher, seed } from "./fixture.js";
 import { NEEDS_CDP } from "../engines";
 
@@ -6,13 +7,12 @@ import { NEEDS_CDP } from "../engines";
 // so eight or more apps show before scrolling; a row switches; swipe down, a tap on the scrim and
 // Escape all close it. "Switch to X" is a name in your head, so the search field is on the sheet's
 // bottom edge, inside the thumb's reach, and does not steal focus on a phone.
+//
+// Nothing here writes a record: a switch is a navigation (in place, #89) and the rest opens and
+// closes the sheet. So the seeded Groceries boots once and the tests share the page in order — each
+// after the first starts in whatever app the one before switched to, which none of them asserts.
 
 const PHONE = { width: 375, height: 812 };
-test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
-
-test.beforeEach(async ({ page }) => {
-  await seed(page);
-});
 
 const rowsOnScreen = (page: Page) =>
   page
@@ -22,8 +22,16 @@ const rowsOnScreen = (page: Page) =>
       return r.top >= 0 && r.bottom <= (h as number);
     }).length, PHONE.height);
 
-test("a one-line header, eight rows in view, and a row switches app", async ({ page }) => {
-  await openApp(page, "groceries", "Groceries");
+const shared = pageOnce(
+  async (page) => {
+    await seed(page);
+    await openApp(page, "groceries", "Groceries");
+  },
+  { viewport: PHONE, hasTouch: true, isMobile: true },
+);
+
+test("a one-line header, eight rows in view, and a row switches app", async () => {
+  const page = shared();
   const overlay = await openSwitcher(page);
   const head = (await overlay.locator(".k-switcher-head").boundingBox())!;
   expect(head.height).toBeLessThanOrEqual(56);
@@ -43,8 +51,8 @@ test("a one-line header, eight rows in view, and a row switches app", async ({ p
   await expect(page.locator("h1").first()).toHaveText("Trips");
 });
 
-test("typing filters the list; Enter opens the first match", async ({ page }) => {
-  await openApp(page, "groceries", "Groceries");
+test("typing filters the list; Enter opens the first match", async () => {
+  const page = shared();
   const overlay = await openSwitcher(page);
   await overlay.getByRole("searchbox", { name: "Find an app" }).fill("gar");
   await expect(overlay.locator(".k-launch-tile-row:not(.k-launch-tile-extra)")).toHaveCount(1);
@@ -53,9 +61,9 @@ test("typing filters the list; Enter opens the first match", async ({ page }) =>
   await expect(page.locator("h1").first()).toHaveText("Garden");
 });
 
-test("swipe down, the scrim and Escape each close it", async ({ page, browserName }) => {
+test("swipe down, the scrim and Escape each close it", async ({ browserName }) => {
   test.skip(browserName !== "chromium", NEEDS_CDP);
-  await openApp(page, "groceries", "Groceries");
+  const page = shared();
   let overlay = await openSwitcher(page);
   // A finger drags the grip down past the threshold.
   const grip = (await overlay.locator(".k-switcher-grip").boundingBox())!;
@@ -82,12 +90,12 @@ test("swipe down, the scrim and Escape each close it", async ({ page, browserNam
   await expect(page.locator(".k-launcher-overlay")).toHaveCount(0);
 });
 
-test("a tile's menu is a sheet inside the screen, not a panel off its edge", async ({ page }) => {
+test("a tile's menu is a sheet inside the screen, not a panel off its edge", async () => {
   // It was the last menu in the app still hanging off a corner: anchored to the right of a row that
   // already ends at the screen's edge, so "Rename" and "Delete" ran off the side. The cause was one
   // line of CSS — the row centred the menu's host with a transform, and a transformed ancestor
   // becomes the containing block for `position: fixed`, which quietly shrank the sheet to that box.
-  await openApp(page, "groceries", "Groceries");
+  const page = shared();
   const overlay = await openSwitcher(page);
   await overlay.getByRole("button", { name: "Actions for Places" }).tap();
 
@@ -104,4 +112,3 @@ test("a tile's menu is a sheet inside the screen, not a panel off its edge", asy
   // Every row is reachable and readable, Delete last.
   await expect(menu.getByRole("menuitem").last()).toHaveText(/Delete/);
 });
-
