@@ -144,13 +144,23 @@ test("a shared copy reads a poster: camera and AI asked first, the checked event
   const file = await download;
   expect(file.suggestedFilename()).toBe(`night-tram-quartet-late-show-${iso(day).replace(/-/g, "")}.ics`);
   const ics = readFileSync((await file.path())!, "utf8");
-  const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 20, 0);
+  // The page's clock is Europe/Warsaw (test.use above), whatever zone this runner is in (UTC on CI):
+  // 20:00 on the poster is 20:00 Warsaw, and the file says that instant in UTC.
+  const inWarsaw = (y: number, m: number, d: number, h: number): Date => {
+    const asUtc = Date.UTC(y, m, d, h, 0);
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Warsaw", hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(asUtc));
+    const get = (t: string) => Number(parts.find((x) => x.type === t)!.value);
+    const wall = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour") % 24, get("minute"));
+    return new Date(asUtc - (wall - asUtc));
+  };
+  const start = inWarsaw(day.getFullYear(), day.getMonth(), day.getDate(), 20);
+  const reminderAt = inWarsaw(day.getFullYear(), day.getMonth(), day.getDate() - 1, 20);
   const utc = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   expect(ics).toMatch(/^BEGIN:VCALENDAR\r\nVERSION:2\.0\r\n/);
   expect(ics).toContain("SUMMARY:Night Tram Quartet — late show\r\n");
   expect(ics).toContain(`DTSTART:${utc(start)}\r\n`);
   expect(ics).toContain("LOCATION:The Lantern Room\\, 12 Harbour Lane\r\n");
-  expect(ics).toContain(`TRIGGER;VALUE=DATE-TIME:${utc(reminderDay)}\r\n`);
+  expect(ics).toContain(`TRIGGER;VALUE=DATE-TIME:${utc(reminderAt)}\r\n`);
   expect(ics.trimEnd().endsWith("END:VCALENDAR")).toBe(true);
   await expect(page.getByText("Open the file to add it to your calendar.")).toBeVisible();
 
