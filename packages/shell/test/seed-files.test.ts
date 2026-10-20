@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { fileSpace, MemoryStore, type Store } from "@potyro/store";
 import type { MediaRef } from "potyro";
-import { applySeed } from "../src/add-app.js";
+import { applySeed, fileFieldsOf } from "../src/add-app.js";
 import { demoSeed } from "../src/demo-package.js";
 import { seedIfEmpty } from "../src/seed.js";
 import { exampleFilePaths } from "../src/example-files.js";
@@ -53,6 +53,31 @@ describe("a seed's photos", () => {
     await applySeed(store, { place: [{ name: "Three", location: { lat: 1, lng: 2 }, notes: "file" }] }, ["place"]);
     const [row] = (await store.all("place")) as unknown as Array<Record<string, unknown>>;
     expect(row!.location).toEqual({ lat: 1, lng: 2 });
+  });
+});
+
+describe("a seed's documents (#389)", () => {
+  it("on a `file` field, point at the shipped file itself — its id, path, name and mime — so the app reads it as its own", async () => {
+    const store = await storeWith({ "notes/welcome.md": new TextEncoder().encode("# Welcome\n") });
+    await applySeed(store, { note: [{ title: "Welcome", doc: { file: "notes/welcome.md" } }] }, ["note"], { note: ["doc"] });
+    const [row] = (await store.all("note")) as unknown as Array<{ doc: { id: string; path: string; name: string; mime?: string } }>;
+    const info = await fileSpace(store).find("notes/welcome.md");
+    expect(row!.doc).toEqual({ id: info!.id, path: "notes/welcome.md", name: "welcome.md", mime: info!.mime });
+    // The file, not a copy: what the folder holds is what the note reads.
+    expect(await (await fileSpace(store).read({ id: row!.doc.id }))!.text()).toBe("# Welcome\n");
+  });
+
+  it("are left out when the file is not there; a photo field keeps being a copy", async () => {
+    const store = await storeWith({ "photos/a.webp": PIXEL });
+    await applySeed(store, { note: [{ title: "Gone", doc: { file: "notes/gone.md" }, cover: { file: "photos/a.webp" } }] }, ["note"], { note: ["doc"] });
+    const [row] = (await store.all("note")) as unknown as Array<{ doc?: unknown; cover: MediaRef }>;
+    expect(row!.doc).toBeUndefined();
+    expect(row!.cover.key).toEqual(expect.any(String));
+  });
+
+  it("knows an app's `file` fields from its definition", () => {
+    expect(fileFieldsOf({ note: { fields: { title: { type: "text" }, doc: { type: "file" } } }, tag: { fields: { name: { type: "text" } } } })).toEqual({ note: ["doc"] });
+    expect(fileFieldsOf(undefined)).toEqual({});
   });
 });
 

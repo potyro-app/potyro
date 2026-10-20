@@ -1,0 +1,8 @@
+{
+  "note": [
+    { "title": "Welcome to Notes", "doc": { "file": "notes/welcome-to-notes.md" } },
+    { "title": "Packing for the mountains", "doc": { "file": "notes/packing-for-the-mountains.md" } },
+    { "title": "Sourdough, the short version", "doc": { "file": "notes/sourdough-the-short-version.md" } },
+    { "title": "Books people keep recommending", "doc": { "file": "notes/books-people-keep-recommending.md" } }
+  ]
+}
