@@ -7,10 +7,12 @@
 //
 // What it watches: `console.error` and uncaught page errors (`pageerror`) on every page of the test
 // — the `page` fixture's, any other page of its context, and pages of contexts the test makes with
-// `browser.newContext()`. Messages a dedicated worker logs (the storage worker, a realm's worker)
-// reach the page's console in Chromium and Firefox, so they are covered as well. What it cannot see:
-// a browser a spec launches by itself (`chromium.launch()`), and a sandboxed realm frame's own
-// console when the engine keeps it apart.
+// `browser.newContext()`. A context a spec opens in `beforeAll` and shares across its tests is
+// watched from the moment it is made: what the page says while it boots is judged by the first test
+// that runs on it, and each later test answers for what arrived during its own run. Messages a
+// dedicated worker logs (the storage worker, a realm's worker) reach the page's console in Chromium
+// and Firefox, so they are covered as well. What it cannot see: a browser a spec launches by itself
+// (`chromium.launch()`), and a sandboxed realm frame's own console when the engine keeps it apart.
 //
 // How to use it: import `test` and `expect` from this file instead of "@playwright/test" (everything
 // else is re-exported). It is switched on per project with `use: { guardConsole: true }` — the
@@ -24,7 +26,7 @@
 // The allow-list below is for noise that is no fault of ours and nothing a test could do about.
 // Every entry says why; an entry without a reason is a bug being hidden.
 
-import { test as base, type BrowserContext, type ConsoleMessage, type Page } from "@playwright/test";
+import { test as base, type Browser, type BrowserContext, type ConsoleMessage, type Page } from "@playwright/test";
 
 export * from "@playwright/test";
 
@@ -92,6 +94,64 @@ async function withErrorMessages(m: ConsoleMessage): Promise<string> {
   return missing.length ? `${text} (${missing.join("; ")})` : text;
 }
 
+/**
+ * What one page has said, from the moment the guard first saw it. `judged` is how far some test has
+ * already answered for: a page shared by several tests (opened in `beforeAll`) hands each test the
+ * errors that arrived since the one before, and the first of them everything from the boot.
+ */
+interface PageLog {
+  entries: string[];
+  pending: Promise<void>[];
+  judged: number;
+}
+
+const logs = new WeakMap<Page, PageLog>();
+const watchedContexts = new WeakSet<BrowserContext>();
+
+function watchPage(page: Page): PageLog {
+  const known = logs.get(page);
+  if (known) return known;
+  const log: PageLog = { entries: [], pending: [], judged: 0 };
+  logs.set(page, log);
+  sparedSealedFrames(page);
+  page.on("console", (m) => {
+    // Full Chromium (`channel: "chromium"`, which the sealed-view specs use for out-of-process
+    // frames) asks for /favicon.ico by itself, and the dev server has none: the browser's own
+    // request, not the page's.
+    if (m.type() !== "error" || /\/favicon\.ico$/.test(m.location().url)) return;
+    const at = log.entries.push(m.text()) - 1;
+    log.pending.push(withErrorMessages(m).then((text) => void (log.entries[at] = text)));
+  });
+  page.on("pageerror", (e) => log.entries.push(`${e.name}: ${e.message}`));
+  return log;
+}
+
+function watchContext(ctx: BrowserContext): void {
+  if (watchedContexts.has(ctx)) return;
+  watchedContexts.add(ctx);
+  ctx.pages().forEach(watchPage);
+  ctx.on("page", watchPage);
+  sparedSealedFrames(ctx);
+}
+
+/**
+ * Every context this browser makes is watched from its first page: the `context` fixture's, the ones
+ * a test makes for itself (two devices, two tabs with their own storage), and the one a spec opens in
+ * `beforeAll` to boot an app once for a run of read-only tests. Wrapped once per browser, for the
+ * worker's life.
+ */
+function watchBrowser(browser: Browser): void {
+  type Marked = Browser & { __consoleGuarded?: true };
+  if ((browser as Marked).__consoleGuarded) return;
+  (browser as Marked).__consoleGuarded = true;
+  const newContext = browser.newContext.bind(browser);
+  browser.newContext = async (...args: Parameters<typeof browser.newContext>) => {
+    const ctx = await newContext(...args);
+    watchContext(ctx);
+    return ctx;
+  };
+}
+
 export interface ConsoleGuard {
   /** Expect messages matching `pattern` in this test, for `why`. Say why. */
   allow(pattern: RegExp, why: string): void;
@@ -102,60 +162,73 @@ export interface ConsoleGuard {
 interface GuardFixtures {
   consoleGuard: ConsoleGuard;
 }
+interface GuardWorkerFixtures {
+  guardedBrowser: void;
+}
 interface GuardOptions {
   /** Fail a test on an unexpected console error. Set per project in playwright.config.ts. */
   guardConsole: boolean;
 }
 
-export const test = base.extend<GuardFixtures & GuardOptions>({
+export const test = base.extend<GuardFixtures & GuardOptions, GuardWorkerFixtures>({
   guardConsole: [false, { option: true }],
+  // Worker-scoped and automatic, so it is in place before a spec's `beforeAll` runs.
+  guardedBrowser: [
+    async ({ browser }, use) => {
+      watchBrowser(browser);
+      await use();
+    },
+    { scope: "worker", auto: true },
+  ],
   consoleGuard: [
     async ({ context, browser, guardConsole }, use, testInfo) => {
-      const seen: string[] = [];
-      const pending: Promise<void>[] = [];
       const allowed: Allowed[] = [];
-      const watched = new WeakSet<Page>();
-      const watch = (page: Page) => {
-        if (watched.has(page)) return;
-        watched.add(page);
-        sparedSealedFrames(page);
-        page.on("console", (m) => {
-          // Full Chromium (`channel: "chromium"`, which the sealed-view specs use for out-of-process
-          // frames) asks for /favicon.ico by itself, and the dev server has none: the browser's own
-          // request, not the page's.
-          if (m.type() !== "error" || /\/favicon\.ico$/.test(m.location().url)) return;
-          const at = seen.push(m.text()) - 1;
-          pending.push(withErrorMessages(m).then((text) => void (seen[at] = text)));
-        });
-        page.on("pageerror", (e) => seen.push(`${e.name}: ${e.message}`));
+      // This test's pages, each from where its log was last judged. A page already open when the test
+      // starts (the `context` fixture's, a shared one from `beforeAll`) is taken on from there; a page
+      // that appears during the test, from its first word.
+      const mine = new Map<Page, number>();
+      const adopt = (page: Page) => {
+        if (mine.has(page)) return;
+        mine.set(page, watchPage(page).judged);
       };
-      const watchContext = (ctx: BrowserContext) => {
-        ctx.pages().forEach(watch);
-        ctx.on("page", watch);
-        sparedSealedFrames(ctx);
+      const adoptContext = (ctx: BrowserContext) => {
+        watchContext(ctx);
+        ctx.pages().forEach(adopt);
+        ctx.on("page", adopt);
       };
       watchContext(context);
-
-      // Contexts the test makes for itself (two devices, two tabs with their own storage) are the
-      // test's pages too. Wrapped for this test only, and put back after it.
-      const newContext = browser.newContext.bind(browser);
+      const contexts = new Set<BrowserContext>([context, ...browser.contexts()]);
+      contexts.forEach(adoptContext);
+      // Contexts the test makes for itself are the test's pages too. Wrapped for this test only, on
+      // top of the worker's wrap, and put back after it.
+      const newContext = browser.newContext;
       browser.newContext = async (...args: Parameters<typeof browser.newContext>) => {
-        const ctx = await newContext(...args);
-        watchContext(ctx);
+        const ctx = await newContext.call(browser, ...args);
+        contexts.add(ctx);
+        adoptContext(ctx);
         return ctx;
       };
+
+      const since = () => [...mine].flatMap(([page, from]) => logs.get(page)?.entries.slice(from) ?? []);
 
       await use({
         allow: (pattern, why) => {
           if (!why.trim()) throw new Error("consoleGuard.allow needs a reason");
           allowed.push({ pattern, why });
         },
-        seen: () => [...seen],
+        seen: since,
       });
 
       browser.newContext = newContext;
+      contexts.forEach((ctx) => ctx.off("page", adopt));
       if (!guardConsole) return;
-      await Promise.all(pending);
+      await Promise.all([...mine.keys()].flatMap((page) => logs.get(page)?.pending ?? []));
+      const seen = since();
+      // Answered for: the next test on a shared page starts after these.
+      for (const page of mine.keys()) {
+        const log = logs.get(page);
+        if (log) log.judged = log.entries.length;
+      }
       // A test that already failed has said what is wrong; piling the console on top would bury it.
       if (testInfo.status !== testInfo.expectedStatus) return;
       const unexpected = seen.filter((text) => ![...ALLOWED, ...allowed].some((a) => a.pattern.test(text)));

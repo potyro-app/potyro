@@ -1,9 +1,13 @@
 import { test, expect } from "../console-guard";
 import AxeBuilder from "@axe-core/playwright";
+import { pageOnce } from "../once.js";
 import { openApp, openHome, openSwitcher, seed } from "./fixture.js";
 
 // Accessibility of the launcher (#94): axe on the home screen, the switcher and the open tile
 // menu — zero serious or critical violations — and a reduced-motion run in which nothing animates.
+//
+// The home audits only look: the seeded home boots once per colour scheme and its two audits share
+// the page (the menu opens on it for the second). The switcher is inside an app, on its own page.
 
 const SERIOUS = new Set(["serious", "critical"]);
 
@@ -14,23 +18,33 @@ async function audit(page: import("@playwright/test").Page, where: string): Prom
   expect(bad, `${where}:\n${report}`).toEqual([]);
 }
 
-test.beforeEach(async ({ page }) => {
-  await seed(page);
-});
+/** The seeded home, booted once for the tests of a describe. */
+const seededHome = (colorScheme?: "dark") =>
+  pageOnce(
+    async (page) => {
+      await seed(page);
+      await openHome(page);
+    },
+    colorScheme ? { colorScheme } : {},
+  );
 
-test("home has no serious or critical violations", async ({ page }) => {
-  await openHome(page);
-  await audit(page, "home");
-});
+test.describe("home", () => {
+  const shared = seededHome();
 
-test("the tile menu, open, has none either", async ({ page }) => {
-  await openHome(page);
-  await page.getByRole("button", { name: "Actions for Groceries" }).click();
-  await expect(page.getByRole("menu")).toBeVisible();
-  await audit(page, "tile menu");
+  test("home has no serious or critical violations", async () => {
+    await audit(shared(), "home");
+  });
+
+  test("the tile menu, open, has none either", async () => {
+    const page = shared();
+    await page.getByRole("button", { name: "Actions for Groceries" }).click();
+    await expect(page.getByRole("menu")).toBeVisible();
+    await audit(page, "tile menu");
+  });
 });
 
 test("the in-app switcher has none", async ({ page }) => {
+  await seed(page);
   await openApp(page, "groceries", "Groceries");
   await openSwitcher(page);
   await audit(page, "switcher");
@@ -39,24 +53,30 @@ test("the in-app switcher has none", async ({ page }) => {
 // Dark (#92): the same three audits under `prefers-color-scheme: dark`, so a token that only reads
 // on paper is caught here rather than on a phone at night.
 test.describe("dark", () => {
-  test.use({ colorScheme: "dark" });
+  test.describe("home", () => {
+    const shared = seededHome("dark");
 
-  test("home has no serious or critical violations in dark", async ({ page }) => {
-    await openHome(page);
-    await audit(page, "home, dark");
+    test("home has no serious or critical violations in dark", async () => {
+      await audit(shared(), "home, dark");
+    });
+
+    test("the open tile menu has none in dark", async () => {
+      const page = shared();
+      await page.getByRole("button", { name: "Actions for Groceries" }).click();
+      await expect(page.getByRole("menu")).toBeVisible();
+      await audit(page, "tile menu, dark");
+    });
   });
 
-  test("the open tile menu has none in dark", async ({ page }) => {
-    await openHome(page);
-    await page.getByRole("button", { name: "Actions for Groceries" }).click();
-    await expect(page.getByRole("menu")).toBeVisible();
-    await audit(page, "tile menu, dark");
-  });
+  test.describe("switcher", () => {
+    test.use({ colorScheme: "dark" });
 
-  test("the in-app switcher has none in dark", async ({ page }) => {
-    await openApp(page, "groceries", "Groceries");
-    await openSwitcher(page);
-    await audit(page, "switcher, dark");
+    test("the in-app switcher has none in dark", async ({ page }) => {
+      await seed(page);
+      await openApp(page, "groceries", "Groceries");
+      await openSwitcher(page);
+      await audit(page, "switcher, dark");
+    });
   });
 });
 
@@ -64,6 +84,7 @@ test.describe("reduced motion", () => {
   test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
 
   test("nothing on the launcher animates for longer than nothing", async ({ page }) => {
+    await seed(page);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await openHome(page);
     // The bottom sheet is the launcher's one entrance animation.
