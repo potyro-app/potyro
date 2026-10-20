@@ -208,6 +208,14 @@ body,
 #root {
   height: 100%;
 }
+/* No double-tap-to-zoom, so a tap is a click at once. Firefox on Android keeps the ~300 ms wait
+   after every tap (is a second one coming?) on any page it can zoom — Chrome stopped doing that for
+   `width=device-width` pages, Firefox did not — and this is the one thing that tells it not to.
+   Pinch zoom stays; the grips that say `touch-action: none` stay stricter. The sealed frames say the
+   same for their own document (host/src/realm/frame.ts). */
+html {
+  touch-action: manipulation;
+}
 body {
   margin: 0;
   background: radial-gradient(120% 80% at 50% -10%, var(--surface), var(--paper));
@@ -15790,4 +15798,28 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 /* A page's own add is the phone's "+" in the top bar: not a chip as well. */
 .k-app-phone .k-page-action[data-page-add] {
   display: none;
+}
+
+/* Firefox draws a `backdrop-filter` by re-rendering everything under it on every frame, and on
+   Android that is enough to make a page with a frosted bar scroll in jerks (Mozilla bugs 1731965,
+   1809738, 1718471). Every screen here has two such bars, and a page over a picture has one per row.
+   There, no blur: the bars and rows keep their translucent surfaces, a touch more opaque so the
+   text stays readable without the frost. `-moz-appearance` is a property only Gecko has. */
+@supports (-moz-appearance: none) {
+  * {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  .k-topbar {
+    background: color-mix(in oklab, var(--surface) 95%, transparent);
+  }
+  .k-tabbar {
+    background: color-mix(in oklab, var(--surface) 96%, transparent);
+  }
+  .k-app:has(.k-page-ground) :is(.k-list-row, .k-check-row, .k-card, .k-check-add) {
+    background: color-mix(in oklab, var(--surface) 92%, transparent);
+  }
+  .k-app:has(.k-page-ground) .k-fold-group > .k-fold-head {
+    background: color-mix(in oklab, var(--bg) 85%, transparent);
+  }
 }
