@@ -12,6 +12,7 @@ import type { MapCamera, Resolved } from "potyro";
 import type { BuiltinViewProps, DisplayCell } from "./types.js";
 import { getView } from "./format.js";
 import { useDisplayCells } from "./cells.js";
+import { rowOpener } from "./builtins.js";
 import { DetailView } from "./detail.js";
 import { canDrawMaps, loadMapLibre, mapDraws, removeMap } from "./maplibre.js";
 
@@ -307,8 +308,12 @@ export function MapView(props: BuiltinViewProps) {
   entityRef.current = view?.entity ?? "";
   const geoFieldKey = useRef(typeof view?.geo === "string" ? view.geo : "");
   geoFieldKey.current = typeof view?.geo === "string" ? view.geo : "";
-  const onOpenRef = useRef((view as { onOpen?: { page: string; param?: Record<string, string> } } | undefined)?.onOpen);
-  onOpenRef.current = (view as { onOpen?: { page: string; param?: Record<string, string> } } | undefined)?.onOpen;
+  const onOpenRef = useRef((view as { onOpen?: unknown } | undefined)?.onOpen);
+  onOpenRef.current = (view as { onOpen?: unknown } | undefined)?.onOpen;
+  // The app's own reaction to a pin or card tapped (`onSelect`): a function, or a sealed app's stand-in
+  // for one — either is called through the host with the record. Absent: the view's defaults.
+  const onSelectRef = useRef((view as { onSelect?: unknown } | undefined)?.onSelect);
+  onSelectRef.current = (view as { onSelect?: unknown } | undefined)?.onSelect;
   const navigateRef = useRef(props.navigate);
   navigateRef.current = props.navigate;
   // The record's own page, if the app has one for this entity — rendered OVER the map rather than
@@ -460,22 +465,19 @@ export function MapView(props: BuiltinViewProps) {
         // Tapping a pin shows WHICH place it is, and offers a way in. Navigating straight off the
         // tap gave no way to just look at the map: every touch left the page.
         const onOpen = onOpenRef.current;
+        const open = rowOpener(runtime, pageId, onOpen, (page, param) => navigateRef.current(page, param));
         const index = rowsRef.current.findIndex((r) => String(r.id) === mk.id);
         const actions: { label: string; primary?: boolean; run: () => void }[] = [];
         // The whole record, over the map. Leaving the page to read a record's own page means losing
         // the framing you navigated to — and on a map that framing is half of what you were doing.
         if (detailPageRef.current) actions.push({ label: tr({ message: "Details", comment: "Map pin: show the place's record over the map" }), primary: true, run: () => setOpenId(mk.id) });
-        else if (onOpen) {
+        else if (open) {
           actions.push({
             label: tr({ message: "Open", comment: "Map pin: open the place's page" }),
             primary: true,
             run: () => {
               const row = rowsRef.current.find((r) => String(r.id) === mk.id);
-              const param: Record<string, string> = {};
-              for (const [target, sourceKey] of Object.entries(onOpen.param ?? {})) {
-                param[target] = String((row?.[sourceKey] as unknown) ?? "");
-              }
-              navigateRef.current(onOpen.page, param);
+              if (row) open(row);
             },
           });
         }
@@ -485,7 +487,7 @@ export function MapView(props: BuiltinViewProps) {
           // With a strip, a pin brings its card to the front: the card is the popup.
           marker.getElement().addEventListener("click", (ev) => {
             ev.stopPropagation();
-            setSelected(mk.id);
+            if (!selectPin(mk.id)) setSelected(mk.id);
           });
           markerEls.current.set(mk.id, marker.getElement());
         } else {
@@ -574,6 +576,12 @@ export function MapView(props: BuiltinViewProps) {
         // Left alone when unasked-for, so "go here" can pan without throwing away the scale.
         return moveTo(center, typeof to?.zoom === "number" ? to.zoom : (map.getZoom?.() ?? 12));
       }
+      if (verb === "map.select") return typeof arg === "string" && focusPin(arg);
+      if (verb === "map.open") {
+        if (typeof arg !== "string" || !markersRef.current.some((m) => m.id === arg)) return false;
+        openPin(arg);
+        return true;
+      }
       if (verb === "map.fit") {
         const bounds = boundsRef.current;
         if (!bounds) return false;
@@ -617,14 +625,28 @@ export function MapView(props: BuiltinViewProps) {
   /** A pin's way in, without a map: the record over the page, or the app's own page for it. */
   const openPin = (id: string): void => {
     if (detailPage) return setOpenId(id);
-    const onOpen = onOpenRef.current;
-    if (onOpen) {
-      const row = rows.find((r) => String(r.id) === id);
-      const param: Record<string, string> = {};
-      for (const [target, sourceKey] of Object.entries(onOpen.param ?? {})) param[target] = String((row?.[sourceKey] as unknown) ?? "");
-      return props.navigate(onOpen.page, param);
-    }
+    const open = rowOpener(runtime, pageId, onOpenRef.current, props.navigate);
+    const row = rows.find((r) => String(r.id) === id);
+    if (open && row) return open(row);
     onEdit?.(view?.entity ?? "", id);
+  };
+
+  /** The pin comes to the front and the map goes to it: `ctx.views.map(page).select(id)`, a card tapped. */
+  const focusPin = (id: string): boolean => {
+    const mk = markersRef.current.find((m) => m.id === id);
+    if (!mk) return false;
+    setSelected(id);
+    mapRef.current?.easeTo?.({ center: [mk.lng, mk.lat] });
+    return true;
+  };
+
+  /** The app's `onSelect`, if it declares one, with the record: true when it was the app's to handle. */
+  const selectPin = (id: string): boolean => {
+    if (!onSelectRef.current) return false;
+    const row = rowsRef.current.find((r) => String(r.id) === id);
+    if (!row) return false;
+    void runtime.resolveBinding({ kind: "view", page: pageId, path: "onSelect" }, row, runtime.ctx).catch((e: unknown) => console.warn(`[potyro] onSelect of page ${pageId} failed:`, e));
+    return true;
   };
 
   // The pin in front wears it, and its card comes into view (a pin tapped, or the strip re-ranked).
@@ -650,9 +672,7 @@ export function MapView(props: BuiltinViewProps) {
         if (!best || d < best.d) best = { id: el.dataset.id ?? "", d };
       }
       if (!best || best.id === selected) return;
-      setSelected(best.id);
-      const mk = markersRef.current.find((m) => m.id === best!.id);
-      if (mk) mapRef.current?.easeTo?.({ center: [mk.lng, mk.lat] });
+      focusPin(best.id);
     }, 120);
   };
 
@@ -665,7 +685,7 @@ export function MapView(props: BuiltinViewProps) {
           const cell = cells[rows.findIndex((r) => String(r.id) === id)];
           return (
             <li key={id} data-id={id} data-selected={selected === id || undefined}>
-              <button type="button" className="k-map-card" onClick={() => openPin(id)}>
+              <button type="button" className="k-map-card" onClick={() => selectPin(id) || openPin(id)}>
                 {cell?.mediaUrl ? (
                   <img className="k-map-card-media" src={cell.mediaUrl} alt="" decoding="async" draggable={false} />
                 ) : (

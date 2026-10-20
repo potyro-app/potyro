@@ -211,10 +211,13 @@ const quickActionSchema = z.object({
   prefill: z.record(z.any()).optional(),
 });
 
-const onOpenSchema = z.object({
-  page: z.string(),
-  param: z.record(z.string()).optional(),
-});
+const onOpenSchema = z.union([
+  z.object({
+    page: z.string(),
+    param: z.record(z.string()).optional(),
+  }),
+  zFn,
+]);
 
 const listDisplaySchema = z.object({
   primary: zBinding.optional(),
@@ -368,6 +371,7 @@ const mapView = z.object({
   locate: z.boolean().optional(),
   strip: z.boolean().optional(),
   display: listDisplaySchema.optional(),
+  onSelect: zFn.optional(),
 });
 
 const stepsView = z.object({

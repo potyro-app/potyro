@@ -615,6 +615,8 @@ export class RealmLoadedApp implements LoadedApp {
         const verb = s(1);
         if (verb === "map.flyTo") return ctx.views.map(s(0)).flyTo(x(2));
         if (verb === "map.fit") return ctx.views.map(s(0)).fit();
+        if (verb === "map.select") return ctx.views.map(s(0)).select(s(2));
+        if (verb === "map.open") return ctx.views.map(s(0)).open(s(2));
         return false;
       }
       // Capabilities: whatever `mediateCaps` put on this ctx — absent unless the manifest asked for it,

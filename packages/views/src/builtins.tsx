@@ -19,6 +19,28 @@ import { Lead, initialOf, leadSwatch, type LeadKind } from "./lead.js";
 import { useReportCount } from "./page-count.js";
 import { pageOf } from "./backdrop.js";
 
+/**
+ * What a view's `onOpen` says to do with a row: go to a page (the data form), or run the app's own
+ * function with the record (`onOpen: (record, ctx) => …`). A sealed app's function reaches the view
+ * as a stand-in string and is called through the host like every other binding, so both forms
+ * work for every app. `undefined` when the view declares nothing: the view keeps its default.
+ */
+export function rowOpener(runtime: BuiltinViewProps["runtime"], pageId: string, onOpen: unknown, navigate: (page: string, param: Record<string, string>) => void): ((row: Resolved) => void) | undefined {
+  if (!onOpen) return undefined;
+  if (typeof onOpen === "object" && typeof (onOpen as { page?: unknown }).page === "string") {
+    const spec = onOpen as { page: string; param?: Record<string, string> };
+    return (row) => navigate(spec.page, mapOnOpen(spec, row));
+  }
+  return (row) => {
+    void runtime.resolveBinding({ kind: "view", page: pageId, path: "onOpen" }, row, runtime.ctx).catch((e: unknown) => console.warn(`[potyro] onOpen of page ${pageId} failed:`, e));
+  };
+}
+
+/** `onOpen`'s route params, for the data form only (a function has none). */
+export function onOpenParam(onOpen: unknown): Record<string, string> | undefined {
+  return typeof onOpen === "object" && onOpen ? (onOpen as { param?: Record<string, string> }).param : undefined;
+}
+
 export function mapOnOpen(onOpen: { page: string; param?: Record<string, string> } | undefined, row: Resolved) {
   if (!onOpen?.param) return {};
   const out: Record<string, string> = {};
@@ -226,11 +248,7 @@ export function ListView(props: BuiltinViewProps) {
 
   // Tapping a row opens its detail if the app wired one, else opens the editor — so a record is
   // always reachable to view/edit even when the generated app didn't link a detail page.
-  const openRow = view.onOpen
-    ? (row: Resolved) => navigate(view.onOpen!.page, mapOnOpen(view.onOpen, row))
-    : onEdit
-    ? (row: Resolved) => onEdit(view.entity, String(row.id))
-    : undefined;
+  const openRow = rowOpener(runtime, pageId, view.onOpen, navigate) ?? (onEdit ? (row: Resolved) => onEdit(view.entity, String(row.id)) : undefined);
 
   if (error) return <LoadError message={error} />;
   if (loading || !groups) return <p className="k-loading">{t`Loading…`}</p>;
@@ -241,7 +259,7 @@ export function ListView(props: BuiltinViewProps) {
   const hasDetail = Boolean(view.onOpen);
   // In a split layout (#105) the opened row's id sits in the page's params under the param its
   // `onOpen` maps from "id"; that row is the selected one.
-  const selectedKey = Object.entries(view.onOpen?.param ?? {}).find(([, source]) => source === "id")?.[0];
+  const selectedKey = Object.entries(onOpenParam(view.onOpen) ?? {}).find(([, source]) => source === "id")?.[0];
   // Cells line up with `rows`; a grouped row is looked up by id (a tag puts one row in two groups).
   const cellIndex = new Map(rows.map((r, i) => [r.id, i]));
   const lead = view.display?.lead ?? autoLead(rows.map((r, i) => cells[i]?.primary ?? String(r[displayFieldFor(runtime, view.entity)] ?? "")), entityDef?.icon);
@@ -368,11 +386,7 @@ export function GalleryView(props: BuiltinViewProps) {
   useReportCount(loading || error ? undefined : rows.length);
   const entityDef = runtime.definition.entities[view.entity];
 
-  const openCard = view.onOpen
-    ? (row: Resolved) => navigate(view.onOpen!.page, mapOnOpen(view.onOpen, row))
-    : onEdit
-    ? (row: Resolved) => onEdit(view.entity, String(row.id))
-    : undefined;
+  const openCard = rowOpener(runtime, pageId, view.onOpen, navigate) ?? (onEdit ? (row: Resolved) => onEdit(view.entity, String(row.id)) : undefined);
 
   if (error) return <LoadError message={error} />;
   if (loading || !groups) return <p className="k-loading">{t`Loading…`}</p>;

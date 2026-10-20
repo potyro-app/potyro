@@ -282,6 +282,8 @@ export function makeRealmCtx(base: CtxBase, tx: Transport, opts: RealmCtxOptions
       map: (page) => ({
         flyTo: (to) => call("views.call", String(page), "map.flyTo", to),
         fit: () => call("views.call", String(page), "map.fit"),
+        select: (id) => call("views.call", String(page), "map.select", String(id)),
+        open: (id) => call("views.call", String(page), "map.open", String(id)),
       }),
     },
     navigate: (page, params) => send("navigate", String(page), params ? { ...params } : undefined),

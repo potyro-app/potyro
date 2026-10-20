@@ -39,7 +39,7 @@ import { FN_SENTINEL } from "@potyro/runtime";
 import type { BuiltinViewProps } from "./types.js";
 import { displayFieldFor, getView } from "./format.js";
 import { useDynamicText } from "./dynamic.js";
-import { RowActions, mapOnOpen } from "./builtins.js";
+import { RowActions, rowOpener } from "./builtins.js";
 import { createDefaults } from "./record-form.js";
 import { useRowGroups } from "./row-groups.js";
 import { useReorder } from "./reorder.js";
@@ -713,7 +713,7 @@ export function ChecklistView(props: BuiltinViewProps) {
             item is what its detail page (the chevron) is for. */}
         <RowActions runtime={runtime} entity={view.entity} actions={view.rowActions} id={id} label={rt.text || t`this item`} />
         {view.onOpen ? (
-          <button type="button" className="k-check-open" aria-label={t`Open ${name}`} onClick={() => navigate(view.onOpen!.page, mapOnOpen(view.onOpen, r))}>
+          <button type="button" className="k-check-open" aria-label={t`Open ${name}`} onClick={() => rowOpener(runtime, pageId, view.onOpen, navigate)?.(r)}>
             ›
           </button>
         ) : null}
