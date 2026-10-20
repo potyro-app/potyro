@@ -1,5 +1,5 @@
 # The ship gate (docs/16 §8): the checks, and the browser specs a change needs — all 202 files as
-# eight parallel shards when it touches what every spec boots, a named few when it touches one app
+# sixteen parallel shards when it touches what every spec boots, a named few when it touches one app
 # or one surface, none when it touches only docs or servers the browser never reaches
 # (scripts/ci-select.mjs). `pnpm ship <pr>` runs it on the PR's head and merges when it is green.
 #
@@ -18,10 +18,10 @@ on:
 
 concurrency:
   group: ship-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: true
 
 env:
-  SHARDS: 8
+  SHARDS: 16
 
 jobs:
   select:
@@ -61,7 +61,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r build
       - run: pnpm -r test
       - run: pnpm typecheck
       - run: pnpm lint:boundaries
@@ -76,7 +75,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -87,8 +86,16 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r build
+      - name: Chromium for Playwright (cached by its version)
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm exec playwright install --with-deps chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+      - run: pnpm exec playwright install-deps chromium
+        if: steps.pw-cache.outputs.cache-hit == 'true'
       # ci-local's shard: the same deal of files by measured duration every runner computes alike
       # (e2e/timings.json), one worker, a retry, and the JSON report folded into the timings.
       - name: Shard ${{ matrix.shard }} of ${{ env.SHARDS }}
@@ -117,8 +124,16 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r build
+      - name: Chromium for Playwright (cached by its version)
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm exec playwright install --with-deps chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+      - run: pnpm exec playwright install-deps chromium
+        if: steps.pw-cache.outputs.cache-hit == 'true'
       - name: The specs this change needs
         run: pnpm exec playwright test ${{ needs.select.outputs.files }} --project=trusted --project=sandbox --workers=1 --retries=1 --reporter=line
       - uses: actions/upload-artifact@v4
@@ -144,7 +159,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r build
       - run: pnpm --filter @potyro/shell exec vite build
       - name: version.json
         run: echo "{\"commit\":\"${{ github.sha }}\",\"deployedAt\":\"$(date -u +%FT%TZ)\"}" > packages/shell/dist/version.json
