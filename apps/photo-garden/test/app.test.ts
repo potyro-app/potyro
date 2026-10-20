@@ -15,9 +15,12 @@ describe("Photo Garden", () => {
     expect(checkReferences(app)).toEqual([]);
   });
 
-  it("asks for the camera, and imports p5 by an exact-version URL", () => {
+  it("asks for the camera, and imports p5 by an exact-version URL — only when the Studio mounts (#388)", () => {
     expect(app.permissions?.camera).toBe(true);
-    expect(source).toMatch(/from "https:\/\/esm\.sh\/p5@\d+\.\d+\.\d+\?bundle"/);
+    // At the top, a type only: p5 reads `window` as it loads, and a shared app's logic runs in a Worker.
+    expect(source).toMatch(/import type p5 from "https:\/\/esm\.sh\/p5@\d+\.\d+\.\d+\?bundle"/);
+    expect(source).toMatch(/await import\("https:\/\/esm\.sh\/p5@\d+\.\d+\.\d+\?bundle"\)/);
+    expect(source).not.toMatch(/^import p5 from/m);
   });
 
   it("reaches the camera only through ctx (CLAUDE.md rule 2)", () => {
@@ -26,7 +29,7 @@ describe("Photo Garden", () => {
   });
 
   it("uses p5 in instance mode and tears it down", () => {
-    expect(source).toMatch(/new p5\(\(p\) =>/);
+    expect(source).toMatch(/new P5\(\(p\) =>/);
     expect(source).toContain("sketch?.remove()");
   });
 
