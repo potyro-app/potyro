@@ -209,6 +209,12 @@ export interface LoadedApp {
    * runs in its box and only the data comes out. The shell checks the shape (`checkTileContent`).
    */
   callTile(ctx: Ctx): Promise<Value>;
+  /**
+   * The app's demo (`AppDefinition.demo`, docs/04 §Demo): what it plays when a demo link opens it,
+   * run where the app runs; nothing when it declares none. The shell calls it once the demo records
+   * are in, and does not wait for it: a replay goes on in the background, as the app's actions do.
+   */
+  callDemo(ctx: Ctx): Promise<void>;
   reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null>;
   /** Trusted apps only (docs/05 policy); untrusted returns null and falls back to built-ins. */
   customView(pageId: string): CustomViewComponent | null;

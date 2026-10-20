@@ -62,6 +62,21 @@ error. The launcher keeps what it can show (`checkTileContent`: a whole count up
 to 60 characters, three lines of 80, a picture reference — never an address) and makes a picture
 small (240 px) before keeping it.
 
+### Demo — what a demo link plays (docs/24 §3)
+
+```ts
+demo?: (ctx: Ctx) => void | Promise<void>;
+```
+
+Every shared link opens the app as a working demo, on its sample records: for most apps the
+`seed.json` in the package is the whole demo. An app that lives on a feed cannot be shown by records
+written in advance — an earthquake from last week is not "in the last 24 hours" — so it declares
+what to **play** instead: the shell calls `demo(ctx)` once the demo records are in, where the app
+runs (`LoadedApp.callDemo`, docs/05), and does not wait for it. A replay goes on in the background
+like one of the app's actions; Earthquakes, Word Watch and Ticker hand it the same function their
+"Demo" button runs. It runs only for a demo link, never for a copy someone keeps or adds: those start
+as the app starts for anyone, with the sample records if the card kept them.
+
 ### How it looks — presentation options (all optional)
 
 `theme.background` / a page's `background` (`"wash"` default · `"dots"` · `"grain"` · `"plain"` · `{ image: "<path in ctx.files>" }`

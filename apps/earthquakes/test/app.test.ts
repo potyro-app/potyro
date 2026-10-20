@@ -222,3 +222,9 @@ describe("the demo", () => {
     expect(f.opened).toEqual([EMSC_SOCKET]);
   });
 });
+
+describe("a demo link (docs/04 §Demo)", () => {
+  it("declares its demo: the replay the Demo button plays, started by the shell when a link opens", () => {
+    expect(app.demo).toBe(playDemo);
+  });
+});

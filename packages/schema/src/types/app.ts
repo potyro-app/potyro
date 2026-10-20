@@ -796,6 +796,8 @@ export interface AppDefinition {
   theme?: Theme;
   /** Live launcher tile (docs/04 §Tile). */
   tile?: (ctx: Ctx) => TileContent | Promise<TileContent>;
+  /** What a demo link plays when it opens (docs/04 §Demo): a feed's replay, when sample records cannot stand in. */
+  demo?: (ctx: Ctx) => void | Promise<void>;
   /** Launcher group: "games". */
   category?: string;
   permissions?: PermissionManifest;

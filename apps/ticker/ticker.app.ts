@@ -90,6 +90,8 @@ export default defineApp({
   theme: { accent: "#0f766e" },
   nav: "tabs",
   permissions: { network: { hosts: [COINBASE_WS_HOST, COINBASE_REST_HOST, FX_HOST] }, notifications: true, haptics: true },
+  // A demo link opens with the replay already playing (docs/04 §Demo): the same as the Demo button.
+  demo: playDemo,
   quickActions: [],
   entities: {
     symbol: {
