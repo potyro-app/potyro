@@ -264,7 +264,9 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         map: function(page){
           return {
             flyTo: function(to){ return bridge({op:"views.call", page:String(page), verb:"map.flyTo", arg:to}); },
-            fit: function(){ return bridge({op:"views.call", page:String(page), verb:"map.fit", arg:null}); }
+            fit: function(){ return bridge({op:"views.call", page:String(page), verb:"map.fit", arg:null}); },
+            select: function(id){ return bridge({op:"views.call", page:String(page), verb:"map.select", arg:String(id)}); },
+            open: function(id){ return bridge({op:"views.call", page:String(page), verb:"map.open", arg:String(id)}); }
           };
         }
       },

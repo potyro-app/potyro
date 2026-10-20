@@ -436,6 +436,8 @@ class IsolateLoadedApp implements LoadedApp {
         const arg = op.arg ?? undefined;
         if (verb === "map.flyTo") return serialize(await ctx.views.map(page).flyTo(arg as { center: [number, number]; zoom?: number }));
         if (verb === "map.fit") return serialize(await ctx.views.map(page).fit());
+        if (verb === "map.select") return serialize(await ctx.views.map(page).select(String(arg)));
+        if (verb === "map.open") return serialize(await ctx.views.map(page).open(String(arg)));
         return serialize(false);
       }
       default:

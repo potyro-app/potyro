@@ -44,7 +44,7 @@ export type AppSource = (
 
 /** Identifies a function *binding* so untrusted calls can be marshalled by reference. */
 export type BindingRef =
-  | { kind: "view"; page: string; path: "display.primary" | "display.secondary" | "display.icon" | "date" | "title" | "color" | "text" | "detail" | "group" | "geo" | "icon" }
+  | { kind: "view"; page: string; path: "display.primary" | "display.secondary" | "display.icon" | "date" | "title" | "color" | "text" | "detail" | "group" | "geo" | "icon" | "onOpen" | "onSelect" }
   | { kind: "reminder"; id: string; path: "title" | "body" };
 
 /** A `UiItem` with its words already in the person's language — what the shell renders. */
