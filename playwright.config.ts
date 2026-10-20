@@ -22,6 +22,16 @@ const PROD_PORT = PORTS.prod;
 const QUICKJS_PORT = PORTS.quickjs;
 /** The dev servers' default relay: this block's, so a page that never names one still syncs here. */
 const DEV_ENV = { VITE_POTYRO_DEV_RELAY: E2E_RELAY };
+/**
+ * Each dev server's own Vite dependency cache. Two servers on one cache, cold, optimise at once and
+ * rename `deps` over each other: the first test of the run then hangs until its timeout (measured
+ * 2026-10-19, 2 of 2 cold runs). `ci-local` names one folder per shard; here each server of the shard
+ * gets its own beside it, and a plain `pnpm e2e` gets one per server too, apart from `pnpm dev`'s.
+ */
+const serverEnv = (server: string) => ({
+  ...DEV_ENV,
+  POTYRO_VITE_CACHE_DIR: `${process.env.POTYRO_VITE_CACHE_DIR || "node_modules/.vite-e2e/local"}-${server}`,
+});
 const shellVite = (extra: string, port: number) =>
   `pnpm --filter @potyro/shell exec vite ${extra} --port ${port} --strictPort`;
 
@@ -84,14 +94,14 @@ export default defineConfig<{ guardConsole: boolean }>({
     },
     {
       command: shellVite("", TRUSTED_PORT),
-      env: DEV_ENV,
+      env: serverEnv("trusted"),
       url: `http://localhost:${TRUSTED_PORT}`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
       command: shellVite("--mode sandbox", SANDBOX_PORT),
-      env: DEV_ENV,
+      env: serverEnv("sandbox"),
       url: `http://localhost:${SANDBOX_PORT}`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
@@ -102,7 +112,7 @@ export default defineConfig<{ guardConsole: boolean }>({
       ? [
           {
             command: shellVite("--mode sandbox-quickjs", QUICKJS_PORT),
-            env: DEV_ENV,
+            env: serverEnv("quickjs"),
             url: `http://localhost:${QUICKJS_PORT}`,
             reuseExistingServer: !process.env.CI,
             timeout: 120_000,
