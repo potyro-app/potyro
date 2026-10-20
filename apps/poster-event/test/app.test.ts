@@ -390,3 +390,14 @@ describe("pages and reminders", () => {
     expect(rem.when(at(new Date(2026, 9, 8, 20, 0)), ctx)).toBeNull();
   });
 });
+
+describe("a demo link (docs/04 §Demo)", () => {
+  it("keeps the sample reading without a question, so the link opens on something", async () => {
+    const { ctx, log } = fakeCtx();
+    await app.demo!(ctx as never);
+    expect(log.forms).toEqual([]);
+    expect("sheets" in log ? (log as { sheets?: unknown[] }).sheets : (log as { sheetTitles?: string[] }).sheetTitles).toEqual([]);
+    expect(log.created.length).toBeGreaterThan(0);
+    expect(log.created.every((c) => (c.data as { photo?: unknown; poster?: unknown }).photo || (c.data as { poster?: unknown }).poster || c.entity === "check")).toBe(true);
+  });
+});
