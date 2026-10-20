@@ -397,7 +397,10 @@ describe("a demo link (docs/04 §Demo)", () => {
     await app.demo!(ctx as never);
     expect(log.forms).toEqual([]);
     expect("sheets" in log ? (log as { sheets?: unknown[] }).sheets : (log as { sheetTitles?: string[] }).sheetTitles).toEqual([]);
-    expect(log.created.length).toBeGreaterThan(0);
-    expect(log.created.every((c) => (c.data as { photo?: unknown; poster?: unknown }).photo || (c.data as { poster?: unknown }).poster || c.entity === "check")).toBe(true);
+    expect(log.created).toHaveLength(1);
+    const rec = log.created[0] as Record<string, unknown>;
+    expect(rec.title).toBeTruthy();
+    expect(rec.start).toBeInstanceOf(Date);
+    expect(rec.poster).toBeTruthy();
   });
 });
