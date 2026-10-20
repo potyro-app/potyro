@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createElement, Fragment } from "react";
 import { checkReferences, isPotyroApp, structureSchema } from "potyro";
 import type { FileInfo } from "potyro";
-import app, { fileNameFor, renderMarkdown, titleOf } from "../notes.app.js";
+import app, { applyMark, fileNameFor, markForKey, renderMarkdown, saveNote, titleOf, type Edit } from "../notes.app.js";
 
 const html = (md: string): string => renderToStaticMarkup(createElement(Fragment, null, ...renderMarkdown(md)));
 
@@ -71,7 +71,7 @@ describe("its actions, over a folder", () => {
       },
       patch: async (_e: string, id: string, data: Record<string, unknown>) => Object.assign(records.find((r) => r.id === id)!, data),
       ui: { toast: () => {}, form: async () => (answer === null ? null : { text: answer }), prompt: async () => answer },
-      navigate: () => {},
+      navigate: (_page: string, _param?: Record<string, string>) => {},
     };
     return { ctx, files, records };
   }
@@ -89,14 +89,86 @@ describe("its actions, over a folder", () => {
     ]);
   });
 
-  it("saves an edit into the same file, and takes the new title from it", async () => {
-    const { ctx, records, files } = fakeCtx([{ name: "trip.md", text: "# Lisbon" }], "# Lisbon and Porto\n\nfado");
+  it("Edit opens the editor screen for the note, and saving writes the same file and takes the new title from it", async () => {
+    const { ctx, records, files } = fakeCtx([{ name: "trip.md", text: "# Lisbon" }]);
+    const opened: Array<[string, Record<string, string> | undefined]> = [];
+    ctx.navigate = (page: string, param?: Record<string, string>) => void opened.push([page, param]);
     await app.pages[0]!.actions!.find((a) => /Bring/.test(String(a.label)))!.run(ctx as never);
     const note = records[0]!;
     const edit = app.entities.note!.actions!.edit as (r: unknown, c: unknown) => Promise<void>;
     await edit(note, ctx);
+    expect(opened).toEqual([["edit", { noteId: "r1" }]]);
+    await saveNote(note as never, "# Lisbon and Porto\n\nfado", ctx as never);
     expect(files.get("notes/trip.md")!.text).toBe("# Lisbon and Porto\n\nfado");
     expect(note.title).toBe("Lisbon and Porto");
     expect((note.doc as { id: string }).id).toBe(files.get("notes/trip.md")!.info.id);
+  });
+});
+
+// The editor's marks are one pure function: a button or a key wraps or prefixes the selection, and
+// pressed again takes the mark off.
+describe("the editor's marks", () => {
+  const at = (text: string, start: number, end = start): Edit => ({ text, start, end });
+  const picked = (e: Edit) => e.text.slice(e.start, e.end);
+
+  it("wraps a selection in bold, and unwraps it again", () => {
+    const bold = applyMark(at("buy milk", 4, 8), "bold");
+    expect(bold.text).toBe("buy **milk**");
+    expect(picked(bold)).toBe("milk");
+    const plain = applyMark(bold, "bold");
+    expect(plain.text).toBe("buy milk");
+    expect(picked(plain)).toBe("milk");
+  });
+
+  it("with nothing selected, puts the cursor between the marks so typing lands inside", () => {
+    const e = applyMark(at("buy ", 4), "italic");
+    expect(e.text).toBe("buy **");
+    expect(e.start).toBe(5);
+    expect(e.end).toBe(5);
+    expect(applyMark(at("x", 1), "code").text).toBe("x``");
+  });
+
+  it("makes a link of the selection and selects the address to type over", () => {
+    const e = applyMark(at("see the site", 8, 12), "link");
+    expect(e.text).toBe("see the [site](url)");
+    expect(picked(e)).toBe("url");
+    expect(picked(applyMark(at("", 0), "link"))).toBe("text");
+  });
+
+  it("prefixes every line the selection touches, and takes the prefix off again", () => {
+    const list = applyMark(at("eggs\nmilk\nbread", 2, 12), "bullets");
+    expect(list.text).toBe("- eggs\n- milk\n- bread");
+    expect(applyMark(list, "bullets").text).toBe("eggs\nmilk\nbread");
+    expect(applyMark(at("a\nb", 0, 3), "numbers").text).toBe("1. a\n2. b");
+    expect(applyMark(at("a", 0), "tasks").text).toBe("- [ ] a");
+    expect(applyMark(at("a", 0), "quote").text).toBe("> a");
+  });
+
+  it("swaps one line mark for another instead of stacking them", () => {
+    expect(applyMark(at("- eggs", 3), "numbers").text).toBe("1. eggs");
+    expect(applyMark(at("> said", 2), "tasks").text).toBe("- [ ] said");
+  });
+
+  it("steps a heading through three levels and back to plain text", () => {
+    let e = applyMark(at("Plan", 2), "heading");
+    expect(e.text).toBe("# Plan");
+    e = applyMark(e, "heading");
+    expect(e.text).toBe("## Plan");
+    e = applyMark(e, "heading");
+    expect(e.text).toBe("### Plan");
+    expect(applyMark(e, "heading").text).toBe("Plan");
+  });
+
+  it("keeps the selection on the lines it marked", () => {
+    const e = applyMark(at("one\ntwo", 0, 7), "quote");
+    expect(picked(e)).toBe("> one\n> two");
+  });
+
+  it("knows its keys", () => {
+    expect(markForKey("b", true)).toBe("bold");
+    expect(markForKey("K", true)).toBe("link");
+    expect(markForKey("s", true)).toBe("save");
+    expect(markForKey("b", false)).toBeNull();
+    expect(markForKey("z", true)).toBeNull();
   });
 });
