@@ -357,6 +357,14 @@ export const CAPABILITIES: readonly Capability[] = [
     summary: "`ctx.views.map(pageId).flyTo({ center, zoom? })` / `.fit()` / `.select(id)` / `.open(id)`: reach a map that is on screen, from a page action (\"Centre on me\") or from the map's own `onSelect: (record, ctx) => …` (a pin or strip card tapped); any view's `onOpen` may be a function `(record, ctx) => …` instead of a page",
     // Also what the built-in views do beyond rows: a record page's related records, aggregate rows
     // that open or act, the checklist's add box, a record's own glyph — cut out of the core, read here.
+    notes: [
+      "A tap on a map's pin or strip card is the APP's to define: declare `onSelect: (record, ctx) => …` on the map",
+      "view and reach the map back with `ctx.views.map(pageId).select(record.id)` (the pin and its card to the",
+      "front, the map to it) or `.open(record.id)` (the record, as a tap would). \"When I tap a place at the",
+      "bottom, select its pin\" is ONE line in the app — `onSelect: (p, ctx) => ctx.views.map(\"map\").select(p.id)` —",
+      "never a custom view that redraws the strip. Likewise any view's `onOpen` may be a function `(record, ctx)`",
+      "instead of a page. Without `onSelect` the view's defaults stand (a pin brings its card up, a card opens).",
+    ].join("\n"),
     declarations: ["MapViewControl", "CtxViews", "RelatedSection"],
     members: [
       { of: "ListDisplay", name: "icon" },
