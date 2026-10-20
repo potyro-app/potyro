@@ -1,9 +1,13 @@
 import { test, expect, type Page } from "./console-guard";
 import AxeBuilder from "@axe-core/playwright";
+import { pageOnce } from "./once.js";
 
 // Stats and a chart (#109). Workout's Progress page: tiles for this week against last week, and a
 // bar chart of sessions per week. The clock is fixed so the seeded history lands in known weeks —
 // Wednesday 9 September, so this week holds one session and last week two.
+//
+// The desktop tests only read the page (a hover, the arrow keys, axe): it boots once for both, and
+// the dark one turns the scheme on the same page. The phone's viewport is its own boot.
 
 const NOW = new Date(2026, 8, 9, 12, 0, 0);
 const SHOTS = process.env.POTYRO_SHOTS;
@@ -28,10 +32,10 @@ async function openProgress(page: Page, phone = false): Promise<void> {
 const tile = (page: Page, label: string) => page.locator(".k-stat", { hasText: label });
 
 test.describe("desktop", () => {
-  test.use({ viewport: { width: 1440, height: 900 } });
+  const shared = pageOnce((page) => openProgress(page), { viewport: { width: 1440, height: 900 } });
 
-  test("tiles compare this week with last; the chart has a bar a week, a label on the latest, and a table", async ({ page }) => {
-    await openProgress(page);
+  test("tiles compare this week with last; the chart has a bar a week, a label on the latest, and a table", async () => {
+    const page = shared();
     await expect(tile(page, "Sessions this week").locator(".k-stat-value")).toHaveText("1");
     await expect(tile(page, "Sessions this week").locator(".k-stat-compare")).toHaveText("▼ 2 less than last week");
     await expect(tile(page, "Volume this week").locator(".k-stat-value")).toHaveText("4,236.5 kg");
@@ -70,9 +74,9 @@ test.describe("desktop", () => {
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(", ")}`)).toEqual([]);
   });
 
-  test("dark: the same page in the dark theme passes axe", async ({ page }) => {
+  test("dark: the same page in the dark theme passes axe", async () => {
+    const page = shared();
     await page.emulateMedia({ colorScheme: "dark" });
-    await openProgress(page);
     const results = await new AxeBuilder({ page }).include(".k-stats").include(".k-chart").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(", ")}`)).toEqual([]);
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/progress-dark.png` });
