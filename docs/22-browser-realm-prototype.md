@@ -643,7 +643,10 @@ endless-loop spec proves it: without the escalation the next view never mounts.
   the page says the screen runs only as yours and offers the trust dialog. In a **demo link** —
   nothing installed, nothing to promote — that button leads to **Keep this app** first.
 - **Deferred:** `ctx.caps.camera.live` in sealed views; a library that touches `document` at load
-  still breaks the logic Worker (the same bundle runs there), so such an app opens only as yours;
+  still breaks the logic Worker (the same bundle runs there), so such an app opens only as yours —
+  unless the app imports it where it draws, `await import(url)` in the view's mount, as Photo Garden
+  does with p5 (#388): the bundle carries the library, locked as any import by URL, and the Worker
+  never runs it;
   views in the Worker (OffscreenCanvas / remote DOM), should the Android probe show WebView frames
   freeze the shell and that matter in practice; the view runtime (276 KB minified, React and the
   schema `format.ts` pulls in) could be trimmed.

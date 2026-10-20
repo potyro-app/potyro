@@ -234,6 +234,9 @@ export interface LoadedApp {
   // The app's live launcher tile (docs/04 §Tile): what `tile(ctx)` returns, or null without one.
   // Through the host for the same reason: a sealed app's tile runs in its box; only data comes out.
   callTile(ctx: Ctx): Promise<Value>;
+  // The app's demo (docs/04 §Demo): what `demo(ctx)` plays when a demo link opens it; nothing without
+  // one. Run where the app runs, after the demo records are in, and not waited for.
+  callDemo(ctx: Ctx): Promise<void>;
   reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null>;
   customView(viewId: string): CustomViewComponent | null;   // trusted only; see note
   customViewMount?(viewId: string): CustomViewMount | null; // trusted only, the `mount` form

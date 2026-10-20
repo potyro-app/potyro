@@ -141,6 +141,8 @@ export interface Inspected {
   keeps: string[];
   /** The same, by id: what a seed may fill. */
   entityIds: string[];
+  /** Its `file` fields, by entity: where a seed's `{ "file": path }` is the shipped file itself, not a copy. */
+  fileFields: Record<string, string[]>;
   /** The device capabilities it declares. */
   asks: string[];
   /** Structure problems. Non-empty means it would not install. */
@@ -278,6 +280,9 @@ export async function inspectPackage(pkg: AppPackage, deps: PackageDeps = {}): P
     icon: facts.icon,
     keeps: Object.entries(facts.entities ?? {}).map(([k, e]) => say(e?.label) || k),
     entityIds: Object.keys(facts.entities ?? {}),
+    // Field types come from the code as it loaded (a manifest says only what it keeps); without a
+    // load, a seed's files are read as photos, as before #389.
+    fileFields: fileFieldsOf(((loaded ?? read) as { entities?: EntityShapes } | undefined)?.entities),
     asks: [...new Set(asks)],
     issues,
     installed: getUserApp(facts.id),
@@ -337,17 +342,34 @@ export async function applyShippedFiles(store: Store, files: PackagedFile[], opt
   return result;
 }
 
+/** An app's entities as the definition (or a trial's reading of it) has them: enough to know a field's type. */
+type EntityShapes = Record<string, { fields?: Record<string, { type?: string } | undefined> } | undefined> | undefined;
+
+/** Which fields of each entity are `file` fields: where a seed's `{ "file": path }` points at the shipped file itself. */
+export function fileFieldsOf(entities: EntityShapes): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [entity, def] of Object.entries(entities ?? {})) {
+    const keys = Object.entries(def?.fields ?? {})
+      .filter(([, f]) => f?.type === "file")
+      .map(([k]) => k);
+    if (keys.length) out[entity] = keys;
+  }
+  return out;
+}
+
 /**
  * Insert a package's first records. Only entities the app declares; a row's own fields as given —
- * except a photo named by a file the app shipped with, `{ "file": "photos/x.webp" }`, which becomes
- * the record's own copy of that picture (seed-files.ts). Its shipped files must be in its folder first.
+ * except a file named by one the app shipped with, `{ "file": "photos/x.webp" }`: a photo becomes
+ * the record's own copy of that picture, and a `file` field (`fileFields`, by entity) a reference to
+ * the shipped file (seed-files.ts). Its shipped files must be in its folder first.
  */
-export async function applySeed(store: Store, seed: AppPackage["seed"], entities: readonly string[]): Promise<number> {
+export async function applySeed(store: Store, seed: AppPackage["seed"], entities: readonly string[], fileFields: Record<string, readonly string[]> = {}): Promise<number> {
   let n = 0;
   for (const [entity, rows] of Object.entries(seed ?? {})) {
     if (!entities.includes(entity)) continue;
+    const files = new Set(fileFields[entity] ?? []);
     for (const row of rows) {
-      await store.insert(entity, (await resolveSeedFiles(store, row)) as never);
+      await store.insert(entity, (await resolveSeedFiles(store, row, files)) as never);
       n++;
     }
   }
@@ -456,7 +478,7 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
     await assertShipped(store, code.files.filter((f) => !synced || !isReservedPath(f.path)).map((f) => f.path));
     // What a person reads afterwards is about THEIR files, not the app's code.
     files = { written: theirs(shipped.written), kept: theirs(shipped.kept), removed: theirs(shipped.removed) };
-    seeded = update || !seeds ? 0 : await applySeed(store, pkg.seed, inspected.entityIds);
+    seeded = update || !seeds ? 0 : await applySeed(store, pkg.seed, inspected.entityIds, inspected.fileFields);
   } catch (e) {
     // Never a "working" app without its files. A new app is taken away again, so trying again is a
     // first install; an update keeps the app it was, and trying again writes the files again.

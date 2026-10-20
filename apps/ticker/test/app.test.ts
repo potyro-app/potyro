@@ -196,3 +196,9 @@ describe("the demo", () => {
     expect(f.rows("symbol").map((s) => [s.code, s.price ?? null])).toEqual([["BTC-USD", null], ["ETH-USD", null], ["EUR/USD", null]]);
   });
 });
+
+describe("a demo link (docs/04 §Demo)", () => {
+  it("declares its demo: the replay the Demo button plays, started by the shell when a link opens", () => {
+    expect(app.demo).toBe(playDemo);
+  });
+});

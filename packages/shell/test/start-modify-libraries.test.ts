@@ -161,7 +161,10 @@ describe("changing an app whose library needs a full web page", () => {
     // Like p5 1.x: it reads the page as it loads.
     const p5 = "const doc = window.document;\nexport default class p5 { constructor(sketch) { sketch(this); } }\n";
     const mods = await space({ [P5]: p5 }, { "garden.ts": readFileSync(resolve(dir, "garden.ts"), "utf8"), "styles.ts": readFileSync(resolve(dir, "styles.ts"), "utf8") });
-    await expect(buildAndValidate(source, mods)).rejects.toThrow(/p5 1\.11\.11 needs a full web page/);
+    // Since #388 the app imports p5 only when its Studio mounts, so loading it touches no page even
+    // with the real p5: the check passes outright. (An app importing such a library at the top still
+    // fails here with "needs a full web page" — the case above.)
+    await expect(buildAndValidate(source, mods)).resolves.toEqual([]);
 
     // One language in the source (docs/30): the rename is one string; its catalogs catch up on request.
     const line = '      title: "Gallery",';

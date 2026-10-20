@@ -533,6 +533,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
             break;
           }
           case "tile": result = typeof app.tile === "function" ? await app.tile(ctx) : null; break;
+          case "demo": if (typeof app.demo === "function") await app.demo(ctx); result = null; break;
           case "reminderWhen": { var rem = (app.reminders||[]).find(function(r){ return r.id === p.id; }); result = rem ? await rem.when(record, ctx) : null; break; }
           default: return __serialize({ ok:false, error:"unknown kind " + p.kind });
         }

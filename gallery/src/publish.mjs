@@ -78,15 +78,17 @@ async function savedApps(page) {
 }
 
 /**
- * Pack an app under apps/ into a zip, as `pnpm pack:app` does — with its sample records when it has
- * them: they are what its demo link opens on, and an app without them is an empty screen.
- * @param {string[]} files @param {string | undefined} seed @param {string} dir
+ * Pack an app under apps/ into a zip, as `pnpm pack:app` does — with the files it ships with and its
+ * sample records when it has them: they are what its demo link opens on, and an app without them is
+ * an empty screen.
+ * @param {{ package: string[]; files?: string; seed?: string }} from @param {string} dir
  */
-function pack(files, seed, dir) {
-  const [source, ...rest] = files.map((f) => resolve(ROOT, f));
+function pack(from, dir) {
+  const [source, ...rest] = from.package.map((f) => resolve(ROOT, f));
   const out = join(dir, "app.potyro-app.zip");
-  const seeded = seed ? ["--seed", resolve(ROOT, seed)] : [];
-  execFileSync(process.execPath, [join(ROOT, "scripts", "pack-app.mjs"), source, ...rest, ...seeded, "-o", out], { cwd: ROOT, stdio: "pipe" });
+  const shipped = from.files ? ["--files", resolve(ROOT, from.files)] : [];
+  const seeded = from.seed ? ["--seed", resolve(ROOT, from.seed)] : [];
+  execFileSync(process.execPath, [join(ROOT, "scripts", "pack-app.mjs"), source, ...rest, ...shipped, ...seeded, "-o", out], { cwd: ROOT, stdio: "pipe" });
   return out;
 }
 
@@ -98,7 +100,7 @@ async function bringApp(page, app, scratch) {
   await page.goto("/");
   const from = /** @type {import("./data.mjs").From} */ (app.from);
   if ("package" in from) {
-    const zip = pack(from.package, from.seed, scratch);
+    const zip = pack(from, scratch);
     await page.getByRole("button", { name: "Add an app" }).first().click();
     const dialog = page.getByRole("dialog", { name: "Add an app" });
     const chooser = page.waitForEvent("filechooser");

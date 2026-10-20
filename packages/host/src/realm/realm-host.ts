@@ -802,6 +802,9 @@ export class RealmLoadedApp implements LoadedApp {
   callTile(ctx: Ctx): Promise<Value> {
     return this.invoke("tile", [], ctx);
   }
+  async callDemo(ctx: Ctx): Promise<void> {
+    await this.invoke("demo", [], ctx);
+  }
   async reminderWhen(id: string, record: Resolved, ctx: Ctx): Promise<Date | null> {
     const v = await this.invoke("reminderWhen", [id, record], ctx);
     return v == null ? null : v instanceof Date ? v : new Date(String(v));

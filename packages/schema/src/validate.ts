@@ -809,6 +809,7 @@ export const structureSchema = z.object({
   theme: z.object({ accent: z.string().optional(), background: backdropSchema.optional() }).optional(),
   // A function, or the sealed box's placeholder for one (a definition read out of it).
   tile: z.union([zFn, z.literal("__potyro_fn__")]).optional(),
+  demo: z.union([zFn, z.literal("__potyro_fn__")]).optional(),
   category: z.string().min(1).max(24).regex(/^[a-z][a-z0-9-]*$/, "a category is one lowercase word, like games").optional(),
   permissions: permissionSchema.optional(),
   nav: z.enum(["grid", "tabs"]).optional(),

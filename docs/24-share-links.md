@@ -80,6 +80,9 @@ The device that shares builds them, in this order:
    Never what the person added since. An inline link too long with them is made without them.
 3. Otherwise **nothing**: the app opens empty, as it would for anyone who adds it. That is honest,
    and an app worth sharing is usable from empty.
+4. On the viewer's device, once the records are in, **the app's own demo** when it declares one
+   (`defineApp({ demo })`, docs/04 §Demo): an app that lives on a feed plays a replay, since records
+   written in advance would be stale by the time the link is opened. Only a demo link runs it.
 
 An app with an app-wide selection (docs/03 `scope`, Split's group) opens with the first of its demo
 records of that entity already chosen, not on "choose a group": a question before the app is on
@@ -216,7 +219,8 @@ first public face, and the place a share-link loop starts from without anyone's 
 
 **The data** is one file, `gallery/gallery.json` (`potyro-gallery/1`, checked by `gallery/src/data.mjs`):
 each app's id, its name and one line in all six languages, a category, an icon, and where it comes
-from — `{ "example": "groceries" }` or `{ "package": ["apps/receipt-split/receipt-split.app.ts"] }`.
+from — `{ "example": "groceries" }` or `{ "package": ["apps/receipt-split/receipt-split.app.ts"] }`, with
+`files` (a folder it ships with, packed whole) and `seed` (its sample records) when it has them.
 `status` is `ready` (works sealed today, with built-in views) or `coming-soon` with `waitsFor` (the
 issue or PR it needs: #267 for apps whose custom screens need the sealed frame, or the open PR that adds
 it). People edit everything but `link`, `screenshot` and `publishedAt`, which the publish script writes.
