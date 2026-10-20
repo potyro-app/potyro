@@ -331,6 +331,10 @@ export interface MapViewControl {
   flyTo(to: { center: [number, number]; zoom?: number }): Promise<boolean>;
   /** Frame everything currently pinned — the "show me all of it" button. */
   fit(): Promise<boolean>;
+  /** Bring this record's pin to the front — its card too, where the map has a strip — and the map to it. */
+  select(id: Id): Promise<boolean>;
+  /** Open this record the way a tap on its pin would: its page, over the map. */
+  open(id: Id): Promise<boolean>;
 }
 
 /**

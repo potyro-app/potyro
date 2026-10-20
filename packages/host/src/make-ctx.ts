@@ -594,6 +594,8 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       map: (pageId: string) => ({
         flyTo: (to) => views?.call?.(pageId, "map.flyTo", to) ?? Promise.resolve(false),
         fit: () => views?.call?.(pageId, "map.fit") ?? Promise.resolve(false),
+        select: (id) => views?.call?.(pageId, "map.select", String(id)) ?? Promise.resolve(false),
+        open: (id) => views?.call?.(pageId, "map.open", String(id)) ?? Promise.resolve(false),
       }),
     },
 
