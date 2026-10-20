@@ -81,7 +81,10 @@ export function realmDocument(): string {
  */
 export const VIEW_CSS = [
   "*,*::before,*::after{box-sizing:border-box}",
-  "html{overflow:auto;overscroll-behavior:contain;-webkit-text-size-adjust:100%}",
+  // `touch-action:manipulation`: a tap is a click at once. Firefox on Android waits ~300 ms after
+  // every tap for a possible double-tap zoom unless told not to, and a frame's document is told on
+  // its own (the shell's html rule does not reach into it). Pinch zoom stays.
+  "html{overflow:auto;overscroll-behavior:contain;-webkit-text-size-adjust:100%;touch-action:manipulation}",
   "body{margin:0;background:transparent;color:var(--k-view-ink,var(--ink,#2b241e));font-family:var(--k-view-font,var(--font-ui,system-ui,sans-serif));font-size:16px;line-height:1.45}",
   "#root{display:flow-root}",
   "button,input,select,textarea{font:inherit;color:inherit}",
