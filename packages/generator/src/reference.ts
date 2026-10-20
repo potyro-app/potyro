@@ -354,7 +354,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     key: "ctx.views",
-    summary: "`ctx.views.map(pageId).flyTo({ center, zoom? })` / `.fit()`: move a map that is on screen, from a page action (\"Centre on me\")",
+    summary: "`ctx.views.map(pageId).flyTo({ center, zoom? })` / `.fit()` / `.select(id)` / `.open(id)`: reach a map that is on screen, from a page action (\"Centre on me\") or from the map's own `onSelect: (record, ctx) => …` (a pin or strip card tapped); any view's `onOpen` may be a function `(record, ctx) => …` instead of a page",
     // Also what the built-in views do beyond rows: a record page's related records, aggregate rows
     // that open or act, the checklist's add box, a record's own glyph — cut out of the core, read here.
     declarations: ["MapViewControl", "CtxViews", "RelatedSection"],

@@ -105,6 +105,15 @@ in a related section run through the host like a stats fold (`callFold` at their
 (docs/03). The Studio reads these with `ctx.views`; the core prompt does not carry them. Additive: no
 app bumps `schemaVersion`.
 
+**A view's tap is the app's to define (2026-10-20).** Every view that opens rows takes `onOpen` as data
+— `{ page, param }` — or as the app's own function, `(record, ctx) => …`, run through the host like any
+binding (path `onOpen`), so a sealed app's works the same. The map view also takes `onSelect:
+(record, ctx) => …` for a pin or strip card tapped, and `ctx.views.map(pageId)` gives the handler the
+map back: `select(id)` brings that pin (and card) to the front and the map to it, `open(id)` opens
+the record as a tap would. The view's built-in reaction stands only where the app declares nothing.
+This is rule 1 (logic is functions receiving `ctx`) applied to what a view does when touched: a
+request like "tapping a card should select its pin" is one line in the app, never a change to Potyro.
+
 ## Function signatures
 
 ```ts

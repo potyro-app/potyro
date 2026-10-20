@@ -25,9 +25,18 @@ globalThis.__potyroApp = {
       actions: [
         { label: "Centre on me", run: async function(ctx){ var ok = await ctx.views.map("map").flyTo({ center: [13.4, 52.5], zoom: 15 }); ctx.ui.toast("flew:" + ok); } },
         { label: "Show all", run: async function(ctx){ var ok = await ctx.views.map("map").fit(); ctx.ui.toast("fit:" + ok); } },
-        { label: "Elsewhere", run: async function(ctx){ var ok = await ctx.views.map("other").fit(); ctx.ui.toast("other:" + ok); } }
+        { label: "Elsewhere", run: async function(ctx){ var ok = await ctx.views.map("other").fit(); ctx.ui.toast("other:" + ok); } },
+        { label: "Select the first", run: async function(ctx){ var ok = await ctx.views.map("map").select("p1"); ctx.ui.toast("select:" + ok); } },
+        { label: "Open the first", run: async function(ctx){ var ok = await ctx.views.map("map").open("p1"); ctx.ui.toast("open:" + ok); } }
       ],
-      view: { type: "map", entity: "place", geo: "at" }
+      view: {
+        type: "map", entity: "place", geo: "at",
+        onSelect: async function(p, ctx){ var ok = await ctx.views.map("map").select(p.id); ctx.ui.toast("picked:" + p.name + ":" + ok); }
+      }
+    },
+    {
+      id: "list", title: "List",
+      view: { type: "list", entity: "place", onOpen: function(p, ctx){ ctx.ui.toast("opened:" + p.name); } }
     }
   ],
   reminders: []
@@ -78,6 +87,31 @@ describe.each(RUNNERS)("ctx.views from inside the sealed box ($name)", (runner) 
 
     expect(calls[0]).toMatchObject({ pageId: "map", verb: "map.fit" });
     expect(toasts).toEqual(["fit:true"]);
+  });
+
+  it("carries select and open — the controls a tap handler reaches the map with", async () => {
+    const { loaded, ctx, toasts, calls } = await setup(runner);
+
+    await loaded.callPageAction("map", 3, ctx);
+    await loaded.callPageAction("map", 4, ctx);
+
+    expect(calls).toEqual([
+      { pageId: "map", verb: "map.select", arg: "p1" },
+      { pageId: "map", verb: "map.open", arg: "p1" },
+    ]);
+    expect(toasts).toEqual(["select:true", "open:true"]);
+  });
+
+  it("runs the map's onSelect and a list's onOpen as the app's own functions, with the record, through the same path as every binding", async () => {
+    const { loaded, ctx, toasts, calls } = await setup(runner);
+    const record = { id: "p1", name: "Cozy Bar", at: { lat: 52.5, lng: 13.4 } } as never;
+
+    await loaded.callBinding({ kind: "view", page: "map", path: "onSelect" }, record, ctx);
+    await loaded.callBinding({ kind: "view", page: "list", path: "onOpen" }, record, ctx);
+
+    // The handler ran in the box and reached the view back out through ctx.views.
+    expect(calls).toEqual([{ pageId: "map", verb: "map.select", arg: "p1" }]);
+    expect(toasts).toEqual(["picked:Cozy Bar:true", "opened:Cozy Bar"]);
   });
 
   it("answers false when nothing is on screen to take it, rather than failing the action", async () => {

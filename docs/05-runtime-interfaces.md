@@ -287,6 +287,13 @@ catalog in its load message, and a sealed view in its `ViewInit`, so `ctx.t` sta
 isolate sends a catalog string or `{ text, context }` to the host, which looks it up. A key with a
 context is `context\u0004text`. Missing or fuzzy: the source text shows.
 
+**A view's tap as the app's function (2026-10-20).** `BindingRef`'s view paths include `onOpen` and
+`onSelect`: a view that finds a function (or a sealed app's stand-in for one) there calls it through
+`runtime.resolveBinding` with the record, the same path every binding takes, so all three runners
+carry it unchanged. The map's `ctx.views.map(page)` grew `select(id)` and `open(id)`, verbs
+`map.select` / `map.open` on the same `views.call` bridge as `flyTo`, allow-listed in the realm host
+and the QuickJS host. Views that open rows share one `rowOpener` (views/src/builtins.tsx).
+
 **Words and formats (#302).** `ctx.locale`, `ctx.t` and `ctx.format` are built from one module,
 `packages/host/src/format.ts` — `Intl` with cached formatters, and `intl-messageformat` for ICU
 messages, which interprets a message rather than compiling it to code and is loaded lazily, before
