@@ -47,6 +47,19 @@ describe("camera capture", () => {
     expect(blob.type).toBe("image/png");
     expect(blob.size).toBe(3);
   });
+
+  it("rejects when the person closes the camera without a photo, rather than waiting for ever", async () => {
+    const inputs: HTMLInputElement[] = [];
+    const realCreate = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+      const el = realCreate(tag);
+      if (tag === "input") inputs.push(el as HTMLInputElement);
+      return el;
+    });
+    const pending = createWebCapabilities().camera!.capture({ source: "camera" });
+    inputs[0]!.dispatchEvent(new Event("cancel"));
+    await expect(pending).rejects.toThrow(/^Cancelled/);
+  });
 });
 
 describe("filesystem save", () => {

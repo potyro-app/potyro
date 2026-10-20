@@ -56,7 +56,15 @@ export function pickFilesFromInput(opts: { accept?: string; multiple?: boolean }
   });
 }
 
-/** Read a Blob from a transient file input (optionally cueing the camera on mobile). */
+/** What a closed picker rejects with: callers that treat closing as "no photo" match on "Cancelled". */
+export const PICK_CANCELLED = "Cancelled: no file was chosen";
+
+/**
+ * Read a Blob from a transient file input (optionally cueing the camera on mobile).
+ *
+ * Closing the picker REJECTS (`PICK_CANCELLED`) rather than leaving the promise pending: an action
+ * awaiting a photo that never comes keeps its button disabled for as long as the page lives.
+ */
 function pickFile(opts: { accept?: string; capture?: string } = {}): Promise<Blob> {
   return new Promise<Blob>((resolve, reject) => {
     const input = document.createElement("input");
@@ -66,8 +74,9 @@ function pickFile(opts: { accept?: string; capture?: string } = {}): Promise<Blo
     input.onchange = () => {
       const file = input.files?.[0];
       if (file) resolve(file);
-      else reject(new Error("no file selected"));
+      else reject(new Error(PICK_CANCELLED));
     };
+    input.addEventListener("cancel", () => reject(new Error(PICK_CANCELLED)));
     input.click();
   });
 }
