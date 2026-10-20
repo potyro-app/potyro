@@ -132,12 +132,15 @@ test("a shared copy reads a shelf: camera and AI asked first, the checked items 
 
   // The chicken's page: how long it keeps, and the reminder at 9:00 the day before.
   await main.locator(".k-list-row", { hasText: "Chicken thighs" }).click();
-  const remindDay = new Date(inDays(2).getTime());
-  remindDay.setHours(9);
-  const expected = await page.evaluate(
-    (t) => new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(t)),
-    remindDay.getTime(),
-  );
+  // Worked out IN the page: its clock is Europe/Warsaw (test.use above), the runner's may be UTC, and
+  // "9:00 the day before" is 9:00 on the page's clock.
+  const expected = await page.evaluate(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 2);
+    d.setHours(9);
+    return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(d);
+  });
   await expect(page.locator(".k-field", { hasText: "Reminder" })).toHaveText(`Reminder${expected}`);
   await expect(page.locator(".k-field", { hasText: "Freshness" })).toHaveText("Freshness3 days left");
 
