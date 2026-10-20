@@ -34,14 +34,16 @@ describe("the gallery's data", () => {
 
   it("publishes only apps that work sealed today; the rest are coming soon, with what they wait for", () => {
     const g = readGallery(real);
-    // The apps drawn as their own screens lead (they run sealed since #267); the examples follow. An app
-    // whose demo would open empty, or cannot run sealed, waits (#388, #389).
+    // The apps drawn as their own screens lead (they run sealed since #267; Photo Garden since #388);
+    // the examples follow, then the live feeds and Notes, whose demos open on a replay and on notes
+    // (#389). An app on an open PR waits for it.
     expect(publishable(g).map((a) => a.id)).toEqual([
-      "mood-sleep", "draw-guess", "mirror-monsters", "piano",
+      "mood-sleep", "draw-guess", "mirror-monsters", "photo-garden", "piano",
       "recipes", "groceries", "plants", "places", "split", "workout", "receipt-split",
+      "earthquakes", "word-watch", "ticker", "markdown-notes",
     ]);
     const soon = g.apps.filter((a) => a.status === "coming-soon");
-    for (const id of ["photo-garden", "earthquakes", "word-watch", "ticker", "markdown-notes", "daily", "palette-catcher", "photo-puzzle", "pantry", "plant-doctor", "poster-event"]) {
+    for (const id of ["daily", "palette-catcher", "photo-puzzle", "pantry", "plant-doctor", "poster-event"]) {
       expect(soon.map((a) => a.id)).toContain(id);
     }
     expect(soon.every((a) => a.waitsFor && !a.link)).toBe(true);
@@ -59,6 +61,8 @@ describe("the gallery's data", () => {
 
   it("refuses an app that is not where it says, in no category, or listed twice", () => {
     expect(galleryProblems(withApp({ from: { package: ["../etc/passwd"] } })).join()).toMatch(/where it comes from/);
+    expect(galleryProblems(withApp({ from: { package: ["apps/notes/notes.app.tsx"], files: "../etc" } })).join()).toMatch(/files is a folder under apps/);
+    expect(galleryProblems(withApp({ from: { package: ["apps/notes/notes.app.tsx"], files: "apps/notes/files", seed: "apps/notes/seed.json" } }))).toEqual([]);
     expect(galleryProblems(withApp({ category: "nope" })).join()).toMatch(/category nope/);
     const twice = withApp({});
     twice.apps.push(clone(twice.apps[0]));

@@ -46,28 +46,30 @@ test.describe.configure({ mode: "serial" });
 test("gallery:publish makes each link through the share flow, checks it opens for a stranger, and keeps it when run again", async ({ baseURL, browserName }) => {
   test.skip(browserName !== "chromium", "the script drives its own Chromium; one run proves it");
   test.setTimeout(300_000);
-  const { dir, data } = scratchGallery(["groceries", "receipt-split"]);
+  const { dir, data } = scratchGallery(["groceries", "receipt-split", "markdown-notes"]);
   const lines: string[] = [];
   const first = await publish({ site: baseURL!, data, log: (l: string) => lines.push(l) });
   expect(first.map((o: { id: string; outcome: string }) => [o.id, o.outcome])).toEqual([
     ["groceries", "made"],
     ["receipt-split", "made"],
+    ["markdown-notes", "made"],
   ]);
   const g = JSON.parse(readFileSync(data, "utf8"));
-  // Receipt Split is a package with a seed: the publisher packs both, so its demo opens on a receipt.
-  for (const id of ["groceries", "receipt-split"]) {
+  // Receipt Split is a package with a seed, Notes one with a seed AND the files it ships with: the
+  // publisher packs all of it, so their demos open on a receipt and on four notes (#389).
+  for (const id of ["groceries", "receipt-split", "markdown-notes"]) {
     const app = g.apps.find((a: { id: string }) => a.id === id);
     expect(app.link).toMatch(new RegExp(`^${baseURL}/s/[A-Za-z0-9_-]{16,64}#k=[A-Za-z0-9_-]+$`));
     expect(app.screenshot).toBe(`shots/${id}.jpg`);
     expect(readFileSync(join(dir, app.screenshot)).subarray(0, 2)).toEqual(Buffer.from([0xff, 0xd8]));
   }
   // Coming-soon apps are left alone, and said to be.
-  expect(lines.join("\n")).toMatch(/coming soon, not published: .*photo-garden/);
+  expect(lines.join("\n")).toMatch(/coming soon, not published: .*pantry/);
   expect(g.apps.filter((a: { status: string; link?: string }) => a.status === "coming-soon" && a.link)).toEqual([]);
 
   // Again: nothing new is made.
   const again = await publish({ site: baseURL!, data, log: () => {} });
-  expect(again.map((o: { outcome: string }) => o.outcome)).toEqual(["kept", "kept"]);
+  expect(again.map((o: { outcome: string }) => o.outcome)).toEqual(["kept", "kept", "kept"]);
   expect(JSON.parse(readFileSync(data, "utf8")).apps.find((a: { id: string }) => a.id === "groceries").link).toBe(g.apps.find((a: { id: string }) => a.id === "groceries").link);
 
   // What the page tests below show.
