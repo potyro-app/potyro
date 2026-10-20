@@ -38,7 +38,7 @@ describe("the gallery's data", () => {
     // the examples follow, then the live feeds and Notes, whose demos open on a replay and on notes
     // (#389). An app on an open PR waits for it.
     expect(publishable(g).map((a) => a.id)).toEqual([
-      "mood-sleep", "draw-guess", "mirror-monsters", "photo-garden", "daily", "photo-puzzle", "palette-catcher", "piano",
+      "mood-sleep", "draw-guess", "mirror-monsters", "photo-garden", "daily-puzzle", "photo-puzzle", "palette-catcher", "piano",
       "recipes", "groceries", "plants", "places", "split", "workout", "receipt-split",
       "pantry", "plant-doctor", "poster-event", "earthquakes", "word-watch", "ticker", "markdown-notes",
     ]);
