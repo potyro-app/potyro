@@ -62,7 +62,29 @@ interface Pool {
   getFileNames(): string[];
   /** Let go of every access handle, keeping the files. Throws while a database is open. */
   pauseVfs(): unknown;
+  /** How many files the pool may hold, and how many it does. */
+  getCapacity(): number;
+  getFileCount(): number;
+  /** More room: `n` files more, each a sync access handle opened now. */
+  addCapacity(n: number): Promise<number>;
+  /** Less room: up to `n` unused files removed, with their handles. Answers how many went. */
+  reduceCapacity(n: number): Promise<number>;
 }
+
+/**
+ * How many files the pool starts with, and how much room it keeps free.
+ *
+ * It used to start with 32, and every one of them is a sync access handle the pool opens on every
+ * page load, before any app can open: a few milliseconds in Chrome, 50–70 ms each in Firefox —
+ * two to three seconds of every start there, for files nobody used. A device opens a handful of
+ * databases at once (the device's own, the launcher's history, the Studio's chats, the app) and
+ * each may need one more file for its rollback journal while a transaction is open, so the pool
+ * starts small, keeps room for those, and grows before an open that would otherwise fail. A pool
+ * that is bigger than that from an earlier build is trimmed back once, after it opened.
+ */
+const POOL_START = 8;
+/** Files kept free beyond what is in use, when trimming. */
+const POOL_ROOM = 4;
 let pool: Pool | null = null;
 let installing: Promise<void> | null = null;
 
@@ -112,17 +134,21 @@ async function filesOf(dir: FileSystemDirectoryHandle): Promise<SyncHandleFile[]
  * it does when the answer is no: log an error per file, then try to delete the directory.
  */
 async function poolFilesFree(): Promise<boolean> {
+  const files: SyncHandleFile[] = [];
   for (const directory of [CURRENT_POOL.directory, LEGACY_POOL.directory]) {
     const dir = await opaqueDir(directory);
-    if (!dir) continue;
-    for (const file of await filesOf(dir)) {
-      try {
-        (await file.createSyncAccessHandle()).close();
-      } catch (err) {
-        if ((err as { name?: string })?.name === "NoModificationAllowedError") return false;
-        throw err;
-      }
-    }
+    if (dir) files.push(...(await filesOf(dir)));
+  }
+  // All at once, not one after the other: in Firefox, opening a sync access handle is a round trip
+  // to the browser's parent process of some 50–70 ms, and closing one as much again — one file after
+  // another, a pool of 32 was most of the three seconds every page load spent before any app
+  // opened there. Asked together, the round trips overlap (the pool itself acquires its handles
+  // this way, `acquireAccessHandles`).
+  const answers = await Promise.allSettled(files.map(async (file) => (await file.createSyncAccessHandle()).close()));
+  for (const a of answers) {
+    if (a.status === "fulfilled") continue;
+    if ((a.reason as { name?: string })?.name === "NoModificationAllowedError") return false;
+    throw a.reason;
   }
   return true;
 }
@@ -216,13 +242,17 @@ async function open(name: string, takeover: boolean): Promise<void> {
     if (!sqlite3.installOpfsSAHPoolVfs) throw new Error("this worker has no OPFS SAH-pool VFS");
     // Room for the device database, every app's, and the shell's own — with space to grow. The pool
     // preallocates this many handles; running out is the failure this file exists to avoid.
-    pool = await sqlite3.installOpfsSAHPoolVfs({ ...CURRENT_POOL, initialCapacity: 32 });
+    pool = await sqlite3.installOpfsSAHPoolVfs({ ...CURRENT_POOL, initialCapacity: POOL_START });
+    await trim(pool);
     // Only when it holds files: an empty `/karta` has nothing to open, and installing a pool there
     // would create 32 files in it for nobody. A failure here fails the open, as the current pool's
     // does: opening `/potyro` instead would show an app empty, and then hide whatever was written
     // there once `/karta` opened again.
     const legacy = await opaqueDir(LEGACY_POOL.directory);
-    if (legacy && (await filesOf(legacy)).length > 0) legacyPool = await sqlite3.installOpfsSAHPoolVfs({ ...LEGACY_POOL, initialCapacity: 32 });
+    if (legacy && (await filesOf(legacy)).length > 0) {
+      legacyPool = await sqlite3.installOpfsSAHPoolVfs({ ...LEGACY_POOL, initialCapacity: POOL_START });
+      await trim(legacyPool);
+    }
   })().catch((err: unknown) => {
     installing = null; // a failed install must be retryable, not remembered
     throw err;
@@ -232,7 +262,32 @@ async function open(name: string, takeover: boolean): Promise<void> {
   if (dbs.has(name)) return;
   const file = `/${name}.sqlite3`;
   const home = legacyPool?.getFileNames().includes(file) ? legacyPool : pool;
-  dbs.set(name, new home.OpfsSAHPoolDb(file));
+  await makeRoom(home);
+  const db = new home.OpfsSAHPoolDb(file);
+  dbs.set(name, db);
+  // One sync of the journal and one of the database per commit, not three. Firefox's `flush` is a
+  // real fsync of some 10 ms; at FULL a one-row commit there was four of them. NORMAL still keeps
+  // the database whole through a crash of the tab or the browser; what it gives up is the last
+  // commit on a power cut at the wrong instant, which on a phone's own data is the trade to make.
+  db.exec("PRAGMA synchronous=NORMAL");
+}
+
+/**
+ * Room in `pool` for the next database file and a journal for every open database, this one
+ * included. Grown here, before an open, because the pool cannot grow from inside SQLite's own open
+ * (`xOpen` is synchronous and simply fails "pool is full"), and a journal is opened mid-transaction
+ * without any warning.
+ */
+async function makeRoom(p: Pool): Promise<void> {
+  const need = dbs.size + 2;
+  const free = p.getCapacity() - p.getFileCount();
+  if (free < need) await p.addCapacity(need - free);
+}
+
+/** A pool left larger than it needs by an earlier build (32 files for a handful of databases): back to its size. */
+async function trim(p: Pool): Promise<void> {
+  const spare = p.getCapacity() - Math.max(POOL_START, p.getFileCount() + POOL_ROOM);
+  if (spare > 0) await p.reduceCapacity(spare);
 }
 
 function handle(msg: WorkerRequest): Record<string, unknown>[] | undefined {
