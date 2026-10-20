@@ -132,13 +132,37 @@ function readPicture(view: HTMLCanvasElement): Picture {
   return { width: small.width, height: small.height, data };
 }
 
-async function shotFrom(blob: Blob): Promise<Shot> {
-  const bmp = await createImageBitmap(blob, { imageOrientation: "from-image" });
+/**
+ * The photo decoded. `createImageBitmap` first (it honours the camera's orientation tag); where it
+ * will not take the file — Firefox on Android, in the sealed frame, refused a camera's JPEG that way
+ * (2026-10-20) — an `<img>` on an object URL decodes it instead, the way every browser shows a photo.
+ */
+async function decoded(blob: Blob): Promise<{ source: CanvasImageSource; width: number; height: number; close: () => void }> {
   try {
-    const view = scaled(bmp, bmp.width, bmp.height, VIEW_LONG);
+    const bmp = await createImageBitmap(blob, { imageOrientation: "from-image" });
+    return { source: bmp, width: bmp.width, height: bmp.height, close: () => bmp.close() };
+  } catch {
+    const url = URL.createObjectURL(blob.type ? blob : new Blob([blob], { type: "image/jpeg" }));
+    try {
+      const img = new Image();
+      img.decoding = "async";
+      img.src = url;
+      await img.decode();
+      return { source: img, width: img.naturalWidth, height: img.naturalHeight, close: () => URL.revokeObjectURL(url) };
+    } catch (e) {
+      URL.revokeObjectURL(url);
+      throw e;
+    }
+  }
+}
+
+async function shotFrom(blob: Blob): Promise<Shot> {
+  const pic = await decoded(blob);
+  try {
+    const view = scaled(pic.source, pic.width, pic.height, VIEW_LONG);
     return { view, analysis: analyse(readPicture(view)) };
   } finally {
-    bmp.close();
+    pic.close();
   }
 }
 
