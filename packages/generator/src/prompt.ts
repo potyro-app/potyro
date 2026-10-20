@@ -199,11 +199,10 @@ CONTRACT
 
 LANGUAGES — the app's own words (labels, titles, help, empty texts, buttons)
 - Write a new app in ONE language: the person's, the one their request is written in, and declare it
-  — \`language: "pl"\` with Polish words. Every app declares \`language\`, even when all its strings are plain.
+  — \`language: "pl"\` with Polish words. Every app declares \`language\`.
 - Every word is a plain string in it: \`label: "Quantity"\`, \`ctx.t("{n, plural, one {# plant} other {# plants}}",
-  { n })\`. Never write a translation or a map \`{ en, pl }\`: other languages are \`locales/<lang>.po\`
-  catalogs, made when the person asks, never by you. A word kept in a const: \`msg("Nothing yet")\`.
-  The rest: lookup("languages").
+  { n })\`. Never a translation or a map \`{ en, pl }\`: other languages are \`locales/<lang>.po\` catalogs made
+  when the person asks. A word kept in a const: \`msg("Nothing yet")\`. The rest: lookup("languages").
 - Words and languages are not data: a new word moves \`version\` but never \`schemaVersion\`, and needs
   no migration.
 - \`computed\` entries are FUNCTIONS \`(record, ctx) => value\` (may be \`async\`). A computed a page
@@ -329,22 +328,21 @@ is real and declared; its declarations are not in the REFERENCE above but come w
 it, and lookup("<name>") reads any of them. Read the declaration before you write the call:
 ${capabilityIndex()}
 
-NAVIGATION & UX (make the app actually usable — this matters as much as the data model)
-- Give every entity a \`label\` and an \`icon\` (a single emoji), and the app itself a top-level \`icon\`
-  (one emoji) — it is the app's launcher tile. Give each page an \`icon\` too (one emoji, distinct
-  per page): pages are a tab bar on a phone, and four identical icons say nothing.
-- Order a detail page's \`actions\` with the one people came for FIRST: it is the page's one filled
-  button; the rest sit beside it, plain. Edit and Delete are the shell's, behind "More actions".
+NAVIGATION & UX
+- Give every entity a \`label\`, and every entity, every page and the app itself an \`icon\` (one emoji,
+  distinct per page: pages are a tab bar on a phone; the app's is its launcher tile).
+- Order a detail page's \`actions\` with the one people came for first (the one filled button; the rest
+  plain beside it). Edit and Delete are the shell's, behind "More actions".
 - Money is \`{ type: "money", currency: "EUR" }\` — whole minor units (\`4200\` is €42.00), never a
   float; lists total it. Split with \`splitEvenly(total, people)\` from \`potyro\`.
 - Give a number field its \`unit\` (\`unit: "kg"\`, \`"min"\`, \`"days"\`) and \`integer: true\` when
-  it counts things; the form shows the unit inside the field and a − / + stepper, and the phone opens
-  the matching keyboard. A \`duration\` field's \`unit\` says what the stored number is (\`"min"\`, \`"h"\`).
+  it counts things; the form shows the unit inside the field and a − / + stepper. A \`duration\`
+  field's \`unit\` says what the stored number is (\`"min"\`, \`"h"\`).
 - Arrange an entity's fields with \`groups: [{ title, fields: [...] }]\` when it has more than four:
-  the form and the detail page show the same titled sections (a group may list computed keys — they
-  show on the detail page, headed by the computed's \`label\`). Add \`collapsed: true\` to a long, secondary group. Give a field a one-line
-  \`help\` when its name does not say what to enter, a \`placeholder\` with an example value for free
-  text, and \`width: "half"\` to two short neighbours (a date and a number) so they share a row.
+  the form and the detail page show the same titled sections (a group may list computed keys, headed
+  by their \`label\`); \`collapsed: true\` for a long secondary group. Give a field \`help\` when its name
+  does not say what to enter, a \`placeholder\` example for free text, and \`width: "half"\` to two
+  short neighbours so they share a row.
 - Pick the view the records want: a stage or status → \`board\`; read back by when → \`timeline\`; "how am I
   doing" → a \`stats\` and a \`chart\` in a \`layout\`; who owes whom → \`aggregate\` (CAPABILITIES).
 - A list of things to tick — shopping, packing, chores, habits — is a \`checklist\` page, never a list
@@ -352,14 +350,13 @@ NAVIGATION & UX (make the app actually usable — this matters as much as the da
   text: "name", detail: "quantity", group: "aisle", hideDone: "collapse", quickAdd: true, onOpen: {...} }\`.
   \`done\` is a boolean field (or an enum plus \`doneValue\`); \`quickAdd\` adds the typed text as the
   display field. Keep the detail page for the rest of the fields.
-- Make exactly ONE top-level LIST page per entity (title = plural, e.g. "Sessions"). NEVER add a
-  separate top-level page for a single record (no "Session" tab next to "Sessions").
-- To show a record's details, add a \`detail\` page, mark it \`hidden: true\`, and link the list to it with
-  \`onOpen: { page: "<detailPageId>", param: { <detailParam>: "id" } }\`. Rows are then tappable to
-  open + edit — this is how users edit existing records.
-- Add \`quickActions\` for the main create flows: \`{ id, label, icon, entity, open: true }\`. If the
-  entity's ONLY required field is a single enum (a "type"/"day"), add \`mode: "menu"\` to pick it inline;
-  otherwise the shell opens the create form. \`open: true\` lands the user in the new record.
+- Exactly ONE top-level list page per entity (plural title, "Sessions"); never a top-level page for one record.
+- To show a record's details, add a hidden \`detail\` page and link the list to it with
+  \`onOpen: { page: "<detailPageId>", param: { <detailParam>: "id" } }\`: rows then open + edit it.
+  \`onOpen\` may instead be a function \`(record, ctx)\` — a map's \`onSelect\` likewise — e.g.
+  \`ctx.views.map(page).select(record.id)\`.
+- Add \`quickActions\` for the main create flows: \`{ id, label, icon, entity, open: true }\` (\`open\`
+  lands in the new record); \`mode: "menu"\` picks inline when the entity's only required field is one enum.
 - Set top-level \`nav: "grid"\` when the app has 3+ entities (an object-grid home); otherwise omit it.
 - When one entity is what everything else belongs to (a trip and its places, a project and its tasks),
   declare a \`scope\` (CAPABILITIES: \`ctx.scope\`), never \`ctx.params\` (per page) or \`ctx.storage\` (async).

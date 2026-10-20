@@ -18,7 +18,7 @@ import type { EnumField, Resolved, DateTimeField } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
 import { useDisplayCells } from "./cells.js";
 import { getView } from "./format.js";
-import { mapOnOpen } from "./builtins.js";
+import { rowOpener } from "./builtins.js";
 import { enumSwatch } from "./enum.js";
 import { useDynamicText } from "./dynamic.js";
 import { daysFromToday, startOfDay, toDate } from "./dates.js";
@@ -158,11 +158,9 @@ export function TimelineView(props: BuiltinViewProps) {
     return () => io.disconnect();
   }, [more, shown.length]);
 
-  const openRow = view.onOpen
-    ? (row: Resolved) => navigate(view.onOpen!.page, mapOnOpen(view.onOpen, row))
-    : onEdit
+  const openRow = rowOpener(runtime, pageId, view.onOpen, navigate) ?? (onEdit
       ? (row: Resolved) => onEdit(view.entity, String(row.id))
-      : undefined;
+      : undefined);
 
   if (loading || dated === null) return <p className="k-loading">{t`Loading…`}</p>;
   if (!dated.length) return <p className="k-empty" data-k-wording>{emptyText}</p>;

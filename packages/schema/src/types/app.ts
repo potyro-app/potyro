@@ -91,10 +91,8 @@ export interface EntityDef {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Where tapping a row navigates. `param` maps target-param → source field key. */
-export interface OnOpen {
-  page: string;
-  param?: Record<string, string>;
-}
+/** A tap on a row, card or pin: a page (params read off the record), or the app's own function. */
+export type OnOpen = { page: string; param?: Record<string, string> } | ((record: Resolved, ctx: Ctx) => void | Promise<void>);
 
 export interface ListDisplay {
   primary?: Binding;
@@ -278,6 +276,8 @@ export interface MapView {
    * tags — the photo is what says "this is the one I meant". The record opens OVER the map.
    */
   display?: ListDisplay;
+  /** A pin or strip card tapped — reach the map back with `ctx.views.map(pageId).select(id)` / `.open(id)`. */
+  onSelect?: (record: Resolved, ctx: Ctx) => void | Promise<void>;
 }
 
 export interface StepsView {
