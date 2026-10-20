@@ -100,6 +100,15 @@ jobs:
       # (e2e/timings.json), one worker, a retry, and the JSON report folded into the timings.
       - name: Shard ${{ matrix.shard }} of ${{ env.SHARDS }}
         run: CI_LOCAL_SHARDS=${{ env.SHARDS }} node scripts/ci-local.mjs e2e:${{ matrix.shard }}
+      # What each file took on THIS machine: `scripts/ci-timings.mjs <run>` folds a run's into
+      # e2e/timings.json, so the shards are dealt by the runners' own durations.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: timings-${{ matrix.shard }}
+          path: .ci-local/e2e-timings.json
+          retention-days: 7
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
