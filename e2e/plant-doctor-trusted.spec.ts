@@ -32,15 +32,20 @@ async function addPackage(page: Page, zip: Buffer, mine: boolean): Promise<void>
 
 const tab = (page: Page, name: string) => page.getByRole("navigation", { name: "Pages" }).getByRole("button", { name });
 const field = (page: Page, label: string) => page.getByRole("main").locator(".k-field", { has: page.locator("dt", { hasText: new RegExp(`^${label}$`) }) });
-/** "Fri 23 Oct, 9:00" the way this browser's en-GB writes it. */
-const at = (page: Page, d: Date) =>
-  page.evaluate((t) => new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(t)), d.getTime());
-const inDays = (n: number, hour = 9) => {
-  const d = new Date();
-  d.setHours(hour, 0, 0, 0);
-  d.setDate(d.getDate() + n);
-  return d;
-};
+/**
+ * "Fri 23 Oct, 9:00" the way this browser's en-GB writes it — `n` days from now at `hour`, worked out IN
+ * the page: its clock is Europe/Warsaw (test.use above), the runner's may be UTC.
+ */
+const at = (page: Page, n: number, hour = 9) =>
+  page.evaluate(
+    ({ n, hour }) => {
+      const d = new Date();
+      d.setHours(hour, 0, 0, 0);
+      d.setDate(d.getDate() + n);
+      return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(d);
+    },
+    { n, hour },
+  );
 
 test("a shared copy looks at a plant: camera and AI asked first, the finding read, the care plan checked and saved with reminders, and a check-up that compares", async ({ page, consoleGuard }) => {
   consoleGuard.allow(/Failed to load resource: .*404/, RELAY_404);
@@ -129,8 +134,8 @@ test("a shared copy looks at a plant: camera and AI asked first, the finding rea
   expect(lineBox!.y).toBeGreaterThanOrEqual(nameBox!.y + nameBox!.height - 1);
   await card.click();
   await expect(field(page, "Water")).toContainText("Water in 8 days");
-  const water = await at(page, inDays(8));
-  const check = await at(page, inDays(7));
+  const water = await at(page, 8);
+  const check = await at(page, 7);
   await expect(field(page, "Reminders")).toHaveText(`RemindersWater: ${water} · Check-up photo: ${check}`);
 
   // A check-up: the earlier photo beside today's, and it is better.
