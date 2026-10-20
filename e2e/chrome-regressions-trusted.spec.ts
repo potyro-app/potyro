@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "./console-guard";
+import { pageOnce } from "./once.js";
 
 // Shell chrome regressions found by actually looking at a running app rather than by reasoning about
 // it. Each of these was live and none was caught by the existing suite:
@@ -7,6 +8,10 @@ import { test, expect, type Page } from "./console-guard";
 //    the buttons that had an icon
 //  • the whole page scrolling sideways on a phone, because that row never wrapped
 //  • detail buttons labelled with raw action keys — `snapPhoto`, not "Snap Photo"
+//
+// The tests that only look at the seeded app share one boot of it: a width is a viewport, not a
+// page load, so the phone and the wide screen are measured on the same page. A test that seeds its
+// own source, toggles edit mode or deletes the record opens a page of its own.
 
 const APP_SOURCE = `import { defineApp } from "potyro";
 
@@ -33,7 +38,7 @@ export default defineApp({
 });
 `;
 
-async function open(page: Page, width = 1280): Promise<void> {
+async function seedChrome(page: Page): Promise<void> {
   await page.addInitScript((src) => {
     if (localStorage.getItem("potyro:user-apps")) return;
     localStorage.setItem(
@@ -45,34 +50,82 @@ async function open(page: Page, width = 1280): Promise<void> {
       JSON.stringify({ records: { place: { p1: { id: "p1", createdAt: "", updatedAt: "", name: "Somewhere", note: "hi" } } }, blobs: {}, kv: {}, schemaVersion: 1 }),
     );
   }, APP_SOURCE);
+}
+
+async function open(page: Page, width = 1280): Promise<void> {
+  await seedChrome(page);
   await page.setViewportSize({ width, height: 860 });
   await page.goto("/?user=chrome");
   await expect(page.locator("h1")).toBeVisible();
 }
 
-test("every top-bar control is the same height, even with a long app name", async ({ page }) => {
-  // The long name is the point: it used to wrap the title and squeeze the actions until each button
-  // wrapped its own text and grew. The top bar (#111) truncates the name instead, and its controls
-  // are one size, a thumb's.
-  await open(page, 390);
-  const heights = await page.locator(".k-topbar button").evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
-  expect(heights.length).toBeGreaterThan(1);
-  expect(new Set(heights).size, `top-bar controls differ in height: ${heights.join(", ")}`).toBe(1);
-  expect(heights[0]).toBeGreaterThanOrEqual(44);
-  // Also the sidebar's tools on a wide screen.
-  await open(page, 1280);
-  const tools = await page.locator(".k-tools .k-tool").evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
-  expect(tools.length).toBeGreaterThan(3);
-  expect(new Set(tools).size, `tools differ in height: ${tools.join(", ")}`).toBe(1);
-});
+/** The viewport at `width`, and the chrome laid out for it: the phone's or the wide screen's. */
+async function atWidth(page: Page, width: number): Promise<void> {
+  await page.setViewportSize({ width, height: 860 });
+  await expect(page.locator(".k-app-chrome")).toHaveAttribute("data-layout", width < 760 ? "phone" : "wide");
+}
 
-test("the page never scrolls sideways on a phone", async ({ page }) => {
-  await open(page, 390);
-  const { scrollW, clientW } = await page.evaluate(() => ({
-    scrollW: document.documentElement.scrollWidth,
-    clientW: document.documentElement.clientWidth,
-  }));
-  expect(scrollW, "something is wider than the viewport").toBeLessThanOrEqual(clientW);
+test.describe("looking at the seeded app", () => {
+  const shared = pageOnce(
+    async (page) => {
+      await seedChrome(page);
+      await page.goto("/?user=chrome");
+      await expect(page.locator("h1")).toBeVisible();
+    },
+    { viewport: { width: 390, height: 860 } },
+  );
+
+  test("every top-bar control is the same height, even with a long app name", async () => {
+    const page = shared();
+    // The long name is the point: it used to wrap the title and squeeze the actions until each button
+    // wrapped its own text and grew. The top bar (#111) truncates the name instead, and its controls
+    // are one size, a thumb's.
+    await atWidth(page, 390);
+    const heights = await page.locator(".k-topbar button").evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+    expect(heights.length).toBeGreaterThan(1);
+    expect(new Set(heights).size, `top-bar controls differ in height: ${heights.join(", ")}`).toBe(1);
+    expect(heights[0]).toBeGreaterThanOrEqual(44);
+    // Also the sidebar's tools on a wide screen.
+    await atWidth(page, 1280);
+    const tools = await page.locator(".k-tools .k-tool").evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+    expect(tools.length).toBeGreaterThan(3);
+    expect(new Set(tools).size, `tools differ in height: ${tools.join(", ")}`).toBe(1);
+  });
+
+  test("the page never scrolls sideways on a phone", async () => {
+    const page = shared();
+    await atWidth(page, 390);
+    const { scrollW, clientW } = await page.evaluate(() => ({
+      scrollW: document.documentElement.scrollWidth,
+      clientW: document.documentElement.clientWidth,
+    }));
+    expect(scrollW, "something is wider than the viewport").toBeLessThanOrEqual(clientW);
+  });
+
+  test("row actions are labelled, not keyed", async () => {
+    const page = shared();
+    // Same bug as the detail view had, in the other place actions are rendered: the button read
+    // "startWorkout" rather than "Start Workout".
+    await atWidth(page, 1280);
+    const labels = await page.locator(".k-row-actions button").allInnerTexts();
+    expect(labels).toContain("Snap Photo");
+    expect(labels).not.toContain("snapPhoto");
+  });
+
+  test("detail actions are labelled, not keyed", async () => {
+    const page = shared();
+    await atWidth(page, 1280);
+    await page.locator(".k-list-row .k-list-text").first().click();
+    // Waited for, not read on the spot: the record's actions are rendered once it has loaded, and the
+    // store answers asynchronously now.
+    const buttons = page.locator(".k-detail-actions button");
+    await expect(buttons.first()).toBeVisible();
+    const labels = await buttons.allInnerTexts();
+
+    expect(labels).toContain("Snap Photo");
+    expect(labels).toContain("Pin Here");
+    expect(labels).not.toContain("snapPhoto");
+  });
 });
 
 test("edit mode marks exactly the tabs that are on screen", async ({ page }) => {
@@ -119,20 +172,6 @@ test("an action that fails tells the user instead of failing silently", async ({
 
   await expect(page.getByText("camera is not available")).toBeVisible();
   expect(crashes, "the failure escaped as an unhandled rejection").toHaveLength(0);
-});
-
-test("detail actions are labelled, not keyed", async ({ page }) => {
-  await open(page);
-  await page.locator(".k-list-row .k-list-text").first().click();
-  // Waited for, not read on the spot: the record's actions are rendered once it has loaded, and the
-  // store answers asynchronously now.
-  const buttons = page.locator(".k-detail-actions button");
-  await expect(buttons.first()).toBeVisible();
-  const labels = await buttons.allInnerTexts();
-
-  expect(labels).toContain("Snap Photo");
-  expect(labels).toContain("Pin Here");
-  expect(labels).not.toContain("snapPhoto");
 });
 
 test("ctx.navigate from an app action actually changes page", async ({ page }) => {
@@ -194,13 +233,4 @@ test("a record can be deleted, and it asks first", async ({ page }) => {
 
   // And it never reached for a platform dialog.
   expect(native, "a native browser dialog was used").toHaveLength(0);
-});
-
-test("row actions are labelled, not keyed", async ({ page }) => {
-  // Same bug as the detail view had, in the other place actions are rendered: the button read
-  // "startWorkout" rather than "Start Workout".
-  await open(page);
-  const labels = await page.locator(".k-row-actions button").allInnerTexts();
-  expect(labels).toContain("Snap Photo");
-  expect(labels).not.toContain("snapPhoto");
 });
