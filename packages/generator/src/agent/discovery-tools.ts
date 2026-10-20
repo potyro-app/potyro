@@ -110,6 +110,16 @@ export function lookupReference(reference: string, rawQuery: string): string {
     if (picked.length >= 4) break;
   }
   if (!picked.length) {
+    // A concept rather than a name ("tap", "card", "selected pin"): the declarations whose own words say
+    // it. "Nothing is called tap" was true and misleading — `MapView.onSelect` is "a pin or strip card
+    // tapped" — and a refusal quoted it (2026-10-20).
+    const words = lower.split(/\s+/).filter((w) => w.length > 2);
+    const mentions = words.length
+      ? decls.filter((d) => words.every((w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i").test(d.text))).slice(0, 2)
+      : [];
+    if (mentions.length) {
+      return clip(`Nothing is called "${query}", but these say it in their own words — read them:\n\n${mentions.map((d) => d.text.trim()).join("\n\n")}`);
+    }
     return (
       `Nothing in the potyro module is called "${query}" or declares a "${query}". It does not exist. ` +
       `If the request needs it, say so with NOT-IN-APP and quote this; if a different name might, look that up.`

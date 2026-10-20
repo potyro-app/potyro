@@ -40,6 +40,15 @@ describe("lookupReference", () => {
     expect(lookupReference(LOOKUP_REFERENCE, "ctx.scope")).toContain("scope: Readonly<Record<string, Resolved | undefined>>");
   });
 
+  it("answers a concept word with the declarations whose own words say it, before calling it nonexistent", () => {
+    // "card-tap callback" was what a refusal quoted, while MapView.onSelect says "a pin or strip card tapped".
+    for (const q of ["tap", "tapped", "card tapped", "strip card"]) {
+      const out = lookupReference(LOOKUP_REFERENCE, q);
+      expect(out, q).not.toMatch(/^Nothing in the potyro module/);
+      expect(out, q).toContain("onSelect");
+    }
+  });
+
   it("says plainly when nothing declares it, so a refusal can quote that", () => {
     const out = lookupReference(LOOKUP_REFERENCE, "initialPosition");
     expect(out).toMatch(/nothing .* declares .*initialPosition/i);
