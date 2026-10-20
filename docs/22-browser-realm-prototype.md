@@ -610,7 +610,7 @@ for as long as it spins; the protections below bound what that can cost.
 | Ping unanswered (the frame runs apart and is stuck: desktop Chromium) | **2 s** (pings every 250 ms) | the frame is removed; the page shows the app's **plain version** |
 | The page's own check ran late while a view showed (the frame shares the thread and blocked it) | **2 s** late (checks every 100 ms) | the same, the moment the loop lets go |
 | Mount (bundle evaluated, first render) | 10 s | the same |
-| Page hidden | — | nothing counts while hidden (timers are throttled) |
+| Page hidden | — | nothing counts while hidden (timers are throttled). The watchdog is told on `visibilitychange` itself, not at its next check: a tab Android puts behind the camera runs no check at all while hidden, and the first check after it comes back is late by the whole photo (the owner's Firefox, 2026-10-20) |
 | More than 4,000 messages in 100 ms | — | treated as silent |
 
 The plain version is a calm status, never an error: "This app's screen stopped responding, so Potyro
