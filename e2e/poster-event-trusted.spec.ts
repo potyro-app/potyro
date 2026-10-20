@@ -171,7 +171,7 @@ test("a shared copy reads a poster: camera and AI asked first, the checked event
   const row = page.getByRole("main").getByText("Night Tram Quartet — late show");
   await expect(row).toBeVisible();
   await expect(page.getByRole("main").getByText(`${dayText(day)}, 20:00 · The Lantern Room`)).toBeVisible();
-  await expect(page.getByRole("main").locator("img.k-thumb")).toHaveCount(1);
+  await expect(page.getByRole("main").locator("img.k-lead-photo")).toHaveCount(1);
   await expect(page.getByRole("main").getByText(en(day, { month: "long", ...(day.getFullYear() === new Date().getFullYear() ? {} : { year: "numeric" }) }), { exact: true })).toBeVisible();
   await tabs.getByRole("button", { name: "Calendar" }).click();
   const now = new Date();
