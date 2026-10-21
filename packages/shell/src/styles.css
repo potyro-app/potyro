@@ -2613,7 +2613,7 @@ th.k-data-raw {
 .k-app[data-backdrop="grain"] .k-app-chrome[data-layout="wide"]::before {
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-    radial-gradient(90% 75% at 100% 0%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 72%);
+    var(--aguada);
   opacity: 0.55;
   -webkit-mask-image: linear-gradient(to bottom, var(--ink) 40%, transparent);
   mask-image: linear-gradient(to bottom, var(--ink) 40%, transparent);
@@ -4359,18 +4359,32 @@ button.k-prov:focus-visible {
   overflow-wrap: anywhere;
   hyphens: auto;
 }
+/* The active tab (DESIGN.md §6): icon and label in the app's colour at the level that reads, and
+   a 4px dot above — a mark that is not colour alone, for the person who cannot tell the colours. */
 .k-tabbar .k-tab[data-active="true"],
 .k-tabbar .k-tab-more-active {
-  color: var(--ink);
+  position: relative;
+  color: var(--tinta);
   font-weight: 600;
+}
+.k-tabbar .k-tab[data-active="true"]::before,
+.k-tabbar .k-tab-more-active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--tinta);
 }
 .k-tabbar .k-tab[data-active="true"] .k-tab-icon,
 .k-tabbar .k-tab-more-active .k-tab-icon {
-  color: var(--accent-ink);
-  background: var(--accent-soft);
+  color: var(--tinta);
 }
 .k-tabbar .k-tab:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: -3px;
 }
 
@@ -15894,4 +15908,23 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 }
 :root[data-theme="dark"] .k-wordmark-dark {
   display: block;
+}
+
+/* ---- Icons (icons.tsx) ------------------------------------------------------------------------
+   Lucide, drawn inline: it sits on the text's baseline like a glyph did, and never shrinks. */
+.k-icon {
+  flex: none;
+  vertical-align: -0.25em;
+}
+.k-tools .k-tool-icon .k-icon,
+.k-menu-icon .k-icon,
+.k-metro-bar-icon .k-icon,
+.k-topbar-btn .k-icon,
+.k-tab-icon .k-icon {
+  display: block;
+  vertical-align: baseline;
+}
+.k-menu-icon {
+  display: inline-flex;
+  justify-content: center;
 }

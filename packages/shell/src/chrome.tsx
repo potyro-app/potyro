@@ -14,6 +14,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { t as tr } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ActionMenu, usePhone, type MenuEntry } from "@potyro/views";
+import { I } from "./icons.js";
 
 const WIDE_FROM = 760;
 
@@ -43,7 +44,7 @@ function useNarrow(ref: React.RefObject<HTMLDivElement | null>, viewportPhone: b
 export interface ChromePage {
   id: string;
   title: string;
-  icon: string;
+  icon: ReactNode;
   active: boolean;
   onOpen: () => void;
 }
@@ -51,7 +52,7 @@ export interface ChromePage {
 export interface ChromeQuick {
   id: string;
   label: string;
-  icon: string;
+  icon: ReactNode;
   entity: string;
   onRun: () => void;
 }
@@ -227,11 +228,11 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, current
       <header className="k-topbar">
         {onBack ? (
           <button type="button" className="k-topbar-btn k-topbar-back" aria-label={t`Back`} onClick={onBack}>
-            ‹
+            {I.back}
           </button>
         ) : onApps ? (
           <button type="button" className="k-topbar-btn" data-tool="apps" aria-label={t`Switch app`} onClick={onApps}>
-            ⊞
+            {I.apps}
           </button>
         ) : null}
         <span className="k-topbar-icon" aria-hidden>
@@ -388,7 +389,7 @@ function WideChrome({ name, icon, scope, status, pages, quick, quietQuick, curre
             ) : null}
             {report.map(toolButton)}
             {trust ? toolButton(trust) : null}
-            {onApps ? toolButton({ key: "apps", label: t`All apps`, icon: "⊞", onSelect: onApps }) : null}
+            {onApps ? toolButton({ key: "apps", label: t`All apps`, icon: I.apps, onSelect: onApps }) : null}
           </div>
         ) : null}
       </aside>
