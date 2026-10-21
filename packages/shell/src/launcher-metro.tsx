@@ -58,6 +58,7 @@ import { DEFAULT_NAME, peekIdentity } from "@potyro/identity";
 import { personHue, personInitials } from "@potyro/runtime";
 import { fmt } from "@potyro/i18n";
 import { Wordmark } from "./wordmark.js";
+import { I } from "./icons.js";
 
 const GAP = 6;
 /** How long the wall waits for an app's declared identity (its category, its tile) before placing it anyway. */
@@ -291,7 +292,7 @@ function AppBar(p: { onNewApp: () => void; onAdd: () => void; onGallery: () => v
   );
   return (
     <nav className="k-metro-bar" aria-label={t({ message: "Launcher actions", comment: "The bar of buttons at the bottom of the home screen" })}>
-      {btn("k-primary-action k-launch-newbtn", undefined, "＋", t`New app`, p.onNewApp)}
+      {btn("k-primary-action k-launch-newbtn", undefined, I.plus, t`New app`, p.onNewApp)}
       {btn("k-launch-addbtn", t`Add an app`, "⤓", t({ message: "Add", comment: "App bar: add an app someone sent you; one short word" }), p.onAdd, t`Add an app someone sent you`)}
       {btn("k-metro-gallery", t({ message: "Browse the gallery", comment: "Opens Potyro's gallery of apps to try and make your own" }), "▦", t({ message: "Gallery", comment: "App bar: Potyro's gallery of apps; one short word" }), p.onGallery)}
       {btn("k-metro-find", t`Find an app`, "⌕", t({ message: "Find", comment: "App bar: search the apps; one short word" }), p.onFind)}
@@ -741,7 +742,7 @@ function EditBar(props: {
 }) {
   const { t } = useLingui();
   const sizeName = (s: TileSize): string => (s === "small" ? t({ message: "Small", comment: "Tile size" }) : s === "medium" ? t({ message: "Medium", comment: "Tile size" }) : t({ message: "Wide", comment: "Tile size" }));
-  const btn = (key: string, label: string, icon: string, fn: () => void, extra: { pressed?: boolean; disabled?: boolean } = {}) => (
+  const btn = (key: string, label: string, icon: ReactNode, fn: () => void, extra: { pressed?: boolean; disabled?: boolean } = {}) => (
     <button key={key} type="button" className="k-metro-bar-btn" data-edit={key} aria-pressed={extra.pressed} disabled={extra.disabled} onClick={fn}>
       <span className="k-metro-bar-icon" aria-hidden>
         {icon}
@@ -762,7 +763,7 @@ function EditBar(props: {
             ))}
           </div>
           {btn("unpin", t`Unpin`, "⊘", props.onUnpin)}
-          {btn("group", props.group ? t({ message: "Ungroup", comment: "Take this tile out of its group" }) : t({ message: "Group", comment: "Put this tile in a group with the next one" }), props.group ? "⇱" : "⊞", props.onGroup)}
+          {btn("group", props.group ? t({ message: "Ungroup", comment: "Take this tile out of its group" }) : t({ message: "Group", comment: "Put this tile in a group with the next one" }), props.group ? I.ungroup : I.group, props.onGroup)}
           <span className="k-metro-bar-more">{props.menu}</span>
         </>
       ) : null}

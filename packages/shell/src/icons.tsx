@@ -1,0 +1,103 @@
+// The shell's own icons: Lucide, stroke 2 with round caps and joins — the stroke of the logo
+// (DESIGN.md §3.5), 20px unless the guide says 24 (a tab bar, a main action) or 16 (inline with
+// small text). The stroke is 2px at every size, not scaled with it. No emoji in Potyro's own
+// chrome: the one character is the mascot. An app's own icons — its entities', its pages' — are
+// its content and stay what the app wrote.
+import {
+  Activity,
+  ArrowUp,
+  Calendar,
+  ChartBar,
+  ChevronLeft,
+  Code,
+  Copy,
+  Download,
+  Ellipsis,
+  ExternalLink,
+  Files,
+  Flag,
+  Hand,
+  History,
+  Images,
+  Languages,
+  LayoutGrid,
+  Link,
+  List,
+  ListChecks,
+  Map,
+  Maximize2,
+  Pencil,
+  PenTool,
+  Plus,
+  Replace,
+  Settings,
+  Shapes,
+  Share2,
+  Shield,
+  Sparkles,
+  Square,
+  SquareCheck,
+  StickyNote,
+  Table,
+  Trash2,
+  Ungroup,
+  Upload,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+import type { ReactNode } from "react";
+
+/** One icon, drawn the system's way. */
+export function icon(Icon: LucideIcon, size: 16 | 20 | 24 = 20): ReactNode {
+  return <Icon size={size} strokeWidth={2} absoluteStrokeWidth aria-hidden className="k-icon" />;
+}
+
+/** The shell's icons by what they mean, so the same meaning is the same picture everywhere. */
+export const I = {
+  apps: icon(LayoutGrid),
+  home: icon(LayoutGrid),
+  back: icon(ChevronLeft, 24),
+  more: icon(Ellipsis),
+  plus: icon(Plus),
+  send: icon(ArrowUp),
+  edit: icon(Pencil),
+  note: icon(StickyNote),
+  duplicate: icon(Copy),
+  remix: icon(Copy),
+  delete: icon(Trash2),
+  history: icon(History),
+  changes: icon(Activity),
+  people: icon(Users),
+  me: icon(Hand),
+  link: icon(Link),
+  share: icon(Share2),
+  import: icon(Download),
+  export: icon(Upload),
+  download: icon(Download),
+  open: icon(ExternalLink),
+  replace: icon(Replace),
+  language: icon(Languages),
+  stop: icon(Square),
+  report: icon(Flag),
+  shield: icon(Shield),
+  fullscreen: icon(Maximize2),
+  settings: icon(Settings),
+  code: icon(Code),
+  files: icon(Files),
+  ask: icon(Sparkles),
+  /** The Studio, where an app is authored: the pen, as in the logo's "y". */
+  studio: icon(PenTool),
+  gallery: icon(Images),
+  group: icon(LayoutGrid),
+  ungroup: icon(Ungroup),
+  // A page by its view's kind, when the page has no icon of its own.
+  list: icon(List),
+  galleryView: icon(Images),
+  table: icon(Table),
+  calendar: icon(Calendar),
+  map: icon(Map),
+  steps: icon(ListChecks),
+  checklist: icon(SquareCheck),
+  aggregate: icon(ChartBar),
+  custom: icon(Shapes),
+};

@@ -10,6 +10,7 @@ import { ActionMenu, byPeople, type MenuEntry } from "@potyro/views";
 import type { Resolved } from "potyro";
 import { chooseScope } from "./scope.js";
 import { contentsOf, deleteScope, duplicateScope } from "./scope-manage.js";
+import { I } from "./icons.js";
 
 interface ScopeSwitcherProps {
   runtime: PotyroRuntime;
@@ -101,13 +102,13 @@ export function ScopeSwitcher({ runtime, appName, appId, onNew }: ScopeSwitcherP
     ...(writable
       ? [
           "separator" as const,
-          { key: "new", label: t({ message: `New ${kind}`, comment: "Scope menu: start a new list/trip/group; the app's word for it" }), icon: "＋", onSelect: onNew },
+          { key: "new", label: t({ message: `New ${kind}`, comment: "Scope menu: start a new list/trip/group; the app's word for it" }), icon: I.plus, onSelect: onNew },
           ...(scoped
             ? [
-                { key: "rename", label: t`Rename…`, icon: "✎", onSelect: () => void rename() },
-                { key: "duplicate", label: t({ message: "Duplicate…", comment: "Scope menu: a copy of the list with everything in it" }), icon: "⧉", onSelect: () => void duplicate() },
+                { key: "rename", label: t`Rename…`, icon: I.edit, onSelect: () => void rename() },
+                { key: "duplicate", label: t({ message: "Duplicate…", comment: "Scope menu: a copy of the list with everything in it" }), icon: I.duplicate, onSelect: () => void duplicate() },
                 "separator" as const,
-                { key: "delete", label: t`Delete…`, icon: "🗑", danger: true, onSelect: () => void remove() },
+                { key: "delete", label: t`Delete…`, icon: I.delete, danger: true, onSelect: () => void remove() },
               ]
             : []),
         ]
