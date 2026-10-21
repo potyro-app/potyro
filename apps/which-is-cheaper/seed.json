@@ -1,0 +1,18 @@
+{
+  "comparison": [
+    {
+      "name": "Olive oil",
+      "currency": "EUR",
+      "aName": "500 ml bottle",
+      "aPrice": 499,
+      "aAmount": 500,
+      "aUnit": "ml",
+      "bName": "1 l bottle",
+      "bPrice": 849,
+      "bAmount": 1,
+      "bUnit": "l",
+      "winner": "B",
+      "saving": 15
+    }
+  ]
+}
