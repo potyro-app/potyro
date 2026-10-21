@@ -9516,10 +9516,12 @@ body:has(.k-tabbar) .k-toasts {
   z-index: 71;
   min-width: 13rem;
   padding: 0.35rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: var(--shadow);
+  /* A menu floats (DESIGN.md §3.3): the page's ground, the float shadow, no outline. On the
+     ground, Delete's colour reads at 5.1:1; on surface it was a hair under AA while the menu faded in. */
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  box-shadow: var(--shadow-float);
   display: flex;
   flex-direction: column;
   animation: k-fade var(--dur-fast) var(--ease);
