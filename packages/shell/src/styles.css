@@ -2595,13 +2595,9 @@ th.k-data-raw {
   z-index: -1;
   pointer-events: none;
 }
-/* The default ground is the page's own: flat, no glow (DESIGN.md §3.3, no gradients). An app that
-   asks for a `wash` gets its colour's aguada, as a flat band that ends where the page's header does. */
-.k-app[data-backdrop="wash"] .k-page::before,
-.k-app[data-backdrop="wash"] .k-app-chrome[data-layout="wide"]::before {
-  background: var(--aguada);
-  height: min(220px, 30vh);
-}
+/* The ground is the page's own: flat, no glow (DESIGN.md §3.3, no gradients; colour in one stroke,
+   §2). A `wash` — the glow of the app's colour behind the top of the page — is therefore nothing
+   now; `dots`, `grain` and an `image` stay. */
 .k-app[data-backdrop="dots"] .k-page::before,
 .k-app[data-backdrop="dots"] .k-app-chrome[data-layout="wide"]::before {
   background-image: radial-gradient(circle, color-mix(in oklab, var(--accent) 42%, transparent) 1.1px, transparent 1.7px);
