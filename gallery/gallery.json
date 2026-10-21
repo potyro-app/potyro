@@ -841,6 +841,33 @@
         "pl": "Dwie ceny, dwie wielkości: koszt na jednostkę i co wygrywa.",
         "it": "Due prezzi, due formati: il costo per unità e chi vince."
       }
+    },
+    {
+      "id": "qr-maker",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/qr-maker/qr-maker.app.ts"
+        ]
+      },
+      "category": "home",
+      "icon": "▦",
+      "name": {
+        "en": "QR Maker",
+        "pt-BR": "Gerador de QR",
+        "de": "QR-Macher",
+        "es": "Creador de QR",
+        "pl": "Twórca kodów QR",
+        "it": "Crea QR"
+      },
+      "line": {
+        "en": "Text, a link or your Wi‑Fi becomes a code to hold up, offline.",
+        "pt-BR": "Um texto, um link ou seu Wi‑Fi vira um código para mostrar, sem internet.",
+        "de": "Text, ein Link oder dein WLAN wird zum Code zum Hochhalten – offline.",
+        "es": "Un texto, un enlace o tu Wi‑Fi se convierte en un código para mostrar, sin conexión.",
+        "pl": "Tekst, link albo Wi‑Fi staje się kodem do pokazania, bez internetu.",
+        "it": "Un testo, un link o il tuo Wi‑Fi diventa un codice da mostrare, offline."
+      }
     }
   ]
 }
