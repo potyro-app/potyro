@@ -5086,10 +5086,6 @@ msgstr "Potyro nie potrafi pokazać tego rodzaju pliku. Zapisz kopię, aby otwor
 msgid "Potyro can’t use the microphone. Allow it for this site in your browser, then try again."
 msgstr "Potyro nie może użyć mikrofonu. Zezwól na to tej stronie w przeglądarce i spróbuj ponownie."
 
-#: ../shell/src/look-panel.tsx
-msgid "Potyro gold"
-msgstr "Złoto Potyro"
-
 #: ../shell/src/move-banner.tsx
 msgid "Potyro has a new home"
 msgstr "Potyro ma nowy adres"
@@ -5105,6 +5101,10 @@ msgstr "Potyro jest otwarte w innej karcie tej strony. Naciśnij „Używaj tuta
 #: ../shell/src/realm-probe-screen.tsx
 msgid "Potyro itself busy (calibration)"
 msgstr "Samo Potyro zajęte (kalibracja)"
+
+#: ../shell/src/look-panel.tsx
+msgid "Potyro pink"
+msgstr "Róż Potyro"
 
 #. Edit tile, Live connections: Potyro's own relay where apps play together
 #: ../shell/src/live-connections-setting.tsx
