@@ -10,9 +10,12 @@ test("QR Maker draws a readable code as you type, and keeps it with its picture"
   await addAsMine(page, "qr-maker.potyro-app.zip", packApp("qr-maker", "qr-maker.app.ts"));
 
   const canvas = page.getByRole("img", { name: "The QR code" });
-  await expect(page.getByText("Type something above and the code appears here.")).toBeVisible();
+  // Never an empty card: the first open shows the app's own address as a code, until the first keystroke.
+  await expect(canvas).toBeVisible();
+  await expect(page.getByText("https://potyro.app", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Link" }).click();
   const link = page.getByRole("textbox", { name: "Link" });
+  await link.fill("");
   await link.pressSequentially("potyro.app/gallery");
   await expect(canvas).toBeVisible();
   await expect(page.getByText("https://potyro.app/gallery")).toBeVisible();
