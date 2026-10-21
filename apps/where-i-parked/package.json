@@ -1,0 +1,21 @@
+{
+  "name": "@potyro/app-where-i-parked",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Where I parked: one tap drops a pin where the car is; later it says how far and which way, and opens a map to it",
+  "scripts": {
+    "build": "mkdir -p dist && node ../../scripts/pack-app.mjs where-i-parked.app.tsx -o dist/where-i-parked.potyro-app.zip",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "potyro": "workspace:*",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

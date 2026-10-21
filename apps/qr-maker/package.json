@@ -1,0 +1,18 @@
+{
+  "name": "@potyro/app-qr-maker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "QR Maker: text, a link or Wi‑Fi details become a QR code to hold up — offline, kept and shared as a picture",
+  "scripts": {
+    "build": "mkdir -p dist && node ../../scripts/pack-app.mjs qr-maker.app.ts -o dist/qr-maker.potyro-app.zip",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "potyro": "workspace:*"
+  },
+  "devDependencies": {
+    "jsqr": "^1.4.0"
+  }
+}
