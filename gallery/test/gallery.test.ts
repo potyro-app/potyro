@@ -41,6 +41,7 @@ describe("the gallery's data", () => {
       "mood-sleep", "draw-guess", "mirror-monsters", "photo-garden", "daily-puzzle", "photo-puzzle", "palette-catcher", "piano",
       "recipes", "groceries", "plants", "places", "split", "workout", "receipt-split",
       "pantry", "plant-doctor", "poster-event", "earthquakes", "word-watch", "ticker", "markdown-notes",
+      "countdowns", "where-i-parked",
     ]);
     // The workbench is empty (2026-10-20): every app that was on it has shipped.
     const soon = g.apps.filter((a) => a.status === "coming-soon");
