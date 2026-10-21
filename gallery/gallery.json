@@ -785,7 +785,10 @@
         "es": "Días hasta cada cosa que importa, la próxima en grande.",
         "pl": "Dni do każdej ważnej rzeczy, najbliższa na pierwszym planie.",
         "it": "I giorni che mancano a ciò che conta, il prossimo in grande."
-      }
+      },
+      "link": "https://potyro.app/s/mRuqU5eUuwVCzSb4PsDzyw#k=FBGUMbu6ssE3OO2w-VRO2g",
+      "screenshot": "shots/countdowns.jpg",
+      "publishedAt": "2026-10-21T13:30:24.408Z"
     },
     {
       "id": "where-i-parked",
@@ -812,7 +815,10 @@
         "es": "Un toque guarda el sitio; luego te dice cuánto falta y hacia dónde.",
         "pl": "Jedno dotknięcie zapamiętuje miejsce; potem mówi, jak daleko i w którą stronę.",
         "it": "Un tocco salva il posto; poi ti dice quanto manca e da che parte."
-      }
+      },
+      "link": "https://potyro.app/s/0xXH2Jw2BLzRzmkVl3R4cQ#k=AF0kgnWT8dvDj7irrDQKlA",
+      "screenshot": "shots/where-i-parked.jpg",
+      "publishedAt": "2026-10-21T13:30:37.693Z"
     },
     {
       "id": "which-is-cheaper",
@@ -840,7 +846,10 @@
         "es": "Dos precios, dos tamaños: el coste por unidad y cuál gana.",
         "pl": "Dwie ceny, dwie wielkości: koszt na jednostkę i co wygrywa.",
         "it": "Due prezzi, due formati: il costo per unità e chi vince."
-      }
+      },
+      "link": "https://potyro.app/s/5WxKaSZIc5FBmvWVSnGVQA#k=9kJJ6AMmQxPQ3C-ueTAVvQ",
+      "screenshot": "shots/which-is-cheaper.jpg",
+      "publishedAt": "2026-10-21T13:30:52.263Z"
     },
     {
       "id": "qr-maker",
@@ -867,7 +876,10 @@
         "es": "Un texto, un enlace o tu Wi‑Fi se convierte en un código para mostrar, sin conexión.",
         "pl": "Tekst, link albo Wi‑Fi staje się kodem do pokazania, bez internetu.",
         "it": "Un testo, un link o il tuo Wi‑Fi diventa un codice da mostrare, offline."
-      }
+      },
+      "link": "https://potyro.app/s/TrS5lys4AKDLkzQr02WADw#k=ciEnSEBoRc8FighOR7pLZw",
+      "screenshot": "shots/qr-maker.jpg",
+      "publishedAt": "2026-10-21T13:34:12.590Z"
     }
   ]
 }

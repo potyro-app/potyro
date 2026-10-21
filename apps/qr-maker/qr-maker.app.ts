@@ -118,6 +118,8 @@ const slug = (s: string): string =>
 const refOf = (f: FileInfo): FileRef => ({ id: f.id, path: f.path, name: f.name, mime: f.mime });
 
 const LAST = "last";
+/** What the Make screen shows before anyone has typed: the app's own address, as a code. */
+const SAMPLE_LINK = "https://potyro.app";
 const SCALE = 10;
 const QUIET = 4;
 
@@ -364,9 +366,16 @@ function mountMake(el: HTMLElement, props: ViewProps): () => void {
     void ctx.storage
       .get<{ kind: Kind; fields: Partial<Fields> }>(LAST)
       .then((last) => {
-        if (!alive || touched || !last || !KINDS.includes(last.kind)) return;
-        kind = last.kind;
-        fields = { ...EMPTY, ...last.fields };
+        if (!alive || touched) return;
+        if (last && KINDS.includes(last.kind)) {
+          kind = last.kind;
+          fields = { ...EMPTY, ...last.fields };
+        } else {
+          // The first open, and a demo: a code on the screen at once says what the app does better
+          // than an empty card; the first keystroke replaces it.
+          kind = "link";
+          fields = fieldsOf("link", SAMPLE_LINK);
+        }
         fill();
         show();
       })
