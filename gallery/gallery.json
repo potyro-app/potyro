@@ -759,6 +759,115 @@
       "link": "https://potyro.app/s/Tp2DCiaB0bW6c4l7rPOPYQ#k=ZNiX9SfBRRdkSY1tIH6BxA",
       "screenshot": "shots/markdown-notes.jpg",
       "publishedAt": "2026-10-21T07:56:40.558Z"
+    },
+    {
+      "id": "countdowns",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/countdowns/countdowns.app.tsx"
+        ]
+      },
+      "category": "plans",
+      "icon": "⏳",
+      "name": {
+        "en": "Countdowns",
+        "pt-BR": "Contagens regressivas",
+        "de": "Countdowns",
+        "es": "Cuentas atrás",
+        "pl": "Odliczania",
+        "it": "Conti alla rovescia"
+      },
+      "line": {
+        "en": "Days until each thing that matters, the next one big.",
+        "pt-BR": "Dias até cada coisa que importa, a próxima em destaque.",
+        "de": "Tage bis zu allem, was zählt – das Nächste ganz groß.",
+        "es": "Días hasta cada cosa que importa, la próxima en grande.",
+        "pl": "Dni do każdej ważnej rzeczy, najbliższa na pierwszym planie.",
+        "it": "I giorni che mancano a ciò che conta, il prossimo in grande."
+      }
+    },
+    {
+      "id": "where-i-parked",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/where-i-parked/where-i-parked.app.tsx"
+        ]
+      },
+      "category": "travel",
+      "icon": "🚗",
+      "name": {
+        "en": "Where I parked",
+        "pt-BR": "Onde estacionei",
+        "de": "Wo ich geparkt habe",
+        "es": "Dónde aparqué",
+        "pl": "Gdzie zaparkowałem",
+        "it": "Dove ho parcheggiato"
+      },
+      "line": {
+        "en": "One tap keeps the spot; later it says how far and which way.",
+        "pt-BR": "Um toque guarda o lugar; depois diz a distância e a direção.",
+        "de": "Ein Tipp merkt sich den Platz; später sagt er, wie weit und wohin.",
+        "es": "Un toque guarda el sitio; luego te dice cuánto falta y hacia dónde.",
+        "pl": "Jedno dotknięcie zapamiętuje miejsce; potem mówi, jak daleko i w którą stronę.",
+        "it": "Un tocco salva il posto; poi ti dice quanto manca e da che parte."
+      }
+    },
+    {
+      "id": "which-is-cheaper",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/which-is-cheaper/which-is-cheaper.app.tsx"
+        ],
+        "seed": "apps/which-is-cheaper/seed.json"
+      },
+      "category": "money",
+      "icon": "⚖️",
+      "name": {
+        "en": "Which is cheaper",
+        "pt-BR": "Qual é mais barato",
+        "de": "Was ist günstiger",
+        "es": "Cuál es más barato",
+        "pl": "Co jest tańsze",
+        "it": "Qual è più economico"
+      },
+      "line": {
+        "en": "Two prices, two sizes: the cost per unit, and which one wins.",
+        "pt-BR": "Dois preços, dois tamanhos: o custo por unidade e qual vence.",
+        "de": "Zwei Preise, zwei Größen: der Preis pro Einheit, und wer gewinnt.",
+        "es": "Dos precios, dos tamaños: el coste por unidad y cuál gana.",
+        "pl": "Dwie ceny, dwie wielkości: koszt na jednostkę i co wygrywa.",
+        "it": "Due prezzi, due formati: il costo per unità e chi vince."
+      }
+    },
+    {
+      "id": "qr-maker",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/qr-maker/qr-maker.app.ts"
+        ]
+      },
+      "category": "home",
+      "icon": "▦",
+      "name": {
+        "en": "QR Maker",
+        "pt-BR": "Gerador de QR",
+        "de": "QR-Macher",
+        "es": "Creador de QR",
+        "pl": "Twórca kodów QR",
+        "it": "Crea QR"
+      },
+      "line": {
+        "en": "Text, a link or your Wi‑Fi becomes a code to hold up, offline.",
+        "pt-BR": "Um texto, um link ou seu Wi‑Fi vira um código para mostrar, sem internet.",
+        "de": "Text, ein Link oder dein WLAN wird zum Code zum Hochhalten – offline.",
+        "es": "Un texto, un enlace o tu Wi‑Fi se convierte en un código para mostrar, sin conexión.",
+        "pl": "Tekst, link albo Wi‑Fi staje się kodem do pokazania, bez internetu.",
+        "it": "Un testo, un link o il tuo Wi‑Fi diventa un codice da mostrare, offline."
+      }
     }
   ]
 }
