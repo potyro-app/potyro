@@ -813,6 +813,34 @@
         "pl": "Jedno dotknięcie zapamiętuje miejsce; potem mówi, jak daleko i w którą stronę.",
         "it": "Un tocco salva il posto; poi ti dice quanto manca e da che parte."
       }
+    },
+    {
+      "id": "which-is-cheaper",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/which-is-cheaper/which-is-cheaper.app.tsx"
+        ],
+        "seed": "apps/which-is-cheaper/seed.json"
+      },
+      "category": "money",
+      "icon": "⚖️",
+      "name": {
+        "en": "Which is cheaper",
+        "pt-BR": "Qual é mais barato",
+        "de": "Was ist günstiger",
+        "es": "Cuál es más barato",
+        "pl": "Co jest tańsze",
+        "it": "Qual è più economico"
+      },
+      "line": {
+        "en": "Two prices, two sizes: the cost per unit, and which one wins.",
+        "pt-BR": "Dois preços, dois tamanhos: o custo por unidade e qual vence.",
+        "de": "Zwei Preise, zwei Größen: der Preis pro Einheit, und wer gewinnt.",
+        "es": "Dos precios, dos tamaños: el coste por unidad y cuál gana.",
+        "pl": "Dwie ceny, dwie wielkości: koszt na jednostkę i co wygrywa.",
+        "it": "Due prezzi, due formati: il costo per unità e chi vince."
+      }
     }
   ]
 }
