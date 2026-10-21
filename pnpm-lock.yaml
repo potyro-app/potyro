@@ -237,6 +237,25 @@ importers:
         specifier: ^10.7.18
         version: 10.7.18
 
+  apps/where-i-parked:
+    dependencies:
+      potyro:
+        specifier: workspace:*
+        version: link:../../packages/schema
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.1
+        version: 18.3.7(@types/react@18.3.31)
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+
   apps/word-watch:
     dependencies:
       potyro:
