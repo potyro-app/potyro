@@ -15,7 +15,8 @@ const root = (): HTMLElement => document.documentElement;
 beforeEach(() => {
   localStorage.clear();
   root().removeAttribute("data-theme");
-  root().style.removeProperty("--accent");
+  root().style.removeProperty("--tinta-l");
+  root().classList.remove("k-traco");
 });
 afterEach(() => localStorage.clear());
 
@@ -47,15 +48,20 @@ describe("the device's look", () => {
     expect(readLook()).toEqual({ appearance: "dark", accent: 205 });
   });
 
-  it("sets the accent as a colour on the root, and takes it off again", () => {
-    setLook({ appearance: "system", accent: 205 });
-    expect(root().style.getPropertyValue("--accent")).toBe("oklch(72% 0.13 205)");
-    expect(accentColour()).toBe("oklch(72% 0.13 205)");
+  it("sets the accent on the root as the clock's pairs for both themes, and takes it off again", () => {
+    // 7 o'clock, ciano: the designer's table (packages/design/source/potyro-tokens.css).
+    setLook({ appearance: "system", accent: 210 });
+    expect(root().style.getPropertyValue("--tinta-l")).toBe("#1f7885");
+    expect(root().style.getPropertyValue("--tinta-d")).toBe("#37bed3");
+    expect(root().style.getPropertyValue("--traco")).toBe("#44d3e9");
+    expect(root().classList.contains("k-traco")).toBe(true);
+    expect(accentColour()).toBe("#44d3e9");
 
-    // Back to Potyro's own: the property is removed rather than set to gold, so the stylesheet's
+    // Back to Potyro's own: the pairs come off rather than being set to rosa, so the stylesheet's
     // own value (and any future change to it) is what shows.
     setLook({ appearance: "system" });
-    expect(root().style.getPropertyValue("--accent")).toBe("");
+    expect(root().style.getPropertyValue("--tinta-l")).toBe("");
+    expect(root().classList.contains("k-traco")).toBe(false);
     expect(accentColour()).toBeNull();
   });
 

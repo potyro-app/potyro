@@ -15,6 +15,9 @@ import { fileURLToPath } from "node:url";
 
 const file = fileURLToPath(new URL("../packages/shell/src/styles.css", import.meta.url));
 const css = readFileSync(file, "utf8");
+// The design system (packages/design/tokens.css) declares the palette, type, shape and motion; the
+// shell imports it first. Its declarations count as defined here.
+const designTokens = readFileSync(fileURLToPath(new URL("../packages/design/tokens.css", import.meta.url)), "utf8");
 const lines = css.split("\n");
 
 /** Tokens the markup sets on an element rather than the stylesheet. */
@@ -23,6 +26,18 @@ const INLINE = new Set([
   "--tile-accent",
   "--k-hue",
   "--swatch",
+  // An app's colour and a chosen look, as both themes' values (`varsBoth` in @potyro/design); the
+  // `.k-traco` rules pick the theme's pair.
+  "--hue",
+  "--traco",
+  "--tinta-l",
+  "--tinta-d",
+  "--aguada-l",
+  "--aguada-d",
+  "--accent-l",
+  "--accent-d",
+  "--on-accent-l",
+  "--on-accent-d",
   // The Start screen (#96): each tile's colour (contrast-checked in tile-colour.ts), its press tilt
   // and size, a group's tint, and the wall's measured grid and turnstile delay (launcher-metro.tsx).
   "--tile-bg",
@@ -47,7 +62,7 @@ const INLINE = new Set([
 const problems = [];
 
 // 1. Undefined tokens.
-const defined = new Set([...css.matchAll(/(--[a-zA-Z0-9-]+)\s*:/g)].map((m) => m[1]));
+const defined = new Set([...(designTokens + css).matchAll(/(--[a-zA-Z0-9-]+)\s*:/g)].map((m) => m[1]));
 for (const [i, line] of lines.entries()) {
   for (const m of line.matchAll(/var\((--[a-zA-Z0-9-]+)/g)) {
     const name = m[1];

@@ -10,12 +10,13 @@
 // toggle can", says the comment that has been sitting there with nothing to set it. This is the
 // thing that sets it.
 //
-// The accent is a HUE, not a colour. Every token is OKLCH with fixed lightness and chroma, so a
-// hue-only choice cannot walk the palette into unreadable contrast the way a free colour picker
-// would — the same reason a tile's colour is a hue (`tile-identity.ts`).
+// The accent is a HUE, not a colour: an hour on the clock of strokes (DESIGN.md §3.1, @potyro/design).
+// The system computes every level from the angle, so a choice here cannot walk the palette into
+// unreadable contrast the way a free colour picker would. No choice is Potyro's own rosa.
 
 import { useSyncExternalStore } from "react";
-import { hueColour } from "./tile-identity.js";
+import { cor, varsBoth } from "@potyro/design";
+import { tracoOf } from "./app-colour.js";
 
 export type Appearance = "system" | "light" | "dark";
 /**
@@ -27,7 +28,7 @@ export type LauncherStyle = "classic" | "start";
 
 export interface Look {
   appearance: Appearance;
-  /** A hue from `TILE_HUES`, or absent for Potyro's own gold. */
+  /** A hue in degrees — an hour of the clock, or any angle — or absent for Potyro's own rosa. */
   accent?: number;
   /** Absent: Classic. */
   launcher?: LauncherStyle;
@@ -75,7 +76,7 @@ function current(): Look {
 }
 
 export function setLook(next: Look): void {
-  // Classic is what "no choice" means: written as absence, like Potyro's own accent.
+  // Classic is what "no choice" means: written as absence, like Potyro's own rosa.
   if (next.launcher !== "start") {
     const { launcher: _classic, ...rest } = next;
     next = rest;
@@ -101,13 +102,20 @@ export function applyLook(look: Look = readLook()): void {
   if (!root) return;
   if (look.appearance === "system") root.removeAttribute("data-theme");
   else root.setAttribute("data-theme", look.appearance);
-  if (look.accent === undefined) root.style.removeProperty("--accent");
-  else root.style.setProperty("--accent", hueColour(look.accent));
+  // Both themes' values at once (`.k-traco` in styles.css picks the theme's), so a system theme
+  // that flips at dusk needs no re-run. No choice: the pairs come off and tokens.css's rosa is back.
+  const vars = look.accent === undefined ? undefined : varsBoth(cor(look.accent));
+  for (const name of TRACO_VARS) {
+    if (vars) root.style.setProperty(name, vars[name]!);
+    else root.style.removeProperty(name);
+  }
+  root.classList.toggle("k-traco", vars !== undefined);
 }
+const TRACO_VARS = Object.keys(varsBoth(cor(0)));
 
-/** The colour of the chosen accent, or null for Potyro's own. */
+/** The colour of the chosen accent (its traço, as a swatch shows it), or null for Potyro's own. */
 export function accentColour(look: Look = readLook()): string | null {
-  return look.accent === undefined ? null : hueColour(look.accent);
+  return look.accent === undefined ? null : tracoOf(look.accent);
 }
 
 export function useLook(): Look {

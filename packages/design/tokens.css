@@ -1,0 +1,205 @@
+/* Potyro — tokens
+   GERADO por potyro-color.js (as cores) + valores fixos (tipo, espaço, forma, movimento).
+   Regras de uso: DESIGN.md. Para mudar uma cor, mude os parâmetros em potyro-color.js,
+   não os valores aqui.
+
+   O relógio de traços: toda cor é um ângulo (matiz OKLCH). 12 horas pré-calculadas abaixo.
+   Uso em apps gerados: <html data-traco="laranja">. Sem data-traco, vale o rosa Potyro (12h).
+   Ângulo fora das 12 horas: PotyroColor.apply(document.documentElement, 135).
+   Tema: data-theme="dark" | "light" ou o do sistema.
+
+   Cada traço tem:
+     --traco      a versão mais viva: blocos, ilustração, o "y", barras de gráfico. Sem texto pequeno em cima.
+     --tinta      texto, links, ícones ativos, foco. ≥ 5:1 no fundo, ≥ 4.6:1 em surface.
+     --aguada     fundo tingido (chips, seleção). Texto sobre ela: --ink.
+     --accent     preenchimento do botão primário / toggle ligado.
+     --on-accent  texto sobre --accent (≥ 4.5:1). */
+
+/* The fonts ship with the app (offline-first): Google's woff2 files, latin and latin-ext, the
+   variable weight axis where the family has one. Replaces the designer's @import of Google Fonts. */
+@font-face { font-family: "Quicksand"; font-style: normal; font-weight: 300 700; font-display: swap; src: url("./fonts/quicksand-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Quicksand"; font-style: normal; font-weight: 300 700; font-display: swap; src: url("./fonts/quicksand-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Figtree"; font-style: normal; font-weight: 300 900; font-display: swap; src: url("./fonts/figtree-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Figtree"; font-style: normal; font-weight: 300 900; font-display: swap; src: url("./fonts/figtree-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "DM Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("./fonts/dmmono-400-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "DM Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("./fonts/dmmono-400-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "DM Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("./fonts/dmmono-500-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "DM Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("./fonts/dmmono-500-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+:root {
+  /* ── Neutros (grafite do logo) ───────────────────────── */
+  --bg: #ffffff;              /* fundo da página */
+  --surface: #f3f3f4;         /* blocos, cards preenchidos, chips */
+  --surface-2: #e6e5e7;       /* hover de surface, trilhos */
+  --ink: #231f20;             /* texto principal (16.3:1 no bg) */
+  --ink-soft: #414042;        /* grafite do logo: títulos, ícones, botão secundário */
+  --muted: #6d6b6e;           /* texto secundário (5.3:1 bg, 4.8:1 surface) */
+  --line: #e6e5e7;            /* divisores decorativos */
+  --line-strong: #8c8a8e;     /* borda de controles (3.4:1 bg, 3.1:1 surface) */
+
+  /* ── Status: horas fixas do relógio (sempre com ícone + palavra) ── */
+  --danger: #d02e1e;          /* 1h vermelho, tinta */
+  --success: #1f7e3f;         /* 5h verde, tinta */
+  --warning: #846b1c;         /* 3h amarelo, tinta */
+  --warning-fill: #e2b93c;    /* 3h amarelo, traço: fundo de aviso */
+  --on-warning-fill: #231f20; /* texto sobre --warning-fill, nos dois temas */
+
+  /* ── Traço ativo: 12h rosa Potyro (padrão) ───────────── */
+  --hue: 0; --traco: #e44f89; --tinta: #ca2b70; --aguada: #ffeaef; --accent: #ca2b70; --on-accent: #ffffff; --focus: #ca2b70;
+
+  /* ── Categorias de dados (11 horas, sem o rosa) ──────────
+     --cat-X ponto/ícone/linha · --cat-X-fill barras e blocos · --cat-X-soft fundo do chip */
+  --cat-vermelho: #d02e1e; --cat-vermelho-fill: #e54e3c; --cat-vermelho-soft: #ffebe7;
+  --cat-laranja: #a05e1c; --cat-laranja-fill: #f69536; --cat-laranja-soft: #ffecde;
+  --cat-amarelo: #846b1c; --cat-amarelo-fill: #e2b93c; --cat-amarelo-soft: #f8f0d8;
+  --cat-lima: #64751b; --cat-lima-fill: #b0cd3d; --cat-lima-soft: #edf4dc;
+  --cat-verde: #1f7e3f; --cat-verde-fill: #49de78; --cat-verde-soft: #e2f7e5;
+  --cat-menta: #1f7b6d; --cat-menta-fill: #44d8c1; --cat-menta-soft: #daf8f1;
+  --cat-ciano: #1f7885; --cat-ciano-fill: #44d3e9; --cat-ciano-soft: #d9f7fc;
+  --cat-azul: #1e74a6; --cat-azul-fill: #37adf3; --cat-azul-soft: #e2f3ff;
+  --cat-anil: #4761e4; --cat-anil-fill: #5d7bf1; --cat-anil-soft: #eaf0ff;
+  --cat-roxo: #884dd5; --cat-roxo-fill: #9964e5; --cat-roxo-soft: #f2edff;
+  --cat-magenta: #b23bac; --cat-magenta-fill: #dc6ad4; --cat-magenta-soft: #fde9fb;
+
+  /* ── Tipo ─────────────────────────────────────────────── */
+  --font-display: "Quicksand", "Nunito", ui-rounded, system-ui, sans-serif;
+  --font-body: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-hero: 4rem;      /* 64 · landing apenas · line-height 1.0 */
+  --text-display: 2.5rem; /* 40 · line-height 1.1 */
+  --text-h1: 2rem;        /* 32 · line-height 1.15 */
+  --text-h2: 1.5rem;      /* 24 · line-height 1.25 */
+  --text-h3: 1.25rem;     /* 20 · line-height 1.3 */
+  --text-body: 1rem;      /* 16 · line-height 1.5 */
+  --text-small: 0.875rem; /* 14 · line-height 1.45 */
+  --text-micro: 0.75rem;  /* 12 · line-height 1.4 · só rótulos */
+
+  /* ── Espaço (base 4) ─────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* ── Forma ───────────────────────────────────────────── */
+  --radius-sm: 8px;     /* chips quadrados, tooltips, imagens pequenas */
+  --radius-md: 12px;    /* inputs, menus */
+  --radius-lg: 20px;    /* cards, sheets, modais */
+  --radius-pill: 999px; /* botões, chips, toggles */
+  --stroke: 2px;        /* toda borda de controle e todo ícone */
+
+  /* Só para elementos que flutuam (menu, toast, sheet). Nada mais tem sombra. */
+  --shadow-float: 0 8px 24px rgba(35, 31, 32, 0.14);
+
+  /* ── Movimento ───────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-boing: cubic-bezier(0.34, 1.56, 0.64, 1); /* entrada de coisas pequenas */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+}
+
+/* ── Traços dos apps (11 horas) ────────────────────────── */
+[data-traco="vermelho"] { --hue: 30; --traco: #e54e3c; --tinta: #d02e1e; --aguada: #ffebe7; --accent: #d02e1e; --on-accent: #ffffff; --focus: #d02e1e; }
+[data-traco="laranja"] { --hue: 60; --traco: #f69536; --tinta: #a05e1c; --aguada: #ffecde; --accent: #f69536; --on-accent: #231f20; --focus: #a05e1c; }
+[data-traco="amarelo"] { --hue: 90; --traco: #e2b93c; --tinta: #846b1c; --aguada: #f8f0d8; --accent: #e2b93c; --on-accent: #231f20; --focus: #846b1c; }
+[data-traco="lima"]    { --hue: 120; --traco: #b0cd3d; --tinta: #64751b; --aguada: #edf4dc; --accent: #b0cd3d; --on-accent: #231f20; --focus: #64751b; }
+[data-traco="verde"]   { --hue: 150; --traco: #49de78; --tinta: #1f7e3f; --aguada: #e2f7e5; --accent: #49de78; --on-accent: #231f20; --focus: #1f7e3f; }
+[data-traco="menta"]   { --hue: 180; --traco: #44d8c1; --tinta: #1f7b6d; --aguada: #daf8f1; --accent: #44d8c1; --on-accent: #231f20; --focus: #1f7b6d; }
+[data-traco="ciano"]   { --hue: 210; --traco: #44d3e9; --tinta: #1f7885; --aguada: #d9f7fc; --accent: #44d3e9; --on-accent: #231f20; --focus: #1f7885; }
+[data-traco="azul"]    { --hue: 240; --traco: #37adf3; --tinta: #1e74a6; --aguada: #e2f3ff; --accent: #37adf3; --on-accent: #231f20; --focus: #1e74a6; }
+[data-traco="anil"]    { --hue: 270; --traco: #5d7bf1; --tinta: #4761e4; --aguada: #eaf0ff; --accent: #4761e4; --on-accent: #ffffff; --focus: #4761e4; }
+[data-traco="roxo"]    { --hue: 300; --traco: #9964e5; --tinta: #884dd5; --aguada: #f2edff; --accent: #884dd5; --on-accent: #ffffff; --focus: #884dd5; }
+[data-traco="magenta"] { --hue: 330; --traco: #dc6ad4; --tinta: #b23bac; --aguada: #fde9fb; --accent: #dc6ad4; --on-accent: #231f20; --focus: #b23bac; }
+
+/* ── Escuro ──────────────────────────────────────────────
+   Mesmos nomes, valores trocados. Não inverta: use estes. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #1c1b1c; --surface: #2a2829; --surface-2: #414042;
+    --ink: #f3f3f4; --ink-soft: #e6e5e7; --muted: #a8a6aa;
+    --line: #3a3839; --line-strong: #858387;
+    --danger: #f88574; --success: #37ca68; --warning: #cca630; --warning-fill: #e2b93c;
+    --hue: 0; --traco: #e44f89; --tinta: #f87da7; --aguada: #44212d; --accent: #e44f89; --on-accent: #1c1b1c; --focus: #f87da7;
+    --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --cat-vermelho: #f88574; --cat-vermelho-soft: #46221d;
+    --cat-laranja: #f1902f; --cat-laranja-soft: #42270e;
+    --cat-amarelo: #cca630; --cat-amarelo-soft: #382c07;
+    --cat-lima: #9fb931; --cat-lima-soft: #2a320f;
+    --cat-verde: #37ca68; --cat-verde-soft: #17351f;
+    --cat-menta: #37c3ae; --cat-menta-soft: #00372f;
+    --cat-ciano: #37bed3; --cat-ciano-soft: #00353c;
+    --cat-azul: #4db5f7; --cat-azul-soft: #0f3146;
+    --cat-anil: #8da7f7; --cat-anil-soft: #232c49;
+    --cat-roxo: #b995f7; --cat-roxo-soft: #322745;
+    --cat-magenta: #ee75e6; --cat-magenta-soft: #3d233b;
+  }
+  :root:not([data-theme="light"])[data-traco="vermelho"] { --hue: 30; --traco: #e54e3c; --tinta: #f88574; --aguada: #46221d; --accent: #f88574; --on-accent: #1c1b1c; --focus: #f88574; }
+  :root:not([data-theme="light"])[data-traco="laranja"] { --hue: 60; --traco: #f69536; --tinta: #f1902f; --aguada: #42270e; --accent: #f69536; --on-accent: #1c1b1c; --focus: #f1902f; }
+  :root:not([data-theme="light"])[data-traco="amarelo"] { --hue: 90; --traco: #e2b93c; --tinta: #cca630; --aguada: #382c07; --accent: #e2b93c; --on-accent: #1c1b1c; --focus: #cca630; }
+  :root:not([data-theme="light"])[data-traco="lima"]    { --hue: 120; --traco: #b0cd3d; --tinta: #9fb931; --aguada: #2a320f; --accent: #b0cd3d; --on-accent: #1c1b1c; --focus: #9fb931; }
+  :root:not([data-theme="light"])[data-traco="verde"]   { --hue: 150; --traco: #49de78; --tinta: #37ca68; --aguada: #17351f; --accent: #49de78; --on-accent: #1c1b1c; --focus: #37ca68; }
+  :root:not([data-theme="light"])[data-traco="menta"]   { --hue: 180; --traco: #44d8c1; --tinta: #37c3ae; --aguada: #00372f; --accent: #44d8c1; --on-accent: #1c1b1c; --focus: #37c3ae; }
+  :root:not([data-theme="light"])[data-traco="ciano"]   { --hue: 210; --traco: #44d3e9; --tinta: #37bed3; --aguada: #00353c; --accent: #44d3e9; --on-accent: #1c1b1c; --focus: #37bed3; }
+  :root:not([data-theme="light"])[data-traco="azul"]    { --hue: 240; --traco: #37adf3; --tinta: #4db5f7; --aguada: #0f3146; --accent: #37adf3; --on-accent: #1c1b1c; --focus: #4db5f7; }
+  :root:not([data-theme="light"])[data-traco="anil"]    { --hue: 270; --traco: #5d7bf1; --tinta: #8da7f7; --aguada: #232c49; --accent: #5d7bf1; --on-accent: #1c1b1c; --focus: #8da7f7; }
+  :root:not([data-theme="light"])[data-traco="roxo"]    { --hue: 300; --traco: #9964e5; --tinta: #b995f7; --aguada: #322745; --accent: #b995f7; --on-accent: #1c1b1c; --focus: #b995f7; }
+  :root:not([data-theme="light"])[data-traco="magenta"] { --hue: 330; --traco: #dc6ad4; --tinta: #ee75e6; --aguada: #3d233b; --accent: #dc6ad4; --on-accent: #1c1b1c; --focus: #ee75e6; }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1c1b1c; --surface: #2a2829; --surface-2: #414042;
+  --ink: #f3f3f4; --ink-soft: #e6e5e7; --muted: #a8a6aa;
+  --line: #3a3839; --line-strong: #858387;
+  --danger: #f88574; --success: #37ca68; --warning: #cca630; --warning-fill: #e2b93c;
+  --hue: 0; --traco: #e44f89; --tinta: #f87da7; --aguada: #44212d; --accent: #e44f89; --on-accent: #1c1b1c; --focus: #f87da7;
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --cat-vermelho: #f88574; --cat-vermelho-soft: #46221d;
+  --cat-laranja: #f1902f; --cat-laranja-soft: #42270e;
+  --cat-amarelo: #cca630; --cat-amarelo-soft: #382c07;
+  --cat-lima: #9fb931; --cat-lima-soft: #2a320f;
+  --cat-verde: #37ca68; --cat-verde-soft: #17351f;
+  --cat-menta: #37c3ae; --cat-menta-soft: #00372f;
+  --cat-ciano: #37bed3; --cat-ciano-soft: #00353c;
+  --cat-azul: #4db5f7; --cat-azul-soft: #0f3146;
+  --cat-anil: #8da7f7; --cat-anil-soft: #232c49;
+  --cat-roxo: #b995f7; --cat-roxo-soft: #322745;
+  --cat-magenta: #ee75e6; --cat-magenta-soft: #3d233b;
+}
+:root[data-theme="dark"][data-traco="vermelho"] { --hue: 30; --traco: #e54e3c; --tinta: #f88574; --aguada: #46221d; --accent: #f88574; --on-accent: #1c1b1c; --focus: #f88574; }
+:root[data-theme="dark"][data-traco="laranja"] { --hue: 60; --traco: #f69536; --tinta: #f1902f; --aguada: #42270e; --accent: #f69536; --on-accent: #1c1b1c; --focus: #f1902f; }
+:root[data-theme="dark"][data-traco="amarelo"] { --hue: 90; --traco: #e2b93c; --tinta: #cca630; --aguada: #382c07; --accent: #e2b93c; --on-accent: #1c1b1c; --focus: #cca630; }
+:root[data-theme="dark"][data-traco="lima"]    { --hue: 120; --traco: #b0cd3d; --tinta: #9fb931; --aguada: #2a320f; --accent: #b0cd3d; --on-accent: #1c1b1c; --focus: #9fb931; }
+:root[data-theme="dark"][data-traco="verde"]   { --hue: 150; --traco: #49de78; --tinta: #37ca68; --aguada: #17351f; --accent: #49de78; --on-accent: #1c1b1c; --focus: #37ca68; }
+:root[data-theme="dark"][data-traco="menta"]   { --hue: 180; --traco: #44d8c1; --tinta: #37c3ae; --aguada: #00372f; --accent: #44d8c1; --on-accent: #1c1b1c; --focus: #37c3ae; }
+:root[data-theme="dark"][data-traco="ciano"]   { --hue: 210; --traco: #44d3e9; --tinta: #37bed3; --aguada: #00353c; --accent: #44d3e9; --on-accent: #1c1b1c; --focus: #37bed3; }
+:root[data-theme="dark"][data-traco="azul"]    { --hue: 240; --traco: #37adf3; --tinta: #4db5f7; --aguada: #0f3146; --accent: #37adf3; --on-accent: #1c1b1c; --focus: #4db5f7; }
+:root[data-theme="dark"][data-traco="anil"]    { --hue: 270; --traco: #5d7bf1; --tinta: #8da7f7; --aguada: #232c49; --accent: #5d7bf1; --on-accent: #1c1b1c; --focus: #8da7f7; }
+:root[data-theme="dark"][data-traco="roxo"]    { --hue: 300; --traco: #9964e5; --tinta: #b995f7; --aguada: #322745; --accent: #b995f7; --on-accent: #1c1b1c; --focus: #b995f7; }
+:root[data-theme="dark"][data-traco="magenta"] { --hue: 330; --traco: #dc6ad4; --tinta: #ee75e6; --aguada: #3d233b; --accent: #dc6ad4; --on-accent: #1c1b1c; --focus: #ee75e6; }
+
+/* ── Base ────────────────────────────────────────────── */
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  line-height: 1.5;
+}
+:focus-visible {
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}

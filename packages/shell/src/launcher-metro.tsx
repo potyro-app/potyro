@@ -57,6 +57,7 @@ import { DatabaseIcon } from "./data-icon.js";
 import { DEFAULT_NAME, peekIdentity } from "@potyro/identity";
 import { personHue, personInitials } from "@potyro/runtime";
 import { fmt } from "@potyro/i18n";
+import { Wordmark } from "./wordmark.js";
 
 const GAP = 6;
 /** How long the wall waits for an app's declared identity (its category, its tile) before placing it anyway. */
@@ -232,10 +233,7 @@ export function MetroHome(p: MetroHomeProps) {
     <div className="k-launcher k-launcher-home k-metro" role="dialog" aria-label={t`App launcher`} data-pane={pane}>
       <header className="k-launcher-head k-metro-head">
         <div className="k-brand k-metro-brand">
-          <span className="k-logo" aria-hidden>
-            ◆
-          </span>
-          <strong>Potyro</strong>
+          <Wordmark />
         </div>
         <div className="k-metro-pivot" role="tablist" aria-label={t({ message: "Home screen", comment: "The launcher's two panes: the tile wall and the list of all apps" })}>
           <button type="button" role="tab" id="k-pivot-start" aria-controls="k-metro-pane" aria-selected={pane === "start"} tabIndex={pane === "start" ? 0 : -1} onClick={() => setPane("start")} onKeyDown={(e) => e.key === "ArrowRight" && (setPane("all"), document.getElementById("k-pivot-all")?.focus())}>

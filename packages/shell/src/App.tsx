@@ -5,8 +5,8 @@
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { DatabaseIcon } from "./data-icon.js";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { replayCase, type ActivityItem, type Case, type PotyroRuntime, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { personHue, replayCase, type ActivityItem, type Case, type PotyroRuntime, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
 import type { Provenance } from "@potyro/host";
 import { LayoutHost, PageCountContext, RecordForm, TRUST_REQUEST, ViewHost, backdropKind, backdropOf, byPeople, createDefaults, usePageTitles } from "@potyro/views";
 import { PageHeader, type PageCta } from "./page-header.js";
@@ -61,6 +61,7 @@ import { languagePrefs } from "./locale.js";
 import { optionLabel } from "@potyro/views";
 import { acceptLinkParams } from "potyro";
 import type { Arrival } from "./app-link.js";
+import { tracoStyle } from "./app-colour.js";
 
 interface EditorState {
   entity: string;
@@ -877,12 +878,15 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
    *
    * In order: the colour you gave THIS app (Edit tile — which until now tinted the tile and nothing
    * else, so a choice made there was invisible the moment the app opened), then the colour the app
-   * declares for itself, then your accent for everything that has none, then Potyro's own gold.
+   * declares for itself, then the hue the app is known by (its tile's, from its id). Never
+   * Potyro's own rosa: that is the platform's, and an app is not the platform (DESIGN.md §3.1).
    *
    * Yours outranks the app's on purpose: you chose it for this app, knowing what the app looks
-   * like. The app's `theme.accent` is a default from whoever wrote it.
+   * like. The app's `theme.accent` is a default from whoever wrote it. Whichever it is, only its
+   * angle is kept: the clock of strokes derives the levels (app-colour.ts).
    */
-  const accent = appAccent ?? def.theme?.accent ?? "#E4A93C";
+  const accent = appAccent ?? def.theme?.accent;
+  const tracoVars = useMemo(() => tracoStyle(accent, personHue(appId ?? "potyro")), [accent, appId]);
 
   // What the chrome shows (#111). Pages carry an icon — the entity's, else one for the view type —
   // because a tab bar without icons is a row of truncated words. Through `navigate`, NOT
@@ -1055,7 +1059,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
 
   return (
     <div
-      className="k-app"
+      className="k-app k-traco"
       // The app's words are in this language (#302): screen readers pronounce them right, and a
       // right-to-left one turns the app's own area round (Q11 — a first step, not full RTL).
       lang={runtime.language.current}
@@ -1064,7 +1068,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       data-locked={locked ? "" : undefined}
       // What the page sits on (`background`): a glow of the app's colour unless it says otherwise.
       data-backdrop={backdropKind(backdropOf(def as Parameters<typeof backdropOf>[0], currentPage as Parameters<typeof backdropOf>[1]))}
-      style={{ ["--accent" as string]: accent }}
+      style={tracoVars as React.CSSProperties}
       // Locked: a tap on a control that writes explains instead of acting. Capture phase, so it wins
       // over the control's own handler; the store would refuse the write anyway, but only after a
       // form had been filled in or a delete confirmed.
