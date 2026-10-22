@@ -4721,9 +4721,17 @@ button.k-prov:focus-visible {
 .k-menu-item.k-danger {
   color: var(--danger);
 }
+/* Hovered or focused, the item is the danger pair itself (DESIGN.md §6, the danger button): its
+   colour with the ground's colour on it (the dark ground's ink in the dark). The danger colour on its own wash
+   read at 4.47:1, a hair under AA, and text on a wash is ink by the guide anyway. */
 .k-menu-item.k-danger:hover,
 .k-menu-item.k-danger:focus-visible {
-  background: var(--danger-tint);
+  background: var(--danger);
+  color: var(--bg);
+}
+.k-menu-item.k-danger:hover .k-menu-detail,
+.k-menu-item.k-danger:focus-visible .k-menu-detail {
+  color: inherit;
 }
 @media (max-width: 759px) {
   .k-menu-scrim {
