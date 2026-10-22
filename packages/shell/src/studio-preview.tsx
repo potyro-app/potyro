@@ -12,7 +12,7 @@
 // this, a form opened in the preview covered the Studio, and the app's dialogs opened over the chat.
 
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, type ReactNode } from "react";
 import { MemoryStore, type Store } from "@potyro/store";
 import { createWebCapabilities } from "@potyro/capabilities";
 import { capsForApp } from "./app-ai-caps.js";
@@ -160,10 +160,16 @@ export interface PreviewScreenProps {
   onPoint: () => void;
   onPointCancel: () => void;
   onPicked: (pointed: Pointed) => void;
+  /** On a phone the Studio's two tabs (Conversation, App) stand where the way back was. */
+  tabs?: ReactNode;
+  /** The quick adjustments above the app (DESIGN.md §10): its name, its colour. */
+  above?: ReactNode;
+  /** The colour chosen for the app here, as the launcher's tile would carry it. */
+  appAccent?: string;
 }
 
 /** The opened app: a bar with the way back, and the app's own screen under it. */
-export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource, onPromote, pointing, onPoint, onPointCancel, onPicked }: PreviewScreenProps) {
+export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource, onPromote, pointing, onPoint, onPointCancel, onPicked, tabs, above, appAccent }: PreviewScreenProps) {
   const { t } = useLingui();
   const screenRef = useRef<HTMLDivElement>(null);
   // The portal root is the screen element itself, which exists only after the first render.
@@ -194,6 +200,7 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
         </header>
       ) : (
         <header className="k-preview-bar">
+          {tabs ?? (
           <button type="button" className="k-preview-back" aria-label={t`Back to the chat`} onClick={onBack}>
             {/* Beside the conversation the chat is already there, so this closes the app instead. */}
             <span aria-hidden>←</span> <span className="k-preview-back-word">
@@ -203,6 +210,7 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
               <Trans>Close</Trans>
             </span>
           </button>
+          )}
           <p className="k-preview-title">
             <strong>{title}</strong>
             {unsaved ? <span className="k-preview-unsaved">
@@ -244,6 +252,10 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
       {/* The screen does not scroll; the app scrolls INSIDE it. Anything fixed in the app is placed
           against the screen, so a tab bar or a floating button stays put while the app scrolls —
           were the screen itself the scroller, they would scroll away with the content. */}
+      {above ? <div className="k-preview-adjust-row">{above}</div> : null}
+      {/* On a wide screen the app sits in a phone's frame (DESIGN.md §10): it is shared by link and
+          mostly opened on one. The chrome measures its own width, so it lays out as a phone's. */}
+      <div className="k-preview-frame">
       <div className="k-preview-screen" ref={screenRef}>
         {screen ? (
           <PortalRootContext.Provider value={screen}>
@@ -257,12 +269,14 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
                 picker={preview.picker}
                 questions={preview.questions}
                 onPromote={promote}
+                appAccent={appAccent}
               />
             </div>
             <Dialogs host={preview.dialogs} />
             {pointing ? <PointMode screen={screen} def={def} onPick={onPicked} onCancel={onPointCancel} /> : null}
           </PortalRootContext.Provider>
         ) : null}
+      </div>
       </div>
     </section>
   );
