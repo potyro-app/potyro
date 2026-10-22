@@ -15,6 +15,7 @@ import { t as tr } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ActionMenu, usePhone, type MenuEntry } from "@potyro/views";
 import { I } from "./icons.js";
+import { personInitials } from "@potyro/runtime";
 
 const WIDE_FROM = 760;
 
@@ -195,6 +196,19 @@ function toolEntry(tool: ChromeTool): MenuEntry {
   };
 }
 
+/**
+ * The app's mark (DESIGN.md §6, the app card): a small block of its hour with its initials on it.
+ * The same mark the home screen's card wears, so an app is the same shape everywhere. The app's
+ * declared icon stays its content, inside its pages.
+ */
+function AppMark({ name }: { name: string }) {
+  return (
+    <span className="k-app-mark" aria-hidden>
+      {personInitials(name, name)}
+    </span>
+  );
+}
+
 function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, currentEntity, tools, report, recording, trust, onApps, extras, onBack, showQuick = true, fullBleed, locked, children }: AppChromeProps) {
   const primary = pageAdd ?? primaryQuick(quick, currentEntity);
   const others = quick.filter((q) => q !== primary);
@@ -235,9 +249,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, current
             {I.apps}
           </button>
         ) : null}
-        <span className="k-topbar-icon" aria-hidden>
-          {icon}
-        </span>
+        <AppMark name={name} />
         <h1 className="k-topbar-name">{name}</h1>
         {scope}
         {status}
@@ -339,9 +351,7 @@ function WideChrome({ name, icon, scope, status, pages, quick, quietQuick, curre
     <div className="k-app-wide" data-recording={recording || undefined}>
       <aside className="k-sidebar">
         <div className="k-brand">
-          <span className="k-brand-icon" aria-hidden>
-            {icon}
-          </span>
+          <AppMark name={name} />
           <h1 className="k-brand-name">{name}</h1>
         </div>
         {scope || status || extras ? (

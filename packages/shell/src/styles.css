@@ -16337,3 +16337,183 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-launcher-home .k-launch-newbtn:hover {
   background: var(--surface);
 }
+
+/* ---- The app chrome (DESIGN.md §6 Navegação) ---------------------------------------------------
+   Flat bars on the page's ground, the app's mark and name, pages as the system's rows and tabs.
+   These rules come last and win over the chrome's older ones above. */
+.k-app-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--traco);
+  color: var(--ink-on-traco);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+/* The phone's top bar: 56px, flat, the mark, the name in the display face, round buttons. */
+.k-topbar {
+  gap: var(--space-2);
+  min-height: 56px;
+  padding: var(--space-1) var(--space-2);
+  padding-top: calc(var(--space-1) + var(--k-safe-top));
+  background: var(--bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-bottom: var(--stroke) solid var(--line);
+}
+.k-topbar-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.k-topbar-btn,
+.k-menu-btn.k-topbar-btn {
+  width: 44px;
+  height: 44px;
+  color: var(--ink);
+}
+.k-topbar-btn:hover,
+.k-menu-btn.k-topbar-btn:hover {
+  background: var(--surface);
+}
+.k-topbar-btn:active {
+  transform: scale(0.97);
+}
+/* Adding, for what the page shows: the app's colour at the level that reads, on its wash — a
+   clear button that is not the screen's primary (a page with a bar at the bottom has one). */
+.k-topbar-add,
+.k-topbar-btn.k-topbar-add {
+  background: var(--aguada);
+  color: var(--tinta);
+}
+.k-topbar-btn.k-topbar-add:hover {
+  background: var(--aguada);
+}
+/* The tab bar: icons at 24, labels in micro type, the active one in the app's colour with the dot. */
+.k-tabbar .k-tab,
+.k-tabbar .k-menu-btn.k-tab {
+  gap: 0.2rem;
+  min-height: 3.5rem;
+  font-size: var(--text-micro);
+  font-weight: 500;
+}
+.k-tabbar .k-tab-icon {
+  width: auto;
+  height: 24px;
+  border-radius: 0;
+  background: none;
+  font-size: 1.25rem;
+}
+.k-tabbar .k-tab[data-active="true"],
+.k-tabbar .k-tab-more-active {
+  font-weight: 600;
+}
+
+/* The desktop: the sidebar on the ground with a hairline, the app's mark and name at the top. */
+.k-sidebar {
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-3);
+  border-right: 1px solid var(--line);
+}
+.k-sidebar .k-brand {
+  gap: var(--space-3);
+}
+.k-sidebar .k-brand .k-app-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+}
+.k-brand-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.k-sidebar-heading {
+  font-size: var(--text-micro);
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+/* Pages: rows of 40px with the view's icon; the one you are on wears the app's wash and the dot. */
+.k-sidenav {
+  gap: var(--space-1);
+}
+.k-sidenav .k-tab {
+  position: relative;
+  min-height: 40px;
+  padding: 0 var(--space-3) 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+  font-weight: 500;
+}
+.k-sidenav .k-tab:hover {
+  background: var(--surface);
+}
+.k-sidenav .k-tab[data-active="true"] {
+  background: var(--aguada);
+  color: var(--ink);
+  font-weight: 600;
+  padding-left: calc(var(--space-3) + 14px);
+}
+.k-sidenav .k-tab[data-active="true"]::before {
+  content: "";
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--tinta);
+}
+.k-sidenav .k-tab-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  color: var(--ink-soft);
+}
+.k-sidenav .k-tab[data-active="true"] .k-tab-icon {
+  color: var(--tinta);
+}
+/* The shell's tools for this app: quiet rows, the icon in soft ink, the hint in muted small type. */
+.k-tools {
+  gap: 0;
+}
+.k-tools .k-tool {
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+}
+.k-tools .k-tool:hover {
+  background: var(--surface);
+}
+.k-tools .k-tool-icon {
+  width: 20px;
+  color: var(--ink-soft);
+}
+.k-tools .k-tool-hint {
+  font-size: var(--text-micro);
+  color: var(--muted);
+}
+.k-tools .k-tool[data-active="true"] {
+  background: var(--aguada);
+  font-weight: 600;
+}
+.k-tools .k-tool[data-active="true"] .k-tool-icon {
+  color: var(--tinta);
+}
+/* The page's own title, in the content column. */
+.k-page-title {
+  font-size: var(--text-h1);
+  font-weight: 700;
+  line-height: 1.15;
+}
+.k-page-head .k-topbar-btn {
+  width: 40px;
+  height: 40px;
+}
