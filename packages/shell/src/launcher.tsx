@@ -46,6 +46,8 @@ import { liveCandidates, watchLiveSignals } from "./launcher-live.js";
 import { addExample, exampleNames, missingExamples } from "./examples.js";
 import { DraftStrip } from "./draft-strip.js";
 import { PromoteDialog } from "./trust-dialog.js";
+import { Wordmark } from "./wordmark.js";
+import { I } from "./icons.js";
 
 export function openUserApp(id: string): void {
   navigateTo({ kind: "user", id });
@@ -250,7 +252,7 @@ function TileMenu({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        {busy ? "…" : "⋯"}
+        {busy ? "…" : I.more}
       </button>
       {open ? (
         <>
@@ -729,7 +731,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       <div className="k-launch-gone">
         {gone.map((e) => (
           <button key={e.id} type="button" className="k-add k-launch-restore" disabled={busy === e.id} onClick={() => void restore(e.id)}>
-            <span aria-hidden>＋</span> {e.name}
+            {I.plus} {e.name}
           </button>
         ))}
       </div>
@@ -786,8 +788,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
     <div className={`k-launcher k-launcher-${variant}`} role="dialog" aria-label={t`App launcher`} onClick={(e) => e.stopPropagation()}>
       <header className="k-launcher-head">
         <div className="k-brand">
-          <span className="k-logo" aria-hidden>◆</span>
-          <strong>Potyro</strong>
+          <Wordmark />
           <span className="k-muted">· {variant === "home" ? t`choose an app` : t`switch app`}</span>
         </div>
         <div className="k-launcher-head-actions">
@@ -935,7 +936,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           <div className="k-launch-gone">
             {gone.map((e) => (
               <button key={e.id} type="button" className="k-add k-launch-restore" disabled={busy === e.id} onClick={() => void restore(e.id)}>
-                <span aria-hidden>＋</span> {e.name}
+                {I.plus} {e.name}
               </button>
             ))}
           </div>
@@ -950,13 +951,13 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           buttonClassName="k-launch-fab"
           trigger={
             <>
-              <span aria-hidden>＋</span> <Trans>New app</Trans>
+              {I.plus} <Trans>New app</Trans>
             </>
           }
           entries={[
-            { key: "describe", label: t`Describe a new app`, icon: "✦", onSelect: () => onNewApp() },
-            { key: "add", label: t`Add an app someone sent you`, icon: "⤓", onSelect: () => setAdding({}) },
-            { key: "gallery", label: t({ message: "Browse the gallery", comment: "Opens Potyro's gallery of apps to try and make your own" }), icon: "▦", onSelect: () => openGallery() },
+            { key: "describe", label: t`Describe a new app`, icon: I.studio, onSelect: () => onNewApp() },
+            { key: "add", label: t`Add an app someone sent you`, icon: I.import, onSelect: () => setAdding({}) },
+            { key: "gallery", label: t({ message: "Browse the gallery", comment: "Opens Potyro's gallery of apps to try and make your own" }), icon: I.gallery, onSelect: () => openGallery() },
           ]}
         />
       ) : null}

@@ -24,6 +24,7 @@ import { ActionMenu, formatSize, type MenuEntry } from "@potyro/views";
 import { bringIn, filesHere, largeForSharing, listFolder, readFile, removeFile, renameFile, replaceFile, spaceUsageOf, totalSize } from "./app-folder.js";
 import { FileViewer } from "./file-viewer.js";
 import { shellDialogs } from "./dialog.js";
+import { I } from "./icons.js";
 
 export type FilesScope = "all" | "shipped";
 
@@ -218,10 +219,10 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra, shared
   };
 
   const menu = (f: FileInfo): MenuEntry[] => [
-    { key: "open", label: t({ message: "Open", comment: "Files: open a file in the viewer" }), icon: "◱", onSelect: () => setViewing(f) },
-    { key: "save", label: t`Save a copy`, icon: "⤓", onSelect: () => void saveCopy(f) },
-    { key: "rename", label: t`Rename`, icon: "✎", onSelect: () => void rename(f) },
-    { key: "replace", label: t({ message: "Replace…", comment: "Files: choose another file to put in this one's place" }), icon: "⇄", onSelect: () => void replace(f) },
+    { key: "open", label: t({ message: "Open", comment: "Files: open a file in the viewer" }), icon: I.open, onSelect: () => setViewing(f) },
+    { key: "save", label: t`Save a copy`, icon: I.download, onSelect: () => void saveCopy(f) },
+    { key: "rename", label: t`Rename`, icon: I.edit, onSelect: () => void rename(f) },
+    { key: "replace", label: t({ message: "Replace…", comment: "Files: choose another file to put in this one's place" }), icon: I.replace, onSelect: () => void replace(f) },
     "separator",
     { key: "delete", label: t`Delete`, danger: true, onSelect: () => void remove(f) },
   ];

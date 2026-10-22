@@ -1,12 +1,17 @@
-/* Potyro shell — a warm editorial "recipe card" direction: paper ground, ink text, a single
-   app-supplied accent, real scale contrast, layered surfaces, and designed interaction states.
-   Deliberately not a default card grid. */
+/* Potyro shell — the design system in packages/design (DESIGN.md): graphite on white, round and
+   thick-stroked, one stroke of colour per screen. The tokens are imported below. */
 
 /* ---- Tokens (#92) --------------------------------------------------------------------------
-   The palette lives here and nowhere else. Light is the default; the dark set below overrides the
-   same names under `prefers-color-scheme: dark`, and `[data-theme]` on the root wins over both so a
-   manual toggle can. A rule that needs a colour names a token; `scripts/check-tokens.mjs` fails the
-   build on a raw colour inside a `tokens-only` region and on a token that resolves to nothing. */
+   The palette, type, shape and motion are Potyro's design system: packages/design/tokens.css,
+   generated from the designer's file, with the rules in DESIGN.md beside it. It is imported first,
+   so every name declared below is either an alias of one of its tokens, under the name older rules
+   use, or something only the shell knows — the phone's insets, the chrome's room, a person's
+   colour. Light is the default; the dark set is tokens.css's own, under `prefers-color-scheme:
+   dark`, and `[data-theme]` on the root wins over both so a manual toggle can.
+   `scripts/check-tokens.mjs` reads both files: it fails the build on a raw colour inside a
+   `tokens-only` region and on a token that resolves to nothing. */
+@import "@potyro/design/tokens.css";
+
 :root {
   color-scheme: light;
 
@@ -38,18 +43,6 @@
   --k-safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
   --k-safe-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
 
-  /* Surfaces: paper is the ground, surface sits on it, raised floats above, sunken recedes. */
-  --paper: oklch(97% 0.012 85);
-  --surface: oklch(99% 0.006 85);
-  --surface-raised: oklch(99.5% 0.004 85);
-  --surface-sunken: oklch(94.5% 0.012 85);
-
-  /* Ink, three strengths. */
-  --ink: oklch(24% 0.02 60);
-  --ink-soft: oklch(45% 0.02 60);
-  --ink-faint: oklch(60% 0.015 60);
-  --line: oklch(89% 0.01 70);
-
   /* One person's colour, in the four places it appears: a chat bubble, an avatar's fill, ink and
      ring, and their name. `--k-hue` is set per element from the account id, so each of these
      resolves per person — and because the LIGHTNESS and CHROMA are tokens, the dark theme restates
@@ -65,139 +58,121 @@
   --person-avatar-line: 75% 0.11;
   --person-name: 40% 0.13;
 
-  /* The one accent an app supplies (`theme.accent`, set on `.k-app`). What must read on it, and the
-     tints derived from it, are declared again on `.k-app` below so they follow the override. */
-  --accent: #e4a93c;
-  /* Potyro's own, kept under its own name so the Look panel can offer it back as a swatch after you
-     have chosen another — `--accent` by then IS the other one. */
-  --accent-potyro: #e4a93c;
-  --on-accent: oklch(22% 0.04 70);
+  /* Potyro's own accent is 12 o'clock rosa, declared by tokens.css. An app's colour (`.k-app`) and
+     a chosen look (`<html>`) arrive as `.k-traco` pairs, below. The rosa traço under its own name,
+     so the Look panel can offer it back as a swatch after another hour was chosen — `--accent` by
+     then IS the other one. */
+  --accent-potyro: #e44f89;
 
-  /* Semantic colours: a state is a word AND a colour, never a colour alone. */
-  --ok: oklch(45% 0.1 150);
-  --ok-line: oklch(82% 0.08 150);
-  --ok-tint: oklch(96% 0.03 150);
-  --danger: oklch(48% 0.16 27);
-  --danger-line: oklch(80% 0.1 30);
-  --danger-tint: oklch(96% 0.04 30);
-  --warn: oklch(52% 0.12 70);
-  /* A chart's single series (#109): checked with the dataviz palette validator against each theme's surface. */
-  --series-1: #a96b00;
+  /* Status: a state is a word AND a colour, never a colour alone. Fixed hours of the clock at the
+     tinta level (DESIGN.md §3.1); a state's fill and wash are that hour's category colours. */
+  --ok: var(--success);
+  --ok-line: var(--cat-verde-fill);
+  --ok-tint: var(--cat-verde-soft);
+  --danger-line: var(--cat-vermelho-fill);
+  --danger-tint: var(--cat-vermelho-soft);
+  --warn: var(--warning);
+  /* A chart's single series (#109): the app's own colour, at the level that reads as a line. */
+  --series-1: var(--tinta);
   /* A Start tile (#96): white on the app's own colour, in every theme — the colour is darkened
      until white reads on it (tile-colour.ts). `--tile-shade` darkens a photo under its words. */
   --tile-ink: oklch(100% 0 0);
   --tile-ink-soft: oklch(100% 0 0 / 0.86);
   --tile-shade: oklch(0% 0 0 / 0.62);
-  --scrim: oklch(20% 0.02 60 / 0.4);
-  --scrim-soft: oklch(20% 0.02 60 / 0.32);
-  --shadow: 0 1px 2px oklch(30% 0.02 60 / 0.06), 0 8px 24px oklch(30% 0.02 60 / 0.08);
+  /* What sits behind a sheet or a modal: graphite at 40% (DESIGN.md §6), in both themes. */
+  --scrim: rgba(35, 31, 32, 0.4);
+  --scrim-soft: rgba(35, 31, 32, 0.32);
+  /* Nothing has a shadow but what floats (DESIGN.md §3.3): a menu, a toast, a sheet and a popover
+     name `--shadow-float` themselves. Everything that used to lift on hover now rests. */
+  --shadow: none;
 
-  /* Shape and rhythm. */
-  --radius-sm: 9px;
-  --radius: 14px;
-  --radius-lg: 18px;
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-6: 1.5rem;
+  /* Shape and rhythm: the system's radii (8 / 12 / 20 / pill) under the names the rules use. */
+  --radius: var(--radius-md);
   --space: clamp(1rem, 0.7rem + 1.4vw, 2rem);
+  /* The shell's hero line (the launcher's welcome, a share page's title): Quicksand at 26–38px.
+     Not tokens.css's 64px `--text-hero`, which is the landing page's alone. */
   --text-hero: clamp(1.6rem, 1.2rem + 1.8vw, 2.4rem);
-  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-ui: var(--font-body);
 
-  /* Motion: one curve, three durations. `prefers-reduced-motion` collapses all of them. */
-  --dur-fast: 120ms;
-  --dur: 180ms;
-  --dur-slow: 260ms;
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Motion: the system's one curve and three durations, under the names the rules use. */
+  --dur: var(--dur-base);
+  --ease: var(--ease-out);
 
   /* Names older rules still use. Aliases, so no reference resolves to nothing. */
-  --bg: var(--paper);
-  --muted: var(--ink-soft);
+  --paper: var(--bg);
+  --surface-raised: var(--bg);
+  --surface-sunken: var(--surface);
+  --ink-faint: var(--muted);
   --k-border: var(--line);
   --k-surface: var(--surface);
-  --k-surface-sunken: var(--surface-sunken);
-  --k-muted: var(--ink-soft);
+  --k-surface-sunken: var(--surface);
+  --k-muted: var(--muted);
   --k-accent: var(--accent);
   --k-danger: var(--danger);
 }
 /* Derived from the accent, at the element where the accent is set: a custom property computes
-   where it is declared, so a tint declared only on :root would keep the default amber inside an
-   app that set its own accent. */
+   where it is declared, so a tint declared only on :root would keep Potyro's rosa inside an app
+   that set its own colour. */
 :root,
 .k-app {
   /* How much of an app's own colour shows in its avatar and splash. A fixed 26% was tuned on paper
      and disappears on a dark ground — the colour you picked for an app was invisible in dark mode,
      which is most of why choosing one felt like it did nothing. */
   --tile-tint: 26%;
-  --accent-tint: color-mix(in oklab, var(--accent) 14%, var(--surface));
-  --accent-line: color-mix(in oklab, var(--accent) 45%, var(--line));
+  --accent-tint: var(--aguada);
+  --accent-line: var(--tinta);
 }
-/* Dark. The same warm cast, inverted: near-black paper with the ink lifted to cream. Accents stay
-   the app's own; what changes is what sits under and around them. */
+/* An app's colour (App.tsx) and a chosen look (look.ts) arrive as BOTH themes' values at once —
+   `varsBoth` in @potyro/design — and the element follows the theme from here, with no script to
+   re-run when the system flips at dusk. The traço is the same in both themes. */
+.k-traco {
+  --tinta: var(--tinta-l);
+  --aguada: var(--aguada-l);
+  --accent: var(--accent-l);
+  --on-accent: var(--on-accent-l);
+  --focus: var(--tinta-l);
+}
+/* Dark. The neutrals, status colours and the rosa are tokens.css's own dark set; here only what the
+   shell adds. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    color-scheme: dark;
     /* Against near-black, a tint has to be much stronger to read as a colour at all. */
     --tile-tint: 52%;
-    --paper: oklch(18% 0.012 70);
-    --surface: oklch(22% 0.012 70);
-    --surface-raised: oklch(26% 0.012 70);
-    --surface-sunken: oklch(15% 0.01 70);
-    --ink: oklch(93% 0.01 85);
-    --ink-soft: oklch(72% 0.015 80);
-    --ink-faint: oklch(58% 0.015 80);
-    --line: oklch(32% 0.012 70);
-    --on-accent: oklch(20% 0.04 70);
-    --ok: oklch(80% 0.12 150);
-    --ok-line: oklch(42% 0.08 150);
-    --ok-tint: oklch(27% 0.04 150);
-    --danger: oklch(80% 0.13 27);
-    --danger-line: oklch(44% 0.1 30);
-    --danger-tint: oklch(27% 0.05 30);
-    --warn: oklch(80% 0.11 75);
-    --series-1: #c38300;
-    --scrim: oklch(8% 0.01 60 / 0.6);
-    --scrim-soft: oklch(8% 0.01 60 / 0.5);
-    --shadow: 0 1px 2px oklch(5% 0.01 60 / 0.4), 0 8px 24px oklch(5% 0.01 60 / 0.5);
+    --scrim: rgba(0, 0, 0, 0.6);
+    --scrim-soft: rgba(0, 0, 0, 0.5);
     --person-bubble: 30% 0.04;
     --person-avatar: 40% 0.09;
     --person-avatar-ink: 95% 0.04;
     --person-avatar-line: 52% 0.1;
     --person-name: 83% 0.12;
   }
+  :root:not([data-theme="light"]) .k-traco,
+  :root:not([data-theme="light"]).k-traco {
+    --tinta: var(--tinta-d);
+    --aguada: var(--aguada-d);
+    --accent: var(--accent-d);
+    --on-accent: var(--on-accent-d);
+    --focus: var(--tinta-d);
+  }
 }
 :root[data-theme="dark"] {
-  color-scheme: dark;
   /* Against near-black, a tint has to be much stronger to read as a colour at all. */
   --tile-tint: 52%;
-  --paper: oklch(18% 0.012 70);
-  --surface: oklch(22% 0.012 70);
-  --surface-raised: oklch(26% 0.012 70);
-  --surface-sunken: oklch(15% 0.01 70);
-  --ink: oklch(93% 0.01 85);
-  --ink-soft: oklch(72% 0.015 80);
-  --ink-faint: oklch(58% 0.015 80);
-  --line: oklch(32% 0.012 70);
-  --on-accent: oklch(20% 0.04 70);
-  --ok: oklch(80% 0.12 150);
-  --ok-line: oklch(42% 0.08 150);
-  --ok-tint: oklch(27% 0.04 150);
-  --danger: oklch(80% 0.13 27);
-  --danger-line: oklch(44% 0.1 30);
-  --danger-tint: oklch(27% 0.05 30);
-  --warn: oklch(80% 0.11 75);
-  --series-1: #c38300;
-  --scrim: oklch(8% 0.01 60 / 0.6);
-  --scrim-soft: oklch(8% 0.01 60 / 0.5);
-  --shadow: 0 1px 2px oklch(5% 0.01 60 / 0.4), 0 8px 24px oklch(5% 0.01 60 / 0.5);
+  --scrim: rgba(0, 0, 0, 0.6);
+  --scrim-soft: rgba(0, 0, 0, 0.5);
   --person-bubble: 30% 0.04;
   --person-avatar: 40% 0.09;
   --person-avatar-ink: 95% 0.04;
   --person-avatar-line: 52% 0.1;
   --person-name: 83% 0.12;
+}
+:root[data-theme="dark"] .k-traco,
+:root[data-theme="dark"].k-traco {
+  --tinta: var(--tinta-d);
+  --aguada: var(--aguada-d);
+  --accent: var(--accent-d);
+  --on-accent: var(--on-accent-d);
+  --focus: var(--tinta-d);
 }
 
 * {
@@ -218,7 +193,7 @@ html {
 }
 body {
   margin: 0;
-  background: radial-gradient(120% 80% at 50% -10%, var(--surface), var(--paper));
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
@@ -288,28 +263,29 @@ button {
   font: inherit;
   cursor: pointer;
 }
+/* The secondary button (DESIGN.md §6): a pill, the round end of the stroke, with a 2px outline that
+   reads on its own (`--line-strong`, 3:1). It rests; a press scales it down. */
 .k-add {
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border: var(--stroke) solid var(--line-strong);
+  background: transparent;
   color: var(--ink);
-  padding: 0.5rem 0.9rem;
-  border-radius: 10px;
-  transition: transform 150ms var(--ease), box-shadow 150ms var(--ease), border-color 150ms var(--ease);
+  font-weight: 600;
+  padding: 0.5rem 1.1rem;
+  border-radius: var(--radius-pill);
+  transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 .k-add:hover {
-  border-color: var(--accent);
-  box-shadow: var(--shadow);
-  transform: translateY(-1px);
+  background: var(--surface);
 }
 .k-add:active {
-  transform: translateY(0);
+  transform: scale(0.97);
 }
 
 .k-quickmenu {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  background: var(--bg);
+  border: 0;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
   padding: 1rem 1.1rem;
   min-width: 240px;
   max-width: 92vw;
@@ -1379,14 +1355,16 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   gap: 0.4rem;
   flex-wrap: wrap;
 }
+/* A chip (DESIGN.md §6): a filled pill, no outline. */
 .k-chip {
-  border: 1px solid var(--line);
+  border: var(--stroke) solid transparent;
   background: var(--surface);
-  color: var(--ink-soft);
-  border-radius: 999px;
-  padding: 0.3rem 0.7rem;
-  font-size: 0.85rem;
-  transition: all 150ms var(--ease);
+  color: var(--ink);
+  border-radius: var(--radius-pill);
+  padding: 0.3rem 0.8rem;
+  font-size: var(--text-small);
+  font-weight: 500;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 .k-chip[data-on="true"] {
   background: var(--accent);
@@ -2617,14 +2595,9 @@ th.k-data-raw {
   z-index: -1;
   pointer-events: none;
 }
-.k-app[data-backdrop="wash"] .k-page::before,
-.k-app[data-backdrop="wash"] .k-app-chrome[data-layout="wide"]::before,
-.k-app[data-backdrop="image"] .k-page::before,
-.k-app[data-backdrop="image"] .k-app-chrome[data-layout="wide"]::before {
-  background:
-    radial-gradient(90% 75% at 100% 0%, color-mix(in oklab, var(--accent) 20%, transparent), transparent 72%),
-    radial-gradient(70% 60% at 0% 0%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 70%);
-}
+/* The ground is the page's own: flat, no glow (DESIGN.md §3.3, no gradients; colour in one stroke,
+   §2). A `wash` — the glow of the app's colour behind the top of the page — is therefore nothing
+   now; `dots`, `grain` and an `image` stay. */
 .k-app[data-backdrop="dots"] .k-page::before,
 .k-app[data-backdrop="dots"] .k-app-chrome[data-layout="wide"]::before {
   background-image: radial-gradient(circle, color-mix(in oklab, var(--accent) 42%, transparent) 1.1px, transparent 1.7px);
@@ -2636,7 +2609,7 @@ th.k-data-raw {
 .k-app[data-backdrop="grain"] .k-app-chrome[data-layout="wide"]::before {
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-    radial-gradient(90% 75% at 100% 0%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 72%);
+    var(--aguada);
   opacity: 0.55;
   -webkit-mask-image: linear-gradient(to bottom, var(--ink) 40%, transparent);
   mask-image: linear-gradient(to bottom, var(--ink) 40%, transparent);
@@ -3783,11 +3756,12 @@ th.k-data-raw {
 }
 .k-modal {
   width: min(640px, 100%);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  animation: modal-in var(--dur) var(--ease);
+  /* A modal floats (DESIGN.md §6): the page's ground, 20px corners, the float shadow, no outline. */
+  background: var(--bg);
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-float);
+  animation: modal-in var(--dur-slow) var(--ease);
   /* Padding belongs to the modal box itself. Without it, only children that bring their own spacing
      (`.k-form`) looked right — a modal whose content sits directly inside, like the trust dialog,
      rendered flush to all four edges with its text clipped at the border. */
@@ -4071,20 +4045,23 @@ details.k-form-group > summary:focus-visible {
   box-shadow: 0 0 0 3px var(--danger-tint);
 }
 /* tokens-only: end — form groups */
+/* An input (DESIGN.md §6): the page's own ground inside a 2px outline that reads on its own, 12px
+   corners; in focus the outline takes the app's colour. 16px at least, or iOS zooms into it. */
 .k-input {
   font: inherit;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--paper);
+  font-size: max(1rem, 1em);
+  padding: 0.6rem 0.8rem;
+  border: var(--stroke) solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg);
   color: var(--ink);
   width: 100%;
-  transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease);
+  transition: border-color var(--dur-fast) var(--ease);
 }
 .k-input:focus-visible {
+  /* In focus the outline takes the app's colour at the level that reads (DESIGN.md §6). */
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px oklch(from var(--accent) l c h / 0.2);
+  border-color: var(--tinta);
 }
 .k-form-actions {
   display: flex;
@@ -4327,10 +4304,9 @@ button.k-prov:focus-visible {
   display: flex;
   justify-content: space-around;
   padding: var(--space-1) var(--space-1) calc(var(--space-1) + var(--k-safe-bottom));
-  background: color-mix(in oklab, var(--surface) 88%, transparent);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
-  backdrop-filter: blur(16px) saturate(1.4);
-  border-top: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
+  /* Flat, on the page's own ground: no glass, no blur (DESIGN.md §3.3). */
+  background: var(--bg);
+  border-top: var(--stroke) solid var(--line);
 }
 .k-tabbar .k-tab,
 .k-tabbar .k-menu-btn.k-tab {
@@ -4379,18 +4355,32 @@ button.k-prov:focus-visible {
   overflow-wrap: anywhere;
   hyphens: auto;
 }
+/* The active tab (DESIGN.md §6): icon and label in the app's colour at the level that reads, and
+   a 4px dot above — a mark that is not colour alone, for the person who cannot tell the colours. */
 .k-tabbar .k-tab[data-active="true"],
 .k-tabbar .k-tab-more-active {
-  color: var(--ink);
+  position: relative;
+  color: var(--tinta);
   font-weight: 600;
+}
+.k-tabbar .k-tab[data-active="true"]::before,
+.k-tabbar .k-tab-more-active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--tinta);
 }
 .k-tabbar .k-tab[data-active="true"] .k-tab-icon,
 .k-tabbar .k-tab-more-active .k-tab-icon {
-  color: var(--accent-ink);
-  background: var(--accent-soft);
+  color: var(--tinta);
 }
 .k-tabbar .k-tab:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: -3px;
 }
 
@@ -4666,10 +4656,11 @@ button.k-prov:focus-visible {
   min-width: 14rem;
   max-width: min(22rem, calc(100vw - 1rem));
   padding: var(--space-1);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: var(--shadow);
+  /* A menu floats: the one kind of thing with a shadow (DESIGN.md §3.3). */
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  box-shadow: var(--shadow-float);
   display: flex;
   flex-direction: column;
   animation: k-fade var(--dur-fast) var(--ease);
@@ -4730,31 +4721,44 @@ button.k-prov:focus-visible {
 .k-menu-item.k-danger {
   color: var(--danger);
 }
+/* Hovered or focused, the item is the danger pair itself (DESIGN.md §6, the danger button): its
+   colour with the ground's colour on it (the dark ground's ink in the dark). The danger colour on its own wash
+   read at 4.47:1, a hair under AA, and text on a wash is ink by the guide anyway. */
 .k-menu-item.k-danger:hover,
 .k-menu-item.k-danger:focus-visible {
-  background: var(--danger-tint);
+  background: var(--danger);
+  color: var(--bg);
+}
+.k-menu-item.k-danger:hover .k-menu-detail,
+.k-menu-item.k-danger:focus-visible .k-menu-detail {
+  color: inherit;
 }
 @media (max-width: 759px) {
   .k-menu-scrim {
     background: var(--scrim-soft);
   }
+  /* On a phone a menu is a sheet from the bottom (DESIGN.md §6): the whole width, 20px corners on
+     top, a 36×4 handle. The anchored placement writes `top`/`left` — or `bottom`/`left` when it
+     flips upward near the bottom of the screen — inline, so every edge here has to win over it:
+     with only `top` and `right` winning, the New app menu floated beside its button, cut off at
+     the right edge. */
   .k-menu {
     top: auto !important;
     right: 0 !important;
-    left: 0;
-    bottom: 0;
+    left: 0 !important;
+    bottom: 0 !important;
     max-width: none;
-    border-radius: var(--radius) var(--radius) 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     padding: var(--space-2) var(--space-3) calc(var(--space-3) + var(--k-safe-bottom));
-    animation: k-sheet-up var(--dur) var(--ease);
+    animation: k-sheet-up var(--dur-slow) var(--ease);
   }
   .k-menu-grip {
     display: block;
-    width: 2.5rem;
-    height: 0.3rem;
+    width: 36px;
+    height: 4px;
     margin: 0 auto var(--space-2);
-    border-radius: 999px;
-    background: var(--line);
+    border-radius: var(--radius-pill);
+    background: var(--line-strong);
   }
   .k-menu-item {
     min-height: 3rem;
@@ -7288,13 +7292,24 @@ button.k-switch:focus-visible {
 body:has(.k-tabbar) .k-toasts {
   bottom: calc(8.75rem + var(--k-safe-bottom));
 }
+/* A toast (DESIGN.md §6): a graphite pill, in with a boing. In the dark, surface-2 with ink. */
 .k-toast {
-  background: var(--ink);
-  color: var(--paper);
-  padding: 0.55rem 0.9rem;
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  animation: toast-in 200ms var(--ease);
+  background: var(--ink-soft);
+  color: var(--bg);
+  padding: 0.6rem 1.1rem;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-float);
+  animation: toast-in var(--dur-base) var(--ease-boing);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .k-toast {
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+}
+:root[data-theme="dark"] .k-toast {
+  background: var(--surface-2);
+  color: var(--ink);
 }
 @keyframes toast-in {
   from {
@@ -7701,7 +7716,8 @@ body:has(.k-tabbar) .k-toasts {
   gap: var(--space-3);
   width: min(30rem, 100%);
   padding: var(--space-3) var(--space-3) var(--space-3) var(--space-3);
-  border: 1px solid var(--line);
+  /* A card is filled OR outlined, never both (DESIGN.md §3.3). This one is filled. */
+  border: 0;
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-sizing: border-box;
@@ -9509,10 +9525,12 @@ body:has(.k-tabbar) .k-toasts {
   z-index: 71;
   min-width: 13rem;
   padding: 0.35rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: var(--shadow);
+  /* A menu floats (DESIGN.md §3.3): the page's ground, the float shadow, no outline. On the
+     ground, Delete's colour reads at 5.1:1; on surface it was a hair under AA while the menu faded in. */
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  box-shadow: var(--shadow-float);
   display: flex;
   flex-direction: column;
   animation: k-fade var(--dur-fast) var(--ease);
@@ -15822,4 +15840,105 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   .k-app:has(.k-page-ground) .k-fold-group > .k-fold-head {
     background: color-mix(in oklab, var(--bg) 85%, transparent);
   }
+}
+
+/* ---- The design system's type rule (DESIGN.md §3.2) --------------------------------------------
+   Quicksand, the display face, only from 20px up and only at 600/700: below that it goes frail.
+   These keep their display ROLE (a heading, a name, a count) at a smaller size, so they take the
+   body face at its semibold weight instead. A new heading under 20px joins this list. */
+.k-check-heading,
+.k-form-group-title,
+.k-menu-title,
+.k-lock-text strong,
+.k-steps-item > label::before,
+.k-ask-summary,
+.k-point-bar-text strong,
+.k-card-name,
+.k-chart-title,
+.k-date-month,
+.k-date-picker-title,
+.k-dialog-message,
+.k-enum-list-title,
+.k-quickmenu h4,
+.k-sealed-notice p,
+.k-steps-done,
+.k-view-crash-head,
+.k-studio .k-thread-answer[data-tone="question"],
+.k-add-app-ident h3,
+.k-case-report h3,
+.k-filter-title,
+.k-fix-panel h3,
+.k-steps-progress,
+.k-viewer-away strong,
+.k-card-mark,
+.k-files-heading h3,
+.k-switcher-head strong,
+.k-entry-head,
+.k-history-seq,
+.k-tile-editor-own,
+.k-tile-menu-title,
+.k-lang-select,
+.k-map-add,
+.k-map-popup-title,
+.k-wording-now {
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+/* ---- The logo (wordmark.tsx) ----------------------------------------------------------------
+   Two files, one per ground (DESIGN.md §4.1); the theme shows one. It is as tall as the text it
+   sits in, and never smaller than 80px wide (the designer's minimum). */
+.k-wordmark {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+.k-wordmark img {
+  display: block;
+  height: 1.5em;
+  width: auto;
+  min-width: 80px;
+}
+.k-symbol img {
+  min-width: 20px;
+  height: 1em;
+}
+/* One of the two shows. Both selectors name the image AND the wrapper, so they outrank the sizing
+   rule above — with only the class, the white-lettered file drew on white and left a pink stroke
+   floating beside the wordmark. */
+.k-wordmark .k-wordmark-dark {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .k-wordmark .k-wordmark-light {
+    display: none;
+  }
+  :root:not([data-theme="light"]) .k-wordmark .k-wordmark-dark {
+    display: block;
+  }
+}
+:root[data-theme="dark"] .k-wordmark .k-wordmark-light {
+  display: none;
+}
+:root[data-theme="dark"] .k-wordmark .k-wordmark-dark {
+  display: block;
+}
+
+/* ---- Icons (icons.tsx) ------------------------------------------------------------------------
+   Lucide, drawn inline: it sits on the text's baseline like a glyph did, and never shrinks. */
+.k-icon {
+  flex: none;
+  vertical-align: -0.25em;
+}
+.k-tools .k-tool-icon .k-icon,
+.k-menu-icon .k-icon,
+.k-metro-bar-icon .k-icon,
+.k-topbar-btn .k-icon,
+.k-tab-icon .k-icon {
+  display: block;
+  vertical-align: baseline;
+}
+.k-menu-icon {
+  display: inline-flex;
+  justify-content: center;
 }
