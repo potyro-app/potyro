@@ -1,29 +1,37 @@
 #!/usr/bin/env node
-// `pnpm gallery:build` — the gallery page, from gallery/gallery.json, as a folder any static server
-// can serve (docs/16: Caddy on potyro.com). No framework and nothing from anyone else: one HTML page,
-// its stylesheet and a small script on the same origin, system fonts, and the screenshots.
+// `pnpm gallery:build` — the landing page and gallery, from gallery/gallery.json, as a folder any
+// static server can serve (docs/16: Caddy on potyro.com). No framework and nothing from anyone else:
+// one HTML page, the design system's stylesheets and fonts (packages/design), a small script on the
+// same origin, and the screenshots. The look is DESIGN.md §9.
 //
 //   pnpm gallery:build [--data gallery/gallery.json] [--shots gallery] [--out dist/gallery] [--allow-local]
 //
 // The page is complete without JavaScript, in English. The script only switches the language (from
-// the browser's, or the one chosen), the theme and the category filter.
+// the browser's, or the one chosen), the theme and the category filter, and sends the prompt box on Enter.
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { LANGUAGES, readGallery, remixLink, shownApps, SOURCE_LANGUAGE } from "./data.mjs";
+import { hourOf, LANGUAGES, readGallery, remixLink, shownApps, SOURCE_LANGUAGE } from "./data.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const GALLERY_DIR = resolve(here, "..");
 const ROOT = resolve(GALLERY_DIR, "..");
+const DESIGN = join(ROOT, "packages", "design");
 
 /** Where "Report a link" writes to (it reaches the Potyro team). Named here and nowhere else. */
 export const CONTACT = "contact@potyro.com";
-/** Potyro itself: where "Open Potyro" goes. */
+/** Potyro itself: where "Open Potyro" and "Create my app" go, and where the prompt box sends. */
 export const APP_SITE = "https://potyro.app/";
 
 /** The languages' own names, for the picker: never translated. */
 const AUTONYMS = { en: "English", "pt-BR": "Português (Brasil)", de: "Deutsch", es: "Español", pl: "Polski", it: "Italiano" };
+
+/** The logo files the page shows as images, light and dark grounds (packages/design/logo). */
+export const LOGO_FILES = ["wordmark-rosa.svg", "wordmark-rosa-on-dark.svg", "symbol-rosa.svg", "symbol-rosa-on-dark.svg"];
+
+/** The eleven hours an app may wear, in order; 12 o'clock rosa is Potyro's own. */
+const HOURS = ["vermelho", "laranja", "amarelo", "lima", "verde", "menta", "ciano", "azul", "anil", "roxo", "magenta"];
 
 /** @param {string} s */
 export const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
@@ -59,10 +67,76 @@ export function readStrings(raw) {
 }
 
 /**
+ * A logo file inlined, its fixed colours turned into classes so the page's theme colours it the
+ * way the on-dark file does. DESIGN.md §4.1 forbids repainting the logo by hand; §9 asks for the
+ * "y" to take the hour that passes, which `.stroke` is for.
+ * @param {string} svg @param {string} className
+ */
+export function inlineLogo(svg, className) {
+  return svg
+    .replace(/^<\?xml[^>]*>\s*/, "")
+    .replace(/<svg /, `<svg class="${className}" aria-hidden="true" focusable="false" `)
+    .replace(/fill="#414042"/g, 'class="ink"')
+    .replace(/fill="#231f20"/g, 'class="ink-strong"')
+    .replace(/fill="#(?:ee2a7b|ec008c)"/g, 'class="stroke"')
+    .trim();
+}
+
+/**
+ * hours.css: the twelve hours as the colour clock gives them (packages/design/source/potyro-color.js,
+ * the designer's own file), so an element wearing `data-traco` has its traço, tinta and aguada in
+ * both themes — and the hour that passes for the closing's "y".
+ */
+export function hoursCss() {
+  // The designer's file is a UMD module in a package Node reads as ESM, so `require` would hand it
+  // no `module`: it is run as the CommonJS it is, with a module object of its own.
+  const shim = { exports: {} };
+  new Function("module", "exports", "require", readFileSync(join(DESIGN, "source", "potyro-color.js"), "utf8"))(shim, shim.exports, () => undefined);
+  /** @type {{ HORAS: { nome: string }[]; cor: (x: string) => { light: Record<string, string>; dark: Record<string, string> } }} */
+  const PotyroColor = /** @type {any} */ (shim.exports);
+  const light = [];
+  const dark = [];
+  for (const h of PotyroColor.HORAS) {
+    if (h.nome === "rosa") continue;
+    const c = PotyroColor.cor(h.nome);
+    light.push(`[data-traco="${h.nome}"] { --traco: ${c.light.traco}; --tinta: ${c.light.tinta}; --aguada: ${c.light.aguada}; --focus: ${c.light.tinta}; }`);
+    dark.push(`[data-traco="${h.nome}"] { --tinta: ${c.dark.tinta}; --aguada: ${c.dark.aguada}; --focus: ${c.dark.tinta}; }`);
+  }
+  const tracos = PotyroColor.HORAS.map((h) => PotyroColor.cor(h.nome).light.traco);
+  const rosa = tracos[0];
+  // One step per hour, round the clock in two minutes: a change, never a slide.
+  const frames = tracos.map((t, i) => `${((i / tracos.length) * 100).toFixed(2)}% { --hora: ${t}; }`).join(" ");
+  return [
+    "/* Generated by gallery/src/build.mjs from the colour clock (packages/design): every element",
+    "   wearing data-traco has its hour in both themes. The traço is the same in both. */",
+    ...light,
+    "@media (prefers-color-scheme: dark) {",
+    ...dark.map((d) => `  :root:not([data-theme="light"]) ${d}`),
+    "}",
+    ...dark.map((d) => `:root[data-theme="dark"] ${d}`),
+    `@property --hora { syntax: "<color>"; inherits: true; initial-value: ${rosa}; }`,
+    `@keyframes clock { ${frames} 100% { --hora: ${rosa}; } }`,
+    ".close { animation: clock 120s steps(1, end) infinite; }",
+    "@media (prefers-reduced-motion: reduce) { .close { animation: none; } }",
+    "",
+  ].join("\n");
+}
+
+/** A Lucide icon drawn the system's way (§3.5): stroke 2, round caps and joins. Inline, so nothing is fetched. */
+const icon = (/** @type {string} */ paths, size = 20) =>
+  `<svg class="k-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${paths}</svg>`;
+const ICON = {
+  arrowUp: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+  arrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  sunMoon: '<path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.3 17.7-1.4 1.4"/><path d="m19.1 4.9-1.4 1.4"/><circle cx="12" cy="12" r="4"/>',
+};
+
+/**
  * The page, as HTML. Pure: everything it says comes from its arguments.
  * @param {import("./data.mjs").Gallery} gallery
  * @param {Record<string, Record<string, string>>} strings
- * @param {{ css: string; js: string; shots: Record<string, { width: number; height: number }> }} assets
+ * @param {{ css: string; js: string; shots: Record<string, { width: number; height: number }>; logos?: Record<string, string> }} assets
  */
 export function renderPage(gallery, strings, assets) {
   const s = strings[SOURCE_LANGUAGE];
@@ -70,23 +144,29 @@ export function renderPage(gallery, strings, assets) {
   const { published, soon } = shownApps(gallery);
   const used = [...new Set(published.map((a) => a.category))];
   const word = (/** @type {Record<string,string>} */ w) => w[SOURCE_LANGUAGE];
+  const logos = assets.logos ?? {};
+  const hour = (/** @type {string} */ category) => hourOf(category, gallery.categories);
+
+  // The logo: the original files, one per ground; the stylesheet shows the theme's (§4.1).
+  const wordmark = `<span class="wordmark" role="img" aria-label="Potyro"><img class="wordmark-light" src="logo/wordmark-rosa.svg" alt="" width="133" height="50" /><img class="wordmark-dark" src="logo/wordmark-rosa-on-dark.svg" alt="" width="133" height="50" /></span>`;
+  const symbol = `<span class="wordmark symbol" aria-hidden="true"><img class="wordmark-light" src="logo/symbol-rosa.svg" alt="" width="33" height="31" /><img class="wordmark-dark" src="logo/symbol-rosa-on-dark.svg" alt="" width="33" height="31" /></span>`;
+  const newAppHref = (/** @type {string} */ text) => `${APP_SITE}?new=${encodeURIComponent(text)}`;
 
   const card = (/** @type {import("./data.mjs").GalleryApp} */ app, /** @type {number} */ i) => {
     const name = word(app.name);
     const shot = assets.shots[app.screenshot ?? ""] ?? { width: 412, height: 860 };
-    const no = String(i + 1).padStart(2, "0");
     return `
-      <li class="card" data-category="${e(app.category)}" data-id="${e(app.id)}">
-        <a class="card-shot" href="${e(app.link ?? "")}" tabindex="-1" aria-hidden="true">
+      <li class="card" data-category="${e(app.category)}" data-id="${e(app.id)}" data-traco="${e(hour(app.category))}">
+        <a class="card-block" href="${e(app.link ?? "")}" tabindex="-1" aria-hidden="true">
           <img src="${e(app.screenshot ?? "")}" width="${shot.width}" height="${shot.height}" alt="" data-t-alt="shotAlt" data-name-of="${e(app.id)}" ${i < 2 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async" />
         </a>
         <div class="card-body">
-          <p class="card-meta"><span class="card-no" aria-hidden="true">No. ${no}</span><span class="card-cat" data-cat-name="${e(app.category)}">${e(word(gallery.categories[app.category]))}</span></p>
-          <h3 class="card-name"><span class="card-icon" aria-hidden="true">${e(app.icon ?? "◆")}</span><span data-app-name="${e(app.id)}">${e(name)}</span></h3>
+          <p class="card-meta"><span class="cat" data-cat-name="${e(app.category)}">${e(word(gallery.categories[app.category]))}</span></p>
+          <h3 class="card-name"><span data-app-name="${e(app.id)}">${e(name)}</span></h3>
           <p class="card-line" data-app-line="${e(app.id)}">${e(word(app.line))}</p>
           <div class="card-actions">
-            <a class="btn btn-try" href="${e(app.link ?? "")}" data-label="tryLabel" data-name-of="${e(app.id)}" aria-label="${e(fill(s.tryLabel, { name }))}"><span data-t="tryIt">${e(s.tryIt)}</span> <span aria-hidden="true">→</span></a>
-            <a class="btn btn-mine" href="${e(remixLink(app.link ?? "#"))}" data-label="mineLabel" data-name-of="${e(app.id)}" aria-label="${e(fill(s.mineLabel, { name }))}"><span aria-hidden="true">✦</span> <span data-t="makeItMine">${e(s.makeItMine)}</span></a>
+            <a class="btn btn-try" href="${e(app.link ?? "")}" data-label="tryLabel" data-name-of="${e(app.id)}" aria-label="${e(fill(s.tryLabel, { name }))}"><span data-t="tryIt">${e(s.tryIt)}</span>${icon(ICON.arrowRight, 16)}</a>
+            <a class="btn btn-mine" href="${e(remixLink(app.link ?? "#"))}" data-label="mineLabel" data-name-of="${e(app.id)}" aria-label="${e(fill(s.mineLabel, { name }))}">${icon(ICON.copy, 16)}<span data-t="makeItMine">${e(s.makeItMine)}</span></a>
           </div>
         </div>
       </li>`;
@@ -94,10 +174,12 @@ export function renderPage(gallery, strings, assets) {
 
   const soonItem = (/** @type {import("./data.mjs").GalleryApp} */ app) => `
         <li class="soon-item" data-waits-for="${e(app.waitsFor ?? "")}">
-          <span class="soon-icon" aria-hidden="true">${e(app.icon ?? "◆")}</span>
           <span class="soon-text"><strong data-app-name="${e(app.id)}">${e(word(app.name))}</strong> <span data-app-line="${e(app.id)}">${e(word(app.line))}</span></span>
           <span class="soon-tag" data-t="soon">${e(s.soon)}</span>
         </li>`;
+
+  // The twelve hours as flat blocks, rosa first (§9). Decoration, so hidden from readers.
+  const clock = `<ul class="clock" aria-hidden="true"><li></li>${HOURS.map((h) => `<li data-traco="${h}"></li>`).join("")}</ul>`;
 
   // What the script needs to say it all in another language: the words, never the links.
   const data = {
@@ -109,6 +191,24 @@ export function renderPage(gallery, strings, assets) {
   const json = JSON.stringify(data).replace(/</g, "\\u003c");
   const mail = `mailto:${CONTACT}?subject=${encodeURIComponent(s.reportSubject)}`;
 
+  const filters =
+    used.length > 1
+      ? `<div class="filters" role="group" aria-labelledby="filters-l" hidden>
+          <span id="filters-l" class="filters-label" data-t="show">${e(s.show)}</span>
+          <button type="button" class="chip" data-filter="" aria-pressed="true" data-t="all">${e(s.all)}</button>
+          ${used.map((c) => `<button type="button" class="chip" data-filter="${e(c)}" data-traco="${e(hour(c))}" aria-pressed="false" data-cat-name="${e(c)}">${e(word(gallery.categories[c]))}</button>`).join("\n          ")}
+        </div>`
+      : "";
+
+  const workbench = soon.length
+    ? `<section class="soon" aria-labelledby="soon-h">
+      <h2 id="soon-h" data-t="soonHeading">${e(s.soonHeading)}</h2>
+      <p class="soon-lead" data-t="soonLead">${e(s.soonLead)}</p>
+      <ul class="soon-list">${soon.map(soonItem).join("")}
+      </ul>
+    </section>`
+    : "";
+
   return `<!doctype html>
 <html lang="${SOURCE_LANGUAGE}">
 <head>
@@ -117,66 +217,76 @@ export function renderPage(gallery, strings, assets) {
   <title data-t="title">${e(s.title)}</title>
   <meta name="description" content="${e(s.description)}" data-t-content="description" />
   <meta name="color-scheme" content="light dark" />
-  <meta name="theme-color" content="#f6f1e7" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#1b1814" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#1c1b1c" media="(prefers-color-scheme: dark)" />
   <meta name="referrer" content="no-referrer" />
   <meta property="og:title" content="${e(s.title)}" />
   <meta property="og:description" content="${e(s.description)}" />
   <meta property="og:type" content="website" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="tokens.css?v=${assets.css}" />
+  <link rel="stylesheet" href="hours.css?v=${assets.css}" />
   <link rel="stylesheet" href="gallery.css?v=${assets.css}" />
 </head>
 <body>
   <a class="skip" href="#apps" data-t="skip">${e(s.skip)}</a>
   <header class="top">
-    <a class="brand" href="${APP_SITE}"><span class="brand-mark" aria-hidden="true">◆</span><span class="brand-name">Potyro</span><span class="brand-tag"> — <span data-t="tagline">${e(s.tagline)}</span></span></a>
+    <a class="brand" href="${APP_SITE}">${wordmark}</a>
     <div class="top-tools">
       <label class="lang" hidden><span class="visually-hidden" data-t="language">${e(s.language)}</span>
         <select id="lang">${LANGUAGES.map((l) => `<option value="${l}" lang="${l}">${e(AUTONYMS[l])}</option>`).join("")}</select>
       </label>
-      <button type="button" class="theme" id="theme" hidden aria-label="${e(s.toDark)}"><span aria-hidden="true">◐</span></button>
+      <button type="button" class="theme" id="theme" hidden aria-label="${e(s.toDark)}">${icon(ICON.sunMoon)}</button>
+      <a class="btn-cta" href="${APP_SITE}" data-t="cta">${e(s.cta)}</a>
     </div>
   </header>
 
   <main id="main">
     <section class="hero" aria-labelledby="hero-h">
-      <p class="eyebrow" data-t="eyebrow">${e(s.eyebrow)}</p>
-      <h1 id="hero-h" data-t="hero">${e(s.hero)}</h1>
-      <p class="lead" data-t="lead">${e(s.lead)}</p>
-      <ol class="steps">
-        <li><span class="step-no" aria-hidden="true">1</span><strong data-t="step1">${e(s.step1)}</strong><span data-t="step1Text">${e(s.step1Text)}</span></li>
-        <li><span class="step-no" aria-hidden="true">2</span><strong data-t="step2">${e(s.step2)}</strong><span data-t="step2Text">${e(s.step2Text)}</span></li>
-        <li><span class="step-no" aria-hidden="true">3</span><strong data-t="step3">${e(s.step3)}</strong><span data-t="step3Text">${e(s.step3Text)}</span></li>
-      </ol>
+      <div class="hero-words">
+        <h1 id="hero-h" data-t="hero">${e(s.hero)}</h1>
+        <p class="lead" data-t="lead">${e(s.lead)}</p>
+        <form class="prompt" action="${APP_SITE}" method="get">
+          <label class="prompt-label" for="prompt" data-t="promptLabel">${e(s.promptLabel)}</label>
+          <div class="prompt-field">
+            <textarea class="prompt-box" id="prompt" name="new" rows="3" placeholder="${e(s.promptPlaceholder)}" data-t-placeholder="promptPlaceholder" required></textarea>
+            <button type="submit" class="prompt-send" aria-label="${e(s.promptSend)}" data-t-label="promptSend">${icon(ICON.arrowUp, 24)}</button>
+          </div>
+          <ul class="examples">
+            <li><a class="chip-link" href="${e(newAppHref(s.ex1))}" data-t="ex1" data-new-from="ex1">${e(s.ex1)}</a></li>
+            <li><a class="chip-link" href="${e(newAppHref(s.ex2))}" data-t="ex2" data-new-from="ex2">${e(s.ex2)}</a></li>
+            <li><a class="chip-link" href="${e(newAppHref(s.ex3))}" data-t="ex3" data-new-from="ex3">${e(s.ex3)}</a></li>
+          </ul>
+        </form>
+      </div>
+      ${clock}
     </section>
 
     <section class="apps" id="apps" aria-labelledby="apps-h" tabindex="-1">
       <div class="apps-head">
         <h2 id="apps-h" data-t="appsHeading">${e(s.appsHeading)}</h2>
-        ${
-          used.length > 1
-            ? `<div class="filters" role="group" aria-labelledby="filters-l" hidden>
-          <span id="filters-l" class="filters-label" data-t="show">${e(s.show)}</span>
-          <button type="button" class="chip" data-filter="" aria-pressed="true" data-t="all">${e(s.all)}</button>
-          ${used.map((c) => `<button type="button" class="chip" data-filter="${e(c)}" aria-pressed="false" data-cat-name="${e(c)}">${e(word(gallery.categories[c]))}</button>`).join("\n          ")}
-        </div>`
-            : ""
-        }
+        ${filters}
       </div>
       ${published.length ? `<ol class="cards">${published.map(card).join("")}
       </ol>` : `<p class="empty" data-t="empty">${e(s.empty)}</p>`}
     </section>
 
-    ${
-      soon.length
-        ? `<section class="soon" aria-labelledby="soon-h">
-      <h2 id="soon-h" data-t="soonHeading">${e(s.soonHeading)}</h2>
-      <p class="soon-lead" data-t="soonLead">${e(s.soonLead)}</p>
-      <ul class="soon-list">${soon.map(soonItem).join("")}
-      </ul>
-    </section>`
-        : ""
-    }
+    <section class="how" aria-labelledby="how-h">
+      <h2 id="how-h" data-t="howHeading">${e(s.howHeading)}</h2>
+      <ol class="steps">
+        <li><span class="step-no" aria-hidden="true">1</span><span><strong data-t="step1">${e(s.step1)}</strong><span data-t="step1Text">${e(s.step1Text)}</span></span></li>
+        <li><span class="step-no" aria-hidden="true">2</span><span><strong data-t="step2">${e(s.step2)}</strong><span data-t="step2Text">${e(s.step2Text)}</span></span></li>
+        <li><span class="step-no" aria-hidden="true">3</span><span><strong data-t="step3">${e(s.step3)}</strong><span data-t="step3Text">${e(s.step3Text)}</span></span></li>
+      </ol>
+    </section>
+
+    ${workbench}
+
+    <section class="close" aria-label="Potyro">
+      ${logos["wordmark-large"] ? inlineLogo(logos["wordmark-large"], "mark wordmark-large") : ""}
+      ${logos.tagline ? inlineLogo(logos.tagline, "mark tagline") : ""}
+      <a class="btn-cta" href="${APP_SITE}" data-t="cta">${e(s.cta)}</a>
+    </section>
   </main>
 
   <footer class="foot">
@@ -185,7 +295,7 @@ export function renderPage(gallery, strings, assets) {
       <a href="${APP_SITE}" data-t="open">${e(s.open)}</a>
       <a href="${e(mail)}" data-mail="${e(CONTACT)}" data-t="report">${e(s.report)}</a>
     </nav>
-    <p class="made"><span class="brand-mark" aria-hidden="true">◆</span> <span data-t="made">${e(s.made)}</span></p>
+    <p class="made">${symbol} <span data-t="made">${e(s.made)}</span></p>
   </footer>
 
   <script type="application/json" id="gallery-data">${json}</script>
@@ -212,8 +322,9 @@ export function imageSize(b) {
 }
 
 /**
- * Build the gallery into `out`: index.html, gallery.css, gallery.js, favicon.svg and the screenshots it
- * shows. `out` is emptied first, so a screenshot dropped from the gallery is dropped from the site.
+ * Build the gallery into `out`: index.html, its stylesheets (the design system's tokens, the hours,
+ * the page's own), script, favicon, fonts, logo files and the screenshots it shows. `out` is emptied
+ * first, so a screenshot dropped from the gallery is dropped from the site.
  * @param {{ data?: string; shots?: string; out?: string; allowLocal?: boolean }} [opts]
  */
 export function buildGallery(opts = {}) {
@@ -224,6 +335,8 @@ export function buildGallery(opts = {}) {
   const strings = readStrings(readJson(join(GALLERY_DIR, "strings.json")));
   const css = readFileSync(join(here, "page", "gallery.css"));
   const js = readFileSync(join(here, "page", "gallery.js"));
+  const tokens = readFileSync(join(DESIGN, "tokens.css"));
+  const hours = hoursCss();
   /** @type {Record<string, { width: number; height: number }>} */
   const shots = {};
   const { published } = shownApps(gallery);
@@ -239,8 +352,18 @@ export function buildGallery(opts = {}) {
   for (const path of Object.keys(shots)) copyFileSync(join(shotsRoot, path), join(out, path));
   writeFileSync(join(out, "gallery.css"), css);
   writeFileSync(join(out, "gallery.js"), js);
+  writeFileSync(join(out, "tokens.css"), tokens);
+  writeFileSync(join(out, "hours.css"), hours);
   copyFileSync(join(here, "page", "favicon.svg"), join(out, "favicon.svg"));
-  const html = renderPage(gallery, strings, { css: shortHash(css), js: shortHash(js), shots });
+  mkdirSync(join(out, "fonts"), { recursive: true });
+  for (const f of readdirSync(join(DESIGN, "fonts"))) if (f.endsWith(".woff2")) copyFileSync(join(DESIGN, "fonts", f), join(out, "fonts", f));
+  mkdirSync(join(out, "logo"), { recursive: true });
+  for (const f of LOGO_FILES) copyFileSync(join(DESIGN, "logo", f), join(out, "logo", f));
+  const logos = {
+    "wordmark-large": readFileSync(join(DESIGN, "logo", "wordmark-large.svg"), "utf8"),
+    tagline: readFileSync(join(DESIGN, "logo", "tagline.svg"), "utf8"),
+  };
+  const html = renderPage(gallery, strings, { css: shortHash(Buffer.concat([tokens, Buffer.from(hours), css])), js: shortHash(js), shots, logos });
   writeFileSync(join(out, "index.html"), html);
   return { out, published: published.length, soon: shownApps(gallery).soon.length };
 }
