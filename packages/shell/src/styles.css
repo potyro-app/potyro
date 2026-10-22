@@ -123,6 +123,9 @@
   --tile-tint: 26%;
   --accent-tint: var(--aguada);
   --accent-line: var(--tinta);
+  /* A chart's single series: the app's own colour at the level that reads. Declared here too, or
+     it would resolve at :root — Potyro's rosa — inside every app. */
+  --series-1: var(--tinta);
 }
 /* An app's colour (App.tsx) and a chosen look (look.ts) arrive as BOTH themes' values at once —
    `varsBoth` in @potyro/design — and the element follows the theme from here, with no script to
@@ -16521,4 +16524,324 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-page-head .k-topbar-btn {
   width: 40px;
   height: 40px;
+}
+
+/* ---- The built-in views (DESIGN.md §6) ---------------------------------------------------------
+   Lists as rows with dividers, cards filled without an outline, the record's colour as its wash,
+   pills for facts and badges, the mascot on an empty page. These rules come last and win over the
+   views' older ones above. */
+
+/* Figures: a line of numbers, on the ground. */
+.k-summary {
+  padding: var(--space-1) 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+/* A list: rows of 56px with a divider between them, no box round the whole. */
+.k-list {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+}
+.k-list-row {
+  min-height: 56px;
+  padding: var(--space-2) var(--space-1);
+  gap: var(--space-3);
+}
+.k-list-row + .k-list-row {
+  border-top: 1px solid var(--line);
+}
+.k-list-row:hover {
+  background: var(--surface);
+}
+/* The row's lead: a circle of the record's wash with its initial in the tinta. */
+.k-lead {
+  border-radius: 50%;
+  background: var(--aguada);
+  color: var(--tinta);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+}
+.k-thumb {
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  background: var(--surface-2);
+}
+.k-row-chevron,
+.k-check-open {
+  color: var(--muted);
+}
+/* A badge: a small filled pill; one tinted by its field keeps its own colours. */
+.k-badge {
+  min-height: 24px;
+  padding: 0 0.6rem;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  line-height: 24px;
+}
+
+/* A checklist: rows with dividers, a 24px circle to tick, the group's name as a small label. */
+.k-check-list {
+  gap: 0;
+}
+.k-check-row {
+  min-height: 56px;
+  padding: var(--space-1) var(--space-1) var(--space-1) 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.k-check-row + .k-check-row {
+  border-top: 1px solid var(--line);
+}
+.k-check-heading {
+  font-family: var(--font-body);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.k-check-mark {
+  width: 24px;
+  height: 24px;
+  border: var(--stroke) solid var(--line-strong);
+  background: var(--bg);
+}
+.k-check-row[data-done] .k-check-mark {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.k-check-row[data-done] {
+  opacity: 0.55;
+}
+/* The add bar at the foot of a checklist floats over the rows, so it carries the float shadow. */
+.k-check-add {
+  padding: var(--space-2) 0;
+  margin: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: none;
+}
+
+/* A gallery: filled cards, the media on the record's wash when there is no photo. */
+.k-gallery {
+  gap: var(--space-4) var(--space-3);
+}
+.k-gallery .k-card {
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: none;
+  overflow: hidden;
+}
+.k-card-media {
+  background: var(--aguada);
+}
+.k-card-caption {
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+.k-card-caption .k-primary {
+  font-weight: 600;
+}
+.k-card-caption .k-secondary {
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+
+/* A record's page: sections as filled cards, facts as pills, the one big button a pill. */
+.k-detail-kicker {
+  font-size: var(--text-micro);
+  letter-spacing: 0.06em;
+  color: var(--tinta);
+}
+.k-detail-title {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.k-fact {
+  min-height: 32px;
+  padding: 0 0.8rem;
+  border: 0;
+  background: var(--surface);
+  font-size: var(--text-small);
+  font-weight: 600;
+}
+.k-fact-label {
+  color: var(--muted);
+}
+.k-section {
+  border: 0;
+  padding: var(--space-5);
+}
+.k-section h3,
+.k-section h4 {
+  font-family: var(--font-body);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  /* Soft ink, not muted: a 12px label is small text, and on CI axe measures it while the sheet it
+     sits in is still fading in over the scrim. Muted was 4.5:1 with nothing to spare. */
+  color: var(--ink-soft);
+}
+.k-cta {
+  min-height: 48px;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font: 600 1rem var(--font-body);
+  letter-spacing: 0;
+  text-align: center;
+  box-shadow: none;
+}
+.k-cta:hover {
+  transform: none;
+  box-shadow: none;
+}
+.k-primary-bar {
+  background: var(--bg);
+  box-shadow: none;
+}
+
+/* Stats: the number large in the display face, its label small and muted; filled, no outline. */
+.k-stat {
+  border: 0;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+}
+.k-stat-value {
+  font-weight: 700;
+}
+.k-stat-label {
+  font-size: var(--text-micro);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Chips: filled pills; a chip with a search field in it is the same pill and the same type. */
+.k-value-chip {
+  min-height: 32px;
+  padding: 0 0.6rem 0 0.8rem;
+  border: 0;
+  background: var(--surface);
+}
+.k-chip-input {
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 500;
+}
+/* The toggle (§6): a 44×28 pill, the track outlined when off, the app's colour when on; the knob
+   lands with a boing. */
+.k-switch {
+  width: 44px;
+  height: 28px;
+  border: var(--stroke) solid var(--line-strong);
+  background: var(--surface-2);
+}
+.k-switch-knob {
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: var(--bg);
+  box-shadow: none;
+  transition: transform var(--dur-base) var(--ease-boing), background var(--dur-fast) var(--ease);
+}
+.k-switch[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.k-switch[aria-checked="true"] .k-switch-knob {
+  background: var(--on-accent);
+  transform: translateX(16px);
+}
+/* A chip that holds a toggle keeps it small enough for the chip. */
+.k-chip-switch .k-switch {
+  width: 36px;
+  height: 22px;
+}
+.k-chip-switch .k-switch-knob {
+  width: 14px;
+  height: 14px;
+}
+.k-chip-switch .k-switch[aria-checked="true"] .k-switch-knob {
+  transform: translateX(14px);
+}
+.k-switch-row {
+  min-height: 56px;
+  border-radius: var(--radius-md);
+}
+
+/* Forms (§6, §11.7): the label visible above the field, in body type at 500; a group's title small. */
+.k-form-label {
+  font-size: var(--text-small);
+  font-weight: 500;
+  color: var(--ink);
+}
+.k-form-group-title {
+  font-family: var(--font-body);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.k-form-head {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.k-form-head h2,
+.k-form-head h3 {
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 700;
+}
+
+/* An empty page (§6): the mascot, one line in the display face, one in muted, one button. */
+.k-empty-state {
+  gap: var(--space-3);
+  border: 0;
+  background: none;
+}
+.k-empty-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.k-mascot {
+  display: block;
+  width: 48px;
+  height: 45px;
+}
+.k-mascot .k-mascot-ink {
+  fill: var(--ink-soft);
+}
+.k-mascot .k-mascot-stroke {
+  fill: var(--traco);
+}
+.k-empty-state .k-empty-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 700;
+  color: var(--ink);
+}
+.k-empty-add {
+  box-shadow: none;
 }
