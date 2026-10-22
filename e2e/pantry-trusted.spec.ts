@@ -115,7 +115,14 @@ test("a shared copy reads a shelf: camera and AI asked first, the checked items 
   // The person corrects a name before saving: what is saved is theirs.
   await names.nth(0).fill("Oat milk");
   await form.getByRole("button", { name: "Add to my kitchen" }).click();
-  await expect(page.getByText("Added 3 things. First to go: Chicken thighs (3 days left).")).toBeVisible({ timeout: 20_000 });
+  try {
+    await expect(page.getByText("Added 3 things. First to go: Chicken thighs (3 days left).")).toBeVisible({ timeout: 20_000 });
+  } catch (e) {
+    // Seen only on the gate: what the page showed instead, kept with the run's artifacts.
+    await page.screenshot({ path: test.info().outputPath("pantry-after-add.png"), fullPage: true }).catch(() => {});
+    test.info().attachments.push({ name: "body", contentType: "text/plain", body: Buffer.from(await page.locator("body").innerText().catch(() => "-")) });
+    throw e;
+  }
 
   // Kitchen: under its heading, soonest first, the guess saying it is one.
   await expect(main.locator(".k-primary").first()).toHaveText("Chicken thighs");
