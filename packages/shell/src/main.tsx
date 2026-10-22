@@ -233,8 +233,20 @@ async function importApp(caps: Capabilities, toaster: Toaster): Promise<void> {
 
 // The launcher home — first surface when no app is selected. A tile launches (reload → ?user=);
 // "New app" opens the Studio in place.
+/**
+ * What the landing page's prompt box sent (potyro.com, DESIGN.md §9): `?new=…` opens the Studio on
+ * it. Read once, as the page loads, and then taken off the address, so a reload is home again.
+ */
+function newFromUrl(): string | null {
+  const text = new URLSearchParams(location.search).get("new");
+  if (text === null) return null;
+  history.replaceState(null, "", location.pathname);
+  return text.trim();
+}
+const NEW_FROM_URL = typeof location === "undefined" ? null : newFromUrl();
+
 function Home() {
-  const [studio, setStudio] = useState<{ prefill?: string; draftId?: string } | null>(null);
+  const [studio, setStudio] = useState<{ prefill?: string; draftId?: string } | null>(NEW_FROM_URL === null ? null : { prefill: NEW_FROM_URL || undefined });
   return (
     <>
       <Launcher

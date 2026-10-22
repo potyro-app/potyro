@@ -153,3 +153,33 @@ export function shownApps(g) {
 export function publishable(g, only) {
   return g.apps.filter((a) => a.status === "ready" && (!only?.length || only.includes(a.id)));
 }
+
+/**
+ * The hour of the clock each category wears on the landing page (DESIGN.md §8.3 chooses an app's
+ * colour by subject; §3.1's category colours identify data). Never rosa: 12 o'clock is Potyro's.
+ * An app's card is the hour's traço, its category chip the hour's wash and tinta.
+ * @type {Record<string, string>}
+ */
+export const CATEGORY_HOUR = {
+  home: "lima",
+  food: "laranja",
+  money: "azul",
+  garden: "verde",
+  travel: "ciano",
+  fitness: "vermelho",
+  wellbeing: "menta",
+  play: "roxo",
+  music: "magenta",
+  creative: "amarelo",
+  plans: "amarelo",
+  world: "azul",
+  notes: "anil",
+};
+
+/** The hour for a category the mapping does not know: walk the clock by the category's place. */
+export function hourOf(category, categories) {
+  if (CATEGORY_HOUR[category]) return CATEGORY_HOUR[category];
+  const hours = ["vermelho", "laranja", "amarelo", "lima", "verde", "menta", "ciano", "azul", "anil", "roxo", "magenta"];
+  const i = Math.max(0, Object.keys(categories).indexOf(category));
+  return hours[(i * 5) % hours.length];
+}
