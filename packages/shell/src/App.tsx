@@ -896,7 +896,11 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const viewGlyph: Record<string, ReactNode> = { list: I.list, gallery: I.galleryView, table: I.table, calendar: I.calendar, map: I.map, steps: I.steps, checklist: I.checklist, aggregate: I.aggregate, custom: I.custom, detail: I.custom };
   const pageIcon = (p: (typeof def.pages)[number]): ReactNode => {
     const v = p.view as { type?: string; entity?: string };
-    return (p as { icon?: string }).icon || (v.entity && def.entities[v.entity]?.icon) || viewGlyph[v.type ?? ""] || I.custom;
+    // The picture of the page's kind of view (DESIGN.md §3.5: Lucide, no emoji in the chrome). A
+    // page's declared icon and the entity's are emoji today; they stay the records' own marks
+    // inside the page until an app can name a Lucide icon (#425).
+    void p;
+    return viewGlyph[v.type ?? ""] || I.custom;
   };
   const chromePages: ChromePage[] = [
     ...(navMode === "grid" ? [{ id: HOME, title: t({ message: "Home", comment: "The page that shows an app's kinds of record as tiles" }), icon: I.home, active: pageId === HOME, onOpen: () => navigate(HOME) }] : []),
