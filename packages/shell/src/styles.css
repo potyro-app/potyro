@@ -4729,23 +4729,28 @@ button.k-prov:focus-visible {
   .k-menu-scrim {
     background: var(--scrim-soft);
   }
+  /* On a phone a menu is a sheet from the bottom (DESIGN.md §6): the whole width, 20px corners on
+     top, a 36×4 handle. The anchored placement writes `top`/`left` — or `bottom`/`left` when it
+     flips upward near the bottom of the screen — inline, so every edge here has to win over it:
+     with only `top` and `right` winning, the New app menu floated beside its button, cut off at
+     the right edge. */
   .k-menu {
     top: auto !important;
     right: 0 !important;
-    left: 0;
-    bottom: 0;
+    left: 0 !important;
+    bottom: 0 !important;
     max-width: none;
-    border-radius: var(--radius) var(--radius) 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     padding: var(--space-2) var(--space-3) calc(var(--space-3) + var(--k-safe-bottom));
-    animation: k-sheet-up var(--dur) var(--ease);
+    animation: k-sheet-up var(--dur-slow) var(--ease);
   }
   .k-menu-grip {
     display: block;
-    width: 2.5rem;
-    height: 0.3rem;
+    width: 36px;
+    height: 4px;
     margin: 0 auto var(--space-2);
-    border-radius: 999px;
-    background: var(--line);
+    border-radius: var(--radius-pill);
+    background: var(--line-strong);
   }
   .k-menu-item {
     min-height: 3rem;
@@ -15890,21 +15895,24 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   min-width: 20px;
   height: 1em;
 }
-.k-wordmark-dark {
+/* One of the two shows. Both selectors name the image AND the wrapper, so they outrank the sizing
+   rule above — with only the class, the white-lettered file drew on white and left a pink stroke
+   floating beside the wordmark. */
+.k-wordmark .k-wordmark-dark {
   display: none;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .k-wordmark-light {
+  :root:not([data-theme="light"]) .k-wordmark .k-wordmark-light {
     display: none;
   }
-  :root:not([data-theme="light"]) .k-wordmark-dark {
+  :root:not([data-theme="light"]) .k-wordmark .k-wordmark-dark {
     display: block;
   }
 }
-:root[data-theme="dark"] .k-wordmark-light {
+:root[data-theme="dark"] .k-wordmark .k-wordmark-light {
   display: none;
 }
-:root[data-theme="dark"] .k-wordmark-dark {
+:root[data-theme="dark"] .k-wordmark .k-wordmark-dark {
   display: block;
 }
 
