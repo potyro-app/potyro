@@ -248,11 +248,11 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, current
             `primaryAction`, a bar at the bottom; the other kinds are in the ⋯ menu. */}
         {primary && showQuick ? (
           <button type="button" className="k-topbar-btn k-topbar-add k-quick" aria-label={primary.label} title={primary.label} aria-disabled={locked || undefined} onClick={primary.onRun}>
-            ＋
+            {I.plus}
           </button>
         ) : null}
         {menu.length ? (
-          <ActionMenu label={news ? t`More — something new` : t({ message: "More", comment: "The app's ⋯ menu of tools" })} title={name} entries={menu} buttonClassName={`k-topbar-btn${news ? " k-has-news" : ""}`} />
+          <ActionMenu label={news ? t`More — something new` : t({ message: "More", comment: "The app's ⋯ menu of tools" })} trigger={I.more} title={name} entries={menu} buttonClassName={`k-topbar-btn${news ? " k-has-news" : ""}`} />
         ) : null}
       </header>
       {recording ? (
@@ -290,7 +290,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, current
               trigger={
                 <>
                   <span className="k-tab-icon" aria-hidden>
-                    ⋯
+                    {I.more}
                   </span>
                   <span className="k-tab-label">
                     <Trans comment="Tab bar: the pages that did not fit">More</Trans>
