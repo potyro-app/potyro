@@ -145,5 +145,16 @@
     });
   }
 
+  // The prompt box: Enter sends, Shift+Enter is a new line — as the Studio's own box behaves.
+  var prompt = document.querySelector(".prompt-box");
+  if (prompt && prompt.form) {
+    prompt.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        if (prompt.value.trim()) prompt.form.requestSubmit ? prompt.form.requestSubmit() : prompt.form.submit();
+      }
+    });
+  }
+
   apply(lang);
 })();
