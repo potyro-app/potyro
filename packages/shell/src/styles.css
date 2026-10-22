@@ -16693,7 +16693,9 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--muted);
+  /* Soft ink, not muted: a 12px label is small text, and on CI axe measures it while the sheet it
+     sits in is still fading in over the scrim. Muted was 4.5:1 with nothing to spare. */
+  color: var(--ink-soft);
 }
 .k-cta {
   min-height: 48px;
@@ -16796,7 +16798,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--ink-soft);
 }
 .k-form-head {
   border-bottom: 0;
