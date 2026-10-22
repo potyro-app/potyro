@@ -16845,3 +16845,345 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-empty-add {
   box-shadow: none;
 }
+
+/* ---- The Studio (DESIGN.md §10) --------------------------------------------------------------
+   Where the person creates, adjusts and shares: it has to disappear for their app to show. Rosa
+   is the platform's only accent; the app in the preview runs in its own hour. These rules come
+   last and win over the Studio's older ones above. */
+.k-studio {
+  background: var(--bg);
+}
+.k-studio-bar {
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  padding-top: calc(var(--space-2) + var(--k-safe-top));
+  border-bottom: var(--stroke) solid var(--line);
+  background: var(--bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.k-studio-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: var(--stroke) solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--ink);
+  cursor: pointer;
+}
+.k-studio-close:hover {
+  background: var(--surface);
+}
+.k-studio-eyebrow {
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.k-studio-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.k-studio-open {
+  min-height: 40px;
+  padding: 0 1.1rem;
+  border: var(--stroke) solid var(--line-strong);
+  background: transparent;
+  color: var(--ink);
+}
+.k-studio-open:hover {
+  background: var(--surface);
+  box-shadow: none;
+  transform: none;
+}
+/* On a phone: two tabs, Conversation and App (§10). */
+.k-studio-tabs {
+  flex: none;
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+}
+.k-studio-tab {
+  min-height: 36px;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 600;
+  cursor: pointer;
+}
+.k-studio-tab[aria-selected="true"] {
+  background: var(--aguada);
+}
+.k-studio-publish {
+  min-height: 40px;
+}
+
+/* The words before the first message. */
+.k-studio-hero {
+  font-size: clamp(2rem, 1.4rem + 2.5vw, var(--text-display));
+  font-weight: 700;
+  line-height: 1.1;
+}
+.k-studio-lede {
+  color: var(--muted);
+  font-size: 1.125rem;
+  line-height: 1.45;
+}
+.k-studio-chip {
+  min-height: 32px;
+  padding: 0.4rem 0.9rem;
+  border: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-small);
+  font-weight: 500;
+}
+.k-studio-chip:hover {
+  background: var(--surface-2);
+  transform: none;
+  box-shadow: none;
+}
+
+/* The conversation: what you said on the app's wash, the answer as plain text, events small. */
+.k-thread-ask {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
+  background: var(--aguada);
+  color: var(--ink);
+  font-size: var(--text-body);
+}
+.k-thread-answer {
+  padding: 0;
+  border-left: 0;
+  color: var(--ink);
+  font-size: var(--text-body);
+}
+.k-thread-event {
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+.k-studio .k-card {
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.k-card-mark {
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+}
+.k-card-name {
+  font-weight: 700;
+  font-size: var(--text-h3);
+}
+.k-card-open {
+  border-radius: var(--radius-pill);
+}
+
+/* The composer is the prompt box (§6): a 2px outline that takes the colour in focus, the round send. */
+.k-composer {
+  background: var(--bg);
+}
+.k-composer-box {
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border: var(--stroke) solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: none;
+}
+.k-composer-box:focus-within {
+  border-color: var(--tinta);
+  box-shadow: none;
+}
+.k-composer-send {
+  width: 44px;
+  height: 44px;
+}
+.k-composer-engine,
+.k-composer-point-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 32px;
+  padding: 0 0.8rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-small);
+  font-weight: 500;
+}
+.k-composer-engine:hover,
+.k-composer-point-btn:hover {
+  background: var(--surface-2);
+}
+
+/* The preview: its bar flat with pills; on a wide screen the app in a phone's frame beside a 400px
+   conversation, the quick adjustments above it. */
+.k-preview {
+  background: var(--bg);
+}
+.k-preview-bar {
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  padding-top: calc(var(--space-2) + var(--k-safe-top));
+  border-bottom: var(--stroke) solid var(--line);
+  background: var(--bg);
+}
+.k-preview-back,
+.k-preview-code {
+  min-height: 36px;
+  padding: 0 0.9rem;
+  border: var(--stroke) solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: var(--text-small);
+}
+.k-preview-point {
+  min-height: 36px;
+  padding: 0 0.9rem;
+  border: 0;
+  background: var(--aguada);
+  color: var(--tinta);
+  font-size: var(--text-small);
+}
+.k-preview-point:hover {
+  transform: none;
+  box-shadow: none;
+}
+.k-preview-title {
+  font-weight: 600;
+}
+.k-preview-note {
+  border-bottom: var(--stroke) solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-small);
+}
+.k-preview-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.k-preview-adjust-row {
+  display: none;
+}
+@media (min-width: 1100px) {
+  .k-studio[data-preview] {
+    grid-template-columns: 400px minmax(0, 1fr);
+  }
+  .k-studio[data-preview] .k-preview {
+    border-left: var(--stroke) solid var(--line);
+    box-shadow: none;
+    background: var(--surface);
+  }
+  .k-studio[data-preview] .k-preview-bar {
+    background: var(--surface);
+    border-bottom: 0;
+  }
+  .k-preview-adjust-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    width: min(412px + 2 * var(--space-5), 100%);
+    margin: 0 auto;
+    padding: var(--space-2) var(--space-5) 0;
+  }
+  .k-studio[data-preview] .k-preview-frame {
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4) var(--space-5) var(--space-5);
+  }
+  /* The phone's frame (§10): 32px corners, a 2px line, the app's own ground inside. */
+  .k-studio[data-preview] .k-preview-screen {
+    flex: none;
+    width: min(412px, 100%);
+    height: 860px;
+    max-height: 100%;
+    border: var(--stroke) solid var(--line);
+    border-radius: 32px;
+    background: var(--bg);
+    overflow: clip;
+  }
+}
+.k-preview-adjust-name {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.k-preview-adjust-name:hover {
+  background: var(--bg);
+}
+.k-preview-adjust-name .k-icon {
+  color: var(--muted);
+}
+/* The clock (§10): eleven dots of 24px at the hours' places, 12 o'clock empty because it is
+   Potyro's; the chosen one wears a 2px ink ring; in the centre, the app's own colour. */
+.k-clock {
+  position: relative;
+  flex: none;
+  width: 120px;
+  height: 120px;
+}
+.k-clock-dot,
+.k-clock-own {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.k-clock-dot {
+  transform: rotate(calc(var(--hora) * 30deg)) translateY(-46px) rotate(calc(var(--hora) * -30deg));
+}
+.k-clock-own {
+  width: 32px;
+  height: 32px;
+  margin: -16px 0 0 -16px;
+  border: var(--stroke) solid var(--line-strong);
+  background: var(--bg);
+}
+.k-clock-dot[aria-checked="true"],
+.k-clock-own[aria-checked="true"] {
+  outline: var(--stroke) solid var(--ink);
+  outline-offset: 2px;
+}
+/* On a phone the tabs are the bar: the title would only be cut beside them (the app's name is in
+   the conversation and on the app itself). */
+.k-studio-bar:has(.k-studio-tabs) .k-studio-title,
+.k-preview-bar:has(.k-studio-tabs) .k-preview-title {
+  display: none;
+}
+.k-studio-bar:has(.k-studio-tabs) {
+  justify-content: space-between;
+}

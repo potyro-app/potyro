@@ -94,8 +94,8 @@ test.describe("phone", () => {
     expect(p.y).toBe(0);
     expect(p.width).toBe(PHONE.width);
     expect(p.height).toBe(PHONE.height);
-    // And the way back is always there.
-    const back = preview.getByRole("button", { name: "Back to the chat" });
+    // And the way back is always there: the Conversation tab (DESIGN.md §10).
+    const back = preview.getByRole("tab", { name: "Conversation" });
     await expect(back).toBeVisible();
     await back.tap();
     await expect(studio.locator(".k-preview")).toHaveCount(0);

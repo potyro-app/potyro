@@ -14,7 +14,7 @@
 //
 // Everything here runs the person's own app trusted (CLAUDE.md rule 3); studio-preview.tsx builds it.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { fmt } from "@potyro/i18n";
@@ -53,6 +53,31 @@ import { withHeard } from "./studio-voice.js";
 import { remixLine } from "./credit-words.js";
 import { remixSuggestions } from "./remix-suggestions.js";
 import { I } from "./icons.js";
+import { cor, HORAS, varsBoth } from "@potyro/design";
+import { msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core";
+import { ShareSheet } from "./share-sheet.js";
+import { getEntry, updateEntry } from "./launcher-store.js";
+import { hueColour } from "./tile-identity.js";
+import { tracoOf } from "./app-colour.js";
+
+/** The eleven hours an app may wear (DESIGN.md §10); 12 o'clock is Potyro's own and stays empty. */
+const HOURS = HORAS.filter((h) => h.hora !== 12);
+/** The platform wears rosa only (DESIGN.md §10): opened from inside an app, the Studio takes its own colour back. */
+const ROSA = varsBoth(cor("rosa"));
+const HOUR_NAMES: Record<string, MessageDescriptor> = {
+  vermelho: msg({ message: "Red", comment: "An hour of the colour clock" }),
+  laranja: msg({ message: "Orange", comment: "An hour of the colour clock" }),
+  amarelo: msg({ message: "Yellow", comment: "An hour of the colour clock" }),
+  lima: msg({ message: "Lime", comment: "An hour of the colour clock" }),
+  verde: msg({ message: "Green", comment: "An hour of the colour clock" }),
+  menta: msg({ message: "Mint", comment: "An hour of the colour clock" }),
+  ciano: msg({ message: "Cyan", comment: "An hour of the colour clock" }),
+  azul: msg({ message: "Blue", comment: "An hour of the colour clock" }),
+  anil: msg({ message: "Indigo", comment: "An hour of the colour clock" }),
+  roxo: msg({ message: "Purple", comment: "An hour of the colour clock" }),
+  magenta: msg({ message: "Magenta", comment: "An hour of the colour clock" }),
+};
 
 /** What "Write the code yourself" starts from when there is no app yet. */
 const STARTER = `import { defineApp } from "potyro";
@@ -161,6 +186,11 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const [items, setItems] = useState<ChatItem[]>([]);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  // Publishing: the share sheet, from here (DESIGN.md §10: the platform's primary is Publish).
+  const [publishing, setPublishing] = useState(false);
+  // The app's colour, chosen on the clock above its preview: the launcher's tile colour (#83), so
+  // it is the same colour everywhere; the preview wears it at once.
+  const [hue, setHue] = useState<number | undefined>(undefined);
   const [held, setHeld] = useState<Held | null>(null);
   const [working, setWorking] = useState<string | null>(null);
   const [description, setDescription] = useState(initialDescription ?? "");
@@ -620,7 +650,46 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   ];
 
   const canOpen = preview !== null && (hasApp || held !== null);
+  useEffect(() => setHue(appId ? getEntry(`user:${appId}`).hue : undefined), [appId]);
+  const pickHue = (h: number | undefined): void => {
+    setHue(h);
+    if (appId) updateEntry(`user:${appId}`, { hue: h });
+  };
   const showPreview = previewOpen && preview !== null;
+  const tabs =
+    canOpen && !wide ? (
+      <div className="k-studio-tabs" role="tablist" aria-label={t`Studio`}>
+        <button type="button" role="tab" className="k-studio-tab" aria-selected={!showPreview} onClick={() => setPreviewOpen(false)}>
+          <Trans comment="Studio tab on a phone: the conversation">Conversation</Trans>
+        </button>
+        <button type="button" role="tab" className="k-studio-tab" aria-selected={showPreview} onClick={() => setPreviewOpen(true)}>
+          <Trans comment="Studio tab on a phone: the app being made">App</Trans>
+        </button>
+      </div>
+    ) : null;
+  const adjust =
+    wide && hasApp ? (
+      <>
+        <button type="button" className="k-preview-adjust-name" title={t`Rename`} onClick={() => void rename()}>
+          {appName} {I.edit}
+        </button>
+        <div className="k-clock" role="radiogroup" aria-label={t({ message: "Colour", comment: "The app's colour, chosen on the clock" })}>
+          <button type="button" role="radio" className="k-clock-own" aria-checked={hue === undefined} aria-label={t`The app's own colour`} onClick={() => pickHue(undefined)} />
+          {HOURS.map((h) => (
+            <button
+              key={h.nome}
+              type="button"
+              role="radio"
+              className="k-clock-dot"
+              aria-checked={hue === h.hue}
+              aria-label={`${t(HOUR_NAMES[h.nome]!)}, ${h.hora}h`}
+              style={{ ["--hora" as string]: h.hora, background: tracoOf(h.hue) }}
+              onClick={() => pickHue(h.hue)}
+            />
+          ))}
+        </div>
+      </>
+    ) : null;
   /** The previewed app runs sealed and the person said, in the trust dialog, to let it run as theirs. */
   const promotePreview = (): void => {
     const app = appRef.current ? getUserApp(appRef.current) : undefined;
@@ -643,11 +712,11 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   };
 
   return (
-    <div className="k-studio" role="dialog" aria-label={t`App studio`} data-preview={showPreview || undefined}>
+    <div className="k-studio k-traco" role="dialog" aria-label={t`App studio`} data-preview={showPreview || undefined} style={ROSA as CSSProperties}>
       <div className="k-studio-chat">
         <header className="k-studio-bar">
           <button type="button" className="k-studio-close" aria-label={t`Close studio`} onClick={onClose}>
-            ✕
+            {I.close}
           </button>
           <div className="k-studio-title">
             <span className="k-studio-eyebrow">
@@ -655,12 +724,18 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
             </span>
             <strong className="k-studio-name">{hasApp ? appName : t`New app`}</strong>
           </div>
-          {canOpen && !showPreview ? (
-            <button type="button" className="k-studio-open" onClick={() => setPreviewOpen(true)}>
-              <Trans comment="Studio bar: open the app being made">Preview</Trans> <span aria-hidden>▸</span>
+          {tabs ??
+            (canOpen && !showPreview ? (
+              <button type="button" className="k-studio-open" onClick={() => setPreviewOpen(true)}>
+                <Trans comment="Studio bar: open the app being made">Preview</Trans>
+              </button>
+            ) : null)}
+          {wide && appId && getUserApp(appId) ? (
+            <button type="button" className="k-add k-primary-action k-studio-publish" onClick={() => setPublishing(true)}>
+              <Trans comment="Studio: share the app by a link">Publish</Trans>
             </button>
           ) : null}
-          <ActionMenu label={t`Studio menu`} entries={menu} buttonClassName="k-studio-more" />
+          <ActionMenu label={t`Studio menu`} trigger={I.more} entries={menu} buttonClassName="k-studio-more" />
         </header>
 
         <div className="k-studio-scroll" ref={scrollRef}>
@@ -701,7 +776,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
                   <PointGlyph />
                   <span className="k-point-chip-label">{point.label}</span>
                   <button type="button" className="k-point-chip-x" aria-label={t`Stop pointing at ${point.label}`} onClick={() => setPoint(null)}>
-                    ✕
+                    {I.close}
                   </button>
                 </span>
               </div>
@@ -743,7 +818,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           </div>
           <div className="k-composer-meta">
             <button type="button" className="k-composer-engine" aria-label={t`Model settings`} title={t`Choose which model writes and edits your app`} onClick={() => setSettingsOpen(true)}>
-              ⚙ {label}
+              {I.settings} {label}
             </button>
             {!ready ? (
               <span className="k-composer-warn">
@@ -759,10 +834,14 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         </footer>
       </div>
 
+      {publishing && appId && getUserApp(appId) ? <ShareSheet app={getUserApp(appId)!} onClose={() => setPublishing(false)} /> : null}
       {showPreview ? (
         <PreviewScreen
           preview={preview}
           title={appName}
+          tabs={tabs}
+          above={adjust}
+          appAccent={hue !== undefined ? hueColour(hue) : undefined}
           version={items.reduce<number | undefined>((v, i) => (i.type === "version" && i.current ? i.seq : v), undefined)}
           unsaved={held !== null}
           onBack={() => {
