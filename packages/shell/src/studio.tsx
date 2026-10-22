@@ -52,6 +52,7 @@ import { useVoice, VoiceButton, VoiceStrip } from "./voice-input.js";
 import { withHeard } from "./studio-voice.js";
 import { remixLine } from "./credit-words.js";
 import { remixSuggestions } from "./remix-suggestions.js";
+import { I } from "./icons.js";
 
 /** What "Write the code yourself" starts from when there is no app yet. */
 const STARTER = `import { defineApp } from "potyro";
@@ -595,25 +596,25 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   };
 
   const menu: MenuEntry[] = [
-    { key: "code", label: hasApp ? t`See the code` : t`Write the code yourself`, icon: "⌘", onSelect: () => setTools("source") },
+    { key: "code", label: hasApp ? t`See the code` : t`Write the code yourself`, icon: I.code, onSelect: () => setTools("source") },
     {
       key: "history",
       label: t`History`,
-      icon: "⟲",
+      icon: I.history,
       hint: cases.length ? plural(cases.length, { one: "# reported", other: "# reported" }) : undefined,
       onSelect: () => setTools("history"),
     },
-    ...(hasApp ? [{ key: "files", label: t`Files it comes with`, icon: "▤", onSelect: () => setTools("files") } as MenuEntry] : []),
-    { key: "model", label: t`Model settings`, icon: "⚙", hint: label, onSelect: () => setSettingsOpen(true) },
+    ...(hasApp ? [{ key: "files", label: t`Files it comes with`, icon: I.files, onSelect: () => setTools("files") } as MenuEntry] : []),
+    { key: "model", label: t`Model settings`, icon: I.settings, hint: label, onSelect: () => setSettingsOpen(true) },
     ...(hasApp
       ? ([
           "separator",
-          { key: "rename", label: t`Rename`, icon: "✎", onSelect: () => void rename() },
-          { key: "duplicate", label: t`Duplicate`, icon: "⧉", hint: t`the app, not its data`, onSelect: () => void duplicate(), disabled: busy },
+          { key: "rename", label: t`Rename`, icon: I.edit, onSelect: () => void rename() },
+          { key: "duplicate", label: t`Duplicate`, icon: I.duplicate, hint: t`the app, not its data`, onSelect: () => void duplicate(), disabled: busy },
         ] as MenuEntry[])
       : []),
     "separator",
-    { key: "new", label: t`Start a new app`, icon: "＋", onSelect: startOver, disabled: busy },
+    { key: "new", label: t`Start a new app`, icon: I.plus, onSelect: startOver, disabled: busy },
     ...(hasApp ? [{ key: "delete", label: t`Delete ${appName}`, danger: true, onSelect: () => void remove() } as const] : []),
     ...(!hasApp && items.length ? [{ key: "delete", label: t`Delete this conversation`, danger: true, onSelect: () => void deleteDraft() } as const] : []),
   ];
@@ -737,7 +738,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               disabled={!description.trim() || busy || !ready || voice.phase === "working"}
               onClick={() => void send()}
             >
-              <span aria-hidden>↑</span>
+              {I.send}
             </button>
           </div>
           <div className="k-composer-meta">

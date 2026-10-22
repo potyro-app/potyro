@@ -43,6 +43,8 @@ MessagePort (#272, docs/22; QuickJS-WASM stays behind a flag as the fallback). T
 
 ```
 packages/
+  design/         the design system: the designer's DESIGN.md + REDACAO.md + tokens verbatim, the fonts,
+                  the logo cut into assets, the colour clock in TS. Read its README before visual work.
   schema/         WP1 — defineApp() typed builder; Zod validation of the declarative parts
   host/           WP2 — module loader, the untrusted runners (browser realm: realm/; QuickJS-WASM
                         fallback: isolate/), ctx construction + capability mediation, provenance/trust

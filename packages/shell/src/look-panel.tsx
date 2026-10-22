@@ -7,9 +7,12 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { fmt } from "@potyro/i18n";
-import { TILE_HUES, hueColour } from "./tile-identity.js";
+import { HORAS } from "@potyro/design";
+import { tracoOf } from "./app-colour.js";
 import { setLook, useLook, type Appearance, type LauncherStyle } from "./look.js";
 import { useEffect, useState } from "react";
+
+const HOURS = HORAS.filter((h) => h.hora !== 12).map((h) => h.hue);
 
 const MODES: Array<{ id: Appearance; label: MessageDescriptor; detail: MessageDescriptor }> = [
   { id: "system", label: msg({ message: "System", comment: "Appearance: follow the device's light/dark setting" }), detail: msg`Follows this device` },
@@ -132,18 +135,19 @@ export function LookPanel({ onClose }: { onClose: () => void }) {
           <Trans comment="The colour the shell wears">Accent</Trans>
         </h3>
         <div className="k-look-hues" role="radiogroup" aria-label={t`Accent colour`}>
-          {/* Potyro's own gold, which is what "no choice" means — offered as a swatch so choosing it
+          {/* Potyro's own rosa, which is what "no choice" means — offered as a swatch so choosing it
               back is a tap rather than a thing you cannot undo. */}
           <button
             type="button"
             role="radio"
             aria-checked={look.accent === undefined}
-            aria-label={t`Potyro gold`}
+            aria-label={t`Potyro pink`}
             className="k-look-hue k-look-hue-default"
             data-on={look.accent === undefined || undefined}
             onClick={() => setLook({ ...look, accent: undefined })}
           />
-          {TILE_HUES.map((hue) => {
+          {/* The eleven hours of the clock (DESIGN.md §10); 12 o'clock is Potyro's own, the swatch above. */}
+          {HOURS.map((hue) => {
             const degrees = fmt.number(hue);
             return (
             <button
@@ -154,7 +158,7 @@ export function LookPanel({ onClose }: { onClose: () => void }) {
               aria-label={t({ message: `Accent hue ${degrees}`, comment: "A colour swatch; the number is the hue on the colour wheel" })}
               className="k-look-hue"
               data-on={look.accent === hue || undefined}
-              style={{ background: hueColour(hue) }}
+              style={{ background: tracoOf(hue) }}
               onClick={() => setLook({ ...look, accent: hue })}
             />
             );

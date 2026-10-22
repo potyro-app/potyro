@@ -14,6 +14,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { t as tr } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ActionMenu, usePhone, type MenuEntry } from "@potyro/views";
+import { I } from "./icons.js";
 
 const WIDE_FROM = 760;
 
@@ -43,7 +44,7 @@ function useNarrow(ref: React.RefObject<HTMLDivElement | null>, viewportPhone: b
 export interface ChromePage {
   id: string;
   title: string;
-  icon: string;
+  icon: ReactNode;
   active: boolean;
   onOpen: () => void;
 }
@@ -51,7 +52,7 @@ export interface ChromePage {
 export interface ChromeQuick {
   id: string;
   label: string;
-  icon: string;
+  icon: ReactNode;
   entity: string;
   onRun: () => void;
 }
@@ -227,11 +228,11 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, current
       <header className="k-topbar">
         {onBack ? (
           <button type="button" className="k-topbar-btn k-topbar-back" aria-label={t`Back`} onClick={onBack}>
-            ‹
+            {I.back}
           </button>
         ) : onApps ? (
           <button type="button" className="k-topbar-btn" data-tool="apps" aria-label={t`Switch app`} onClick={onApps}>
-            ⊞
+            {I.apps}
           </button>
         ) : null}
         <span className="k-topbar-icon" aria-hidden>
@@ -247,11 +248,11 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, current
             `primaryAction`, a bar at the bottom; the other kinds are in the ⋯ menu. */}
         {primary && showQuick ? (
           <button type="button" className="k-topbar-btn k-topbar-add k-quick" aria-label={primary.label} title={primary.label} aria-disabled={locked || undefined} onClick={primary.onRun}>
-            ＋
+            {I.plus}
           </button>
         ) : null}
         {menu.length ? (
-          <ActionMenu label={news ? t`More — something new` : t({ message: "More", comment: "The app's ⋯ menu of tools" })} title={name} entries={menu} buttonClassName={`k-topbar-btn${news ? " k-has-news" : ""}`} />
+          <ActionMenu label={news ? t`More — something new` : t({ message: "More", comment: "The app's ⋯ menu of tools" })} trigger={I.more} title={name} entries={menu} buttonClassName={`k-topbar-btn${news ? " k-has-news" : ""}`} />
         ) : null}
       </header>
       {recording ? (
@@ -289,7 +290,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, current
               trigger={
                 <>
                   <span className="k-tab-icon" aria-hidden>
-                    ⋯
+                    {I.more}
                   </span>
                   <span className="k-tab-label">
                     <Trans comment="Tab bar: the pages that did not fit">More</Trans>
@@ -388,7 +389,7 @@ function WideChrome({ name, icon, scope, status, pages, quick, quietQuick, curre
             ) : null}
             {report.map(toolButton)}
             {trust ? toolButton(trust) : null}
-            {onApps ? toolButton({ key: "apps", label: t`All apps`, icon: "⊞", onSelect: onApps }) : null}
+            {onApps ? toolButton({ key: "apps", label: t`All apps`, icon: I.apps, onSelect: onApps }) : null}
           </div>
         ) : null}
       </aside>

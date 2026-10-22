@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "./console-guard";
 import { tileAction } from "./launcher-actions.js";
+import { cor } from "../packages/design/src/color.js";
 
 // Choosing how this device looks, and what the colour you gave an app is actually for (#224).
 //
@@ -51,12 +52,14 @@ test("an accent chosen here is what the shell wears", async ({ page }) => {
   await openHome(page);
   await openLook(page);
 
-  await page.getByRole("radio", { name: "Accent hue 205" }).click();
-  expect(await page.evaluate(() => document.documentElement.style.getPropertyValue("--accent"))).toBe("oklch(72% 0.13 205)");
+  // 7 o'clock, ciano: the clock of strokes sets both themes' levels on the root (packages/design).
+  await page.getByRole("radio", { name: "Accent hue 210" }).click();
+  const worn = () => page.evaluate(() => [document.documentElement.style.getPropertyValue("--tinta-l"), document.documentElement.classList.contains("k-traco")]);
+  expect(await worn()).toEqual([cor(210).light.tinta, true]);
 
   await page.reload();
   await expect(page.getByRole("button", { name: /Look — appearance/ })).toBeVisible({ timeout: 30_000 });
-  expect(await page.evaluate(() => document.documentElement.style.getPropertyValue("--accent"))).toBe("oklch(72% 0.13 205)");
+  expect(await worn()).toEqual([cor(210).light.tinta, true]);
 });
 
 test("the colour you give an app is the colour the app wears", async ({ page }) => {
@@ -72,7 +75,8 @@ test("the colour you give an app is the colour the app wears", async ({ page }) 
   await page.goto("/?user=recipes");
   await expect(page.locator("h1").first()).toHaveText("Recipes", { timeout: 30_000 });
 
-  // The app's own accent token — what its buttons, tabs and focus rings are drawn from.
+  // The app's own accent token — what its buttons, tabs and focus rings are drawn from: the
+  // chosen hue's button level, as the clock of strokes computes it (packages/design).
   const accent = await page.locator(".k-app").first().evaluate((el) => getComputedStyle(el).getPropertyValue("--accent").trim());
-  expect(accent).toBe("oklch(72% 0.13 205)");
+  expect(accent).toBe(cor(205).light.accent);
 });

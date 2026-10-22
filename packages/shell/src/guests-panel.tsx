@@ -13,6 +13,7 @@ import type { GuestBook } from "@potyro/host";
 import type { Person } from "potyro";
 import { ActionMenu, type MenuEntry } from "@potyro/views";
 import { shellDialogs } from "./dialog.js";
+import { I } from "./icons.js";
 
 /** Re-render when the guests change, from anyone. */
 function useGuests(book: GuestBook): number {
@@ -76,10 +77,10 @@ export function GuestsSection({ book, others, nameOf, appName, toast }: { book: 
 
   const menu = (g: Person): MenuEntry[] => {
     const entries: MenuEntry[] = [];
-    if (!mine && canWrite) entries.push({ key: "claim", label: t({ message: "That’s me", comment: "Menu: say you are the placeholder person someone named before you joined" }), icon: "🙋", onSelect: () => void claim(g) });
+    if (!mine && canWrite) entries.push({ key: "claim", label: t({ message: "That’s me", comment: "Menu: say you are the placeholder person someone named before you joined" }), icon: I.me, onSelect: () => void claim(g) });
     if (book.canManage(g.id)) {
-      entries.push({ key: "rename", label: t({ message: "Rename", comment: "Menu: rename a guest" }), icon: "✎", onSelect: () => void rename(g) });
-      if (others.length) entries.push({ key: "link", label: t`Same person as…`, icon: "⇄", onSelect: () => setLinking(g.id) });
+      entries.push({ key: "rename", label: t({ message: "Rename", comment: "Menu: rename a guest" }), icon: I.edit, onSelect: () => void rename(g) });
+      if (others.length) entries.push({ key: "link", label: t`Same person as…`, icon: I.link, onSelect: () => setLinking(g.id) });
       entries.push("separator", { key: "remove", label: t({ message: "Remove", comment: "Menu: remove a guest from a shared app" }), danger: true, onSelect: () => void remove(g) });
     }
     return entries;

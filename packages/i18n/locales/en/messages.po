@@ -5086,10 +5086,6 @@ msgstr "Potyro can’t show this kind of file. Save a copy to open it with anoth
 msgid "Potyro can’t use the microphone. Allow it for this site in your browser, then try again."
 msgstr "Potyro can’t use the microphone. Allow it for this site in your browser, then try again."
 
-#: ../shell/src/look-panel.tsx
-msgid "Potyro gold"
-msgstr "Potyro gold"
-
 #: ../shell/src/move-banner.tsx
 msgid "Potyro has a new home"
 msgstr "Potyro has a new home"
@@ -5105,6 +5101,10 @@ msgstr "Potyro is open in another tab of this site. Press “Use it here”: thi
 #: ../shell/src/realm-probe-screen.tsx
 msgid "Potyro itself busy (calibration)"
 msgstr "Potyro itself busy (calibration)"
+
+#: ../shell/src/look-panel.tsx
+msgid "Potyro pink"
+msgstr "Potyro pink"
 
 #. Edit tile, Live connections: Potyro's own relay where apps play together
 #: ../shell/src/live-connections-setting.tsx

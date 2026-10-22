@@ -5,8 +5,8 @@
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { DatabaseIcon } from "./data-icon.js";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { replayCase, type ActivityItem, type Case, type PotyroRuntime, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { personHue, replayCase, type ActivityItem, type Case, type PotyroRuntime, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
 import type { Provenance } from "@potyro/host";
 import { LayoutHost, PageCountContext, RecordForm, TRUST_REQUEST, ViewHost, backdropKind, backdropOf, byPeople, createDefaults, usePageTitles } from "@potyro/views";
 import { PageHeader, type PageCta } from "./page-header.js";
@@ -61,6 +61,8 @@ import { languagePrefs } from "./locale.js";
 import { optionLabel } from "@potyro/views";
 import { acceptLinkParams } from "potyro";
 import type { Arrival } from "./app-link.js";
+import { tracoStyle } from "./app-colour.js";
+import { I } from "./icons.js";
 
 interface EditorState {
   entity: string;
@@ -877,24 +879,27 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
    *
    * In order: the colour you gave THIS app (Edit tile — which until now tinted the tile and nothing
    * else, so a choice made there was invisible the moment the app opened), then the colour the app
-   * declares for itself, then your accent for everything that has none, then Potyro's own gold.
+   * declares for itself, then the hue the app is known by (its tile's, from its id). Never
+   * Potyro's own rosa: that is the platform's, and an app is not the platform (DESIGN.md §3.1).
    *
    * Yours outranks the app's on purpose: you chose it for this app, knowing what the app looks
-   * like. The app's `theme.accent` is a default from whoever wrote it.
+   * like. The app's `theme.accent` is a default from whoever wrote it. Whichever it is, only its
+   * angle is kept: the clock of strokes derives the levels (app-colour.ts).
    */
-  const accent = appAccent ?? def.theme?.accent ?? "#E4A93C";
+  const accent = appAccent ?? def.theme?.accent;
+  const tracoVars = useMemo(() => tracoStyle(accent, personHue(appId ?? "potyro")), [accent, appId]);
 
   // What the chrome shows (#111). Pages carry an icon — the entity's, else one for the view type —
   // because a tab bar without icons is a row of truncated words. Through `navigate`, NOT
   // `setPageId`: the recorder taps `navigate`, and clicking a tab is the most ordinary way anyone
   // moves around an app.
-  const viewGlyph: Record<string, string> = { list: "☰", gallery: "▦", table: "⊞", calendar: "📅", map: "🗺", steps: "✓", checklist: "☑", aggregate: "Σ", custom: "◇", detail: "◇" };
-  const pageIcon = (p: (typeof def.pages)[number]): string => {
+  const viewGlyph: Record<string, ReactNode> = { list: I.list, gallery: I.galleryView, table: I.table, calendar: I.calendar, map: I.map, steps: I.steps, checklist: I.checklist, aggregate: I.aggregate, custom: I.custom, detail: I.custom };
+  const pageIcon = (p: (typeof def.pages)[number]): ReactNode => {
     const v = p.view as { type?: string; entity?: string };
-    return (p as { icon?: string }).icon || (v.entity && def.entities[v.entity]?.icon) || viewGlyph[v.type ?? ""] || "◇";
+    return (p as { icon?: string }).icon || (v.entity && def.entities[v.entity]?.icon) || viewGlyph[v.type ?? ""] || I.custom;
   };
   const chromePages: ChromePage[] = [
-    ...(navMode === "grid" ? [{ id: HOME, title: t({ message: "Home", comment: "The page that shows an app's kinds of record as tiles" }), icon: "⊞", active: pageId === HOME, onOpen: () => navigate(HOME) }] : []),
+    ...(navMode === "grid" ? [{ id: HOME, title: t({ message: "Home", comment: "The page that shows an app's kinds of record as tiles" }), icon: I.home, active: pageId === HOME, onOpen: () => navigate(HOME) }] : []),
     ...visiblePages.map((p) => ({ id: p.id, title: titles[p.id] ?? p.id, icon: pageIcon(p), active: p.id === pageId, onOpen: () => navigate(p.id) })),
   ];
   const currentPage = def.pages.find((p) => p.id === pageId);
@@ -922,7 +927,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     .map((qa) => ({
       id: qa.id,
       label: qa.label,
-      icon: qa.icon ?? def.entities[qa.entity]?.icon ?? "＋",
+      icon: qa.icon ?? def.entities[qa.entity]?.icon ?? I.plus,
       entity: qa.entity,
       onRun: () => triggerQuick(qa),
     }));
@@ -961,7 +966,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const addAction = typeof addRef === "number" ? currentPage?.actions?.[addRef] : undefined;
   const pageAdd: ChromeQuick | undefined =
     addAction && typeof addRef === "number"
-      ? { id: `page-add-${addRef}`, label: addAction.label, icon: addAction.icon ?? "＋", entity: currentEntity ?? "", onRun: () => void runtime.runPageAction(pageId, addRef, params) }
+      ? { id: `page-add-${addRef}`, label: addAction.label, icon: addAction.icon ?? I.plus, entity: currentEntity ?? "", onRun: () => void runtime.runPageAction(pageId, addRef, params) }
       : undefined;
   const backTo = (): void => {
     const list = visiblePages.find((p) => (p.view as { entity?: string }).entity === currentEntity);
@@ -969,50 +974,50 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   };
   const chromeTools: ChromeTool[] = [
     ...(currentPage?.fullscreen && !fullscreen
-      ? [{ key: "fullscreen", label: t`Full screen`, icon: "⛶", onSelect: () => setLeftFullscreen(null) }]
+      ? [{ key: "fullscreen", label: t`Full screen`, icon: I.fullscreen, onSelect: () => setLeftFullscreen(null) }]
       : []),
-    ...(askOn ? [{ key: "ask", label: t({ message: "Ask", comment: "The feature that adds records with AI" }), icon: "✧", hint: t`add with AI`, onSelect: () => setAskOpen(true) }] : []),
+    ...(askOn ? [{ key: "ask", label: t({ message: "Ask", comment: "The feature that adds records with AI" }), icon: I.ask, hint: t`add with AI`, onSelect: () => setAskOpen(true) }] : []),
     // The Studio needs no model: its source editor and History are how a broken app gets repaired
     // on a build with no engine at all.
-    ...(generator ? [{ key: "studio", label: "Studio" /* i18n-ignore — a name */, icon: "✦", hint: t`change this app`, onSelect: () => {
+    ...(generator ? [{ key: "studio", label: "Studio" /* i18n-ignore — a name */, icon: I.studio, hint: t`change this app`, onSelect: () => {
             setStudioPrefill(undefined);
             setStudioPoint(undefined);
             setStudioAppId(currentKind === "user" ? appId : undefined);
             openStudio();
           } }] : []),
-    ...(canEdit ? [{ key: "edit-mode", label: t`Edit mode`, icon: "✎", active: editMode, onSelect: () => (editMode ? finishEditing() : setEditMode(true)) }] : []),
-    ...(canEdit ? [{ key: "history", label: t`History`, icon: "⟲", onSelect: () => setHistoryOpen(true) }] : []),
+    ...(canEdit ? [{ key: "edit-mode", label: t`Edit mode`, icon: I.edit, active: editMode, onSelect: () => (editMode ? finishEditing() : setEditMode(true)) }] : []),
+    ...(canEdit ? [{ key: "history", label: t`History`, icon: I.history, onSelect: () => setHistoryOpen(true) }] : []),
     // What other people changed. In the menu with the rest of the shell's own tools rather than a
     // button in the top bar: it is read occasionally, the chat is read constantly, and on a phone
     // the two of them together left no room for the app's own name.
     ...(activity
-      ? [{ key: "changes", label: t({ message: "Changes", comment: "What other people changed in a shared app" }), icon: "✻", hint: activity.length ? plural(activity.length, { one: "# new", other: "# new" }) : undefined, news: activity.length > 0, onSelect: () => setActivityOpen(true) }]
+      ? [{ key: "changes", label: t({ message: "Changes", comment: "What other people changed in a shared app" }), icon: I.changes, hint: activity.length ? plural(activity.length, { one: "# new", other: "# new" }) : undefined, news: activity.length > 0, onSelect: () => setActivityOpen(true) }]
       : []),
     // Who is in a shared app, and inviting and removing them (#58).
     // Solo too, when the app names people: its guests are set up before it is shared (docs/04 §Guests).
-    ...((sync || namesPeople) && appId ? [{ key: "people", label: t`People`, icon: "👥", onSelect: () => setPeopleOpen(true) }] : []),
+    ...((sync || namesPeople) && appId ? [{ key: "people", label: t`People`, icon: I.people, onSelect: () => setPeopleOpen(true) }] : []),
     // Someone else's app, sealed: the one obvious way to your own copy of it.
     ...(generator && currentKind === "user" && appId && provenance === "untrusted" && canRemix(getUserApp(appId) ?? {})
-      ? [{ key: "remix", label: t({ message: "Make it mine", comment: "App menu: your own copy of this app, to change in the Studio" }), icon: "✧", hint: t`your own copy to change`, onSelect: () => setRemixOpen(true) }]
+      ? [{ key: "remix", label: t({ message: "Make it mine", comment: "App menu: your own copy of this app, to change in the Studio" }), icon: I.remix, hint: t`your own copy to change`, onSelect: () => setRemixOpen(true) }]
       : []),
-    ...(generator && currentKind === "user" && appId ? [{ key: "share", label: t({ message: "Share", comment: "App menu: share this app" }), icon: "↗", hint: t`a link anyone can try`, onSelect: () => setShareOpen(true) }] : []),
+    ...(generator && currentKind === "user" && appId ? [{ key: "share", label: t({ message: "Share", comment: "App menu: share this app" }), icon: I.share, hint: t`a link anyone can try`, onSelect: () => setShareOpen(true) }] : []),
     ...(onData ? [{ key: "data", label: t({ message: "Data", comment: "The page with every app's records" }), icon: <DatabaseIcon />, hint: t`every record`, onSelect: onData }] : []),
-    ...(onImport ? [{ key: "import", label: t`Import`, icon: "⇣", onSelect: onImport }] : []),
-    ...(onExport ? [{ key: "export", label: t`Export`, icon: "⇡", onSelect: onExport }] : []),
+    ...(onImport ? [{ key: "import", label: t`Import`, icon: I.import, onSelect: onImport }] : []),
+    ...(onExport ? [{ key: "export", label: t`Export`, icon: I.export, onSelect: onExport }] : []),
     // "This app is in English." Where it can be changed, the line offers the translation: a catalog
     // made on request, the code untouched (docs/30 §5); elsewhere it only says so.
     ...(langNote
       ? [
           canEdit
-            ? { key: "language", label: langNote.offer, icon: "🌐", hint: langNote.line, disabled: translating, onSelect: () => void translateInto(intoTag, intoName) }
-            : { key: "language", label: langNote.line, icon: "🌐", disabled: true, onSelect: () => {} },
+            ? { key: "language", label: langNote.offer, icon: I.language, hint: langNote.line, disabled: translating, onSelect: () => void translateInto(intoTag, intoName) }
+            : { key: "language", label: langNote.line, icon: I.language, disabled: true, onSelect: () => {} },
         ]
       : canEdit && translationGaps > 0 && shownLanguage
         ? [
             {
               key: "language",
               label: t({ message: "Update translations", comment: "App menu: translate the app's words that are new or changed since it was translated" }),
-              icon: "🌐",
+              icon: I.language,
               hint: plural(translationGaps, { one: "# word missing", other: "# words missing" }),
               disabled: translating,
               onSelect: () => void translateInto(shownLanguage, languageName(shownLanguage)),
@@ -1023,10 +1028,10 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const chromeReport: ChromeTool[] = appId
     ? recording
       ? [
-          { key: "stop-recording", label: t`Stop recording`, icon: "■", onSelect: () => void onStopRecording() },
-          { key: "add-note", label: t`Add a note`, icon: "✎", onSelect: () => setNoting(true) },
+          { key: "stop-recording", label: t`Stop recording`, icon: I.stop, onSelect: () => void onStopRecording() },
+          { key: "add-note", label: t`Add a note`, icon: I.note, onSelect: () => setNoting(true) },
         ]
-      : [{ key: "report", label: t`Something's wrong`, icon: "⚑", onSelect: startRecording }]
+      : [{ key: "report", label: t`Something's wrong`, icon: I.report, onSelect: startRecording }]
     : [];
   // Promote/demote trust from the tools, where it belongs — not as a pill in everyone's face.
   // A sealed custom screen's "Run it as mine…" asks for the same dialog (views never decide trust).
@@ -1044,7 +1049,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     ? {
         key: "trust",
         label: provenance === "trusted" ? t`Runs as yours` : t`Runs sealed`,
-        icon: "🛡",
+        icon: I.shield,
         hint: provenance === "trusted" ? t({ message: "review", comment: "Trust menu hint: look at how an app that runs as yours runs" }) : t({ message: "run as yours", comment: "Trust menu hint: let a sealed app run as yours" }),
         className: `k-prov-btn k-prov-${provenance}`,
         onSelect: () => setTrustPrompt(true),
@@ -1055,7 +1060,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
 
   return (
     <div
-      className="k-app"
+      className="k-app k-traco"
       // The app's words are in this language (#302): screen readers pronounce them right, and a
       // right-to-left one turns the app's own area round (Q11 — a first step, not full RTL).
       lang={runtime.language.current}
@@ -1064,7 +1069,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       data-locked={locked ? "" : undefined}
       // What the page sits on (`background`): a glow of the app's colour unless it says otherwise.
       data-backdrop={backdropKind(backdropOf(def as Parameters<typeof backdropOf>[0], currentPage as Parameters<typeof backdropOf>[1]))}
-      style={{ ["--accent" as string]: accent }}
+      style={tracoVars as React.CSSProperties}
       // Locked: a tap on a control that writes explains instead of acting. Capture phase, so it wins
       // over the control's own handler; the store would refuse the write anyway, but only after a
       // form had been filled in or a delete confirmed.

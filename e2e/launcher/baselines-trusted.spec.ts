@@ -89,7 +89,14 @@ for (const width of [375, 1440] as const) {
         await page.goto("/?user=plants");
         await expect(page.locator("h1").first()).toHaveText("Plants", { timeout: 30_000 });
         await pinFonts(page);
-        await page.getByRole("button", { name: "Add: Plant" }).click();
+        // The entity form. On a desktop its quick action is in the sidebar; on a phone the top bar's +
+        // is the page's own add (a photo flow, #383/#384), and the kind's is in the More menu.
+        if (width < 500) {
+          await page.getByRole("button", { name: "More", exact: true }).click();
+          await page.getByRole("menu", { name: "More" }).getByRole("menuitem", { name: /Add: Plant/ }).click();
+        } else {
+          await page.getByRole("button", { name: "Add: Plant" }).click();
+        }
         await expect(page.locator(".k-form")).toBeVisible();
         // Shoot the form where it lands, not where it is passing through: the sheet slides in, and
         // focusing the first field can leave the body scrolled by a few pixels. Both made the same
