@@ -4,7 +4,8 @@
 // popover under a thumb is unreachable. Items are plain data so every caller gets the same manners.
 
 import { useLingui } from "@lingui/react/macro";
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useAppColour } from "./portal-root.js";
 import { createPortal } from "react-dom";
 
 export interface MenuItem {
@@ -39,6 +40,7 @@ export interface ActionMenuProps {
 }
 
 export function ActionMenu({ label, trigger, title, entries, className, buttonClassName, busy }: ActionMenuProps) {
+  const colour = useAppColour();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -98,7 +100,7 @@ export function ActionMenu({ label, trigger, title, entries, className, buttonCl
       </button>
       {open
         ? createPortal(
-            <div className="k-menu-layer" onClick={(e) => e.stopPropagation()}>
+            <div className={`k-menu-layer${colour.className}`} style={colour.style as CSSProperties | undefined} onClick={(e) => e.stopPropagation()}>
               <div className="k-menu-scrim" onClick={() => close(false)} />
               <div
                 ref={menuRef}
@@ -177,6 +179,7 @@ export interface ChoicePanelProps {
  * it when the panel opened.
  */
 export function ChoicePanel({ title, items, anchor, onChoose, onDismiss }: ChoicePanelProps) {
+  const colour = useAppColour();
   const { t } = useLingui();
   const ref = useRef<HTMLDivElement>(null);
   const opener = useRef<HTMLElement | null>(null);
@@ -231,7 +234,7 @@ export function ChoicePanel({ title, items, anchor, onChoose, onDismiss }: Choic
   );
 
   return createPortal(
-    <div className="k-menu-layer k-choice-layer" data-centred={anchor ? undefined : "true"}>
+    <div className={`k-menu-layer k-choice-layer${colour.className}`} style={colour.style as CSSProperties | undefined} data-centred={anchor ? undefined : "true"}>
       <div className="k-menu-scrim" onClick={onDismiss} />
       <div
         ref={ref}

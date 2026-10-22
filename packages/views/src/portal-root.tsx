@@ -14,6 +14,17 @@ import { createContext, useContext } from "react";
 
 export const PortalRootContext = createContext<HTMLElement | null>(null);
 
+/**
+ * The app's colour, as the custom properties its root carries (`.k-traco` pairs, set by the shell):
+ * a layer portalled out of the app would otherwise take the page's own colour — a form's Create in
+ * Potyro's rosa inside a green app. A portalled root wears these and the `k-traco` class.
+ */
+export const AppColourContext = createContext<Record<string, string> | null>(null);
+export function useAppColour(): { className: string; style: Record<string, string> | undefined } {
+  const vars = useContext(AppColourContext);
+  return { className: vars ? " k-traco" : "", style: vars ?? undefined };
+}
+
 /** The element an app's full-screen layer belongs in. */
 export function usePortalRoot(): HTMLElement {
   return useContext(PortalRootContext) ?? document.body;
