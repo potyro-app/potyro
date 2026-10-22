@@ -17,16 +17,18 @@ const tile = (page: Page, name: string): Locator => page.locator(".k-launch-tile
 const avatar = (t: Locator) => t.locator(".k-launch-avatar");
 const accentOf = (t: Locator) => t.evaluate((el) => (el as HTMLElement).style.getPropertyValue("--tile-accent"));
 
-test("a built-in shows its declared name, icon and accent, not its module id", async ({ page }) => {
+test("a built-in shows its declared name and accent, not its module id; the card wears its initials", async ({ page }) => {
   await seed(page, []);
   await openHome(page);
   const workout = tile(page, "Workout");
   await expect(workout).toBeVisible();
-  await expect(avatar(workout)).toHaveText("🏋");
-  await expect(avatar(workout)).toHaveAttribute("data-kind", "icon");
+  // The card is a block of the app's hour with its initials on it (DESIGN.md §6); the declared
+  // icon stays in the app's own chrome. A person's own icon for the tile (#83) still shows here.
+  await expect(avatar(workout)).toHaveText("WO");
+  await expect(avatar(workout)).toHaveAttribute("data-kind", "monogram");
   expect(await accentOf(workout)).toBe("#B6E62E");
   await expect(page.locator(".k-launch-tile", { hasText: /^W?workout/ })).toHaveCount(0);
-  await expect(avatar(tile(page, "Recipes"))).toHaveText("🍳");
+  await expect(avatar(tile(page, "Recipes"))).toHaveText("RE");
 });
 
 test("three apps starting with P are three different tiles", async ({ page }) => {
