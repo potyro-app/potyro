@@ -1,6 +1,6 @@
 name: Launcher baselines
 
-# Regenerates e2e/launcher's screenshot baselines on the same runner image CI compares them on, and
+# Regenerates e2e/launcher's screenshot baselines on the same runner image the ship gate compares them on (Blacksmith, docs/16 §8), and
 # commits them to the branch you dispatch it for. Run it after a change to the launcher's pixels
 # that you meant; the CI run on your PR then compares against what you just committed.
 #
@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   baselines:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
         with:
