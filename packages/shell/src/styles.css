@@ -5451,7 +5451,7 @@ button.k-tl-card:focus-visible {
    its group scrolls past, under the phone's top bar. A record page's section heading keeps the
    section's own type. Either one, when it folds, is a button with a chevron and a count. */
 .k-app-phone {
-  --k-sticky-top: calc(3.25rem + var(--k-safe-top));
+  --k-sticky-top: calc(56px + var(--k-safe-top));
 }
 .k-groups {
   display: flex;
