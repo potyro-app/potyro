@@ -19,10 +19,11 @@ const RELAY_404 = "the free AI relay is not deployed in this test: its /ai/healt
 test.use({ locale: "en-GB", timezoneId: "Europe/Warsaw", viewport: { width: 420, height: 860 } });
 
 const inDays = (n: number) => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + n);
-  return d;
+  // Today as the BROWSER sees it: it is pinned to Warsaw below, while this runs in the runner's own
+  // zone (UTC on the gate). Late in the UTC day the two are a day apart, and "in 3 days" counted
+  // from the runner's date read as "2 days left" in the app — the gate went red every evening.
+  const [y, m, d] = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw" }).format(new Date()).split("-").map(Number) as [number, number, number];
+  return new Date(y, m - 1, d + n);
 };
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
@@ -115,7 +116,14 @@ test("a shared copy reads a shelf: camera and AI asked first, the checked items 
   // The person corrects a name before saving: what is saved is theirs.
   await names.nth(0).fill("Oat milk");
   await form.getByRole("button", { name: "Add to my kitchen" }).click();
-  await expect(page.getByText("Added 3 things. First to go: Chicken thighs (3 days left).")).toBeVisible({ timeout: 20_000 });
+  try {
+    await expect(page.getByText("Added 3 things. First to go: Chicken thighs (3 days left).")).toBeVisible({ timeout: 20_000 });
+  } catch (e) {
+    // Seen only on the gate: what the page showed instead, kept with the run's artifacts.
+    await page.screenshot({ path: test.info().outputPath("pantry-after-add.png"), fullPage: true }).catch(() => {});
+    test.info().attachments.push({ name: "body", contentType: "text/plain", body: Buffer.from(await page.locator("body").innerText().catch(() => "-")) });
+    throw e;
+  }
 
   // Kitchen: under its heading, soonest first, the guess saying it is one.
   await expect(main.locator(".k-primary").first()).toHaveText("Chicken thighs");

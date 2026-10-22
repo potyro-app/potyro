@@ -63,6 +63,7 @@ import { acceptLinkParams } from "potyro";
 import type { Arrival } from "./app-link.js";
 import { tracoStyle } from "./app-colour.js";
 import { I } from "./icons.js";
+import { AppColourContext } from "@potyro/views";
 
 interface EditorState {
   entity: string;
@@ -1063,6 +1064,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const engineName = engineLabel(engineCfg);
 
   return (
+    <AppColourContext.Provider value={tracoVars}>
     <div
       className="k-app k-traco"
       // The app's words are in this language (#302): screen readers pronounce them right, and a
@@ -1452,6 +1454,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       {sync && appId && runtime.ctx.me ? <ClaimPrompt book={runtime.core.guests} meId={runtime.ctx.me.id} appId={appId} appName={appLabel} toast={(m) => runtime.ctx.ui.toast(m)} /> : null}
       <Toasts toaster={toaster} />
     </div>
+    </AppColourContext.Provider>
   );
 }
 
