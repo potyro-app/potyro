@@ -10,9 +10,9 @@
 // nested form (a relation creating its target inline) is a second sheet stacked on the first,
 // not a form inside a form.
 
-import { useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { usePortalRoot } from "./portal-root.js";
+import { useAppColour, usePortalRoot } from "./portal-root.js";
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])';
 const SWIPE_CLOSE_PX = 80;
@@ -39,6 +39,7 @@ export function FormSheet({ title, onClose, stacked, className, ready = true, ch
   const [dragY, setDragY] = useState(0);
   const swipe = useRef<{ id: number; y: number } | null>(null);
   const portalRoot = usePortalRoot();
+  const colour = useAppColour();
 
   // Focus: the opener gets it back on close, whatever happened in between.
   useLayoutEffect(() => {
@@ -113,7 +114,8 @@ export function FormSheet({ title, onClose, stacked, className, ready = true, ch
 
   return createPortal(
     <div
-      className={`k-modal-scrim k-sheet-scrim${stacked ? " k-sheet-scrim-stacked" : ""}`}
+      className={`k-modal-scrim k-sheet-scrim${stacked ? " k-sheet-scrim-stacked" : ""}${colour.className}`}
+      style={colour.style as CSSProperties | undefined}
       onClick={(e) => {
         // A click that bubbles up from a stacked sheet's scrim must not close the sheet under it.
         e.stopPropagation();

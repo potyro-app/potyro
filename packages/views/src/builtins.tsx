@@ -18,6 +18,7 @@ import { MoneyValue, moneyColumn, MoneyTotal } from "./money-input.js";
 import { Lead, initialOf, leadSwatch, type LeadKind } from "./lead.js";
 import { useReportCount } from "./page-count.js";
 import { pageOf } from "./backdrop.js";
+import { Mascot } from "./mascot.js";
 
 /**
  * What a view's `onOpen` says to do with a row: go to a page (the data form), or run the app's own
@@ -177,7 +178,7 @@ export function EmptyState({
   return (
     <div className="k-empty-state" data-page={pageId}>
       <span className="k-empty-mark" aria-hidden>
-        {def?.icon ?? pageOf(runtime.definition, pageId)?.icon ?? runtime.definition.icon ?? "◇"}
+        <Mascot />
       </span>
       <p className="k-empty k-empty-title" data-k-wording>
         {text}
@@ -186,7 +187,7 @@ export function EmptyState({
         // Its own words, not the floating button's "Add: …": two buttons with one name are one too many
         // to tell apart by ear.
         <button type="button" className="k-add k-primary-action k-empty-add" onClick={() => onCreate(entity, {})}>
-          <span aria-hidden>＋</span> {t({ message: "Add the first one", comment: "Button on an empty page: make its first record" })}
+          {t({ message: "Add the first one", comment: "Button on an empty page: make its first record" })}
         </button>
       ) : null}
     </div>
