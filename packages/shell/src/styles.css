@@ -63,6 +63,8 @@
      so the Look panel can offer it back as a swatch after another hour was chosen — `--accent` by
      then IS the other one. */
   --accent-potyro: #e44f89;
+  /* Text on a block of traço (DESIGN.md §3.1): graphite, in both themes, and 24px or more. */
+  --ink-on-traco: #231f20;
 
   /* Status: a state is a word AND a colour, never a colour alone. Fixed hours of the clock at the
      tinta level (DESIGN.md §3.1); a state's fill and wash are that hour's category colours. */
@@ -15941,4 +15943,397 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-menu-icon {
   display: inline-flex;
   justify-content: center;
+}
+
+/* ---- Home (DESIGN.md §6, §10) ----------------------------------------------------------------
+   The home screen composed from the system: the prompt box first, then the apps as cards, each a
+   block of its own hour with its mark on it and its name under it. These rules come last and win
+   over the launcher's older ones above. */
+.k-launcher-home {
+  max-width: 1120px;
+}
+.k-launcher {
+  gap: var(--space-6);
+}
+.k-launcher-head .k-brand .k-muted {
+  display: none;
+}
+.k-launcher-head-actions .k-data-btn,
+.k-launcher-head-actions .k-look-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+}
+.k-launch-you {
+  width: 44px;
+  height: 44px;
+  border-width: var(--stroke);
+}
+
+/* The hero: the words, then the box. A plain section on the ground, no card round it. */
+.k-welcome {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 44rem;
+  padding: var(--space-4) 0 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.k-welcome h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 1.2rem + 2.4vw, var(--text-display));
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.k-welcome p {
+  margin: 0;
+  max-width: 36rem;
+  color: var(--muted);
+  font-size: 1.125rem;
+  line-height: 1.45;
+}
+.k-welcome-compact {
+  padding: 0;
+}
+.k-welcome-later {
+  color: var(--muted);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+/* The prompt box (prompt-box.tsx). */
+.k-prompt {
+  display: grid;
+  gap: var(--space-2);
+}
+.k-prompt-label {
+  font-size: var(--text-small);
+  font-weight: 500;
+}
+.k-prompt[data-compact] .k-prompt-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.k-prompt-field {
+  position: relative;
+}
+.k-prompt-box {
+  display: block;
+  width: 100%;
+  min-height: calc(3 * 1.5rem + 2 * var(--space-4));
+  padding: var(--space-4) calc(44px + var(--space-5)) var(--space-4) var(--space-4);
+  border: var(--stroke) solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: max(1rem, 1em);
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.k-prompt-box::placeholder {
+  color: var(--muted);
+}
+.k-prompt-box:focus-visible {
+  outline: none;
+  border-color: var(--tinta);
+}
+.k-prompt-send {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.k-prompt-send:hover {
+  background: color-mix(in oklab, var(--accent) 86%, var(--ink));
+}
+.k-prompt-send:active {
+  transform: scale(0.97);
+}
+/* One line, a pill, until it has focus: then the three lines of the full box. */
+.k-prompt[data-compact] .k-prompt-box {
+  min-height: 48px;
+  padding: calc((48px - 1.5rem) / 2 - var(--stroke)) calc(44px + var(--space-4)) calc((48px - 1.5rem) / 2 - var(--stroke)) var(--space-4);
+  border-radius: var(--radius-pill);
+  resize: none;
+}
+.k-prompt[data-compact] .k-prompt-send {
+  top: 2px;
+  bottom: 2px;
+  right: 2px;
+  margin: auto 0;
+}
+.k-prompt[data-compact] .k-prompt-field:focus-within .k-prompt-box {
+  min-height: calc(3 * 1.5rem + 2 * var(--space-4));
+  padding: var(--space-4) calc(44px + var(--space-5)) var(--space-4) var(--space-4);
+  border-radius: var(--radius-lg);
+}
+.k-prompt[data-compact] .k-prompt-field:focus-within .k-prompt-send {
+  top: auto;
+  bottom: var(--space-3);
+  right: var(--space-3);
+}
+.k-prompt-examples {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.k-prompt-example {
+  min-height: 32px;
+  cursor: pointer;
+}
+.k-prompt-example:hover {
+  background: var(--surface-2);
+}
+
+/* Search: a pill with the glass in it. */
+.k-launch-search {
+  position: relative;
+  max-width: 28rem;
+}
+.k-launch-search .k-input {
+  min-height: 48px;
+  padding-left: 2.75rem;
+  border-radius: var(--radius-pill);
+}
+.k-launch-search-icon {
+  position: absolute;
+  left: var(--space-4);
+  top: 50%;
+  translate: 0 -50%;
+  display: grid;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* Sections: a small label, and the sort as chips. */
+.k-launch-title {
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.k-launch-sort {
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.k-launch-sort-btn {
+  min-height: 32px;
+  padding: 0 0.8rem;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-small);
+  font-weight: 500;
+}
+.k-launch-sort-btn:hover {
+  background: var(--surface-2);
+}
+.k-launch-sort-btn[aria-pressed="true"] {
+  background: var(--aguada);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+/* The cards. */
+.k-launch-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10rem), 1fr));
+  gap: var(--space-3);
+}
+@media (min-width: 760px) {
+  .k-launch-grid {
+    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+    gap: var(--space-4);
+  }
+}
+.k-launch-tile {
+  width: 100%;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.k-launch-tile:hover {
+  transform: none;
+  box-shadow: none;
+  background: var(--surface-2);
+}
+.k-launch-tile:active {
+  transform: scale(0.98);
+}
+.k-launch-tile[data-active="true"] {
+  box-shadow: none;
+  outline: var(--stroke) solid var(--tinta);
+  outline-offset: -2px;
+}
+.k-launch-block {
+  display: grid;
+  place-items: center;
+  height: 96px;
+  background: var(--traco);
+}
+.k-launch-avatar,
+.k-launch-avatar[data-kind="monogram"],
+.k-launch-avatar[data-kind="icon"] {
+  position: relative;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  color: var(--ink-on-traco);
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.k-launch-avatar[data-kind="icon"] {
+  font-size: 2rem;
+}
+.k-launch-body {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  padding: var(--space-3) var(--space-3) var(--space-4);
+  text-align: left;
+}
+.k-launch-name {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.k-tile-menu-host {
+  top: var(--space-1);
+  right: var(--space-1);
+}
+/* 44px, the touch minimum (DESIGN.md §11.4); the circle drawn inside it is what shows. */
+.k-tile-menu-btn {
+  width: 44px;
+  height: 44px;
+  border: 6px solid transparent;
+  background: var(--bg);
+  background-clip: padding-box;
+  color: var(--ink);
+}
+.k-tile-menu-btn:hover,
+.k-tile-menu-btn:focus-visible {
+  background: var(--surface-2);
+}
+.k-launch-mark {
+  min-height: 24px;
+  padding: 0 0.6rem 0 0.4rem;
+  border: 0;
+  background: var(--cat-verde-soft);
+  color: var(--success);
+  font-size: var(--text-micro);
+  font-weight: 600;
+}
+.k-launch-mark-icon {
+  display: grid;
+}
+.k-launch-shield {
+  right: -0.6rem;
+  bottom: -0.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: var(--stroke) solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+}
+.k-launch-badge {
+  background: var(--tinta);
+  color: var(--bg);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+/* The switcher's rows: the same card as a row, with a small block. */
+.k-launch-tile-row {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 3rem var(--space-2) var(--space-2);
+  background: transparent;
+  border-radius: var(--radius-md);
+}
+.k-launch-tile-row:hover {
+  background: var(--surface);
+}
+.k-launch-tile-row .k-launch-block {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-md);
+}
+.k-launch-tile-row .k-launch-avatar {
+  font-size: 1rem;
+}
+.k-launch-tile-row .k-launch-avatar[data-kind="icon"] {
+  font-size: 1.25rem;
+}
+.k-launch-tile-row .k-launch-name {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: 600;
+}
+.k-launch-tile-extra .k-launch-block {
+  background: var(--surface-2);
+}
+
+/* The phone's floating New app: it floats, so it carries the float shadow; the box's round
+   button is the screen's primary, so this one is the secondary pill. */
+.k-launch-fab {
+  border: var(--stroke) solid var(--line-strong);
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: var(--shadow-float);
+}
+/* One line stays one line: the placeholder does not wrap under the pill; on focus the box grows
+   and wraps again. */
+.k-prompt[data-compact] .k-prompt-box {
+  white-space: nowrap;
+  overflow: hidden;
+}
+.k-prompt[data-compact] .k-prompt-field:focus-within .k-prompt-box {
+  white-space: pre-wrap;
+  overflow: auto;
+}
+/* One primary per screen (DESIGN.md §6): on the home screen the box's round button is it, so the
+   header's New app is the secondary pill. */
+.k-launcher-home .k-launch-newbtn {
+  background: transparent;
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+.k-launcher-home .k-launch-newbtn:hover {
+  background: var(--surface);
 }

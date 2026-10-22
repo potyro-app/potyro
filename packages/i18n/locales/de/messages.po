@@ -2669,10 +2669,10 @@ msgstr "Beschreib die App"
 msgid "Describe the app you want…"
 msgstr "Beschreib die App, die du willst…"
 
-#: ../shell/src/launcher.tsx
-#: ../shell/src/launcher.tsx
-msgid "Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open one of the examples below and change it."
-msgstr "Beschreib, was du festhalten willst — eine geteilte Einkaufsliste, deine Pflanzen, eine Reise — und Potyro baut es. Oder öffne eines der Beispiele unten und ändere es."
+#. The label over the prompt box
+#: ../shell/src/prompt-box.tsx
+msgid "Describe your app"
+msgstr "Beschreib deine App"
 
 #. Point chip: a kind of view, lower case
 #: ../shell/src/point-target.ts
@@ -2803,6 +2803,16 @@ msgstr "Duplizieren"
 #: ../shell/src/scope-switcher.tsx
 msgid "Duplicate…"
 msgstr "Duplizieren…"
+
+#. The one-line prompt box's placeholder: a short concrete example
+#: ../shell/src/prompt-box.tsx
+msgid "e.g. a shopping list for the house"
+msgstr "z. B. eine Einkaufsliste für zu Hause"
+
+#. The prompt box's placeholder: a concrete example, never a label
+#: ../shell/src/prompt-box.tsx
+msgid "e.g. a shopping list for the house, split by store"
+msgstr "z. B. eine Einkaufsliste für zu Hause, nach Laden sortiert"
 
 #: ../shell/src/ask-panel.tsx
 msgid "e.g. five dog-friendly cafés near the river"
@@ -4069,7 +4079,6 @@ msgid "Make it mine"
 msgstr "Zu meiner machen"
 
 #: ../shell/src/launcher.tsx
-#: ../shell/src/launcher.tsx
 msgid "Make the app you need"
 msgstr "Mach die App, die du brauchst"
 
@@ -4521,7 +4530,6 @@ msgstr "erst bekannt, wenn sie läuft"
 #: ../shell/src/app-sockets.ts
 #: ../shell/src/app-sockets.ts
 #: ../shell/src/app-speech.ts
-#: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 #: ../shell/src/move-page.tsx
 #: ../shell/src/open-libraries.ts
@@ -5053,6 +5061,11 @@ msgstr "An Start anheften"
 #: ../shell/src/launcher.tsx
 msgid "Pinned"
 msgstr "Angeheftet"
+
+#. An example prompt under the prompt box
+#: ../shell/src/launcher.tsx
+msgid "Plants to water this week"
+msgstr "Pflanzen, die diese Woche Wasser brauchen"
 
 #. Preview bar button: point at a part of the app to talk about it
 #: ../shell/src/studio-preview.tsx
@@ -5638,6 +5651,10 @@ msgstr "Sagen, dass sie von {myName} ist"
 msgid "Say it the way you would to a person — “add a rating”, “put the newest first”, “a page for the shopping list”."
 msgstr "Sag es so, wie du es einem Menschen sagen würdest — „füge eine Bewertung hinzu“, „das Neueste zuerst“, „eine Seite für die Einkaufsliste“."
 
+#: ../shell/src/launcher.tsx
+msgid "Say what you need and Potyro builds an app you can share. Or open one of the examples below and change it."
+msgstr "Sag, was du brauchst, und Potyro baut eine App, die du teilen kannst. Oder öffne eines der Beispiele unten und ändere es."
+
 #. Studio box while the microphone listens
 #: ../shell/src/studio.tsx
 msgid "Say what you want…"
@@ -5983,6 +6000,11 @@ msgstr "Quellen und Notizen"
 #: ../shell/src/voice-input.tsx
 msgid "Speak"
 msgstr "Sprechen"
+
+#. An example prompt under the prompt box
+#: ../shell/src/launcher.tsx
+msgid "Split the trip's bills"
+msgstr "Die Reisekosten aufteilen"
 
 #. The launcher pane with the tile wall, as on Windows Phone
 #: ../shell/src/launcher-metro.tsx
@@ -7460,6 +7482,11 @@ msgstr "Wer du bist"
 #: ../shell/src/move-page.tsx
 msgid "Who you are does not come in a file. To be the same person here, enter your recovery words under You afterwards."
 msgstr "Wer du bist, kommt nicht in einer Datei. Um hier dieselbe Person zu sein, gib danach unter Du deine Wörter ein."
+
+#. An example prompt under the prompt box
+#: ../shell/src/launcher.tsx
+msgid "Who's coming to the barbecue"
+msgstr "Wer kommt zum Grillen"
 
 #. Tile size
 #: ../shell/src/launcher-metro.tsx
