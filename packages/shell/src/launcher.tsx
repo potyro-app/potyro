@@ -6,7 +6,7 @@
 // elsewhere runs in the QuickJS isolate until promoted. Selecting a tile navigates via a reload
 // (?user=<id>) — boot() routes on that.
 
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocale } from "@potyro/i18n";
@@ -48,6 +48,8 @@ import { DraftStrip } from "./draft-strip.js";
 import { PromoteDialog } from "./trust-dialog.js";
 import { Wordmark } from "./wordmark.js";
 import { I } from "./icons.js";
+import { PromptBox } from "./prompt-box.js";
+import { tracoStyle } from "./app-colour.js";
 
 export function openUserApp(id: string): void {
   navigateTo({ kind: "user", id });
@@ -100,7 +102,7 @@ function Avatar({ app, identity, attention = 0 }: { app: InstalledApp; identity:
       ) : null}
       {!app.trusted ? (
         <span className="k-launch-shield" role="img" aria-label={t`Runs sealed`} title={t`Runs sealed`}>
-          🛡
+          {I.shield16}
         </span>
       ) : null}
     </span>
@@ -115,7 +117,7 @@ function SyncMark({ app, compact }: { app: InstalledApp; compact?: boolean }) {
   const label = count ? plural(count, { one: "Shared with # person", other: "Shared with # people" }) : t`Synced to your other devices`;
   return (
     <span className="k-launch-mark" data-shared={others.length ? "true" : undefined} title={label} aria-label={label}>
-      <span aria-hidden>⟳</span>
+      <span aria-hidden className="k-launch-mark-icon">{I.sync16}</span>
       {compact ? null : <span aria-hidden>{others.length ? t({ message: "shared", comment: "Mark on a launcher tile: the app's data is shared with other people" }) : t({ message: "synced", comment: "Mark on a launcher tile: the app syncs to your other devices" })}</span>}
       {others.length ? (
         <span className="k-launch-faces" aria-hidden>
@@ -139,16 +141,22 @@ function Tile({ app, active, onOpen, now }: { app: InstalledApp; active: boolean
   return (
     <button
       type="button"
-      className="k-launch-tile"
+      className="k-launch-tile k-traco"
       data-active={active}
       data-attention={attention.total || undefined}
-      style={{ "--tile-accent": identity.accent } as CSSProperties}
+      style={{ "--tile-accent": identity.accent, ...tracoStyle(identity.accent, identity.hue) } as CSSProperties}
       onClick={onOpen}
     >
-      <Avatar app={app} identity={identity} attention={attention.total} />
-      <span className="k-launch-name">{app.name}</span>
-      {attention.total ? <span className="k-visually-hidden">, {describeAttention(attention)}</span> : null}
-      <SyncMark app={app} />
+      <span className="k-launch-block">
+        {/* The card wears the app's initials in the display face (DESIGN.md §6, "símbolo/inicial"); the
+            app's own icon stays in its chrome. An icon the person chose for the tile (#83) is theirs, and shows. */}
+        <Avatar app={app} identity={app.entry.icon?.trim() ? identity : { ...identity, glyph: personInitials(app.name, app.id), kind: "monogram" }} attention={attention.total} />
+      </span>
+      <span className="k-launch-body">
+        <span className="k-launch-name">{app.name}</span>
+        {attention.total ? <span className="k-visually-hidden">, {describeAttention(attention)}</span> : null}
+        <SyncMark app={app} />
+      </span>
     </button>
   );
 }
@@ -303,7 +311,7 @@ function LookButton({ onClick }: { onClick: () => void }) {
   const { t } = useLingui();
   return (
     <button type="button" className="k-add k-look-btn" aria-label={t`Look — appearance and colour`} title={t({ message: "Look", comment: "The panel for light/dark appearance and accent colour" })} onClick={onClick}>
-      <span aria-hidden>◐</span>
+      {I.look}
     </button>
   );
 }
@@ -314,7 +322,7 @@ function YouButton({ onClick }: { onClick: () => void }) {
   const named = Boolean(me && me.name && me.name !== DEFAULT_NAME);
   return (
     <button type="button" className="k-launch-you" aria-label={t`You and your devices`} onClick={onClick} style={{ ["--k-hue" as string]: me ? personHue(me.id) : 60 }}>
-      {me && named ? personInitials(me.name, me.id) : <span aria-hidden>⌾</span>}
+      {me && named ? personInitials(me.name, me.id) : I.user}
     </button>
   );
 }
@@ -697,6 +705,14 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
 
   // The Start style (#96, owner 2026-10-15): the tile wall and All apps, in launcher-metro.tsx —
   // chosen in Look; Classic, below, is the default. Every tile action stays here, shared by both.
+  // The home screen's first thing: the prompt box (DESIGN.md §6, the platform's central component).
+  // On a first visit it is a hero with the words; after the first app it is one line above the apps.
+  const examples = [
+    t({ message: "Who's coming to the barbecue", comment: "An example prompt under the prompt box" }),
+    t({ message: "Plants to water this week", comment: "An example prompt under the prompt box" }),
+    t({ message: "Split the trip's bills", comment: "An example prompt under the prompt box" }),
+  ];
+  const describe = (text: string): void => onNewApp(text || undefined);
   const welcome =
     neverOpened && !welcomeDismissed ? (
       <section className="k-welcome" aria-labelledby="k-welcome-h">
@@ -704,20 +720,19 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           <Trans>Make the app you need</Trans>
         </h2>
         <p>
-          <Trans>
-            Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open
-            one of the examples below and change it.
-          </Trans>
+          <Trans>Say what you need and Potyro builds an app you can share. Or open one of the examples below and change it.</Trans>
         </p>
+        <PromptBox sendLabel={t`Describe an app`} onSend={describe} examples={examples} />
         <div className="k-welcome-actions">
-          <button type="button" className="k-add k-primary-action" onClick={() => onNewApp()}>
-            <Trans>Describe an app</Trans>
-          </button>
           <button type="button" className="k-welcome-later" onClick={dismissWelcome}>
             <Trans>Not now</Trans>
           </button>
         </div>
       </section>
+    ) : variant === "home" ? (
+      <div className="k-welcome k-welcome-compact">
+        <PromptBox compact sendLabel={t`Describe an app`} onSend={describe} />
+      </div>
     ) : null;
   // A bundled example you deleted is gone for good, which is right — until you want it back.
   // Nothing brings one back on its own; this is how you ask.
@@ -796,12 +811,12 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
               in thumb reach on a phone (below) — never a tile among the apps. */}
           {variant === "home" ? (
             <button type="button" className="k-add k-primary-action k-launch-newbtn" onClick={() => onNewApp()}>
-              ＋ <Trans>New app</Trans>
+              {I.plus} <Trans>New app</Trans>
             </button>
           ) : null}
           {variant === "home" ? (
             <button type="button" className="k-add k-launch-addbtn" aria-label={t`Add an app`} title={t`Add an app someone sent you`} onClick={() => setAdding({})}>
-              <span aria-hidden>⤓</span>
+              {I.import}
               <span className="k-launch-addbtn-word">
                 <Trans>Add an app</Trans>
               </span>
@@ -813,10 +828,10 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           {onClose ? (
             <>
               <button type="button" className="k-add" onClick={goHome}>
-                ⌂ <Trans>Home</Trans>
+                {I.house} <Trans>Home</Trans>
               </button>
               <button type="button" className="k-add" aria-label={t`Close launcher`} onClick={onClose}>
-                <Trans>Close</Trans> ✕
+                <Trans>Close</Trans> {I.close}
               </button>
             </>
           ) : null}
@@ -829,29 +844,12 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       {sharing ? <ShareSheet app={sharing} onClose={() => setSharing(null)} onInvite={() => void share(sharing)} /> : null}
 
       {variant === "home" ? <MoveBanner /> : null}
-      {variant === "home" && neverOpened && !welcomeDismissed && !q ? (
-        <section className="k-welcome" aria-labelledby="k-welcome-h">
-          <h2 id="k-welcome-h">
-            <Trans>Make the app you need</Trans>
-          </h2>
-          <p>
-            <Trans>
-              Describe what you want to keep track of — a shared shopping list, your plants, a trip — and Potyro builds it. Or open
-              one of the examples below and change it.
-            </Trans>
-          </p>
-          <div className="k-welcome-actions">
-            <button type="button" className="k-add k-primary-action" onClick={() => onNewApp()}>
-              <Trans>Describe an app</Trans>
-            </button>
-            <button type="button" className="k-welcome-later" onClick={dismissWelcome}>
-              <Trans>Not now</Trans>
-            </button>
-          </div>
-        </section>
-      ) : null}
+      {variant === "home" && !q ? welcome : null}
 
       <div className="k-launch-search">
+        <span className="k-launch-search-icon" aria-hidden>
+          {I.search}
+        </span>
         <input
           ref={searchRef}
           className="k-input"
@@ -986,15 +984,17 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         <div key={a.key} className="k-launch-item k-launch-usertile" {...inertUnless(a.key)}>
           <button
             type="button"
-            className="k-launch-tile k-launch-tile-row"
+            className="k-launch-tile k-launch-tile-row k-traco"
             data-active={current}
             aria-current={current ? "true" : undefined}
             disabled={current}
             title={current ? t`This app` : undefined}
-            style={{ "--tile-accent": identity.accent } as CSSProperties}
+            style={{ "--tile-accent": identity.accent, ...tracoStyle(identity.accent, identity.hue) } as CSSProperties}
             onClick={() => onOpen(a)}
           >
-            <Avatar app={a} identity={identity} attention={attentionOf(a.entry, mountedAt).total} />
+            <span className="k-launch-block">
+              <Avatar app={a} identity={identity} attention={attentionOf(a.entry, mountedAt).total} />
+            </span>
             <span className="k-launch-name">{a.name}</span>
             {attentionOf(a.entry, mountedAt).total ? <span className="k-visually-hidden">, {describeAttention(attentionOf(a.entry, mountedAt))}</span> : null}
             <SyncMark app={a} compact />
@@ -1003,9 +1003,11 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         </div>
       );
     };
-    const extra = (label: string, glyph: string, fn: () => void) => (
+    const extra = (label: string, glyph: ReactNode, fn: () => void) => (
       <button type="button" className="k-launch-tile k-launch-tile-row k-launch-tile-extra" onClick={fn}>
-        <span className="k-launch-avatar" aria-hidden>{glyph}</span>
+        <span className="k-launch-block">
+          <span className="k-launch-avatar" aria-hidden>{glyph}</span>
+        </span>
         <span className="k-launch-name">{label}</span>
       </button>
     );
@@ -1031,7 +1033,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
                 <Trans>Switch app</Trans>
               </strong>
               <button type="button" className="k-add k-switcher-close" aria-label={t`Close launcher`} onClick={onClose}>
-                ✕
+                {I.close}
               </button>
             </header>
           </div>
@@ -1045,9 +1047,9 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
               </p>
             ) : null}
             <div className="k-switcher-sep" role="separator" />
-            {extra(t`Home`, "⌂", goHome)}
+            {extra(t`Home`, I.house, goHome)}
             {extra(t`New app`, "+", () => onNewApp())}
-            {extra(t`You and your devices`, "⌾", () => setIdentity(true))}
+            {extra(t`You and your devices`, I.user, () => setIdentity(true))}
           </div>
           <div className="k-switcher-search">
             <input

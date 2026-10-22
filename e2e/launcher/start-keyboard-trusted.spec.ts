@@ -36,7 +36,9 @@ test("Tab reaches the wall in a few presses, arrows walk it, and Enter opens the
   await expect(page.locator(".k-launch-tile", { hasText: "Groceries" })).toBeVisible({ timeout: 30_000 });
   // The pivot's tab, the first-run welcome's two buttons (#90), then the wall — one stop for all of it (#96).
   const presses = await tabUntil(page, (a) => a.cls.includes("k-launch-tile"));
-  expect(presses).toBeLessThanOrEqual(6);
+  // The hero above the wall is the prompt box with its send and three example chips (DESIGN.md §6),
+  // then Not now: the wall is still within ten presses of the top.
+  expect(presses).toBeLessThanOrEqual(10);
   // One stop: Tab again leaves the wall rather than walking every tile.
   const firstTile = await active(page);
   await page.keyboard.press("Tab");
