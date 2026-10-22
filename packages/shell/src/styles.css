@@ -16293,9 +16293,12 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   width: 2.75rem;
   height: 2.75rem;
   border-radius: var(--radius-md);
+  /* Small initials: the button pair, readable by construction (see .k-app-mark). */
+  background: var(--accent);
 }
 .k-launch-tile-row .k-launch-avatar {
   font-size: 1rem;
+  color: var(--on-accent);
 }
 .k-launch-tile-row .k-launch-avatar[data-kind="icon"] {
   font-size: 1.25rem;
@@ -16341,6 +16344,8 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 /* ---- The app chrome (DESIGN.md §6 Navegação) ---------------------------------------------------
    Flat bars on the page's ground, the app's mark and name, pages as the system's rows and tabs.
    These rules come last and win over the chrome's older ones above. */
+/* Small, so its initials are small text: the hour's button pair, which the colour clock keeps
+   readable in both themes. (The home card's block is the traço with 28px initials: large text.) */
 .k-app-mark {
   flex: none;
   display: grid;
@@ -16348,8 +16353,8 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
-  background: var(--traco);
-  color: var(--ink-on-traco);
+  background: var(--accent);
+  color: var(--on-accent);
   font-family: var(--font-body);
   font-size: 0.8125rem;
   font-weight: 700;
