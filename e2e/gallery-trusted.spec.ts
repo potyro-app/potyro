@@ -108,8 +108,10 @@ async function openGallery(page: Page, opts: { locale?: string } = {}) {
 test("the gallery page: accessible, asks nothing of anyone else, Try it and Make it mine on every card", async ({ page }) => {
   const { server, foreign } = await openGallery(page);
   try {
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Apps to try, and to make your own.");
-    await expect(page.locator("header")).toContainText("Potyro — make the app you need");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Describe it. Done, it's an app.");
+    // The header is the wordmark (the logo file, named for readers) and the one rosa call to action.
+    await expect(page.locator("header").getByRole("img", { name: "Potyro" })).toBeVisible();
+    await expect(page.locator("header").getByRole("link", { name: "Create my app" })).toHaveAttribute("href", "https://potyro.app/");
     const card = page.locator(".card").first();
     const tryIt = card.getByRole("link", { name: /^Try / });
     const mine = card.getByRole("link", { name: / mine$/ });
@@ -123,12 +125,14 @@ test("the gallery page: accessible, asks nothing of anyone else, Try it and Make
 
     // Measure colours once the cards have finished rising in: mid-animation text is half transparent,
     // and on a busy CI machine axe caught it there as low contrast.
-    await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+    // Only the ones that end: the closing's clock (the "y" taking the next hour) runs for ever.
+    await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined))));
     const axe = await new AxeBuilder({ page }).analyze();
     expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
     await page.getByRole("button", { name: "Switch to dark" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+    // Only the ones that end: the closing's clock (the "y" taking the next hour) runs for ever.
+    await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined))));
     const dark = await new AxeBuilder({ page }).analyze();
     expect(dark.violations.map((v) => v.id)).toEqual([]);
     expect(foreign).toEqual([]);
@@ -142,11 +146,11 @@ test("the gallery speaks the browser's language, and another when asked", async 
   const { server } = await openGallery(page);
   try {
     await expect(page.locator("html")).toHaveAttribute("lang", "pl");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Aplikacje do wypróbowania i do przerobienia na swoje.");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Opisz. Gotowe, masz aplikację.");
     await expect(page.locator(".card").first().getByRole("link", { name: /^Przerób na swoją: / })).toBeVisible();
     await expect(page.locator("[data-app-name='groceries']").first()).toHaveText("Zakupy");
     await page.getByRole("combobox", { name: "Język" }).selectOption("pt-BR");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Apps para testar, e para tornar seus.");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Descreva. Pronto, é um app.");
     // Remembered on this browser only.
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("lang", "pt-BR");

@@ -176,7 +176,11 @@ export const CATEGORY_HOUR = {
   notes: "anil",
 };
 
-/** The hour for a category the mapping does not know: walk the clock by the category's place. */
+/**
+ * The hour for a category: the mapping's, or, for one it does not know, a walk round the clock by
+ * the category's place among the gallery's.
+ * @param {string} category @param {Record<string, unknown>} categories
+ */
 export function hourOf(category, categories) {
   if (CATEGORY_HOUR[category]) return CATEGORY_HOUR[category];
   const hours = ["vermelho", "laranja", "amarelo", "lima", "verde", "menta", "ciano", "azul", "anil", "roxo", "magenta"];
