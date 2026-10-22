@@ -145,13 +145,25 @@
     });
   }
 
-  // The prompt box: Enter sends, Shift+Enter is a new line — as the Studio's own box behaves.
+  // The prompt box sends what was typed to the app (the form's own address) as ?new=. Done here,
+  // as a navigation, rather than as the form's submission: the site's policy allows no form
+  // action, and a script may still go where the form says. Without the script, the form itself
+  // does the same once the policy names the app. Enter sends; Shift+Enter is a new line, as the
+  // Studio's own box behaves.
   var prompt = document.querySelector(".prompt-box");
   if (prompt && prompt.form) {
+    var send = function () {
+      var text = prompt.value.trim();
+      if (text) location.assign(prompt.form.action + "?new=" + encodeURIComponent(text));
+    };
+    prompt.form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      send();
+    });
     prompt.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
-        if (prompt.value.trim()) prompt.form.requestSubmit ? prompt.form.requestSubmit() : prompt.form.submit();
+        send();
       }
     });
   }
