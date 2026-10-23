@@ -108,7 +108,7 @@ export function Picker({ host }: { host: PickerHost }) {
           ref={searchRef}
           className="k-input"
           type="search"
-          placeholder={t`Search…`}
+          placeholder={t`Search`}
           aria-label={t`Filter the list`}
           value={query}
           onChange={(e) => setQuery(e.target.value)}

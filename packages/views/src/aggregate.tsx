@@ -113,7 +113,7 @@ export function AggregateView({ runtime, pageId, params, navigate }: BuiltinView
   }, [runtime, pageId, rows, loading, tick]);
 
   if (loading || derived === null) return <p className="k-muted">
-        <Trans>Loading…</Trans>
+        <Trans>Loading</Trans>
       </p>;
 
   if (error) {

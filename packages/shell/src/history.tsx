@@ -222,7 +222,7 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
 
         {versions === null ? (
           <p className="k-muted">
-            <Trans>Loading…</Trans>
+            <Trans>Loading</Trans>
           </p>
         ) : list.length === 0 ? (
           <p className="k-muted">
@@ -304,7 +304,7 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
                               title={t`Roll back to v${seq}`}
                               onClick={() => void restore(current)}
                             >
-                              {busy ? t`Restoring…` : t`Restore v${seq}`}
+                              {busy ? t`Restoring` : t`Restore v${seq}`}
                             </button>
                           )}
                         </div>

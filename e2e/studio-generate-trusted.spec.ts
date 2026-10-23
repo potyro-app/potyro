@@ -49,7 +49,7 @@ test("the Studio generates an app end to end, surviving a long run", async ({ pa
   await studio.getByRole("button", { name: /Create the app|Modify the app/ }).click();
 
   // Progress must appear — a silent multi-minute wait is what made this feel broken.
-  await expect(studio.getByText(/Making it via claude -p… \d+s/)).toBeVisible({ timeout: 30_000 });
+  await expect(studio.getByText(/Making it via claude -p · \d+s/)).toBeVisible({ timeout: 30_000 });
 
   // The made app — or the one question a model may ask first (#261), which is an answer too.
   await expect(studio.locator('.k-card[data-current], .k-thread-answer[data-tone="question"]').first()).toBeVisible({ timeout: 330_000 });

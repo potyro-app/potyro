@@ -84,7 +84,7 @@ export function StatsView({ runtime, pageId, params }: BuiltinViewProps) {
     // `rows` identity changes per query pass, which is exactly when the figures must re-run.
   }, [runtime, pageId, rows, loading, view, fields]);
 
-  if (loading || tiles === null) return <p className="k-muted">{t`Loading…`}</p>;
+  if (loading || tiles === null) return <p className="k-muted">{t`Loading`}</p>;
 
   return (
     <ul className="k-stats">

@@ -36,7 +36,7 @@ function stepLine(step: LoopStep, i: number) {
   if (step.kind === "thinking") {
     return (
       <li key={i} className="k-fix-step" data-kind="thinking">
-        <Trans comment="Fix agent step: the model is reasoning">…thinking</Trans>
+        <Trans comment="Fix agent step: the model is reasoning">thinking</Trans>
       </li>
     );
   }
@@ -223,7 +223,7 @@ export function FixPanel({ outcome, steps, onApply, onAnswer, onStop, onClose }:
 
   return (
     <div className="k-fix-panel" role="dialog" aria-label={t`Fix this`}>
-      <h3>{running ? t`Investigating…` : t`Investigation finished`}</h3>
+      <h3>{running ? t`Investigating` : t`Investigation finished`}</h3>
 
       <ol className="k-fix-steps">{steps.map((s, i) => stepLine(s, i))}</ol>
 

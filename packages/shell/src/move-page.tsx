@@ -172,7 +172,7 @@ function Waiting({ patient, onFile }: { patient: boolean; onFile: () => void }) 
         <Trans>Moving to a new home</Trans>
       </p>
       <h1 className="k-move-title">
-        <Trans>Getting your apps ready…</Trans>
+        <Trans>Getting your apps ready</Trans>
       </h1>
       <p className="k-move-status" role="status">
         <span className="k-move-spin" aria-hidden />
@@ -370,11 +370,11 @@ function Importing({ progress }: { progress?: BringInProgress }) {
   return (
     <section className="k-move-card" aria-live="polite">
       <h1 className="k-move-title">
-        <Trans>Bringing your apps in…</Trans>
+        <Trans>Bringing your apps in</Trans>
       </h1>
       <p className="k-move-status" role="status">
         <span className="k-move-spin" aria-hidden />
-        {progress ? <Trans>{name} — {done} of {total}</Trans> : <Trans>Receiving them…</Trans>}
+        {progress ? <Trans>{name} — {done} of {total}</Trans> : <Trans>Receiving them</Trans>}
       </p>
       <p className="k-muted">
         <Trans>Keep this window open until it says it is done. If it closes, start again: nothing is doubled.</Trans>

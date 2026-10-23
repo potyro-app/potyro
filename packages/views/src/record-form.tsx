@@ -314,7 +314,7 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
     return (
       <FormSheet title={title} onClose={onCancel} stacked={nested} ready={false}>
         <p className="k-loading">
-          <Trans>Loading…</Trans>
+          <Trans>Loading</Trans>
         </p>
       </FormSheet>
     );
@@ -432,7 +432,7 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
             disabled={saving}
             onClick={nested ? () => void submit() : undefined}
           >
-            {saving ? t`Saving…` : isEdit ? t`Save changes` : t({ message: "Create", comment: "Form button that saves a new record" })}
+            {saving ? t`Saving` : isEdit ? t`Save changes` : t({ message: "Create", comment: "Form button that saves a new record" })}
           </button>
         </footer>
       </Root>

@@ -1,7 +1,7 @@
 // Text shared into Potyro from another app (#213) — what another AI made — and where it goes next.
 //
 // A share arrives while Potyro may be showing anything, so it is kept for this session, offered on the
-// "Bring this into…" page, and handed to the app the person picks, whose Ask opens with it filled in.
+// "Bring this into" page, and handed to the app the person picks, whose Ask opens with it filled in.
 // sessionStorage, not localStorage: a share is something in hand, not something to keep.
 //
 // Which app fits best is judged here, on the device, with no model: the words of the shared text

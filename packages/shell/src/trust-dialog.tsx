@@ -1,7 +1,7 @@
 // The one trust dialog (owner, 2026-10-13: promotion is always reachable after install).
 //
 // Every place a sealed app can be promoted from opens THIS: the 🛡 badge of an open app, a sealed
-// custom screen's "Run it as mine…", the screen that says it could not open, the card after it was
+// custom screen's "Run it as mine", the screen that says it could not open, the card after it was
 // added, its tile on your apps, and the Studio. One confirmation, one wording — a warning that reads
 // differently depending on where you tapped would be a warning nobody reads.
 //

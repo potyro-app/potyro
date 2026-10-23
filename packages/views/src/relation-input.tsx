@@ -38,7 +38,7 @@ export function RelationInput({ runtime, field, value, onChange, label }: Relati
   const [creating, setCreating] = useState<{ name: string } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  if (loading) return <span className="k-muted">{t`Loading…`}</span>;
+  if (loading) return <span className="k-muted">{t`Loading`}</span>;
 
   const nameOf = (id: string): string => {
     const r = rows.find((row) => row.id === id);
@@ -143,7 +143,7 @@ export function RelationInput({ runtime, field, value, onChange, label }: Relati
         aria-label={current ? `${title}: ${nameOf(current)}` : t({ message: `${title}: choose`, comment: "A field that links a record, nothing chosen yet" })}
         onClick={() => setOpen(true)}
       >
-        {current ? <span>{nameOf(current)}</span> : <span className="k-enum-empty">{rows.length ? t`Choose…` : t({ message: `${noun}: none yet — add one`, comment: "A field that links a record, when there are none to pick; noun is the app's word for them" })}</span>}
+        {current ? <span>{nameOf(current)}</span> : <span className="k-enum-empty">{rows.length ? t`Choose` : t({ message: `${noun}: none yet — add one`, comment: "A field that links a record, when there are none to pick; noun is the app's word for them" })}</span>}
         <span className="k-enum-caret" aria-hidden>
           ▾
         </span>

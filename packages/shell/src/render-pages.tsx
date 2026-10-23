@@ -2,7 +2,7 @@
 //
 // The smoke run proves the app's logic runs; it never mounts a view. A view can still crash on what
 // the logic returns (a binding that yields an object, an option function that throws), stay on
-// "Loading…" for good, or come up blank — and the model that wrote it learned none of that. This
+// "Loading" for good, or come up blank — and the model that wrote it learned none of that. This
 // mounts each page the way the person will see it, with an error boundary around it, and listens
 // for what the views say when they contain a failure (`[potyro] …` on the console) and for errors
 // nothing caught.

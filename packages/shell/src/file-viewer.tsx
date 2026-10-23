@@ -163,7 +163,7 @@ export function FileViewer({ store, file, onSave, onChanged, onClose }: FileView
         </header>
         <div className="k-viewer-body" data-kind={view?.kind}>
           {failed ? <p className="k-files-error">{failed}</p> : null}
-          {!view && !failed ? <p className="k-muted">{t`Opening ${name}…`}</p> : null}
+          {!view && !failed ? <p className="k-muted">{t`Opening ${name}`}</p> : null}
           {saved ? (
             <p className="k-viewer-note" role="status">
               <Trans>Saved. The app shows the new words when it opens again.</Trans>
