@@ -26,7 +26,7 @@ export async function backendFor(cfg: EngineConfig, onProgress?: (text: string) 
     case "edge":
       return (await createWebLLMBackend({
         model: cfg.edgeModel,
-        initProgressCallback: (p) => onProgress?.((p as { text?: string })?.text ?? t`Loading model…`),
+        initProgressCallback: (p) => onProgress?.((p as { text?: string })?.text ?? t`Loading model`),
       })) as never;
     case "builtin":
       return (await createGeminiNanoBackend()) as never;

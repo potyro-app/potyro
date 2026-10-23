@@ -293,7 +293,7 @@ test("a page that is not Potyro cannot push apps into the new home", async ({ pa
     })
     .toBeGreaterThan(3);
   // …and were ignored: still waiting, no confirmation, nothing brought in.
-  await expect(victim.getByRole("heading", { name: "Getting your apps ready…" })).toBeVisible();
+  await expect(victim.getByRole("heading", { name: "Getting your apps ready" })).toBeVisible();
   await expect(victim.locator(".k-move-offer")).toHaveCount(0);
   await expect(victim.getByRole("button", { name: "Bring them in" })).toHaveCount(0);
   expect(await victim.evaluate(() => localStorage.getItem("potyro:user-apps") ?? "")).not.toContain("trojan");

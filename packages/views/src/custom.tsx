@@ -47,7 +47,7 @@ export function CustomView(props: BuiltinViewProps) {
           {/* The shell owns the decision (views never change trust): this asks it to open its own
               dialog, the same one the 🛡 mark at the top opens. */}
           <button type="button" className="k-add k-primary-action" onClick={() => globalThis.dispatchEvent(new CustomEvent(TRUST_REQUEST))}>
-            <Trans>Run it as mine…</Trans>
+            <Trans>Run it as mine</Trans>
           </button>
         </p>
       </div>

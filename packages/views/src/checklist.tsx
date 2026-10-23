@@ -649,7 +649,7 @@ export function ChecklistView(props: BuiltinViewProps) {
   if (loading || texts === null || rowGroups === null)
     return (
       <p className="k-loading">
-        <Trans>Loading…</Trans>
+        <Trans>Loading</Trans>
       </p>
     );
 
@@ -866,7 +866,7 @@ export function ChecklistView(props: BuiltinViewProps) {
             className="k-input"
             type="text"
             aria-label={t`Add an item`}
-            placeholder={t`Add an item…`}
+            placeholder={t`Add an item`}
             enterKeyHint="done"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

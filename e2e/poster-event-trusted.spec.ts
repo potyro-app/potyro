@@ -170,7 +170,7 @@ test("a shared copy reads a poster: camera and AI asked first, the checked event
   const text = `Night Tram Quartet — late show\n${dayText(day)}, 20:00 · Doors 19:00\nThe Lantern Room, 12 Harbour Lane\n12 € / 8 € students`;
   const shareSheet = page.getByRole("dialog", { name: "Night Tram Quartet — late show" });
   await expect(shareSheet.getByRole("textbox", { name: "What will be sent" })).toHaveValue(`${text}\nhttps://lanternroom.example/tickets`);
-  await shareSheet.getByRole("button", { name: "Share…" }).click();
+  await shareSheet.getByRole("button", { name: "Share", exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as unknown as { __shared?: unknown[] }).__shared ?? [])).toEqual([{ text, url: "https://lanternroom.example/tickets" }]);
   await expect(shareSheet).toHaveCount(0);
 
@@ -219,5 +219,5 @@ test("the sample poster works with no key at all, and says it is a sample", asyn
   const share = page.getByRole("dialog", { name: "Night Tram Quartet" });
   await expect(share.getByRole("textbox", { name: "What will be sent" })).toHaveValue(/^Night Tram Quartet\n.*20:00 · Doors 19:00\nThe Lantern Room, 12 Harbour Lane/);
   await expect(share.getByRole("button", { name: "Copy", exact: true })).toBeVisible();
-  await expect(share.getByRole("button", { name: "Share…" })).toHaveCount(0);
+  await expect(share.getByRole("button", { name: "Share", exact: true })).toHaveCount(0);
 });

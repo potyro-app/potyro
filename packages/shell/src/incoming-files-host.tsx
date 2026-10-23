@@ -156,7 +156,7 @@ function ChooseApp({ files, onClose }: { files: File[]; onClose: () => void }) {
   };
 
   const count = files.length;
-  const heading = plural(count, { one: "Add this file to…", other: "Add these # files to…" });
+  const heading = plural(count, { one: "Add this file to", other: "Add these # files to" });
   return (
     <div className="k-modal-scrim" onClick={busy ? undefined : onClose}>
       <section
@@ -209,7 +209,7 @@ function ChooseApp({ files, onClose }: { files: File[]; onClose: () => void }) {
                   <span className="k-share-app-name">{app.name}</span>
                   {busy === app.id ? (
                     <span className="k-muted">
-                      <Trans>Adding…</Trans>
+                      <Trans>Adding</Trans>
                     </span>
                   ) : badge ? (
                     <span className="k-ask-badge" data-tone="good">

@@ -94,7 +94,7 @@ export function BackupSwitch() {
         </span>
       </div>
       <button type="button" className="k-add" disabled={progress !== null} onClick={() => void (on ? turnOff() : turnOn())}>
-        {progress ? t`Moving…` : on ? t`Stop backing up` : t`Back up my apps`}
+        {progress ? t`Moving` : on ? t`Stop backing up` : t`Back up my apps`}
       </button>
       {progress ? (
         <p className="k-muted k-backup-progress" role="status" aria-live="polite">

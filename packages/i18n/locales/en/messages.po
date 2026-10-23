@@ -18,11 +18,6 @@ msgstr ""
 msgid " (you)"
 msgstr " (you)"
 
-#. Fix agent step: the model is reasoning
-#: ../shell/src/fix-panel.tsx
-msgid "…thinking"
-msgstr "…thinking"
-
 #. placeholder {0}: edit.field
 #: ../shell/src/app-source.ts
 msgid "\"{0}\" isn't written as a plain object, so its properties can't be set here"
@@ -456,8 +451,8 @@ msgid "{count, plural, one {# ready} other {# ready}}"
 msgstr "{count, plural, one {# ready} other {# ready}}"
 
 #: ../shell/src/incoming-files-host.tsx
-msgid "{count, plural, one {Add this file to…} other {Add these # files to…}}"
-msgstr "{count, plural, one {Add this file to…} other {Add these # files to…}}"
+msgid "{count, plural, one {Add this file to} other {Add these # files to}}"
+msgstr "{count, plural, one {Add this file to} other {Add these # files to}}"
 
 #: ../views/src/checklist.tsx
 msgid "{count, plural, one {Delete its item too?} other {Delete its # items too?}}"
@@ -1057,8 +1052,8 @@ msgid "a full web page"
 msgstr "a full web page"
 
 #: ../shell/src/ask-sources-panel.tsx
-msgid "A header named…"
-msgstr "A header named…"
+msgid "A header named"
+msgstr "A header named"
 
 #: ../shell/src/App.tsx
 msgid "a link anyone can try"
@@ -1090,8 +1085,8 @@ msgid "A picture of your own on the tile"
 msgstr "A picture of your own on the tile"
 
 #: ../shell/src/ask-sources-panel.tsx
-msgid "A query parameter named…"
-msgstr "A query parameter named…"
+msgid "A query parameter named"
+msgstr "A query parameter named"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "A separate copy, starting empty."
@@ -1271,12 +1266,9 @@ msgid "Add an app someone sent you"
 msgstr "Add an app someone sent you"
 
 #: ../views/src/checklist.tsx
+#: ../views/src/checklist.tsx
 msgid "Add an item"
 msgstr "Add an item"
-
-#: ../views/src/checklist.tsx
-msgid "Add an item…"
-msgstr "Add an item…"
 
 #. Under a short list: make one more record like these
 #. Under a short list: make one more record like these
@@ -1391,8 +1383,8 @@ msgstr "Add: {noun}"
 
 #. Make a new record named with what was typed; noun is the app's word for it
 #: ../views/src/pick-list.tsx
-msgid "Add: {noun} “{trimmed}”…"
-msgstr "Add: {noun} “{trimmed}”…"
+msgid "Add: {noun} “{trimmed}”"
+msgstr "Add: {noun} “{trimmed}”"
 
 #: ../shell/src/guests-panel.tsx
 msgid "Added {name}"
@@ -1407,15 +1399,15 @@ msgstr "Added by {by}"
 msgid "added by you"
 msgstr "added by you"
 
-#: ../shell/src/add-app-dialog.tsx
-msgid "Adding {addingName}"
-msgstr "Adding {addingName}"
-
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/incoming-files-host.tsx
 #: ../views/src/media-input.tsx
-msgid "Adding…"
-msgstr "Adding…"
+msgid "Adding"
+msgstr "Adding"
+
+#: ../shell/src/add-app-dialog.tsx
+msgid "Adding {addingName}"
+msgstr "Adding {addingName}"
 
 #. History: how a version came about (changed by hand in edit mode), lower case
 #: ../shell/src/history.tsx
@@ -1667,8 +1659,8 @@ msgid "Ask can’t run yet"
 msgstr "Ask can’t run yet"
 
 #: ../shell/src/studio.tsx
-msgid "Ask for a change…"
-msgstr "Ask for a change…"
+msgid "Ask for a change"
+msgstr "Ask for a change"
 
 #: ../shell/src/ask-panel.tsx
 msgid "Ask for more"
@@ -1830,8 +1822,8 @@ msgstr "Bring them over again"
 
 #. Heading over a list of your apps: pick which one the shared text goes into
 #: ../shell/src/share-page.tsx
-msgid "Bring this into…"
-msgstr "Bring this into…"
+msgid "Bring this into"
+msgstr "Bring this into"
 
 #: ../shell/src/move-page.tsx
 msgid "Bring your apps in from a file"
@@ -1842,16 +1834,16 @@ msgid "Bring your apps over to {site}"
 msgstr "Bring your apps over to {site}"
 
 #: ../views/src/file-input.tsx
-msgid "Bringing it in…"
-msgstr "Bringing it in…"
+msgid "Bringing it in"
+msgstr "Bringing it in"
 
 #: ../shell/src/move-banner.tsx
-msgid "Bringing them in on {site}…"
-msgstr "Bringing them in on {site}…"
+msgid "Bringing them in on {site}"
+msgstr "Bringing them in on {site}"
 
 #: ../shell/src/move-page.tsx
-msgid "Bringing your apps in…"
-msgstr "Bringing your apps in…"
+msgid "Bringing your apps in"
+msgstr "Bringing your apps in"
 
 #. Files, in a shared app: a file one of its people brought in from outside
 #: ../shell/src/files-panel.tsx
@@ -1870,8 +1862,8 @@ msgid "browser local storage (slow, and small)"
 msgstr "browser local storage (slow, and small)"
 
 #: ../shell/src/studio-tools.tsx
-msgid "Building…"
-msgstr "Building…"
+msgid "Building"
+msgstr "Building"
 
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
@@ -2082,8 +2074,8 @@ msgstr "Changes to your records"
 
 #: ../shell/src/studio-engine.ts
 #: ../shell/src/studio-engine.ts
-msgid "Changing it via {label}… {elapsed}"
-msgstr "Changing it via {label}… {elapsed}"
+msgid "Changing it via {label} · {elapsed}"
+msgstr "Changing it via {label} · {elapsed}"
 
 #. Point chip: a kind of view, lower case
 #: ../shell/src/point-target.ts
@@ -2124,8 +2116,8 @@ msgstr "Check storage speed"
 
 #: ../shell/src/studio-engine.ts
 #: ../shell/src/studio.tsx
-msgid "Checking it…"
-msgstr "Checking it…"
+msgid "Checking it"
+msgstr "Checking it"
 
 #. Point chip: a kind of view, lower case
 #: ../shell/src/point-target.ts
@@ -2135,8 +2127,11 @@ msgstr "checklist"
 #. A list an app asks you to pick from
 #. A list of choices with no title of its own
 #: ../shell/src/picker.tsx
+#: ../shell/src/scope-switcher.tsx
+#: ../views/src/enum-input.tsx
 #: ../views/src/enum-input.tsx
 #: ../views/src/menu.tsx
+#: ../views/src/relation-input.tsx
 msgid "Choose"
 msgstr "Choose"
 
@@ -2182,12 +2177,6 @@ msgstr "Choose the file your old Potyro saved. You will see everything in it bef
 #: ../shell/src/studio.tsx
 msgid "Choose which model writes and edits your app"
 msgstr "Choose which model writes and edits your app"
-
-#: ../shell/src/scope-switcher.tsx
-#: ../views/src/enum-input.tsx
-#: ../views/src/relation-input.tsx
-msgid "Choose…"
-msgstr "Choose…"
 
 #. Engine name: the model built into the Chrome browser
 #: ../shell/src/engines.ts
@@ -2338,8 +2327,8 @@ msgid "Confirmed"
 msgstr "Confirmed"
 
 #: ../shell/src/sync-status.tsx
-msgid "Connecting…"
-msgstr "Connecting…"
+msgid "Connecting"
+msgstr "Connecting"
 
 #: ../shell/src/file-viewer.tsx
 msgid "Contents of {name}"
@@ -2609,6 +2598,7 @@ msgstr "Decrease {label}"
 #: ../shell/src/launcher.tsx
 #: ../shell/src/remove-app.ts
 #: ../shell/src/scope-switcher.tsx
+#: ../shell/src/scope-switcher.tsx
 #: ../shell/src/studio.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
@@ -2676,10 +2666,6 @@ msgstr "Delete this conversation"
 msgid "Delete this conversation?"
 msgstr "Delete this conversation?"
 
-#: ../shell/src/scope-switcher.tsx
-msgid "Delete…"
-msgstr "Delete…"
-
 #: ../shell/src/launcher.tsx
 msgid "Describe a new app"
 msgstr "Describe a new app"
@@ -2698,8 +2684,8 @@ msgid "Describe the app"
 msgstr "Describe the app"
 
 #: ../shell/src/studio.tsx
-msgid "Describe the app you want…"
-msgstr "Describe the app you want…"
+msgid "Describe the app you want"
+msgstr "Describe the app you want"
 
 #. The label over the prompt box
 #: ../shell/src/prompt-box.tsx
@@ -2826,15 +2812,12 @@ msgstr "Drop to add to {appName}"
 msgid "Drop to add to Potyro"
 msgstr "Drop to add to Potyro"
 
+#. Scope menu: a copy of the list with everything in it
 #: ../shell/src/launcher.tsx
+#: ../shell/src/scope-switcher.tsx
 #: ../shell/src/studio.tsx
 msgid "Duplicate"
 msgstr "Duplicate"
-
-#. Scope menu: a copy of the list with everything in it
-#: ../shell/src/scope-switcher.tsx
-msgid "Duplicate…"
-msgstr "Duplicate…"
 
 #. The one-line prompt box's placeholder: a short concrete example
 #: ../shell/src/prompt-box.tsx
@@ -3121,8 +3104,8 @@ msgid "Find in these records"
 msgstr "Find in these records"
 
 #: ../shell/src/ask-panel.tsx
-msgid "Fitting it to {name}’s fields (try {attempt})…"
-msgstr "Fitting it to {name}’s fields (try {attempt})…"
+msgid "Fitting it to {name}’s fields (try {attempt})"
+msgstr "Fitting it to {name}’s fields (try {attempt})"
 
 #: ../shell/src/fix-panel.tsx
 msgid "Fix found"
@@ -3134,8 +3117,8 @@ msgid "Fix this"
 msgstr "Fix this"
 
 #: ../shell/src/studio-engine.ts
-msgid "Fixing it via {label}… {elapsed}"
-msgstr "Fixing it via {label}… {elapsed}"
+msgid "Fixing it via {label} · {elapsed}"
+msgstr "Fixing it via {label} · {elapsed}"
 
 #. Fold an opened tile group back into one tile
 #. Fold an opened tile group back into one tile
@@ -3209,12 +3192,9 @@ msgid "from this app"
 msgstr "from this app"
 
 #: ../shell/src/add-app-dialog.tsx
+#: ../views/src/file-input.tsx
 msgid "From this device"
 msgstr "From this device"
-
-#: ../views/src/file-input.tsx
-msgid "From this device…"
-msgstr "From this device…"
 
 #: ../shell/src/version-notes.ts
 msgid "from your account"
@@ -3257,16 +3237,16 @@ msgid "Getting it from the shared app now — it opens here when it arrives, and
 msgstr "Getting it from the shared app now — it opens here when it arrives, and stays on this device after."
 
 #: ../views/src/media-input.tsx
-msgid "Getting the photo…"
-msgstr "Getting the photo…"
+msgid "Getting the photo"
+msgstr "Getting the photo"
 
 #: ../views/src/media-input.tsx
-msgid "Getting the video…"
-msgstr "Getting the video…"
+msgid "Getting the video"
+msgstr "Getting the video"
 
 #: ../shell/src/move-page.tsx
-msgid "Getting your apps ready…"
-msgstr "Getting your apps ready…"
+msgid "Getting your apps ready"
+msgstr "Getting your apps ready"
 
 #. A suggested change for a remix
 #: ../shell/src/remix-suggestions.ts
@@ -3599,20 +3579,20 @@ msgstr ""
 "- {problems}"
 
 #: ../shell/src/fix-panel.tsx
-msgid "Investigating…"
-msgstr "Investigating…"
+msgid "Investigating"
+msgstr "Investigating"
 
 #: ../shell/src/fix-panel.tsx
 msgid "Investigation finished"
 msgstr "Investigation finished"
 
 #: ../shell/src/share-sheet.tsx
-msgid "Invite people into this app and its records. What one of you changes, the others see."
-msgstr "Invite people into this app and its records. What one of you changes, the others see."
+msgid "Invite people"
+msgstr "Invite people"
 
 #: ../shell/src/share-sheet.tsx
-msgid "Invite people…"
-msgstr "Invite people…"
+msgid "Invite people into this app and its records. What one of you changes, the others see."
+msgstr "Invite people into this app and its records. What one of you changes, the others see."
 
 #: ../shell/src/people-panel.tsx
 #: ../shell/src/people-panel.tsx
@@ -4025,10 +4005,6 @@ msgstr "Load your apps"
 msgid "Load your apps?"
 msgstr "Load your apps?"
 
-#: ../shell/src/model-turn.ts
-msgid "Loading model…"
-msgstr "Loading model…"
-
 #: ../shell/src/history.tsx
 #: ../shell/src/people-panel.tsx
 #: ../shell/src/restore-apps.tsx
@@ -4047,13 +4023,17 @@ msgstr "Loading model…"
 #: ../views/src/stats.tsx
 #: ../views/src/steps.tsx
 #: ../views/src/timeline.tsx
-msgid "Loading…"
-msgstr "Loading…"
+msgid "Loading"
+msgstr "Loading"
+
+#: ../shell/src/model-turn.ts
+msgid "Loading model"
+msgstr "Loading model"
 
 #: ../shell/src/filter-chrome.tsx
 #: ../views/src/field-input.tsx
-msgid "Locating…"
-msgstr "Locating…"
+msgid "Locating"
+msgstr "Locating"
 
 #. What an app asks this device for, lower case
 #. What an app asks this device for, lower case
@@ -4144,14 +4124,14 @@ msgstr "Make the link"
 #: ../shell/src/studio-engine.ts
 #: ../shell/src/studio-engine.ts
 #: ../shell/src/studio-engine.ts
-msgid "Making it via {label}… {elapsed}"
-msgstr "Making it via {label}… {elapsed}"
+msgid "Making it via {label} · {elapsed}"
+msgstr "Making it via {label} · {elapsed}"
 
 #. Share dialog: the link to an app's page is being made
 #: ../shell/src/share-body.tsx
 #: ../shell/src/share-sheet.tsx
-msgid "Making the link…"
-msgstr "Making the link…"
+msgid "Making the link"
+msgstr "Making the link"
 
 #. Launcher sort: your own order
 #: ../shell/src/launcher-order.ts
@@ -4183,8 +4163,8 @@ msgstr "May be out of date now."
 
 #: ../shell/src/realm-probe-screen.tsx
 #: ../shell/src/storage-report.tsx
-msgid "Measuring…"
-msgstr "Measuring…"
+msgid "Measuring"
+msgstr "Measuring"
 
 #. Reasoning level
 #. Tile size
@@ -4263,8 +4243,8 @@ msgid "More actions"
 msgstr "More actions"
 
 #: ../shell/src/inline-edit.tsx
-msgid "More changes…"
-msgstr "More changes…"
+msgid "More changes"
+msgstr "More changes"
 
 #: ../shell/src/files-panel.tsx
 msgid "More for {name}"
@@ -4309,6 +4289,10 @@ msgstr "Moved from {site}"
 msgid "Moved the group."
 msgstr "Moved the group."
 
+#: ../shell/src/backup-switch.tsx
+msgid "Moving"
+msgstr "Moving"
+
 #. placeholder {0}: progress.name
 #. placeholder {1}: progress.done
 #. placeholder {2}: progress.total
@@ -4320,10 +4304,6 @@ msgstr "Moving {0} — {1} of {2}"
 #: ../shell/src/move-page.tsx
 msgid "Moving to a new home"
 msgstr "Moving to a new home"
-
-#: ../shell/src/backup-switch.tsx
-msgid "Moving…"
-msgstr "Moving…"
 
 #. A launcher tile group
 #: ../shell/src/launcher-groups.ts
@@ -4985,8 +4965,8 @@ msgstr "Opening"
 #: ../shell/src/data-page.tsx
 #: ../shell/src/file-viewer.tsx
 #: ../shell/src/studio-files.tsx
-msgid "Opening {name}…"
-msgstr "Opening {name}…"
+msgid "Opening {name}"
+msgstr "Opening {name}"
 
 #. Service name; keep as is
 #: ../shell/src/engines.ts
@@ -5010,17 +4990,17 @@ msgstr "Orange"
 msgid "Owner · can invite and remove people"
 msgstr "Owner · can invite and remove people"
 
+#: ../shell/src/studio-files.tsx
+msgid "Packing"
+msgstr "Packing"
+
 #: ../shell/src/move-banner.tsx
 msgid "Packing {name} — {done} of {total}"
 msgstr "Packing {name} — {done} of {total}"
 
 #: ../shell/src/move-banner.tsx
-msgid "Packing your apps…"
-msgstr "Packing your apps…"
-
-#: ../shell/src/studio-files.tsx
-msgid "Packing…"
-msgstr "Packing…"
+msgid "Packing your apps"
+msgstr "Packing your apps"
 
 #: ../shell/src/filter-chrome.tsx
 msgid "Page actions"
@@ -5046,8 +5026,8 @@ msgid "Part of this file is damaged."
 msgstr "Part of this file is damaged."
 
 #: ../shell/src/ask-material.tsx
-msgid "Paste a list, a plan, a table…"
-msgstr "Paste a list, a plan, a table…"
+msgid "Paste a list, a plan, a table"
+msgstr "Paste a list, a plan, a table"
 
 #: ../shell/src/add-app.ts
 msgid "Paste the app's source first"
@@ -5239,8 +5219,8 @@ msgid "Put it back in the sealed box"
 msgstr "Put it back in the sealed box"
 
 #: ../shell/src/ask-panel.tsx
-msgid "Putting places at their address ({placedNow} of {placedOf})…"
-msgstr "Putting places at their address ({placedNow} of {placedOf})…"
+msgid "Putting places at their address ({placedNow} of {placedOf})"
+msgstr "Putting places at their address ({placedNow} of {placedOf})"
 
 #: ../shell/src/app-lock.tsx
 msgid "Read-only"
@@ -5255,20 +5235,20 @@ msgid "Read-only: your data still uses the previous version. Update it to keep m
 msgstr "Read-only: your data still uses the previous version. Update it to keep making changes."
 
 #: ../shell/src/ask-panel.tsx
-msgid "Reading {reading}…"
-msgstr "Reading {reading}…"
+msgid "Reading {reading}"
+msgstr "Reading {reading}"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Reading it"
 msgstr "Reading it"
 
 #: ../shell/src/files-panel.tsx
-msgid "Reading the folder…"
-msgstr "Reading the folder…"
+msgid "Reading the folder"
+msgstr "Reading the folder"
 
 #: ../shell/src/inline-edit.tsx
-msgid "Reading this app…"
-msgstr "Reading this app…"
+msgid "Reading this app"
+msgstr "Reading this app"
 
 #: ../shell/src/missing-features.ts
 msgid "reading web addresses"
@@ -5279,8 +5259,8 @@ msgid "Ready. Look at the {site} window: it shows what will come in and waits fo
 msgstr "Ready. Look at the {site} window: it shows what will come in and waits for you to say yes."
 
 #: ../shell/src/move-page.tsx
-msgid "Receiving them…"
-msgstr "Receiving them…"
+msgid "Receiving them"
+msgstr "Receiving them"
 
 #. Launcher sort: by how often and how lately you open an app
 #: ../shell/src/launcher-order.ts
@@ -5429,6 +5409,7 @@ msgstr "Removed {name}"
 #: ../shell/src/identity-panel.tsx
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/scope-switcher.tsx
 #: ../shell/src/studio.tsx
 #: ../shell/src/studio.tsx
 msgid "Rename"
@@ -5456,10 +5437,6 @@ msgstr "Rename {name}"
 msgid "Rename app"
 msgstr "Rename app"
 
-#: ../shell/src/scope-switcher.tsx
-msgid "Rename…"
-msgstr "Rename…"
-
 #: ../views/src/list-input.tsx
 msgid "Reorder {name}, {position} of {count}. Use the arrow keys."
 msgstr "Reorder {name}, {position} of {count}. Use the arrow keys."
@@ -5468,14 +5445,14 @@ msgstr "Reorder {name}, {position} of {count}. Use the arrow keys."
 msgid "Repaired with the whole file."
 msgstr "Repaired with the whole file."
 
+#. Files: choose another file to put in this one's place
+#: ../shell/src/files-panel.tsx
+msgid "Replace"
+msgstr "Replace"
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "Replace it, keep its data"
 msgstr "Replace it, keep its data"
-
-#. Files: choose another file to put in this one's place
-#: ../shell/src/files-panel.tsx
-msgid "Replace…"
-msgstr "Replace…"
 
 #: ../shell/src/move-page.tsx
 msgid "replaces the untouched example here"
@@ -5530,8 +5507,8 @@ msgid "restored"
 msgstr "restored"
 
 #: ../shell/src/history.tsx
-msgid "Restoring…"
-msgstr "Restoring…"
+msgid "Restoring"
+msgstr "Restoring"
 
 #: ../shell/src/realm-probe-screen.tsx
 msgid "Results"
@@ -5594,8 +5571,8 @@ msgid "run as yours"
 msgstr "run as yours"
 
 #: ../views/src/custom.tsx
-msgid "Run it as mine…"
-msgstr "Run it as mine…"
+msgid "Run it as mine"
+msgstr "Run it as mine"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Run it as my own app"
@@ -5647,8 +5624,8 @@ msgid "Same person"
 msgstr "Same person"
 
 #: ../shell/src/guests-panel.tsx
-msgid "Same person as…"
-msgstr "Same person as…"
+msgid "Same person as"
+msgstr "Same person as"
 
 #. Files viewer: save the changed translation file
 #: ../shell/src/file-viewer.tsx
@@ -5727,8 +5704,8 @@ msgstr "Saved. The app shows the new words when it opens again."
 
 #: ../shell/src/inline-edit.tsx
 #: ../views/src/record-form.tsx
-msgid "Saving…"
-msgstr "Saving…"
+msgid "Saving"
+msgstr "Saving"
 
 #: ../shell/src/share-sheet.tsx
 msgid "Say it is by {myName}"
@@ -5744,8 +5721,8 @@ msgstr "Say what you need and Potyro builds an app you can share. Or open one of
 
 #. Studio box while the microphone listens
 #: ../shell/src/studio.tsx
-msgid "Say what you want…"
-msgstr "Say what you want…"
+msgid "Say what you want"
+msgstr "Say what you want"
 
 #. A small mark in the header of an app that runs sealed
 #: ../shell/src/App.tsx
@@ -5767,6 +5744,7 @@ msgid "Sealed screens on this device"
 msgstr "Sealed screens on this device"
 
 #. The search box at the top of a list to pick from
+#: ../shell/src/picker.tsx
 #: ../views/src/pick-list.tsx
 msgid "Search"
 msgstr "Search"
@@ -5778,10 +5756,6 @@ msgstr "Search {title}"
 #: ../shell/src/ask-panel.tsx
 msgid "Search the web when needed · about 2¢"
 msgstr "Search the web when needed · about 2¢"
-
-#: ../shell/src/picker.tsx
-msgid "Search…"
-msgstr "Search…"
 
 #. An untitled section, by its number
 #. placeholder {0}: num(i + 1)
@@ -5854,8 +5828,8 @@ msgid "Send your {sourceLabel} key to {host}?"
 msgstr "Send your {sourceLabel} key to {host}?"
 
 #: ../shell/src/platform-request-card.tsx
-msgid "Sending…"
-msgstr "Sending…"
+msgid "Sending"
+msgstr "Sending"
 
 #. Voice input: the recording leaves the device and an AI service ({service}) writes it down
 #: ../shell/src/app-speech.ts
@@ -5880,11 +5854,13 @@ msgstr "Set a name"
 
 #. App menu: share this app
 #. Button: share the app (turns sync on)
+#. Opens the device's own share sheet
 #. Share dialog title when an app gives none
 #. Share sheet eyebrow
 #: ../shell/src/App.tsx
 #: ../shell/src/dialog.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/share-body.tsx
 #: ../shell/src/share-sheet.tsx
 #: ../shell/src/sync-consent.ts
 msgid "Share"
@@ -5911,11 +5887,6 @@ msgstr "Share link"
 #: ../shell/src/share-page.tsx
 msgid "Share text to Potyro from another app and it will wait here for you to pick where it goes."
 msgstr "Share text to Potyro from another app and it will wait here for you to pick where it goes."
-
-#. Opens the device's own share sheet
-#: ../shell/src/share-body.tsx
-msgid "Share…"
-msgstr "Share…"
 
 #. Data page: a tag on an app that is synced with other people
 #. Mark on a launcher tile: the app's data is shared with other people
@@ -6109,8 +6080,8 @@ msgstr "Start over"
 
 #. Studio microphone: turning the microphone on
 #: ../shell/src/voice-input.tsx
-msgid "Starting the microphone…"
-msgstr "Starting the microphone…"
+msgid "Starting the microphone"
+msgstr "Starting the microphone"
 
 #. Add an app card: the records it comes with
 #: ../shell/src/add-app-dialog.tsx
@@ -6698,13 +6669,18 @@ msgstr "These translations can't be read, so they were not saved ({problem})."
 msgid "Think hard when stuck"
 msgstr "Think hard when stuck"
 
+#. Fix agent step: the model is reasoning
+#: ../shell/src/fix-panel.tsx
+msgid "thinking"
+msgstr "thinking"
+
 #: ../shell/src/thinking-settings.tsx
 msgid "Thinking is paid for like the answer, at the output price shown above, so each level costs more per change than the one before it."
 msgstr "Thinking is paid for like the answer, at the output price shown above, so each level costs more per change than the one before it."
 
 #: ../shell/src/studio-engine.ts
-msgid "Thinking via {label}…"
-msgstr "Thinking via {label}…"
+msgid "Thinking via {label}"
+msgstr "Thinking via {label}"
 
 #. Shown after the model's name: its reasoning level is low
 #: ../shell/src/engines.ts
@@ -7122,8 +7098,8 @@ msgstr "Translate into {into}"
 
 #. App menu: the app's words are being translated, which takes a moment
 #: ../shell/src/App.tsx
-msgid "Translating into {languageLabel}…"
-msgstr "Translating into {languageLabel}…"
+msgid "Translating into {languageLabel}"
+msgstr "Translating into {languageLabel}"
 
 #: ../shell/src/file-viewer.tsx
 msgid "Translations in {name}"
@@ -7595,12 +7571,12 @@ msgid "Working"
 msgstr "Working"
 
 #: ../shell/src/ask-panel.tsx
-msgid "Working on it…"
-msgstr "Working on it…"
+msgid "Working on it"
+msgstr "Working on it"
 
 #: ../shell/src/chat-panel.tsx
-msgid "Write a message…"
-msgstr "Write a message…"
+msgid "Write a message"
+msgstr "Write a message"
 
 #: ../shell/src/studio.tsx
 msgid "Write the code yourself"
@@ -7612,8 +7588,8 @@ msgstr "Writes and edits apps; cannot investigate a reported problem step by ste
 
 #. Studio microphone: the recording is being turned into words (Firefox)
 #: ../shell/src/voice-input.tsx
-msgid "Writing down what you said…"
-msgstr "Writing down what you said…"
+msgid "Writing down what you said"
+msgstr "Writing down what you said"
 
 #. An hour of the colour clock
 #: ../shell/src/studio.tsx

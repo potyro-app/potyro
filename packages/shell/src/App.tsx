@@ -207,7 +207,7 @@ interface AppProps {
   /** Opened from a link to one of its pages (docs/24 §11): which page, and the params the link carried — checked here against the page. */
   arrival?: Arrival;
   /**
-   * Answers a screen's "Run it as mine…" instead of the trust dialog: a demo link, where nothing is
+   * Answers a screen's "Run it as mine" instead of the trust dialog: a demo link, where nothing is
    * installed to promote, offers "Keep this app" first (#267).
    */
   onTrustRequest?: () => void;
@@ -347,7 +347,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
    * While recording, look at what the page ACTUALLY RENDERED once it has had time to settle, and
    * attach it to the step that navigated here.
    *
-   * This exists because the first person to use this feature hit a map stuck on "Loading…" forever,
+   * This exists because the first person to use this feature hit a map stuck on "Loading" forever,
    * and the whole system told them it could not reproduce the problem. It could not: replay checked
    * that the page resolved and its query ran, and had no idea what was on screen. Everything
    * reported ok while they were looking at a hung view.
@@ -719,7 +719,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
     const source = appId ? getUserApp(appId)?.source : undefined;
     if (!source || translating) return;
     setTranslating(true);
-    toaster.push(t({ message: `Translating into ${languageLabel}…`, comment: "App menu: the app's words are being translated, which takes a moment" }));
+    toaster.push(t({ message: `Translating into ${languageLabel}`, comment: "App menu: the app's words are being translated, which takes a moment" }));
     try {
       const [{ translateApp }, { createAppAi }, { STUDIO_VOICE_ID }, { getEngineConfig }, { deviceId }] = await Promise.all([
         import("./translate-app.js"),
@@ -937,7 +937,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
   const exitFullscreen = useCallback(() => setLeftFullscreen(pageId), [pageId]);
   useEffect(() => setLeftFullscreen(null), [pageId]);
   const currentEntity = (currentPage?.view as { entity?: string } | undefined)?.entity;
-  // A view with its own way to add (the checklist's "Add an item…", the map's "Add place here")
+  // A view with its own way to add (the checklist's "Add an item", the map's "Add place here")
   // already does the one thing the top bar's "+" would, and better — the map's puts the new record
   // where you tapped. Two buttons for one act is one too many, so the page's own wins and the "+"
   // drops. Other entities' actions stay; only the one this page adds inline goes.
@@ -1058,7 +1058,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
       : [{ key: "report", label: t`Something's wrong`, icon: I.report, onSelect: startRecording }]
     : [];
   // Promote/demote trust from the tools, where it belongs — not as a pill in everyone's face.
-  // A sealed custom screen's "Run it as mine…" asks for the same dialog (views never decide trust).
+  // A sealed custom screen's "Run it as mine" asks for the same dialog (views never decide trust).
   useEffect(() => {
     // Not while the Studio is open over this app: its preview has its own dialog, and one tap must
     // not open two. Where nothing is installed to promote (a demo link), the host answers instead.

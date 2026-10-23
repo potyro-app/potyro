@@ -74,7 +74,7 @@ export function StudioTools({ initialTab, source, onSourceChange, onRun, onSave,
           {tab === "source" ? (
             <>
               <button type="button" className="k-add" disabled={busy} onClick={() => void onRun()}>
-                {busy ? t`Building…` : t({ message: "Run ▶", comment: "Button: build and run the code in the editor" })}
+                {busy ? t`Building` : t({ message: "Run ▶", comment: "Button: build and run the code in the editor" })}
               </button>
               <button type="button" className="k-add k-primary-action" disabled={busy} onClick={() => void onSave()}>
                 <Trans>Save changes</Trans>

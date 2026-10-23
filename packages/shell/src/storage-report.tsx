@@ -91,7 +91,7 @@ export function StorageReport() {
   return (
     <div className="k-storage-report">
       <button type="button" className="k-add" disabled={busy} onClick={() => void run()}>
-        {busy ? t`Measuring…` : t`Check storage speed`}
+        {busy ? t`Measuring` : t`Check storage speed`}
       </button>
       {failed ? (
         <p className="k-muted">

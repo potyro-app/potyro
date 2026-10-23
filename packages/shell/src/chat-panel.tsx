@@ -372,7 +372,7 @@ export function Thread({
           value={draft}
           autoFocus={autoFocus}
           aria-label={t({ message: "Message", comment: "The box a chat message is typed in" })}
-          placeholder={t`Write a message…`}
+          placeholder={t`Write a message`}
           onChange={(e) => setDraft(e.target.value)}
         />
         <button type="submit" className="k-add k-chat-send" disabled={!draft.trim() || sending}>

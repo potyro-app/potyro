@@ -67,7 +67,7 @@ describe("a sealed app's own screen", () => {
     expect(f.mounts).toHaveLength(1);
     expect(f.mounts[0]!.label).toBe("Play");
     expect(container.querySelector(".k-sealed-view iframe")).not.toBeNull();
-    expect(screen.queryByRole("button", { name: "Run it as mine…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Run it as mine" })).toBeNull();
     unmount();
     expect(f.teardown).toHaveBeenCalledTimes(1);
   });

@@ -96,7 +96,7 @@ function EnumPicker({ field, current, onChange, label }: { field: EnumField; cur
         aria-label={label ? (current ? `${label}: ${optionLabel(field, current)}` : t({ message: `${label}: choose`, comment: "A choice field with nothing chosen yet; {label} is the field" })) : undefined}
         onClick={() => setOpen(true)}
       >
-        {current ? <EnumPill field={field} value={current} /> : <span className="k-enum-empty"><Trans>Choose…</Trans></span>}
+        {current ? <EnumPill field={field} value={current} /> : <span className="k-enum-empty"><Trans>Choose</Trans></span>}
         <span className="k-enum-caret" aria-hidden>
           ▾
         </span>

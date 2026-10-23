@@ -154,7 +154,7 @@ export function MediaInput({ runtime, field, value, onChange, label }: MediaInpu
       {adding ? (
         <div className="k-media-tile k-media-adding" role="status">
           <span className="k-media-adding-text">
-            <Trans>Adding…</Trans>
+            <Trans>Adding</Trans>
           </span>
           <span className="k-media-bar" aria-hidden />
         </div>
@@ -219,7 +219,7 @@ export function MediaTile({
       {pending === "waiting" ? (
         <span className="k-media-pending" data-state="waiting" role="status">
           <span aria-hidden>🖼</span>
-          <span>{isVideo ? t`Getting the video…` : t`Getting the photo…`}</span>
+          <span>{isVideo ? t`Getting the video` : t`Getting the photo`}</span>
         </span>
       ) : null}
       {pending === "absent" ? (

@@ -175,7 +175,7 @@ export function DemoScreen({ session, pkg, startRemix, target }: { session: Demo
   const { t } = useLingui();
   // Keep and Make it mine are the same card (docs/24 §6): a remix is a copy of your own, opened in the Studio.
   const [adding, setAdding] = useState<"keep" | "remix" | null>(startRemix ? "remix" : null);
-  // A screen that cannot run here asks to "Run it as mine…": nothing is installed in a demo, so the
+  // A screen that cannot run here asks to "Run it as mine": nothing is installed in a demo, so the
   // first step is keeping it (sealed, docs/07); it can be promoted from the app once kept. A card
   // already open (Make it mine, from the link) stays as it is.
   const keep = useCallback((): void => setAdding((a) => a ?? "keep"), []);

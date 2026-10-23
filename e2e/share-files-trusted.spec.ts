@@ -25,7 +25,7 @@ test("a picture the app made is shown in the dialog, and goes through the share 
   if (SHOTS) await dialog.screenshot({ path: `${SHOTS}/share-dialog-picture-${test.info().project.name}.png` });
 
   // The share sheet takes files here: it is the dialog's main way.
-  const send = dialog.getByRole("button", { name: "Share…" });
+  const send = dialog.getByRole("button", { name: "Share", exact: true });
   await expect(send).toBeFocused();
   await send.click();
   await expect(dialog).toBeHidden();
@@ -50,7 +50,7 @@ test("files of the app's folder: the picture and a CSV, each by its own name; sa
   if (SHOTS) await dialog.screenshot({ path: `${SHOTS}/share-dialog-files-${test.info().project.name}.png` });
 
   // A sheet that cannot take files is not offered for them; nothing to copy either (no words, no link).
-  await expect(dialog.getByRole("button", { name: "Share…" })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Share", exact: true })).toHaveCount(0);
   await expect(dialog.getByRole("button", { name: /Copy/ })).toHaveCount(0);
   const save = dialog.getByRole("button", { name: "Save a copy" });
   await expect(save).toBeFocused();

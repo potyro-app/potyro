@@ -165,7 +165,7 @@ export default defineApp({
   // to run it as yours first.
   const frame = page.frameLocator(".k-sealed-view iframe");
   await expect(frame.getByText("Hello from my own code")).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("button", { name: "Run it as mine…" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Run it as mine" })).toHaveCount(0);
 
   // The mark at the top is a button, and its dialog says what the sealed box already gives.
   await page.getByRole("button", { name: "Runs sealed: review" }).click();

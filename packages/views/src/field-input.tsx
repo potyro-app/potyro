@@ -313,7 +313,7 @@ function GeoInput({ runtime, value, onChange }: { runtime: PotyroRuntime; value:
       ) : null}
       <div className="k-geo-actions">
         <button type="button" className="k-add" disabled={busy || !geo} onClick={useMyLocation}>
-          {busy ? t`Locating…` : t`📍 Use my location`}
+          {busy ? t`Locating` : t`📍 Use my location`}
         </button>
         <span className="k-muted">
           {placed ? `${coord(g.lat)}, ${coord(g.lng)}` : noMap ? null : t`Tap the map to place a point`}

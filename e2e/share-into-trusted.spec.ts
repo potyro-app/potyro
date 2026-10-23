@@ -16,7 +16,7 @@ test("a shared plan is offered to the app it fits, and opens that app's Ask fill
   await page.evaluate((text) => sessionStorage.setItem("potyro:pending-share", JSON.stringify({ text })), PLAN);
   await page.goto("/?share");
 
-  await expect(page.getByRole("heading", { name: "Bring this into…" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bring this into" })).toBeVisible();
   await expect(page.locator(".k-share-preview")).toContainText("Bench Press 4×6–8");
   const first = page.locator(".k-share-app").first();
   await expect(first).toContainText("Workout");

@@ -179,7 +179,7 @@ export function InlineEdit({ source, where, save, rerun, askStudio, done }: Inli
         </span>
         <span className="k-inline-bar-text">
           {!model
-            ? t`Reading this app…`
+            ? t`Reading this app`
             : model.shape.blocked
               ? t`This app isn't written in a way that can be changed in place.`
               : things
@@ -447,13 +447,13 @@ function Popover({ at, source, shape, save, rerun, patch, close, ask }: PopoverP
         {error ? <p className="k-form-error">{error}</p> : null}
         <div className="k-inline-pop-actions">
           <button type="button" className="k-inline-pop-ask" onClick={() => ask(target.text)}>
-            <Trans>More changes…</Trans>
+            <Trans>More changes</Trans>
           </button>
           <button type="button" className="k-add" disabled={busy} onClick={close}>
             <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="k-add k-primary-action" disabled={busy}>
-            {busy ? t`Saving…` : t`Save`}
+            {busy ? t`Saving` : t`Save`}
           </button>
         </div>
       </form>
