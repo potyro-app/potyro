@@ -258,7 +258,7 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
           <p className="k-thread-answer k-thread-working k-waiting" aria-live="polite">
             <Mascot mode="drawing" size={26} />
             <span className="k-waiting-bar" aria-hidden />
-            {working || t`Working…`}
+            {working || t`Working`}
           </p>
         </li>
       ) : null}
