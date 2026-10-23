@@ -200,8 +200,10 @@ function precacheCatalogs(): Plugin {
       base = config.base;
     },
     generateBundle(_options, bundle) {
+      // The apps' icons are a lazy chunk too (@potyro/design, #425): an app first opened on a plane
+      // would otherwise have no icons.
       const files = Object.values(bundle)
-        .filter((c) => c.type === "chunk" && /[\\/]locales[\\/][^\\/]+[\\/]messages\.po$/.test(c.facadeModuleId ?? ""))
+        .filter((c) => c.type === "chunk" && /[\\/]locales[\\/][^\\/]+[\\/]messages\.po$|[\\/]lucide-paths\.generated\.ts$/.test(c.facadeModuleId ?? ""))
         .map((c) => `${base}${c.fileName}`)
         .sort();
       this.emitFile({ type: "asset", fileName: CATALOG_MANIFEST, source: `${JSON.stringify({ files }, null, 2)}\n` });

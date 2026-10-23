@@ -412,11 +412,11 @@ function mountStudio(el: HTMLElement, props: ViewProps): () => void {
     const pick = await ctx.ui.sheet<"camera" | "library">({
       title: ctx.t("A new photo"),
       items: [
-        { id: "camera", label: takeWords, icon: "📷" },
+        { id: "camera", label: takeWords, icon: "camera" },
         {
           id: "library",
           label: ctx.t("Choose from your photos"),
-          icon: "🖼",
+          icon: "image",
         },
       ],
     });
@@ -748,7 +748,7 @@ function mountGallery(el: HTMLElement, props: ViewProps): () => void {
 export default defineApp({
   id: "photo-garden",
   name: "Photo Garden",
-  icon: "🌸",
+  icon: "flower",
   version: "1.1.0",
   schemaVersion: 1,
   language: "en",
@@ -783,13 +783,13 @@ export default defineApp({
     {
       id: "studio",
       title: "Studio",
-      icon: "🌸",
+      icon: "flower",
       view: { type: "custom", entity: "artwork", mount: mountStudio },
     },
     {
       id: "gallery",
       title: "Gallery",
-      icon: "🖼",
+      icon: "image",
       view: { type: "custom", entity: "artwork", mount: mountGallery },
     },
   ],

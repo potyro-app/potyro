@@ -28,8 +28,10 @@ test("opening an app shows its tile, its name and a moving bar, in the middle of
   // The app, named and pictured: the same glyph the tile carries, not a monogram fallback.
   await expect(splash).toContainText("Plants");
   await expect(splash).toContainText("Opening");
-  // The glyph the app declares, read out of its source — not the monogram fallback.
-  await expect(splash.locator(".k-splash-tile")).toHaveText("🌱");
+  // The icon the app declares, read out of its source and drawn the system's way (#425: a Lucide
+  // name, `icon: "sprout"`) — not the monogram fallback, and never the name as text.
+  await expect(splash.locator(".k-splash-tile svg[data-icon='sprout'] path")).toBeAttached();
+  await expect(splash.locator(".k-splash-tile")).not.toContainText("sprout");
   await expect(splash.locator(".k-splash-tile")).toHaveClass(/k-splash-tile-icon/);
 
   // In the middle, not in a corner.

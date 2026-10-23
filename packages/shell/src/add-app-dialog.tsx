@@ -20,6 +20,7 @@ import { PromoteButton } from "./trust-dialog.js";
 import { creditLine } from "./credit-words.js";
 import { handToStudio } from "./studio-handoff.js";
 import { galleryUrl } from "./gallery-link.js";
+import { Glyph } from "@potyro/views";
 
 type Step =
   | { kind: "choose"; tab: AddSource | null }
@@ -385,7 +386,7 @@ function Card({
     <section className="k-add-app-card" aria-label={t({ message: `About ${name}`, comment: "Add an app: the card describing the app" })}>
       <div className="k-add-app-ident">
         <span className="k-launch-avatar" aria-hidden>
-          {app.icon ?? app.name.slice(0, 2).toUpperCase()}
+          <Glyph icon={app.icon} size={24} fallback={app.name.slice(0, 2).toUpperCase()} />
         </span>
         <div>
           <h3>{app.name}</h3>

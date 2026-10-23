@@ -22,6 +22,7 @@ import { onWall, pin, unpin } from "./launcher-wall.js";
 import { getWall, saveWall, useWall } from "./wall-store.js";
 import { useLook } from "./look.js";
 import { hueColour, tileIdentity } from "./tile-identity.js";
+import { TileGlyph } from "./tile-glyph.js";
 import { personHue, personInitials } from "@potyro/runtime";
 import { TileEditor } from "./tile-editor.js";
 import { toggleAppSync } from "./toggle-sync.js";
@@ -92,7 +93,7 @@ function Avatar({ app, identity, attention = 0 }: { app: InstalledApp; identity:
   const { t } = useLingui();
   return (
     <span className="k-launch-avatar" data-kind={identity.kind} aria-hidden={app.trusted || undefined}>
-      {identity.glyph}
+      <TileGlyph identity={identity} size={40} />
       {/* One number on the icon's corner (#86): unread chat, unseen changes and due reminders summed.
           Zero renders nothing at all. The words are read out beside the name. */}
       {attention > 0 ? (

@@ -18,20 +18,20 @@ import { COINBASE_REST_HOST, COINBASE_WS_HOST, FX_HOST, toDate } from "./prices.
 import { agoText, changeText, ECB_NOTE, priceText, STATE_HINTS, STATE_WORDS, type FeedState } from "./words.js";
 
 const ACTIONS = {
-  watch: { label: msg("Watch live"), icon: "▶", run: watchLive },
-  stop: { label: msg("Stop"), icon: "■", run: stopWatching },
-  add: { label: msg("Add"), icon: "＋", run: addSymbol },
+  watch: { label: msg("Watch live"), icon: "play", run: watchLive },
+  stop: { label: msg("Stop"), icon: "square", run: stopWatching },
+  add: { label: msg("Add"), icon: "plus", run: addSymbol },
   demo: {
     label: msg("Demo"),
-    icon: "✨",
+    icon: "sparkles",
     run: async (ctx: Ctx) => {
       const demos = await ctx.query("point", { filter: (r) => r.demo === true, limit: 1 });
       if (!demos.length) return playDemo(ctx);
       const pick = await ctx.ui.menu({
         title: ctx.t("Demo"),
         items: [
-          { id: "play", icon: "✨", label: ctx.t("Play the demo again"), detail: ctx.t("A made-up market, played here. Nothing is sent.") },
-          { id: "clear", icon: "🧹", destructive: true, label: ctx.t("Clear the demo") },
+          { id: "play", icon: "sparkles", label: ctx.t("Play the demo again"), detail: ctx.t("A made-up market, played here. Nothing is sent.") },
+          { id: "clear", icon: "brush-cleaning", destructive: true, label: ctx.t("Clear the demo") },
         ],
       });
       if (pick === "play") await playDemo(ctx);
@@ -82,7 +82,7 @@ const TREND = {
 export default defineApp({
   id: "ticker",
   name: "Ticker",
-  icon: "📈",
+  icon: "trending-up",
   version: "1.0.0",
   schemaVersion: 1,
   language: "en",
@@ -98,7 +98,7 @@ export default defineApp({
       // The feed and the app's own actions (Add, Set an alert, Remove) write these; a form never does (docs/03 editableBy).
       editableBy: "app",
       label: "Symbol",
-      icon: "📈",
+      icon: "trending-up",
       displayField: "code",
       fields: {
         code: { type: "text", required: true, label: { text: "Symbol", context: "symbol code" } },
@@ -145,7 +145,7 @@ export default defineApp({
     alert: {
       editableBy: "app",
       label: "Alert",
-      icon: "🔔",
+      icon: "bell",
       displayField: "code",
       fields: {
         code: { type: "text", label: { text: "Symbol", context: "symbol code" } },
@@ -172,7 +172,7 @@ export default defineApp({
     {
       id: "watchlist",
       title: "Watchlist",
-      icon: "📈",
+      icon: "trending-up",
       actions: [ACTIONS.watch, ACTIONS.stop, ACTIONS.add, ACTIONS.demo],
       layout: {
         type: "stack",
@@ -199,7 +199,7 @@ export default defineApp({
     {
       id: "alerts",
       title: "Alerts",
-      icon: "🔔",
+      icon: "bell",
       layout: {
         type: "stack",
         items: [

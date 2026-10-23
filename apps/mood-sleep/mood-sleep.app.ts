@@ -632,7 +632,7 @@ function mountPatterns(el: HTMLElement, props: ViewProps): () => void {
 export default defineApp({
   id: "mood-sleep",
   name: "Sleep & Mood",
-  icon: "🌙",
+  icon: "moon",
   version: "1.2.0",
   schemaVersion: 1,
   language: "en",
@@ -663,7 +663,7 @@ export default defineApp({
     {
       id: "log",
       label: "Log last night",
-      icon: "🌙",
+      icon: "moon",
       entity: "checkin",
       mode: "form",
     },
@@ -733,13 +733,13 @@ export default defineApp({
     {
       id: "patterns",
       title: "Patterns",
-      icon: "🌙",
+      icon: "moon",
       view: { type: "custom", entity: "checkin", mount: mountPatterns },
     },
     {
       id: "nights",
       title: "Nights",
-      icon: "🛏",
+      icon: "bed",
       view: {
         type: "list",
         entity: "checkin",

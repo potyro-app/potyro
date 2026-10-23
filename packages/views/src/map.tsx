@@ -15,6 +15,8 @@ import { useDisplayCells } from "./cells.js";
 import { rowOpener } from "./builtins.js";
 import { DetailView } from "./detail.js";
 import { canDrawMaps, loadMapLibre, mapDraws, removeMap } from "./maplibre.js";
+import { Glyph, glyphDrawable, glyphElement } from "./glyph.js";
+import { isLucideName, lucideReady } from "@potyro/design";
 
 /**
  * OpenStreetMap raster tiles — real streets, no API key. The previous default was MapLibre's
@@ -84,8 +86,8 @@ function toLatLng(v: unknown): { lat: number; lng: number } | null {
   return null;
 }
 
-/** An emoji pin: a round badge with a point, in the marker's colour when it has one. */
-function emojiPin(icon: string, color: string | undefined): HTMLElement {
+/** A record's pin: a round badge with a point, its icon (#425) inside, in the marker's colour when it has one. */
+function iconPin(icon: string, color: string | undefined): HTMLElement {
   const el = document.createElement("div");
   el.className = "k-map-pin";
   if (color) el.style.setProperty("--pin", color);
@@ -93,7 +95,7 @@ function emojiPin(icon: string, color: string | undefined): HTMLElement {
   head.className = "k-map-pin-head";
   const glyph = document.createElement("span");
   glyph.className = "k-map-pin-glyph";
-  glyph.textContent = icon;
+  glyph.appendChild(glyphElement(icon, 18));
   head.appendChild(glyph);
   el.appendChild(head);
   return el;
@@ -119,8 +121,11 @@ export function useMapMarkers(runtime: PotyroRuntime, pageId: string, rows: Reso
         const icon = iconRaw == null ? "" : String(iconRaw).trim();
         return { id: row.id, lat: geo.lat, lng: geo.lng, title, color: colorRaw == null ? undefined : String(colorRaw), ...(icon ? { icon } : {}) };
       }),
-    ).then((ms) => {
-      if (alive) setMarkers(ms.filter((m): m is MapMarker => m !== null));
+    ).then(async (ms) => {
+      const list = ms.filter((m): m is MapMarker => m !== null);
+      // The pins are built outside React: the icon paths have to be here before they are drawn.
+      if (list.some((m) => isLucideName(m.icon))) await lucideReady();
+      if (alive) setMarkers(list);
     });
 
     return () => {
@@ -461,7 +466,7 @@ export function MapView(props: BuiltinViewProps) {
       const bounds = new maplibre.LngLatBounds();
       for (const mk of markers) {
         // A record with its own glyph is pinned BY it: an emoji in a round badge of its colour.
-        const marker = (mk.icon ? new maplibre.Marker({ element: emojiPin(mk.icon, mk.color), anchor: "bottom" }) : new maplibre.Marker({ color: mk.color })).setLngLat([mk.lng, mk.lat]);
+        const marker = (glyphDrawable(mk.icon) ? new maplibre.Marker({ element: iconPin(mk.icon, mk.color), anchor: "bottom" }) : new maplibre.Marker({ color: mk.color })).setLngLat([mk.lng, mk.lat]);
         // Tapping a pin shows WHICH place it is, and offers a way in. Navigating straight off the
         // tap gave no way to just look at the map: every touch left the page.
         const onOpen = onOpenRef.current;
@@ -690,7 +695,7 @@ export function MapView(props: BuiltinViewProps) {
                   <img className="k-map-card-media" src={cell.mediaUrl} alt="" decoding="async" draggable={false} />
                 ) : (
                   <span className="k-map-card-media k-map-card-pin" style={{ background: mk.color }} aria-hidden>
-                    {mk.icon ?? ""}
+                    <Glyph icon={mk.icon} size={24} />
                   </span>
                 )}
                 <span className="k-map-card-text">
@@ -822,7 +827,7 @@ function MapList({
             <li key={mk.id}>
               <button type="button" className="k-map-list-row" onClick={() => openPin(mk.id)}>
                 <span className="k-map-list-pin" style={{ background: mk.color }} aria-hidden>
-                  {mk.icon ?? ""}
+                  <Glyph icon={mk.icon} size={20} />
                 </span>
                 <span className="k-map-list-text">
                   <span className="k-map-list-title">{cell?.primary || mk.title || t`Untitled`}</span>

@@ -14,9 +14,15 @@ typed `record` and `ctx`, (b) normalizes defaults, and (c) in dev runs a Zod che
 export default defineApp({ id, name, icon, version, schemaVersion, language, languages, theme, permissions, entities, pages, reminders, migrations });
 ```
 
-`name`, `icon` (one emoji) and `theme.accent` are the app's identity: the launcher tile shows them
+`name`, `icon` and `theme.accent` are the app's identity: the launcher tile shows them
 without running the app (they are read from the source), and falls back to a monogram of the name
-in a colour derived from the app when `icon` or `accent` is absent. The tile is the accent darkened,
+in a colour derived from the app when `icon` or `accent` is absent. An `icon` — the app's, an
+entity's, a page's, an action's, a `ui.sheet` item's, a `display.icon` per record — is the **name of
+a Lucide icon** (`"shopping-cart"`, kebab-case as on lucide.dev; #425, DESIGN.md §3.5): the shell
+draws it in the system's stroke wherever it shows it (a tab, a tile, a row's lead, a button, the
+share image), from one lazy chunk of paths that the service worker precaches. Lucide's older names
+(`"edit"`, `"home"`) still resolve. An emoji from before keeps working, as the character it is; a
+name Lucide does not have shows the monogram (or nothing, where there is no name to make one from). The tile is the accent darkened,
 in OKLCH, until white text on it reaches WCAG AA (4.5:1); an accent that already does is used as
 written. `category` (one lowercase word: `"games"`, `"camera"`, `"everyday"`) is where the launcher
 puts the app on Start: in the group for that word, made when the first app of the kind arrives.

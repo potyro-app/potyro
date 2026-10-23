@@ -70,7 +70,7 @@ async function shareEvent(r: Resolved, ctx: Ctx): Promise<void> {
 export default defineApp({
   id: "poster-event",
   name: { en: "Poster to Calendar", "pt-BR": "Do cartaz à agenda", de: "Plakat in den Kalender", es: "Del cartel al calendario", pl: "Plakat do kalendarza", it: "Dalla locandina al calendario" },
-  icon: "🎟️",
+  icon: "ticket",
   version: "1.0.0",
   schemaVersion: 1,
   language: "en",
@@ -84,7 +84,7 @@ export default defineApp({
     {
       id: "type-in",
       label: { en: "Type one in", "pt-BR": "Digitar um", de: "Selbst eintragen", es: "Escribir uno", pl: "Wpisz ręcznie", it: "Scrivine uno" },
-      icon: "✏️",
+      icon: "pencil",
       entity: "event",
       mode: "form",
     },
@@ -92,7 +92,7 @@ export default defineApp({
   entities: {
     event: {
       label: { en: "Event", "pt-BR": "Evento", de: "Termin", es: "Evento", pl: "Wydarzenie", it: "Evento" },
-      icon: "🎟️",
+      icon: "ticket",
       displayField: "title",
       fields: FIELDS,
       groups: [
@@ -123,8 +123,8 @@ export default defineApp({
     {
       id: "upcoming",
       title: { en: "Coming up", "pt-BR": "Próximos", de: "Demnächst", es: "Próximos", pl: "Nadchodzące", it: "In arrivo" },
-      icon: "🎟️",
-      actions: [{ label: { en: "Read a poster", "pt-BR": "Ler um cartaz", de: "Plakat lesen", es: "Leer un cartel", pl: "Odczytaj plakat", it: "Leggi una locandina" }, icon: "📷", run: readPoster }],
+      icon: "ticket",
+      actions: [{ label: { en: "Read a poster", "pt-BR": "Ler um cartaz", de: "Plakat lesen", es: "Leer un cartel", pl: "Odczytaj plakat", it: "Leggi una locandina" }, icon: "camera", run: readPoster }],
       view: {
         type: "list",
         entity: "event",
@@ -146,13 +146,13 @@ export default defineApp({
     {
       id: "calendar",
       title: { en: "Calendar", "pt-BR": "Calendário", de: "Kalender", es: "Calendario", pl: "Kalendarz", it: "Calendario" },
-      icon: "🗓️",
+      icon: "calendar",
       view: { type: "calendar", entity: "event", date: "start", title: "title" },
     },
     {
       id: "past",
       title: { en: "Past", "pt-BR": "Passados", de: "Vorbei", es: "Pasados", pl: "Minione", it: "Passati" },
-      icon: "🕰️",
+      icon: "clock",
       view: {
         type: "list",
         entity: "event",

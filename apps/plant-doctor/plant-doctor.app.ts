@@ -42,7 +42,7 @@ const T = {
 export default defineApp({
   id: "plant-doctor",
   name: { en: "Plant Doctor", "pt-BR": "Doutor de Plantas", de: "Pflanzendoktor", es: "Doctor de Plantas", pl: "Lekarz Roślin", it: "Dottore delle Piante" },
-  icon: "🪴",
+  icon: "leaf",
   version: "1.0.0",
   schemaVersion: 1,
   language: "en",
@@ -57,7 +57,7 @@ export default defineApp({
     {
       id: "add",
       label: { en: "Add without a photo", "pt-BR": "Adicionar sem foto", de: "Ohne Foto hinzufügen", es: "Añadir sin foto", pl: "Dodaj bez zdjęcia", it: "Aggiungi senza foto" },
-      icon: "✏️",
+      icon: "pencil",
       entity: "plant",
       mode: "form",
     },
@@ -65,7 +65,7 @@ export default defineApp({
   entities: {
     plant: {
       label: { en: "Plant", "pt-BR": "Planta", de: "Pflanze", es: "Planta", pl: "Roślina", it: "Pianta" },
-      icon: "🪴",
+      icon: "leaf",
       displayField: "name",
       fields: PLANT_FIELDS,
       groups: [
@@ -99,7 +99,7 @@ export default defineApp({
     },
     check: {
       label: { en: "Check-up", "pt-BR": "Revisão", de: "Check", es: "Revisión", pl: "Sprawdzenie", it: "Controllo" },
-      icon: "🔎",
+      icon: "search",
       displayField: "problem",
       fields: CHECK_FIELDS,
       computed: {
@@ -121,12 +121,12 @@ export default defineApp({
     {
       id: "plants",
       title: { en: "Plants", "pt-BR": "Plantas", de: "Pflanzen", es: "Plantas", pl: "Rośliny", it: "Piante" },
-      icon: "🪴",
+      icon: "leaf",
       summary: [
         { label: { en: "Want water", "pt-BR": "Pedem água", de: "Wollen Wasser", es: "Piden agua", pl: "Do podlania", it: "Da annaffiare" }, value: (rows, ctx) => rows.filter((r) => needsWater(r, ctx.now())).length },
         { label: { en: "Check-up due", "pt-BR": "Revisão pendente", de: "Check fällig", es: "Revisión pendiente", pl: "Do sprawdzenia", it: "Controllo da fare" }, value: (rows, ctx) => rows.filter((r) => checkupDue(r, ctx.now())).length },
       ],
-      actions: [{ label: { en: "Check a plant", "pt-BR": "Examinar uma planta", de: "Pflanze ansehen", es: "Revisar una planta", pl: "Obejrzyj roślinę", it: "Controlla una pianta" }, icon: "📷", run: checkAPlant }],
+      actions: [{ label: { en: "Check a plant", "pt-BR": "Examinar uma planta", de: "Pflanze ansehen", es: "Revisar una planta", pl: "Obejrzyj roślinę", it: "Controlla una pianta" }, icon: "camera", run: checkAPlant }],
       view: {
         type: "gallery",
         entity: "plant",
@@ -150,7 +150,7 @@ export default defineApp({
     {
       id: "timeline",
       title: T.checkups,
-      icon: "🔎",
+      icon: "search",
       view: {
         type: "timeline",
         entity: "check",
