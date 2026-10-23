@@ -293,10 +293,10 @@ function AppBar(p: { onNewApp: () => void; onAdd: () => void; onGallery: () => v
   );
   return (
     <nav className="k-metro-bar" aria-label={t({ message: "Launcher actions", comment: "The bar of buttons at the bottom of the home screen" })}>
-      {btn("k-primary-action k-launch-newbtn", undefined, I.plus, t`New app`, p.onNewApp)}
-      {btn("k-launch-addbtn", t`Add an app`, "⤓", t({ message: "Add", comment: "App bar: add an app someone sent you; one short word" }), p.onAdd, t`Add an app someone sent you`)}
-      {btn("k-metro-gallery", t({ message: "Browse the gallery", comment: "Opens Potyro's gallery of apps to try and make your own" }), "▦", t({ message: "Gallery", comment: "App bar: Potyro's gallery of apps; one short word" }), p.onGallery)}
-      {btn("k-metro-find", t`Find an app`, "⌕", t({ message: "Find", comment: "App bar: search the apps; one short word" }), p.onFind)}
+      {btn("k-primary-action k-launch-newbtn", undefined, <span className="k-metro-bar-icon" aria-hidden>{I.plus}</span>, t`New app`, p.onNewApp)}
+      {btn("k-launch-addbtn", t`Add an app`, <span className="k-metro-bar-icon" aria-hidden>{I.download}</span>, t({ message: "Add", comment: "App bar: add an app someone sent you; one short word" }), p.onAdd, t`Add an app someone sent you`)}
+      {btn("k-metro-gallery", t({ message: "Browse the gallery", comment: "Opens Potyro's gallery of apps to try and make your own" }), <span className="k-metro-bar-icon" aria-hidden>{I.gallery}</span>, t({ message: "Gallery", comment: "App bar: Potyro's gallery of apps; one short word" }), p.onGallery)}
+      {btn("k-metro-find", t`Find an app`, <span className="k-metro-bar-icon" aria-hidden>{I.search}</span>, t({ message: "Find", comment: "App bar: search the apps; one short word" }), p.onFind)}
       {btn(
         "k-data-btn",
         t`Your data — every app’s records`,
@@ -307,7 +307,7 @@ function AppBar(p: { onNewApp: () => void; onAdd: () => void; onGallery: () => v
         p.onData,
         t`Your data`,
       )}
-      {btn("k-look-btn", t`Look — appearance and colour`, "◐", t({ message: "Look", comment: "The panel for light/dark appearance and accent colour" }), p.onLook)}
+      {btn("k-look-btn", t`Look — appearance and colour`, <span className="k-metro-bar-icon" aria-hidden>{I.look}</span>, t({ message: "Look", comment: "The panel for light/dark appearance and accent colour" }), p.onLook)}
       {btn("k-metro-you", t`You and your devices`, <YouMark />, t({ message: "You", comment: "App bar: you and your devices; one short word" }), p.onYou)}
     </nav>
   );
@@ -763,19 +763,19 @@ function EditBar(props: {
               </button>
             ))}
           </div>
-          {btn("unpin", t`Unpin`, "⊘", props.onUnpin)}
+          {btn("unpin", t`Unpin`, I.close, props.onUnpin)}
           {btn("group", props.group ? t({ message: "Ungroup", comment: "Take this tile out of its group" }) : t({ message: "Group", comment: "Put this tile in a group with the next one" }), props.group ? I.ungroup : I.group, props.onGroup)}
           <span className="k-metro-bar-more">{props.menu}</span>
         </>
       ) : null}
       {props.group && props.groupChosen ? (
         <>
-          {btn("rename", t`Rename`, "✎", props.onRename)}
-          {btn("colour", t({ message: "Colour", comment: "Change the tint of a tile group" }), "◐", props.onColour)}
-          {btn("fold", props.group.collapsed ? t({ message: "Unfold", comment: "Show a folded tile group as its tiles again" }) : t({ message: "Fold", comment: "Fold an opened tile group back into one tile" }), props.group.collapsed ? "▾" : "▴", props.onFold)}
-          {btn("earlier", t({ message: "Earlier", comment: "Move a tile group earlier on the wall" }), "↑", () => props.onMoveGroup(-1))}
-          {btn("later", t({ message: "Later", comment: "Move a tile group later on the wall" }), "↓", () => props.onMoveGroup(1))}
-          {btn("dissolve", t({ message: "Ungroup all", comment: "Take every tile out of this group" }), "⇱", props.onDissolve)}
+          {btn("rename", t`Rename`, I.edit, props.onRename)}
+          {btn("colour", t({ message: "Colour", comment: "Change the tint of a tile group" }), I.look, props.onColour)}
+          {btn("fold", props.group.collapsed ? t({ message: "Unfold", comment: "Show a folded tile group as its tiles again" }) : t({ message: "Fold", comment: "Fold an opened tile group back into one tile" }), props.group.collapsed ? I.unfold : I.fold, props.onFold)}
+          {btn("earlier", t({ message: "Earlier", comment: "Move a tile group earlier on the wall" }), I.up, () => props.onMoveGroup(-1))}
+          {btn("later", t({ message: "Later", comment: "Move a tile group later on the wall" }), I.down, () => props.onMoveGroup(1))}
+          {btn("dissolve", t({ message: "Ungroup all", comment: "Take every tile out of this group" }), I.ungroup, props.onDissolve)}
         </>
       ) : null}
       {!props.app && !props.groupChosen ? <p className="k-metro-bar-note">{t`Tap a tile to change it, or drag it.`}</p> : null}
