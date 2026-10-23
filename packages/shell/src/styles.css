@@ -17277,3 +17277,58 @@ img.k-glyph-image {
   vertical-align: -0.15em;
   margin-right: var(--space-1);
 }
+
+/* An app's own theme (#423): a frame that wears `.k-theme-dark` / `.k-theme-light` (tokens.css) also
+   switches the colour pairs the shell adds, as the root does. */
+.k-theme-dark .k-traco,
+.k-theme-dark.k-traco {
+  --tinta: var(--tinta-d);
+  --aguada: var(--aguada-d);
+  --accent: var(--accent-d);
+  --on-accent: var(--on-accent-d);
+  --focus: var(--tinta-d);
+  --tile-tint: 52%;
+}
+.k-theme-light .k-traco,
+.k-theme-light.k-traco {
+  --tinta: var(--tinta-l);
+  --aguada: var(--aguada-l);
+  --accent: var(--accent-l);
+  --on-accent: var(--on-accent-l);
+  --focus: var(--tinta-l);
+}
+/* The theme switch beside the clock (#423): three small pills, the chosen one filled. */
+.k-appearance {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--surface);
+}
+.k-appearance-choice {
+  min-height: 28px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 600;
+  cursor: pointer;
+}
+.k-appearance-choice[aria-checked="true"] {
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 var(--stroke) var(--line-strong);
+}
+.k-appearance-choice:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+/* The phone's screen in the app's own theme: its ground and ink are the theme's, not the Studio's. */
+.k-preview-screen.k-theme-dark,
+.k-preview-screen.k-theme-light {
+  background: var(--bg);
+  color: var(--ink);
+}

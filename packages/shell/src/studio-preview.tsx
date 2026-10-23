@@ -11,6 +11,7 @@
 // form sheets are portalled into it (`PortalRootContext`), and it has its own dialog host. Before
 // this, a form opened in the preview covered the Studio, and the app's dialogs opened over the chat.
 
+import { themeClass, type Appearance } from "./app-theme.js";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useRef, useState, useEffect, type ReactNode } from "react";
 import { MemoryStore, type Store } from "@potyro/store";
@@ -166,10 +167,12 @@ export interface PreviewScreenProps {
   above?: ReactNode;
   /** The colour chosen for the app here, as the launcher's tile would carry it. */
   appAccent?: string;
+  /** The app's own theme (#423): the frame wears it, the Studio around keeps the platform's. */
+  appearance?: Appearance;
 }
 
 /** The opened app: a bar with the way back, and the app's own screen under it. */
-export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource, onPromote, pointing, onPoint, onPointCancel, onPicked, tabs, above, appAccent }: PreviewScreenProps) {
+export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource, onPromote, pointing, onPoint, onPointCancel, onPicked, tabs, above, appAccent, appearance }: PreviewScreenProps) {
   const { t } = useLingui();
   const screenRef = useRef<HTMLDivElement>(null);
   // The portal root is the screen element itself, which exists only after the first render.
@@ -256,7 +259,8 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
       {/* On a wide screen the app sits in a phone's frame (DESIGN.md §10): it is shared by link and
           mostly opened on one. The chrome measures its own width, so it lays out as a phone's. */}
       <div className="k-preview-frame">
-      <div className="k-preview-screen" ref={screenRef}>
+      {/* The phone's screen wears the app's own theme (#423); the stage around it stays the platform's. */}
+      <div className={`k-preview-screen${themeClass(appearance ?? "system") ? ` ${themeClass(appearance ?? "system")}` : ""}`} ref={screenRef}>
         {screen ? (
           <PortalRootContext.Provider value={screen}>
             {/* `k-studio-preview` kept from the old stage: what a spec or a person points at is the app. */}
@@ -270,6 +274,7 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
                 questions={preview.questions}
                 onPromote={promote}
                 appAccent={appAccent}
+                themeScope="frame"
               />
             </div>
             <Dialogs host={preview.dialogs} />

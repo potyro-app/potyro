@@ -724,6 +724,8 @@ export interface Theme {
   accent?: string;
   /** Every page's ground; a page's own `background` wins. */
   background?: Backdrop;
+  /** This app's own theme; default: the device's. */
+  appearance?: "light" | "dark" | "system";
 }
 
 /**
