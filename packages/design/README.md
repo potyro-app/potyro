@@ -30,6 +30,14 @@ below follow (`pnpm gen:tokens`, `pnpm gen:logo`), and the tests say when they a
   `tagline` (outlined, never re-typed), `symbol-rosa` / `symbol-rosa-on-dark` (the "y" alone) and
   the four symbol tiles (`symbol-circle-dark` …). Never redrawn, never recoloured by hand (§4.1):
   the sheet's colours predate the clock, so an app's seal takes the nearest colour the sheet has.
+- **`src/lucide.ts`** + **`src/lucide-paths.generated.ts`** — the apps' icons (§3.5, #425). An app
+  names a Lucide icon (`icon: "shopping-cart"`, kebab-case as on lucide.dev) and the shell draws it
+  in the stroke of the logo wherever it shows it: `@potyro/views`'s `Glyph` for the page, `Path2D`
+  for a canvas. Every icon is one path in a 24-box, generated from the `lucide` data package by
+  `scripts/lucide.mjs` (`pnpm gen:lucide` after bumping `lucide` / `lucide-react` together) with
+  Lucide's older names as aliases; it is one lazy chunk (~80 KB gzipped), fetched the first time a
+  name is drawn and precached by the shell's service worker. `lucideReady()`, `lucidePath(name)`,
+  `lucideKnown(name)`; `test/lucide.test.ts` checks the set.
 - **`src/color.ts`** — the colour clock in TypeScript: `cor(x)` for every level of a hue in both
   themes, `categorias(x, n)` for data categories, `vars` / `varsBoth` for the custom properties,
   `apply(el, x)` as DESIGN.md names it. `test/color.test.ts` proves it equals the designer's

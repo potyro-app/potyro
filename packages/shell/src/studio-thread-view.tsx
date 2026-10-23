@@ -9,6 +9,7 @@
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { tileIdentity } from "./tile-identity.js";
+import { TileGlyph } from "./tile-glyph.js";
 import { shownNote } from "./version-notes.js";
 import { PointGlyph } from "./point-mode.js";
 import type { ChatItem, PlatformAsk, SentRequest } from "./studio-chat.js";
@@ -92,7 +93,7 @@ function Mark({ app, name }: { app: { id: string } | null; name: string }) {
   const identity = tileIdentity({ key: app?.id ?? name, name });
   return (
     <span className="k-card-mark" aria-hidden style={{ ["--card-accent" as string]: identity.accent }}>
-      {identity.glyph}
+      <TileGlyph identity={identity} size={20} />
     </span>
   );
 }

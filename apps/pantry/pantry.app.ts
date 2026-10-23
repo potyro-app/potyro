@@ -42,7 +42,7 @@ export default defineApp({
   id: "pantry",
   // "What's in my kitchen" is what it does; the name on the tile and in the header is one word.
   name: { en: "Pantry", "pt-BR": "Despensa", de: "Vorrat", es: "Despensa", pl: "Spiżarnia", it: "Dispensa" },
-  icon: "🧺",
+  icon: "shopping-basket",
   version: "1.0.0",
   schemaVersion: 1,
   language: "en",
@@ -56,7 +56,7 @@ export default defineApp({
     {
       id: "add",
       label: { en: "Add by hand", "pt-BR": "Adicionar à mão", de: "Von Hand eintragen", es: "Añadir a mano", pl: "Dodaj ręcznie", it: "Aggiungi a mano" },
-      icon: "✏️",
+      icon: "pencil",
       entity: "item",
       mode: "form",
       open: false,
@@ -65,7 +65,7 @@ export default defineApp({
   entities: {
     item: {
       label: { en: "Food", "pt-BR": "Alimento", de: "Lebensmittel", es: "Alimento", pl: "Produkt", it: "Alimento" },
-      icon: "🥕",
+      icon: "carrot",
       displayField: "name",
       fields: {
         ...FIELDS,
@@ -106,7 +106,7 @@ export default defineApp({
     },
     idea: {
       label: { en: "Idea", "pt-BR": "Ideia", de: "Idee", es: "Idea", pl: "Pomysł", it: "Idea" },
-      icon: "🍳",
+      icon: "cooking-pot",
       displayField: "title",
       fields: {
         title: { type: "text", required: true, label: { en: "Dish", "pt-BR": "Prato", de: "Gericht", es: "Plato", pl: "Danie", it: "Piatto" } },
@@ -129,7 +129,7 @@ export default defineApp({
     {
       id: "kitchen",
       title: { en: "Kitchen", "pt-BR": "Cozinha", de: "Küche", es: "Cocina", pl: "Kuchnia", it: "Cucina" },
-      icon: "🧺",
+      icon: "shopping-basket",
       summary: [
         {
           label: { en: "Use within 3 days", "pt-BR": "Usar em até 3 dias", de: "In 3 Tagen verbrauchen", es: "Usar en 3 días", pl: "Zużyć w ciągu 3 dni", it: "Da usare entro 3 giorni" },
@@ -141,8 +141,8 @@ export default defineApp({
         },
       ],
       actions: [
-        { label: { en: "Add from a photo", "pt-BR": "Adicionar por foto", de: "Per Foto hinzufügen", es: "Añadir con una foto", pl: "Dodaj ze zdjęcia", it: "Aggiungi da una foto" }, icon: "📷", run: addFromPhoto },
-        { label: { en: "What can I cook?", "pt-BR": "O que posso cozinhar?", de: "Was kann ich kochen?", es: "¿Qué puedo cocinar?", pl: "Co mogę ugotować?", it: "Cosa posso cucinare?" }, icon: "🍳", run: whatCanICook },
+        { label: { en: "Add from a photo", "pt-BR": "Adicionar por foto", de: "Per Foto hinzufügen", es: "Añadir con una foto", pl: "Dodaj ze zdjęcia", it: "Aggiungi da una foto" }, icon: "camera", run: addFromPhoto },
+        { label: { en: "What can I cook?", "pt-BR": "O que posso cozinhar?", de: "Was kann ich kochen?", es: "¿Qué puedo cocinar?", pl: "Co mogę ugotować?", it: "Cosa posso cucinare?" }, icon: "cooking-pot", run: whatCanICook },
       ],
       view: {
         type: "list",
@@ -165,8 +165,8 @@ export default defineApp({
     {
       id: "cook",
       title: { en: "Cook", "pt-BR": "Cozinhar", de: "Kochen", es: "Cocinar", pl: "Gotuj", it: "Cucina" },
-      icon: "🍳",
-      actions: [{ label: { en: "What can I cook?", "pt-BR": "O que posso cozinhar?", de: "Was kann ich kochen?", es: "¿Qué puedo cocinar?", pl: "Co mogę ugotować?", it: "Cosa posso cucinare?" }, icon: "🍳", run: whatCanICook }],
+      icon: "cooking-pot",
+      actions: [{ label: { en: "What can I cook?", "pt-BR": "O que posso cozinhar?", de: "Was kann ich kochen?", es: "¿Qué puedo cocinar?", pl: "Co mogę ugotować?", it: "Cosa posso cucinare?" }, icon: "cooking-pot", run: whatCanICook }],
       view: {
         type: "list",
         entity: "idea",
@@ -192,7 +192,7 @@ export default defineApp({
     {
       id: "waste",
       title: WASTE_TITLE,
-      icon: "📉",
+      icon: "trending-down",
       layout: {
         type: "stack",
         items: [

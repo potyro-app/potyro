@@ -7,6 +7,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useInstalledApps } from "./launcher-store.js";
 import { tileIdentity } from "./tile-identity.js";
+import { TileGlyph } from "./tile-glyph.js";
 import { listUserApps } from "./user-apps.js";
 import { bestFits, dropShare, handShareTo, peekShare } from "./share-inbox.js";
 import { navigateTo } from "./router.js";
@@ -75,7 +76,7 @@ export function SharePage() {
                 }}
               >
                 <span className="k-launch-avatar" data-kind={identity.kind} aria-hidden>
-                  {identity.glyph}
+                  <TileGlyph identity={identity} size={24} />
                 </span>
                 <span className="k-share-app-name">{app.name}</span>
                 {best ? <span className="k-ask-badge" data-tone="good">

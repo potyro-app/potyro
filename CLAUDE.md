@@ -120,6 +120,10 @@ pnpm --filter @potyro/generator gen:reference
 # Studio's model searches is generated from them, and test/corpus.test.ts fails while it is stale (#262)
 pnpm --filter @potyro/generator gen:corpus
 
+# an app's icons are Lucide names (#425), drawn from one generated path table in packages/design;
+# after bumping `lucide` + `lucide-react` (same version) regenerate it — test/lucide.test.ts checks the set
+pnpm --filter @potyro/design gen:lucide
+
 # Potyro's own words are in catalogs (#297): user-facing text in shell/views goes through
 # t`…` / <Trans> (Lingui macros), then the catalogs are regenerated — packages/i18n's
 # test/catalog.test.ts fails while they are stale. lint:i18n errors on raw text anywhere in shell

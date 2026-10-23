@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { useLingui } from "@lingui/react/macro";
 import type { PotyroRuntime } from "@potyro/runtime";
-import { ActionMenu, byPeople, type MenuEntry } from "@potyro/views";
+import { ActionMenu, Glyph, byPeople, type MenuEntry } from "@potyro/views";
 import type { Resolved } from "potyro";
 import { chooseScope } from "./scope.js";
 import { contentsOf, deleteScope, duplicateScope } from "./scope-manage.js";
@@ -162,7 +162,7 @@ export function ScopeEmpty({ runtime, onNew }: { runtime: PotyroRuntime; onNew: 
   return (
     <section className="k-scope-empty">
       <span className="k-scope-empty-icon" aria-hidden>
-        {icon}
+        <Glyph icon={icon} size={40} />
       </span>
       <p className="k-scope-empty-text">{t({ message: `Nothing here yet. Start with a first one: ${kind}.`, comment: "An app that works on one list/trip/group at a time, with none yet; kind is the app's word" })}</p>
       {byPeople(runtime, def.entity) ? (

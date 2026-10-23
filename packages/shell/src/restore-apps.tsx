@@ -15,6 +15,7 @@ import { fmt } from "@potyro/i18n";
 import { rememberAppSpace, type AccountApp } from "@potyro/store";
 import { saveUserApp, getUserApp } from "./user-apps.js";
 import { receiveCode } from "./app-modules.js";
+import { Glyph } from "@potyro/views";
 
 export interface RestoreAppsProps {
   apps: readonly AccountApp[];
@@ -72,7 +73,7 @@ export function RestoreApps({ apps, ticked, onRestore, onClose }: RestoreAppsPro
                 <label className="k-restore-row">
                   <input type="checkbox" checked={chosen.has(app.id)} onChange={() => toggle(app.id)} />
                   <span className="k-restore-icon" aria-hidden>
-                    {app.icon ?? "◇"}
+                    <Glyph icon={app.icon} size={20} fallback="◇" />
                   </span>
                   <span className="k-restore-name">{app.name}</span>
                   {size ? <span className="k-restore-size">{size}</span> : null}

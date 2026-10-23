@@ -269,7 +269,7 @@ function readTile(t: unknown): MovedTile | undefined {
   if (!isObject(t)) return undefined;
   const out: MovedTile = {};
   const displayName = str(t.displayName);
-  const icon = str(t.icon, 16);
+  const icon = str(t.icon, 48);
   if (displayName) out.displayName = displayName;
   if (icon) out.icon = icon;
   if (typeof t.hue === "number" && Number.isInteger(t.hue) && t.hue >= 0 && t.hue < 360) out.hue = t.hue;

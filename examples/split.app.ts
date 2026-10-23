@@ -184,7 +184,7 @@ async function standing(ctx: Ctx): Promise<{ expenses: Resolved[]; payments: Res
 
 // ---- categories: what the person picked; "other" until they do ----
 
-const CATEGORY_EMOJI: Record<string, string> = { food: "🍽", groceries: "🛒", transport: "🚕", stay: "🏨", fun: "🎟", bills: "💡", other: "🧾" };
+const CATEGORY_ICON: Record<string, string> = { food: "utensils", groceries: "shopping-cart", transport: "car", stay: "hotel", fun: "ticket", bills: "lightbulb", other: "receipt" };
 
 /** What a receipt is read into. A line without a price is not an item; the total checks the lines. */
 const RECEIPT = {
@@ -209,11 +209,11 @@ async function fromReceipt(ctx: Ctx): Promise<void> {
       items: [
         {
           id: "photo",
-          icon: "📷",
+          icon: "camera",
           label: ctx.t("Read a photo of it"),
           detail: ctx.t("AI reads the lines; you check them before anything is saved"),
         },
-        { id: "type", icon: "⌨", label: ctx.t("Type the lines") },
+        { id: "type", icon: "keyboard", label: ctx.t("Type the lines") },
       ],
     });
     if (!how) return;
@@ -309,11 +309,11 @@ async function settleUp(ctx: Ctx, direct = false, given?: unknown): Promise<void
     items: [
       ...moves.map((m, i) => ({
         id: String(i),
-        icon: "💸",
+        icon: "banknote",
         label: `${nameOf(m.from, ctx)} → ${nameOf(m.to, ctx)}`,
         detail: money(m.amount, ctx),
       })),
-      { id: other, icon: "＋", label: ctx.t("Record another payment") },
+      { id: other, icon: "plus", label: ctx.t("Record another payment") },
     ],
   });
   if (choice == null) return;
@@ -353,13 +353,13 @@ async function invite(ctx: Ctx): Promise<void> {
     items: [
       {
         id: "names",
-        icon: "✍",
+        icon: "pencil",
         label: ctx.t("Name them now"),
         detail: ctx.t("Ana, Tom… they can join later and say which one they are"),
       },
       {
         id: "link",
-        icon: "🔗",
+        icon: "link",
         label: ctx.t("Send a link"),
         detail: ctx.t("Whoever opens it is in, no account needed"),
       },
@@ -453,7 +453,7 @@ function dayHeading(when: unknown, ctx: Ctx): string {
 export default defineApp({
   id: "split",
   name: "Split",
-  icon: "🧾",
+  icon: "receipt",
   version: "2.0.0",
   // 2.0.0: an expense can be split by exact amounts or line by line, and has a category. A copy
   // before it would read an itemized expense as split equally — two people, two different answers —
@@ -488,7 +488,7 @@ export default defineApp({
       title,
       lines: [
         String(group.name ?? ""),
-        next ? `${nameOf(next.from, ctx)} → ${nameOf(next.to, ctx)} ${money(next.amount, ctx)}` : latest ? `${CATEGORY_EMOJI[String(latest.category || "other")] ?? "🧾"} ${String(latest.description ?? "")} ${money(minorOf(latest.amount), ctx)}` : "",
+        next ? `${nameOf(next.from, ctx)} → ${nameOf(next.to, ctx)} ${money(next.amount, ctx)}` : latest ? `${String(latest.description ?? "")} ${money(minorOf(latest.amount), ctx)}` : "",
       ].filter(Boolean),
     };
   },
@@ -500,7 +500,7 @@ export default defineApp({
   entities: {
     group: {
       label: "Group",
-      icon: "👥",
+      icon: "users",
       displayField: "name",
       fields: {
         name: {
@@ -530,7 +530,7 @@ export default defineApp({
         // transfer it goes straight to the payment, and with several it asks which).
         settle: {
           label: "Settle up",
-          icon: "💸",
+          icon: "banknote",
           // From a row of the balances, the row says which payment (`input`); else you choose.
           run: (_group, ctx, input) => settleUp(ctx, true, input),
         },
@@ -539,7 +539,7 @@ export default defineApp({
 
     expense: {
       label: "Expense",
-      icon: "🧾",
+      icon: "receipt",
       displayField: "description",
       fields: {
         description: {
@@ -705,7 +705,7 @@ export default defineApp({
 
     payment: {
       label: "Payment",
-      icon: "💸",
+      icon: "banknote",
       displayField: "note",
       fields: {
         from: { type: "member", label: "From", default: (ctx) => ctx.me?.id },
@@ -739,14 +739,14 @@ export default defineApp({
     {
       id: "new-expense",
       label: "Add expense",
-      icon: "＋",
+      icon: "plus",
       entity: "expense",
       mode: "form",
     },
     {
       id: "settle",
       label: "Record a payment",
-      icon: "💸",
+      icon: "banknote",
       entity: "payment",
       mode: "form",
     },
@@ -758,7 +758,7 @@ export default defineApp({
       // "Expenses", not the group's name: the header's chip already says which group you are in,
       // and a tab labelled "Flat" next to a tab labelled "Payments" reads like two unrelated things.
       title: "Expenses",
-      icon: "🧾",
+      icon: "receipt",
       // The answer first (#105, Splitwise's group screen): where you stand, in the header; then who
       // owes whom and the way out of it; then what it is made of, by day.
       summary: [
@@ -780,8 +780,8 @@ export default defineApp({
       primaryAction: "new-expense",
       // Settling is each row's Settle below (and Payments' own page); here only what adds to the group.
       actions: [
-        { label: "Split a receipt", icon: "📷", run: fromReceipt },
-        { label: "Invite", icon: "👋", run: invite },
+        { label: "Split a receipt", icon: "camera", run: fromReceipt },
+        { label: "Invite", icon: "hand", run: invite },
       ],
       layout: {
         type: "stack",
@@ -841,7 +841,7 @@ export default defineApp({
                   );
                 },
                 // The category's emoji leads the row: the feed's rhythm, and what it was at a glance.
-                icon: (e: Resolved) => CATEGORY_EMOJI[String(e.kind)] ?? "🧾",
+                icon: (e: Resolved) => CATEGORY_ICON[String(e.kind)] ?? "receipt",
               },
               onOpen: { page: "expense", param: { expenseId: "id" } },
               emptyText: "No expenses yet. Add the first one, or split a receipt.",
@@ -855,7 +855,7 @@ export default defineApp({
       // Where the money went: by category, by person, and over the days.
       id: "where",
       title: "Where it went",
-      icon: "📊",
+      icon: "chart-bar",
       layout: {
         type: "stack",
         items: [
@@ -925,8 +925,8 @@ export default defineApp({
     {
       id: "history",
       title: "Payments",
-      icon: "💸",
-      actions: [{ label: { text: "Settle up", context: "payments page" }, icon: "💸", run: settleUp }],
+      icon: "banknote",
+      actions: [{ label: { text: "Settle up", context: "payments page" }, icon: "banknote", run: settleUp }],
       primaryAction: 0,
       view: {
         type: "list",

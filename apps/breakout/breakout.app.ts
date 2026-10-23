@@ -426,7 +426,7 @@ function mountGame(el: HTMLElement, props: ViewProps): () => void {
 export default defineApp({
   id: "breakout",
   name: "Breakout", // the game's name, the same in every language
-  icon: "🧱",
+  icon: "brick-wall",
   version: "1.1.0",
   schemaVersion: 1,
   language: "en",
@@ -458,14 +458,14 @@ export default defineApp({
     {
       id: "play",
       title: "Play",
-      icon: "🎮",
+      icon: "gamepad-2",
       fullscreen: true,
       view: { type: "custom", entity: "run", mount: mountGame },
     },
     {
       id: "scores",
       title: "Scores",
-      icon: "🏆",
+      icon: "trophy",
       view: {
         type: "list",
         entity: "run",

@@ -17187,3 +17187,34 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-studio-bar:has(.k-studio-tabs) {
   justify-content: space-between;
 }
+
+/* An app's icon drawn the system's way (#425, DESIGN.md §3.5): a Lucide name becomes an <svg> in
+   the stroke of the logo, sized by where it sits; an emoji from before stays the character it is.
+   Before the paths land the icon's room is kept, empty. */
+.k-glyph-pending {
+  display: inline-block;
+}
+.k-checklist[data-layout="tiles"] .k-check-icon svg.k-glyph {
+  width: 32px;
+  height: 32px;
+}
+.k-splash-tile svg.k-glyph,
+.k-restore-icon svg.k-glyph,
+.k-card-mark svg.k-glyph,
+.k-datapage-app-glyph svg.k-glyph,
+.k-metro-mosaic-cell svg.k-glyph,
+.k-share-app .k-launch-avatar svg.k-glyph,
+.k-scope-empty-icon svg.k-glyph,
+.k-objtile-icon svg.k-glyph,
+.k-page-hero-icon svg.k-glyph,
+.k-cta-icon svg.k-glyph,
+.k-lead svg.k-glyph,
+.k-launch-avatar svg.k-glyph {
+  display: block;
+  margin: auto;
+}
+.k-map-pin-glyph svg.k-glyph,
+.k-map-card-pin svg.k-glyph,
+.k-map-list-pin svg.k-glyph {
+  display: block;
+}

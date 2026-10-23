@@ -24,7 +24,7 @@ import { LEVEL_NAMES, W } from "./words.js";
 export default defineApp({
   id: "photo-puzzle",
   name: W.appName,
-  icon: "🧩",
+  icon: "puzzle",
   version: "1.0.0",
   schemaVersion: 1,
   language: "en",
@@ -57,7 +57,7 @@ export default defineApp({
     },
   },
   pages: [
-    { id: "puzzles", title: W.puzzles, icon: "🧩", view: { type: "custom", entity: "puzzle", mount: mountPuzzles } },
+    { id: "puzzles", title: W.puzzles, icon: "puzzle", view: { type: "custom", entity: "puzzle", mount: mountPuzzles } },
     { id: "play", title: W.play, hidden: true, view: { type: "custom", entity: "puzzle", mount: mountPlay } },
   ],
 });

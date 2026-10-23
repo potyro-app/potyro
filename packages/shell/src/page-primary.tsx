@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { Resolved } from "potyro";
 import type { PageCta } from "./page-header.js";
+import { glyphOf } from "@potyro/views";
 
 interface PrimaryBarProps {
   runtime: PotyroRuntime;
@@ -50,7 +51,7 @@ function Bar({ cta }: { cta: PageCta }) {
       <button type="button" className="k-cta" onClick={cta.onRun} disabled={cta.busy} aria-busy={cta.busy || undefined} data-k-wording>
         {cta.icon ? (
           <span className="k-cta-icon" aria-hidden>
-            {cta.icon}
+            {glyphOf(cta.icon)}
           </span>
         ) : null}
         <span>{cta.label}</span>

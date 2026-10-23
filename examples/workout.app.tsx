@@ -723,18 +723,18 @@ function Train(props: ViewProps) {
             "{sets, plural, one {# set} other {# sets}} · {min} min",
             { sets: setsDone, min: Math.max(1, Math.round(elapsed / 60)) },
           ),
-          icon: "✓",
+          icon: "check",
         },
         {
           id: "keep",
           label: ctx.t("Keep training"),
-          icon: "↺",
+          icon: "rotate-ccw",
         },
         {
           id: "discard",
           label: ctx.t("Discard workout"),
           detail: ctx.t("Nothing from this workout is saved"),
-          icon: "✕",
+          icon: "x",
           destructive: true,
         },
       ],
@@ -1078,7 +1078,7 @@ const MUSCLES = ["chest", "back", "shoulders", "biceps", "triceps", "quads", "ha
 export default defineApp({
   id: "workout",
   name: "Workout",
-  icon: "🏋",
+  icon: "dumbbell",
   version: "2.0.0",
   // Routines became records and the training day an old field (2.0.0): the records change shape.
   schemaVersion: 2,
@@ -1121,14 +1121,14 @@ export default defineApp({
     {
       id: "new-routine",
       label: "New routine",
-      icon: "＋",
+      icon: "plus",
       entity: "routine",
       mode: "form",
     },
     {
       id: "new-exercise",
       label: "New exercise",
-      icon: "＋",
+      icon: "plus",
       entity: "exercise",
     },
   ],
@@ -1137,7 +1137,7 @@ export default defineApp({
     // ---- a ROUTINE: the exercises you do together, taking turns with the others in its program ----
     routine: {
       label: "Routine",
-      icon: "📋",
+      icon: "clipboard-list",
       displayField: "name",
       fields: {
         name: {
@@ -1232,7 +1232,7 @@ export default defineApp({
     // ---- an EXERCISE: the movement, and how you progress on it ----
     exercise: {
       label: "Exercise",
-      icon: "💪",
+      icon: "biceps-flexed",
       displayField: "name",
       fields: {
         name: { type: "text", required: true, label: "Name" },
@@ -1362,7 +1362,7 @@ export default defineApp({
     // ---- HISTORY: each finished workout is one record, with nested lists inside ----
     session: {
       label: "Session",
-      icon: "🏋",
+      icon: "dumbbell",
       displayField: "label",
       fields: {
         routine: {
@@ -1493,7 +1493,7 @@ export default defineApp({
         // this session's last set, so the common case — the same again — is one tap.
         logSet: {
           label: "Log Set",
-          icon: "＋",
+          icon: "plus",
           run: async (s, ctx) => {
             // An entry whose exercise was deleted cannot be written back (its exercise is required);
             // the session keeps the rest.
@@ -1547,7 +1547,7 @@ export default defineApp({
       // The live workout screen — bespoke logic, so it's a custom view (full React component).
       id: "train",
       title: "Train",
-      icon: "🏋",
+      icon: "dumbbell",
       view: {
         type: "custom",
         entity: "session",
@@ -1557,7 +1557,7 @@ export default defineApp({
     {
       id: "history",
       title: "History",
-      icon: "🗓",
+      icon: "calendar",
       view: {
         type: "timeline",
         entity: "session",
@@ -1584,7 +1584,7 @@ export default defineApp({
     {
       id: "progress",
       title: "Progress",
-      icon: "📈",
+      icon: "trending-up",
       layout: {
         type: "stack",
         items: [
@@ -1695,7 +1695,7 @@ export default defineApp({
     {
       id: "program",
       title: "Program",
-      icon: "📋",
+      icon: "clipboard-list",
       description: "Routines take turns in the order you give them. Tap one to change its exercises.",
       layout: {
         type: "stack",

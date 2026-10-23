@@ -14,6 +14,7 @@ import type { BuiltinViewProps } from "./types.js";
 import { displayFieldFor, formatDateValue, humanizeKey } from "./format.js";
 import { mapOnOpen } from "./builtins.js";
 import { Lead } from "./lead.js";
+import { Glyph } from "./glyph.js";
 import { byPeople } from "./edit-lock.js";
 import { formatDateRelative, startOfDay, toDate } from "./dates.js";
 
@@ -186,7 +187,11 @@ export function RelatedRecords({ runtime, pageId, index, recordId, spec, navigat
               )}
               <span className="k-list-text">
                 <span className="k-primary" data-k-value>
-                  {cell.icon && view === "timeline" ? <span aria-hidden>{cell.icon} </span> : null}
+                  {cell.icon && view === "timeline" ? (
+                    <>
+                      <Glyph icon={cell.icon} size={16} />{" "}
+                    </>
+                  ) : null}
                   {cell.primary || humanizeKey(spec.entity)}
                 </span>
                 {cell.secondary ? (

@@ -844,7 +844,7 @@ function mountGallery(el: HTMLElement, props: ViewProps): () => void {
 export default defineApp({
   id: "mirror-monsters",
   name: "Mirror Monsters",
-  icon: "👹",
+  icon: "ghost",
   version: "1.0.0",
   schemaVersion: 1,
   language: "en",
@@ -875,13 +875,13 @@ export default defineApp({
     {
       id: "mirror",
       title: "Mirror",
-      icon: "🪞",
+      icon: "scan-face",
       view: { type: "custom", entity: "snap", mount: mountMirror },
     },
     {
       id: "gallery",
       title: "Gallery",
-      icon: "🖼",
+      icon: "image",
       view: { type: "custom", entity: "snap", mount: mountGallery },
     },
   ],

@@ -10,6 +10,7 @@ import { personHue } from "@potyro/runtime";
 import type { EntityDef, Field } from "potyro";
 import type { Badge } from "./types.js";
 import { enumSwatch } from "./enum.js";
+import { Glyph } from "./glyph.js";
 
 export type LeadKind = "monogram" | "icon" | "none";
 
@@ -69,7 +70,10 @@ export interface LeadProps {
 export function Lead({ url, text, badges, kind = "monogram", icon, className = "k-lead", size = 44 }: LeadProps) {
   if (url) return <img className={`${className} k-lead-photo`} src={url} alt="" width={size} height={size} loading="lazy" decoding="async" draggable={false} />;
   if (kind === "none") return null;
-  const glyph = kind === "icon" && icon ? icon : initialOf(text);
+  const initial = initialOf(text);
+  // The icon in the system's stroke at half the lead's box (22 in a 44 lead), the initial behind a
+  // name Lucide has not.
+  const glyph = kind === "icon" && icon ? <Glyph icon={icon} size={Math.round(size / 2)} fallback={initial} /> : initial;
   return (
     <span className={className} data-glyph={kind === "icon" && icon ? "icon" : "initial"} style={leadSwatch(badges, text)} aria-hidden>
       {glyph}

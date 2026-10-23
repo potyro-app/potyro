@@ -8,7 +8,8 @@ import { DatabaseIcon } from "./data-icon.js";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { personHue, replayCase, type ActivityItem, type Case, type PotyroRuntime, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
 import type { Provenance } from "@potyro/host";
-import { LayoutHost, PageCountContext, RecordForm, TRUST_REQUEST, ViewHost, backdropKind, backdropOf, byPeople, createDefaults, usePageTitles } from "@potyro/views";
+import { Glyph, LayoutHost, PageCountContext, RecordForm, TRUST_REQUEST, ViewHost, backdropKind, backdropOf, byPeople, createDefaults, glyphOf, usePageTitles } from "@potyro/views";
+import { isLucideName } from "@potyro/design";
 import { PageHeader, type PageCta } from "./page-header.js";
 import { PrimaryBar } from "./page-primary.js";
 import { FilterChrome } from "./filter-chrome.js";
@@ -143,7 +144,9 @@ function GridTile({
   const { rows } = runtime.usePageQuery(pageId, {});
   return (
     <button type="button" className="k-objtile" onClick={onOpen}>
-      <span className="k-objtile-icon" aria-hidden>{icon}</span>
+      <span className="k-objtile-icon" aria-hidden>
+        <Glyph icon={icon} size={24} />
+      </span>
       <span className="k-objtile-count">{rows.length}</span>
       <span className="k-objtile-name">{label}</span>
     </button>
@@ -897,11 +900,12 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const viewGlyph: Record<string, ReactNode> = { list: I.list, gallery: I.galleryView, table: I.table, calendar: I.calendar, map: I.map, steps: I.steps, checklist: I.checklist, aggregate: I.aggregate, custom: I.custom, detail: I.custom };
   const pageIcon = (p: (typeof def.pages)[number]): ReactNode => {
     const v = p.view as { type?: string; entity?: string };
-    // The picture of the page's kind of view (DESIGN.md §3.5: Lucide, no emoji in the chrome). A
-    // page's declared icon and the entity's are emoji today; they stay the records' own marks
-    // inside the page until an app can name a Lucide icon (#425).
-    void p;
-    return viewGlyph[v.type ?? ""] || I.custom;
+    // The page's own icon when it names a Lucide one (#425), else its entity's; else the picture of
+    // its kind of view (DESIGN.md §3.5: Lucide, no emoji in the chrome — an emoji icon from before
+    // stays the records' own mark inside the page).
+    const kind = viewGlyph[v.type ?? ""] || I.custom;
+    const own = p.icon ?? (v.entity ? def.entities[v.entity]?.icon : undefined);
+    return isLucideName(own) ? <Glyph icon={own} size={20} fallback={kind} /> : kind;
   };
   const chromePages: ChromePage[] = [
     ...(navMode === "grid" ? [{ id: HOME, title: t({ message: "Home", comment: "The page that shows an app's kinds of record as tiles" }), icon: I.home, active: pageId === HOME, onOpen: () => navigate(HOME) }] : []),
@@ -932,7 +936,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     .map((qa) => ({
       id: qa.id,
       label: qa.label,
-      icon: qa.icon ?? def.entities[qa.entity]?.icon ?? I.plus,
+      icon: glyphOf(qa.icon ?? def.entities[qa.entity]?.icon) ?? I.plus,
       entity: qa.entity,
       onRun: () => triggerQuick(qa),
     }));
@@ -971,7 +975,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const addAction = typeof addRef === "number" ? currentPage?.actions?.[addRef] : undefined;
   const pageAdd: ChromeQuick | undefined =
     addAction && typeof addRef === "number"
-      ? { id: `page-add-${addRef}`, label: addAction.label, icon: addAction.icon ?? I.plus, entity: currentEntity ?? "", onRun: () => void runtime.runPageAction(pageId, addRef, params) }
+      ? { id: `page-add-${addRef}`, label: addAction.label, icon: glyphOf(addAction.icon) ?? I.plus, entity: currentEntity ?? "", onRun: () => void runtime.runPageAction(pageId, addRef, params) }
       : undefined;
   const backTo = (): void => {
     const list = visiblePages.find((p) => (p.view as { entity?: string }).entity === currentEntity);
@@ -1174,7 +1178,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
             <div className="k-page-hero-body">
               <div className="k-page-hero-top">
                 <span className="k-page-hero-icon k-home-icon" aria-hidden>
-                  {def.icon ?? "◆"}
+                  <Glyph icon={def.icon} size={28} fallback="◆" />
                 </span>
                 <h2 className="k-page-title">{appLabel}</h2>
               </div>
