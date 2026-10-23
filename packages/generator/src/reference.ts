@@ -486,6 +486,11 @@ export const CAPABILITIES: readonly Capability[] = [
       "the one record everything else belongs to (the current trip, project, season): `scope: { entity: \"trip\", required: true }` gives a header picker; functions read `ctx.scope.trip` and each page narrows itself: `filter: (e, ctx) => e.trip?.id === ctx.scope.trip?.id`",
     declarations: ["ScopeDef"],
     members: [{ of: "Ctx", name: "scope" }],
+    notes: [
+      "Options typed `Dynamic<T>` — a page `title`, a list's `emptyText`, an aggregate's `title`, the map `camera` — may be a",
+      "function of ctx: `title: (ctx) => `Places in ${ctx.scope.trip?.city}``, `camera: (ctx) => ctx.scope.trip?.location ?",
+      "{ center: [lng, lat], zoom: 11 } : \"fit\"`.",
+    ].join("\n"),
     cues: /\bscope\s*:|ctx\.scope\b|\b(trips?|travels?|holidays?|vacations?|projects?|seasons?|semesters?|each (?:child|kid|class|event)|current (?:trip|project|season)|podróż\w*|wyjazd\w*|projekt\w*|sezon\w*|viage\w*|projeto\w*|temporada\w*|reise\w*|saison|viaje\w*|proyecto\w*|viaggi\w*|progett\w*|stagion\w*)\b/i,
     uses: /\bscope\s*:\s*\{|ctx\.scope\b/,
   },

@@ -117,6 +117,8 @@ export interface AppChromeProps {
   locked?: boolean;
   /** The page asked for the whole screen: no bars, only the shell's own way out. */
   fullscreen?: { onExit: () => void };
+  /** The "Made with Potyro" seal (#424), at the foot of the page of an app someone else made. */
+  seal?: ReactNode;
   children: ReactNode;
 }
 
@@ -212,7 +214,7 @@ function AppMark({ name, icon, size = 18 }: { name: string; icon?: string; size?
   );
 }
 
-function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, currentEntity, tools, report, recording, trust, onApps, extras, onBack, showQuick = true, fullBleed, locked, children }: AppChromeProps) {
+function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, currentEntity, tools, report, recording, trust, onApps, extras, onBack, showQuick = true, fullBleed, locked, seal, children }: AppChromeProps) {
   const primary = pageAdd ?? primaryQuick(quick, currentEntity);
   const others = quick.filter((q) => q !== primary);
   const { t } = useLingui();
@@ -283,6 +285,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, current
       ) : null}
       <div className="k-page" data-full={fullBleed || undefined}>
         {children}
+        {seal && !fullBleed ? <div className="k-seal-foot">{seal}</div> : null}
       </div>
 
       {/* A tab bar with one tab is a label for where you already are, and it takes a phone-sized
@@ -322,7 +325,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, current
   );
 }
 
-function WideChrome({ name, icon, scope, status, pages, quick, quietQuick, currentEntity, tools, report, recording, trust, onApps, extras, onBack, pageTitle, pageKey, fullBleed, locked, children }: AppChromeProps) {
+function WideChrome({ name, icon, scope, status, pages, quick, quietQuick, currentEntity, tools, report, recording, trust, onApps, extras, onBack, pageTitle, pageKey, fullBleed, locked, seal, children }: AppChromeProps) {
   const primary = primaryQuick(quick, currentEntity);
   const ordered = primary ? [primary, ...quick.filter((q) => q !== primary)] : quick;
   const { t } = useLingui();
@@ -420,6 +423,7 @@ function WideChrome({ name, icon, scope, status, pages, quick, quietQuick, curre
           </div>
         ) : null}
         {children}
+        {seal && !fullBleed ? <div className="k-seal-foot">{seal}</div> : null}
       </div>
     </div>
   );

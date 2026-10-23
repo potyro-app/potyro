@@ -7,6 +7,7 @@
 //
 // "Keep this app" is the Add-an-app card, fed the package the link carried, as a link: sealed, never
 // "I wrote this", promotable later from the app (docs/07).
+import { SealMark } from "./seal.js";
 import { useCallback, useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -190,9 +191,7 @@ export function DemoScreen({ session, pkg, startRemix, target }: { session: Demo
     <div className="k-demo">
       <aside className="k-demo-bar" aria-label={t({ message: "About this demo", comment: "The bar above an app opened from a shared link" })}>
         <a className="k-demo-made" href={siteBase(location.pathname)}>
-          <span className="k-demo-mark" aria-hidden>
-            ✦
-          </span>
+          <SealMark hue={0} />
           <Trans comment="Demo bar: links to Potyro itself">Made with Potyro</Trans>
         </a>
         <p className="k-demo-note">
