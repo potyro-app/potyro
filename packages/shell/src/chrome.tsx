@@ -13,7 +13,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { t as tr } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { ActionMenu, usePhone, type MenuEntry } from "@potyro/views";
+import { ActionMenu, Glyph, usePhone, type MenuEntry } from "@potyro/views";
+import { isLucideName, lucideKnown } from "@potyro/design";
 import { I } from "./icons.js";
 import { personInitials } from "@potyro/runtime";
 
@@ -78,7 +79,8 @@ export interface ChromeTool {
 
 export interface AppChromeProps {
   name: string;
-  icon: string;
+  /** The app's declared icon (a Lucide name, or an emoji from before); none → its initials. */
+  icon?: string;
   /** The page's own add (`Page.add`), which the phone's "+" runs instead of its kind's quick action. */
   pageAdd?: ChromeQuick;
   /** The page has its own loud button (a bottom bar, or its own add): the sidebar's quick actions are plain. */
@@ -197,14 +199,15 @@ function toolEntry(tool: ChromeTool): MenuEntry {
 }
 
 /**
- * The app's mark (DESIGN.md §6, the app card): a small block of its hour with its initials on it.
- * The same mark the home screen's card wears, so an app is the same shape everywhere. The app's
- * declared icon stays its content, inside its pages.
+ * The app's mark (DESIGN.md §6, the app card): a small block of its hour with its icon on it, drawn
+ * in the system's stroke (#425) — its initials when it declares none. The same mark the home
+ * screen's card wears, so an app is the same shape everywhere.
  */
-function AppMark({ name }: { name: string }) {
+function AppMark({ name, icon, size = 18 }: { name: string; icon?: string; size?: number }) {
+  const initials = personInitials(name, name);
   return (
     <span className="k-app-mark" aria-hidden>
-      {personInitials(name, name)}
+      {icon && (!isLucideName(icon) || lucideKnown(icon)) ? <Glyph icon={icon} size={size} fallback={initials} /> : initials}
     </span>
   );
 }
@@ -249,7 +252,7 @@ function PhoneChrome({ name, icon, scope, status, pages, quick, pageAdd, current
             {I.apps}
           </button>
         ) : null}
-        <AppMark name={name} />
+        <AppMark name={name} icon={icon} />
         <h1 className="k-topbar-name">{name}</h1>
         {scope}
         {status}
@@ -351,7 +354,7 @@ function WideChrome({ name, icon, scope, status, pages, quick, quietQuick, curre
     <div className="k-app-wide" data-recording={recording || undefined}>
       <aside className="k-sidebar">
         <div className="k-brand">
-          <AppMark name={name} />
+          <AppMark name={name} icon={icon} size={22} />
           <h1 className="k-brand-name">{name}</h1>
         </div>
         {scope || status || extras ? (

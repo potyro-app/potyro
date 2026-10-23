@@ -12403,8 +12403,10 @@ body:has(.k-tabbar) .k-toasts {
   flex: 0 0 auto;
   font-size: 0.85rem;
 }
-/* A switch: a checkbox drawn as a track and a knob that slides — the state reads at a glance. */
-.k-switch {
+/* A switch drawn from a checkbox INPUT: a track and a knob (::after) that slides. Scoped to the input:
+   the span .k-switch of Switch/SwitchRow (views/switch.tsx) draws its own knob, and this ::after on it
+   was a second, stuck knob (owner, 2026-10-23). */
+input.k-switch {
   appearance: none;
   flex: 0 0 auto;
   position: relative;
@@ -12417,7 +12419,7 @@ body:has(.k-tabbar) .k-toasts {
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
-.k-switch::after {
+input.k-switch::after {
   content: "";
   position: absolute;
   top: 2px;
@@ -12429,24 +12431,24 @@ body:has(.k-tabbar) .k-toasts {
   box-shadow: 0 1px 2px color-mix(in oklab, var(--ink) 30%, transparent);
   transition: transform var(--dur-fast) var(--ease);
 }
-.k-switch:checked {
+input.k-switch:checked {
   background: var(--accent);
   border-color: var(--accent);
 }
-.k-switch:checked::after {
+input.k-switch:checked::after {
   transform: translateX(1rem);
 }
-.k-switch:focus-visible {
+input.k-switch:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-.k-switch:disabled {
+input.k-switch:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
 @media (prefers-reduced-motion: reduce) {
-  .k-switch,
-  .k-switch::after,
+  input.k-switch,
+  input.k-switch::after,
   .k-tile-editor-live-row,
   .k-tile-editor-live-name {
     transition: none;
@@ -16761,10 +16763,14 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   box-shadow: none;
   transition: transform var(--dur-base) var(--ease-boing), background var(--dur-fast) var(--ease);
 }
+/* On: the row's switch carries `aria-checked` on the row (SwitchRow), the bare one on itself —
+   both must land the knob at 16px, or a form's "on" knob keeps the old travel and leaves the track. */
+[aria-checked="true"] > .k-switch,
 .k-switch[aria-checked="true"] {
   background: var(--accent);
   border-color: var(--accent);
 }
+[aria-checked="true"] > .k-switch .k-switch-knob,
 .k-switch[aria-checked="true"] .k-switch-knob {
   background: var(--on-accent);
   transform: translateX(16px);
@@ -16778,6 +16784,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   width: 14px;
   height: 14px;
 }
+.k-chip-switch[aria-checked="true"] .k-switch .k-switch-knob,
 .k-chip-switch .k-switch[aria-checked="true"] .k-switch-knob {
   transform: translateX(14px);
 }
@@ -17216,5 +17223,8 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-map-pin-glyph svg.k-glyph,
 .k-map-card-pin svg.k-glyph,
 .k-map-list-pin svg.k-glyph {
+  display: block;
+}
+.k-app-mark svg.k-glyph {
   display: block;
 }

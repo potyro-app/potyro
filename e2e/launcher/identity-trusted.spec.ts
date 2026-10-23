@@ -17,18 +17,20 @@ const tile = (page: Page, name: string): Locator => page.locator(".k-launch-tile
 const avatar = (t: Locator) => t.locator(".k-launch-avatar");
 const accentOf = (t: Locator) => t.evaluate((el) => (el as HTMLElement).style.getPropertyValue("--tile-accent"));
 
-test("a built-in shows its declared name and accent, not its module id; the card wears its initials", async ({ page }) => {
+test("a built-in shows its declared name and accent, not its module id; the card wears its icon", async ({ page }) => {
   await seed(page, []);
   await openHome(page);
   const workout = tile(page, "Workout");
   await expect(workout).toBeVisible();
-  // The card is a block of the app's hour with its initials on it (DESIGN.md §6); the declared
-  // icon stays in the app's own chrome. A person's own icon for the tile (#83) still shows here.
-  await expect(avatar(workout)).toHaveText("WO");
-  await expect(avatar(workout)).toHaveAttribute("data-kind", "monogram");
+  // The card is a block of the app's hour with its icon on it, drawn in the system's stroke (#425:
+  // Workout declares `icon: "dumbbell"`); the initials are for an app that declares none. A person's
+  // own icon for the tile (#83) still wins here.
+  await expect(avatar(workout).locator("svg[data-icon='dumbbell'] path")).toBeAttached();
+  await expect(avatar(workout)).not.toContainText(/\w/);
+  await expect(avatar(workout)).toHaveAttribute("data-kind", "icon");
   expect(await accentOf(workout)).toBe("#B6E62E");
   await expect(page.locator(".k-launch-tile", { hasText: /^W?workout/ })).toHaveCount(0);
-  await expect(avatar(tile(page, "Recipes"))).toHaveText("RE");
+  await expect(avatar(tile(page, "Recipes")).locator("svg[data-icon='cooking-pot']")).toBeAttached();
 });
 
 test("three apps starting with P are three different tiles", async ({ page }) => {
