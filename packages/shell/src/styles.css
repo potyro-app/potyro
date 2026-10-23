@@ -17218,3 +17218,6 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-map-list-pin svg.k-glyph {
   display: block;
 }
+.k-app-mark svg.k-glyph {
+  display: block;
+}
