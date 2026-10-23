@@ -49,7 +49,7 @@ const LANGUAGES = [
     you: "Você",
     language: "Idioma",
     newApp: /Novo app/,
-    studioHeading: "O que você gostaria de criar?",
+    studioHeading: "O que você quer fazer?",
     describe: "Descreva o app",
   },
 ] as const;
