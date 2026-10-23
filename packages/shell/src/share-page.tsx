@@ -1,4 +1,4 @@
-// "Bring this into…" (#213): text shared into Potyro from another app — a plan, a list, a table
+// "Bring this into" (#213): text shared into Potyro from another app — a plan, a list, a table
 // another AI made — and the person picking which of their apps it goes into. The best fits come
 // first (share-inbox.ts `bestFits`, judged on this device); the person picks either way. Picking
 // opens that app with its Ask filled in, where the same review as any Ask decides what is added.
@@ -48,7 +48,7 @@ export function SharePage() {
         <Trans>Shared with Potyro</Trans>
       </p>
       <h1 className="k-share-title">
-        <Trans comment="Heading over a list of your apps: pick which one the shared text goes into">Bring this into…</Trans>
+        <Trans comment="Heading over a list of your apps: pick which one the shared text goes into">Bring this into</Trans>
       </h1>
       <figure className="k-share-preview">
         {share.title ? <figcaption>{share.title}</figcaption> : null}

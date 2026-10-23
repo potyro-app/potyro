@@ -95,7 +95,7 @@ export function ChartView({ runtime, pageId, params }: BuiltinViewProps) {
     </figcaption>
   );
 
-  if (loading || points === null) return <p className="k-muted">{t`Loading…`}</p>;
+  if (loading || points === null) return <p className="k-muted">{t`Loading`}</p>;
   if (error || points.length === 0) {
     return (
       <figure className="k-chart">

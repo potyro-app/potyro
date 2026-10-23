@@ -140,8 +140,8 @@ function AddSource({ keys, onDone }: { keys: KeyStore; onDone: () => void }) {
             <select className="k-input" aria-label={t`Where the key goes`} value={how} onChange={(e) => setHow(e.target.value as AuthChoice)}>
               {/* i18n-ignore — the HTTP header itself */}
               <option value="bearer">Authorization: Bearer</option>
-              <option value="header">{t`A header named…`}</option>
-              <option value="query">{t`A query parameter named…`}</option>
+              <option value="header">{t`A header named`}</option>
+              <option value="query">{t`A query parameter named`}</option>
             </select>
             {how === "header" || how === "query" ? (
               <input className="k-input" aria-label={how === "header" ? t`Header name` : t`Parameter name`} value={param} placeholder={/* i18n-ignore — example names, code */ how === "header" ? "X-Api-Key" : "key"} onChange={(e) => setParam(e.target.value)} />

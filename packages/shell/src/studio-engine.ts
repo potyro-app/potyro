@@ -169,7 +169,7 @@ export function studioEngine(
         if (secs === undefined) progress(text);
         else if (isCli) {
           const elapsed = seconds(secs);
-          progress(t`Changing it via ${label}… ${elapsed}`);
+          progress(t`Changing it via ${label} · ${elapsed}`);
         }
       },
     });
@@ -198,7 +198,7 @@ export function studioEngine(
         // while the model writes; what the loop does in between (a tool, a check) is said instead.
         let doing: ((elapsed: string) => string) | null = null;
         const result = await ticking(
-          (elapsed) => doing?.(elapsed) ?? t`Making it via ${label}… ${elapsed}`,
+          (elapsed) => doing?.(elapsed) ?? t`Making it via ${label} · ${elapsed}`,
           () =>
             startCreate({
               brief,
@@ -211,7 +211,7 @@ export function studioEngine(
                 }
                 // The tool's own name and arguments are code, not words: they stay as the loop wrote them.
                 const first = step.detail.split("\n")[0]!.slice(0, 80);
-                const line = step.kind === "tool" ? `${step.name}: ${first}` : step.kind === "candidate" && step.passed ? t`Checking it…` : t`Asked to try again: ${first}`;
+                const line = step.kind === "tool" ? `${step.name}: ${first}` : step.kind === "candidate" && step.passed ? t`Checking it` : t`Asked to try again: ${first}`;
                 doing = () => line;
                 progress(line);
               },
@@ -230,14 +230,14 @@ export function studioEngine(
       }
     }
     try {
-      const reply = await ticking((elapsed) => t`Making it via ${label}… ${elapsed}`, async () => {
+      const reply = await ticking((elapsed) => t`Making it via ${label} · ${elapsed}`, async () => {
         if (isCli) {
           // `system` travels separately so the dev endpoint passes it as the system prompt, replacing
           // Claude Code's own — the same setup the eval harness measures.
           return extractSource(
             await generateViaCli({ system: SYSTEM_PROMPT, prompt: buildUserMessage({ id: "studio", description: brief, language }), onProgress: (secs) => {
                 const elapsed = seconds(secs);
-                progress(t`Making it via ${label}… ${elapsed}`);
+                progress(t`Making it via ${label} · ${elapsed}`);
               },
             }),
           );
@@ -272,7 +272,7 @@ export function studioEngine(
           language,
           ...(earlier?.length ? { conversation: earlier } : {}),
           onStep: (step) => {
-            if (step.kind === "thinking") return progress(t`Thinking via ${label}…`);
+            if (step.kind === "thinking") return progress(t`Thinking via ${label}`);
             // The tool's own name and arguments are code, not words: they stay as the loop wrote them.
             const first = step.detail.split("\n")[0]!.slice(0, 80);
             if (step.kind === "tool") progress(`${step.name}: ${first}`);
@@ -296,7 +296,7 @@ export function studioEngine(
           ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}),
         };
       }
-      const result = await ticking((elapsed) => t`Changing it via ${label}… ${elapsed}`, () =>
+      const result = await ticking((elapsed) => t`Changing it via ${label} · ${elapsed}`, () =>
         guardedModify({
           attempt: (instr) => attempt(source, instr, context),
           shapeOf: async (src) => {
@@ -324,7 +324,7 @@ export function studioEngine(
   };
 
   const repair = (source: string, issues: string[]): Promise<{ source: string; summary: string; loss: string | null }> =>
-    ticking((elapsed) => t`Fixing it via ${label}… ${elapsed}`, async () => {
+    ticking((elapsed) => t`Fixing it via ${label} · ${elapsed}`, async () => {
       const result = await guardedModify({
         attempt: (instr) => attempt(source, instr),
         shapeOf: (src) => shapeOrEmpty(src, modules),

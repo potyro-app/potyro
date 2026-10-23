@@ -216,11 +216,11 @@ export default defineApp({
   const studio = page.locator(".k-studio");
   const preview = studio.locator(".k-preview");
   // Opening it in the Studio is not saying it is yours: its own code does not run here either.
-  await expect(preview.getByRole("button", { name: "Run it as mine…" })).toBeVisible({ timeout: 60_000 });
+  await expect(preview.getByRole("button", { name: "Run it as mine" })).toBeVisible({ timeout: 60_000 });
   await expect(preview.getByText("Hello from my own code")).toHaveCount(0);
 
   // The sealed screen's own button: one dialog, though the same app is open under the Studio.
-  await preview.getByRole("button", { name: "Run it as mine…" }).click();
+  await preview.getByRole("button", { name: "Run it as mine" }).click();
   await expect(page.getByRole("dialog", { name: "Let it run as yours?" })).toHaveCount(1);
   await page.getByRole("dialog", { name: "Let it run as yours?" }).getByRole("button", { name: "Cancel" }).click();
   await expect(page.getByRole("dialog", { name: "Let it run as yours?" })).toHaveCount(0);

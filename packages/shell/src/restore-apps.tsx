@@ -91,7 +91,7 @@ export function RestoreApps({ apps, ticked, onRestore, onClose }: RestoreAppsPro
           </button>
           <button type="button" className="k-add k-primary-action" onClick={() => void restore()} disabled={busy || chosen.size === 0}>
             {busy
-              ? t`Loading…`
+              ? t`Loading`
               : chosen.size === 0
                 ? t({ message: "Nothing to load", comment: "Load your apps: the button when no app is ticked" })
                 : plural(chosen.size, { one: "Load # app", other: "Load # apps" })}

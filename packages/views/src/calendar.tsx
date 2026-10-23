@@ -94,7 +94,7 @@ export function CalendarView(props: BuiltinViewProps) {
   const grid = useMemo(() => buildMonthGrid(month), [month.getFullYear(), month.getMonth()]);
   const monthLabel = fmt.date(month, { month: "long", year: "numeric" });
 
-  if (loading) return <p className="k-loading">{t`Loading…`}</p>;
+  if (loading) return <p className="k-loading">{t`Loading`}</p>;
 
   const anyThisMonth = events.some((e) => grid.some((c) => sameDay(c.date, e.date)));
 

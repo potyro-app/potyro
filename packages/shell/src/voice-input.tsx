@@ -213,9 +213,9 @@ export function VoiceStrip({ voice }: { voice: Voice }) {
       )}
       <span className="k-voice-strip-text">
         {voice.phase === "working" ? (
-          <Trans comment="Studio microphone: the recording is being turned into words (Firefox)">Writing down what you said…</Trans>
+          <Trans comment="Studio microphone: the recording is being turned into words (Firefox)">Writing down what you said</Trans>
         ) : voice.phase === "starting" ? (
-          <Trans comment="Studio microphone: turning the microphone on">Starting the microphone…</Trans>
+          <Trans comment="Studio microphone: turning the microphone on">Starting the microphone</Trans>
         ) : voice.holding ? (
           <Trans comment="Studio microphone while held down (push to talk)">Listening — let go when you’re done</Trans>
         ) : (

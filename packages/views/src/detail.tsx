@@ -74,7 +74,7 @@ export function DetailView(props: BuiltinViewProps) {
         (p.view as { entity?: string }).entity === view.entity,
     ) ?? runtime.definition.pages[0];
 
-  if (loading) return <p className="k-loading">{t`Loading…`}</p>;
+  if (loading) return <p className="k-loading">{t`Loading`}</p>;
   if (!record) return <p className="k-empty">{t`Not found.`}</p>;
 
   const label = String(record[displayFieldFor(runtime, view.entity)] ?? t`this record`);

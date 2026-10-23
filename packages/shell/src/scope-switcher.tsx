@@ -105,10 +105,10 @@ export function ScopeSwitcher({ runtime, appName, appId, onNew }: ScopeSwitcherP
           { key: "new", label: t({ message: `New ${kind}`, comment: "Scope menu: start a new list/trip/group; the app's word for it" }), icon: I.plus, onSelect: onNew },
           ...(scoped
             ? [
-                { key: "rename", label: t`Rename…`, icon: I.edit, onSelect: () => void rename() },
-                { key: "duplicate", label: t({ message: "Duplicate…", comment: "Scope menu: a copy of the list with everything in it" }), icon: I.duplicate, onSelect: () => void duplicate() },
+                { key: "rename", label: t`Rename`, icon: I.edit, onSelect: () => void rename() },
+                { key: "duplicate", label: t({ message: "Duplicate", comment: "Scope menu: a copy of the list with everything in it" }), icon: I.duplicate, onSelect: () => void duplicate() },
                 "separator" as const,
-                { key: "delete", label: t`Delete…`, icon: I.delete, danger: true, onSelect: () => void remove() },
+                { key: "delete", label: t`Delete`, icon: I.delete, danger: true, onSelect: () => void remove() },
               ]
             : []),
         ]
@@ -125,7 +125,7 @@ export function ScopeSwitcher({ runtime, appName, appId, onNew }: ScopeSwitcherP
       trigger={
         <>
           <span className="k-scope-name" data-empty={(!scoped && def.required) || undefined}>
-            {scoped ? current : def.required ? t`Choose…` : appName}
+            {scoped ? current : def.required ? t`Choose` : appName}
           </span>
           <span className="k-scope-caret" aria-hidden>
             ▾

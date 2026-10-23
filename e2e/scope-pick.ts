@@ -7,7 +7,7 @@ import { expect, type Page } from "@playwright/test";
 export async function pickScope(page: Page, name: RegExp, timeout = 30_000): Promise<void> {
   const scope = page.locator(".k-scope");
   await expect(scope).toBeVisible({ timeout });
-  await expect(scope).not.toContainText("Choose…", { timeout });
+  await expect(scope).not.toContainText("Choose", { timeout });
   if (name.test(((await scope.locator(".k-scope-name").textContent()) ?? "").trim())) return;
   await scope.click();
   await page.getByRole("menu").getByRole("menuitem", { name }).first().click();

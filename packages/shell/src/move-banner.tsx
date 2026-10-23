@@ -239,7 +239,7 @@ function Status({ phase, site }: { phase: Phase; site: string }) {
     return (
       <p className="k-move-status" role="status">
         <span className="k-move-spin" aria-hidden />
-        {p ? <Trans>Packing {name} — {done} of {total}</Trans> : <Trans>Packing your apps…</Trans>}
+        {p ? <Trans>Packing {name} — {done} of {total}</Trans> : <Trans>Packing your apps</Trans>}
       </p>
     );
   }
@@ -255,7 +255,7 @@ function Status({ phase, site }: { phase: Phase; site: string }) {
     return (
       <p className="k-move-status" role="status">
         <span className="k-move-spin" aria-hidden />
-        <Trans>Bringing them in on {site}…</Trans>
+        <Trans>Bringing them in on {site}</Trans>
       </p>
     );
   }

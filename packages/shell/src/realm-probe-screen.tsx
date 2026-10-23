@@ -102,7 +102,7 @@ export function RealmProbeScreen({ onClose }: { onClose: () => void }) {
             </button>
           ) : null}
           <button type="button" className="k-add k-primary-action" disabled={state === "running"} onClick={() => void run()}>
-            {state === "running" ? <Trans>Measuring…</Trans> : result ? <Trans>Run again</Trans> : <Trans>Run the check</Trans>}
+            {state === "running" ? <Trans>Measuring</Trans> : result ? <Trans>Run again</Trans> : <Trans>Run the check</Trans>}
           </button>
         </div>
       </div>

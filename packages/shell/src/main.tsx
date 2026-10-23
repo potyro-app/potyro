@@ -1143,7 +1143,7 @@ let sharesRegistered = false;
 
 /**
  * Text shared into Potyro from another app (#213). Kept for the session and put in front of the person
- * on the "Bring this into…" page, whatever they were looking at. The plugin holds a share that
+ * on the "Bring this into" page, whatever they were looking at. The plugin holds a share that
  * arrived before this listened, so sharing into a closed Potyro arrives too.
  */
 function registerShares(): void {

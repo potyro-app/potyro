@@ -32,7 +32,7 @@ test("the cook-along screen runs sealed in its own frame, and its steps tick", a
   await expect(page.locator("article.k-detail")).toBeVisible();
   await page.getByRole("button", { name: /Start cooking/ }).click();
   if (info.project.name === "sandbox-quickjs") {
-    await expect(page.getByRole("button", { name: "Run it as mine…" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Run it as mine" })).toBeVisible();
     return;
   }
   const el = page.locator(".k-sealed-view iframe");

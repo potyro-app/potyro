@@ -82,7 +82,7 @@ export function MaterialField({ material, onChange }: { material: Material | nul
         className="k-input k-ask-material-text"
         aria-label={t`What another AI made`}
         rows={6}
-        placeholder={t`Paste a list, a plan, a table…`}
+        placeholder={t`Paste a list, a plan, a table`}
         value={text}
         onChange={(e) => onChange({ label: material?.label ?? PASTED, text: e.target.value })}
       />

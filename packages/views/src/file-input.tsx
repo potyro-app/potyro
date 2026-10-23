@@ -153,7 +153,7 @@ export function FileInput({ runtime, field, value, onChange, label }: FileInputP
 
   const others = choices.filter((f) => f.id !== value?.id);
   const entries: MenuEntry[] = [
-    { key: "import", label: t`From this device…`, icon: "⤓", onSelect: () => void bringIn() },
+    { key: "import", label: t`From this device`, icon: "⤓", onSelect: () => void bringIn() },
     ...(others.length ? (["separator"] as MenuEntry[]) : []),
     ...others.map<MenuEntry>((f) => ({
       key: f.id,
@@ -175,7 +175,7 @@ export function FileInput({ runtime, field, value, onChange, label }: FileInputP
         entries={entries}
         busy={busy}
         buttonClassName="k-file-pick"
-        trigger={busy ? t`Bringing it in…` : word}
+        trigger={busy ? t`Bringing it in` : word}
       />
       {value ? (
         <button type="button" className="k-file-clear" onClick={() => onChange(null)} aria-label={label ? t({ message: `Remove: ${label}`, comment: "Clear a file field; label is the field's name" }) : t`Remove file`}>

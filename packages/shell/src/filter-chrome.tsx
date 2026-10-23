@@ -454,7 +454,7 @@ function GeoChip({ chip, runtime, params, setParam }: Omit<ChipProps, "entity">)
       setParam(chip.param, { lat: pos.lat, lng: pos.lng });
     } catch (e) {
       // Say so. Swallowing this left the button looking like it simply does nothing when location is
-      // denied — you press it, the label flicks to "Locating…" and back, and nothing ever explains why.
+      // denied — you press it, the label flicks to "Locating" and back, and nothing ever explains why.
       runtime.ctx.ui.toast(e instanceof Error ? e.message : t`Could not get your location`);
     } finally {
       setBusy(false);
@@ -470,7 +470,7 @@ function GeoChip({ chip, runtime, params, setParam }: Omit<ChipProps, "entity">)
         disabled={busy || !geo}
         onClick={active ? () => setParam(chip.param, undefined) : useLocation}
       >
-        {active ? `${chip.label} ✓` : busy ? t`Locating…` : chip.label}
+        {active ? `${chip.label} ✓` : busy ? t`Locating` : chip.label}
       </button>
     </div>
   );
