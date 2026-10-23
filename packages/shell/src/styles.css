@@ -17228,3 +17228,9 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-app-mark svg.k-glyph {
   display: block;
 }
+/* A picture as an icon (#425): shown as it is, fitted to its box. */
+img.k-glyph-image {
+  display: block;
+  object-fit: contain;
+  border-radius: 4px;
+}

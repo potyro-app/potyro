@@ -9,6 +9,7 @@ import { inlineDemoLink } from "./demo-link.js";
 import { previewLines, renderPreviewCard } from "./preview-card.js";
 import { shareEvent } from "./share-events.js";
 import type { UserApp } from "./user-apps.js";
+import { appKey, getEntry } from "./launcher-store.js";
 import { currentSite } from "./site.js";
 
 export interface MadeDemoLink {
@@ -46,6 +47,7 @@ async function hosted(app: UserApp, demo: DemoPackage): Promise<string> {
   const image = await renderPreviewCard({
     name,
     icon: demo.icon,
+    image: getEntry(appKey("user", app.id)).iconImage?.image,
     accent: demo.accent,
     by: by ? t({ message: `by ${by}`, comment: "Under an app's name on its link preview" }) : undefined,
     lines: previewLines(demo.seed, demo.entities),

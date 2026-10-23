@@ -50,7 +50,7 @@ import { ViewErrorBoundary } from "./view-error-boundary.js";
 
 import { chooseScope } from "./scope.js";
 import { ScopeEmpty, ScopeSwitcher, useOpeningScope } from "./scope-switcher.js";
-import { appKey, recordSignals } from "./launcher-store.js";
+import { appKey, getEntry, recordSignals, rememberIconImage, sourceHash } from "./launcher-store.js";
 import { PeoplePanel } from "./people-panel.js";
 import { ClaimPrompt } from "./guests-panel.js";
 import { ShareSheet } from "./share-sheet.js";
@@ -64,7 +64,9 @@ import { acceptLinkParams } from "potyro";
 import type { Arrival } from "./app-link.js";
 import { tracoStyle } from "./app-colour.js";
 import { I } from "./icons.js";
-import { AppColourContext } from "@potyro/views";
+import { AppColourContext, IconFilesContext } from "@potyro/views";
+import { isImagePath } from "potyro";
+import { iconDataUrlFrom } from "./icon-image.js";
 
 interface EditorState {
   entity: string;
@@ -1067,8 +1069,32 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
 
   const engineName = engineLabel(engineCfg);
 
+  // A picture icon that names a file the app ships (`icon: "icon.svg"`, #425) is reached through
+  // the app's own files: the pages' Glyphs resolve it here, and the launcher keeps a small copy for
+  // the Home card and the splash, read once the app is open.
+  const iconFiles = useMemo(() => (path: string) => runtime.ctx.files.url(path), [runtime]);
+  useEffect(() => {
+    const iconPath = def.icon;
+    if (!appId || !iconPath || !isImagePath(iconPath)) return;
+    const key = appKey("user", appId);
+    const source = getUserApp(appId)?.source;
+    if (!source || getEntry(key).iconImage?.hash === sourceHash(source)) return;
+    let live = true;
+    void runtime.ctx.files
+      .url(iconPath)
+      .then((url) => (url ? iconDataUrlFrom(url, iconPath) : null))
+      .then((image) => {
+        if (live && image) rememberIconImage(key, source, image);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [runtime, appId, def.icon]);
+
   return (
     <AppColourContext.Provider value={tracoVars}>
+    <IconFilesContext.Provider value={iconFiles}>
     <div
       className="k-app k-traco"
       // The app's words are in this language (#302): screen readers pronounce them right, and a
@@ -1458,6 +1484,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
       {sync && appId && runtime.ctx.me ? <ClaimPrompt book={runtime.core.guests} meId={runtime.ctx.me.id} appId={appId} appName={appLabel} toast={(m) => runtime.ctx.ui.toast(m)} /> : null}
       <Toasts toaster={toaster} />
     </div>
+    </IconFilesContext.Provider>
     </AppColourContext.Provider>
   );
 }

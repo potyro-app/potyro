@@ -15,6 +15,7 @@
 // from anyone — so `readMoveArchive` refuses, by name, anything that is not exactly what a Potyro
 // writes, and keeps what it accepts to the shapes the rest of the shell expects.
 
+import { ICON_IMAGE_MAX } from "potyro";
 import { t } from "@lingui/core/macro";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { parseCredit, parseLock, type AppCredit, type AppLock } from "@potyro/store";
@@ -269,7 +270,7 @@ function readTile(t: unknown): MovedTile | undefined {
   if (!isObject(t)) return undefined;
   const out: MovedTile = {};
   const displayName = str(t.displayName);
-  const icon = str(t.icon, 48);
+  const icon = str(t.icon, ICON_IMAGE_MAX);
   if (displayName) out.displayName = displayName;
   if (icon) out.icon = icon;
   if (typeof t.hue === "number" && Number.isInteger(t.hue) && t.hue >= 0 && t.hue < 360) out.hue = t.hue;

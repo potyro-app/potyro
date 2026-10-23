@@ -5,6 +5,8 @@
 // lines of its DEMO records — 1200×630, the size every network's large card expects, as a JPEG kept
 // under 300 KB (WhatsApp drops bigger ones).
 import { isLucideName, lucidePath, lucideReady } from "@potyro/design";
+import { imageIconSrc } from "@potyro/views";
+import { isImageIcon } from "potyro";
 import type { DemoSeed } from "./demo-package.js";
 
 export const CARD_W = 1200;
@@ -14,6 +16,8 @@ export const MAX_CARD_BYTES = 300 * 1024;
 export interface CardContent {
   name: string;
   icon?: string;
+  /** When `icon` names a picture the app ships: that picture, small (the launcher's `identity.image`). */
+  image?: string;
   /** The app's own colour (`theme.accent`), any CSS colour. */
   accent?: string;
   by?: string;
@@ -90,7 +94,7 @@ function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: numb
 }
 
 /** Draw the card. Separate from encoding so a test can look at what was drawn. */
-export function drawCard(ctx: Ctx, c: CardContent): void {
+export function drawCard(ctx: Ctx, c: CardContent, picture?: CanvasImageSource): void {
   const accent = c.accent || POTYRO;
   const serif = `Georgia, "Iowan Old Style", "Palatino Linotype", serif`;
   const sans = `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
@@ -126,7 +130,16 @@ export function drawCard(ctx: Ctx, c: CardContent): void {
   ctx.fillStyle = INK;
   const icon = c.icon?.trim();
   const path = icon && isLucideName(icon) ? lucidePath(icon) : undefined;
-  if (path && typeof Path2D !== "undefined") {
+  if (picture) {
+    // A picture as the icon (#425): as it is, fitted inside the tile.
+    const box = 140;
+    const w = "width" in picture && typeof picture.width === "number" ? picture.width : box;
+    const h = "height" in picture && typeof picture.height === "number" ? picture.height : box;
+    const k = Math.min(box / w, box / h);
+    const dw = w * k;
+    const dh = h * k;
+    ctx.drawImage(picture, tile.x + (tile.s - dw) / 2, tile.y + (tile.s - dh) / 2, dw, dh);
+  } else if (path && typeof Path2D !== "undefined") {
     // The icon in the system's stroke (#425): Lucide's 24-box scaled to 120px, the stroke with it.
     const box = 120;
     ctx.save();
@@ -139,8 +152,8 @@ export function drawCard(ctx: Ctx, c: CardContent): void {
     ctx.stroke(new Path2D(path));
     ctx.restore();
   } else {
-    // An emoji as the character it is; a name Lucide has not, or no icon, as the monogram.
-    const emoji = icon && !isLucideName(icon) ? icon : undefined;
+    // An emoji as the character it is; a name Lucide has not, a picture not reached, or no icon, as the monogram.
+    const emoji = icon && !isLucideName(icon) && !isImageIcon(icon) ? icon : undefined;
     ctx.font = emoji ? `120px ${sans}` : `bold 96px ${serif}`;
     ctx.fillText(emoji ?? c.name.slice(0, 2).toUpperCase(), tile.x + tile.s / 2, tile.y + tile.s / 2 + 6);
   }
@@ -222,6 +235,18 @@ export function drawCard(ctx: Ctx, c: CardContent): void {
   ctx.fillText(wrap(ctx, c.tryIt, 620, 1)[0]!, CARD_W - 72, CARD_H - 41);
 }
 
+/** The picture an icon is, loaded for the canvas: the small copy the launcher keeps, or one carried in the string. */
+async function pictureOf(c: CardContent): Promise<HTMLImageElement | undefined> {
+  const src = c.image ?? imageIconSrc(c.icon?.trim());
+  if (!src) return undefined;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(undefined);
+    img.src = src;
+  });
+}
+
 /** The card as JPEG bytes under `MAX_CARD_BYTES`, or null where this browser cannot draw one. */
 export async function renderPreviewCard(c: CardContent): Promise<Uint8Array | null> {
   if (typeof document === "undefined") return null;
@@ -231,7 +256,7 @@ export async function renderPreviewCard(c: CardContent): Promise<Uint8Array | nu
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
   if (isLucideName(c.icon?.trim())) await lucideReady();
-  drawCard(ctx, c);
+  drawCard(ctx, c, await pictureOf(c));
   for (const quality of [0.86, 0.75, 0.6, 0.45]) {
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
     if (!blob) return null;

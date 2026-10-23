@@ -66,6 +66,7 @@ export function Splash({ id, name, source, icon, verb = "Opening", failed, promo
     key: id ? appKey("user", id) : `user:${name}`,
     name: entry?.displayName ?? name,
     icon: entry?.icon ?? icon ?? entry?.identity?.icon ?? declared(source, "icon"),
+    image: entry?.icon ? undefined : entry?.iconImage?.image,
     accent: entry?.identity?.accent ?? declared(source, "accent"),
     hue: entry?.hue,
   });

@@ -17,6 +17,7 @@ import { DetailView } from "./detail.js";
 import { canDrawMaps, loadMapLibre, mapDraws, removeMap } from "./maplibre.js";
 import { Glyph, glyphDrawable, glyphElement } from "./glyph.js";
 import { isLucideName, lucideReady } from "@potyro/design";
+import { isImagePath } from "potyro";
 
 /**
  * OpenStreetMap raster tiles — real streets, no API key. The previous default was MapLibre's
@@ -45,8 +46,10 @@ export interface MapMarker {
   lng: number;
   title: string;
   color?: string;
-  /** The record's own glyph (`display.icon`): drawn as the pin. */
+  /** The record's own icon (`display.icon`): drawn as the pin. */
   icon?: string;
+  /** When `icon` names a picture the app ships: its URL, through the app's files. */
+  iconSrc?: string;
 }
 
 /**
@@ -87,7 +90,7 @@ function toLatLng(v: unknown): { lat: number; lng: number } | null {
 }
 
 /** A record's pin: a round badge with a point, its icon (#425) inside, in the marker's colour when it has one. */
-function iconPin(icon: string, color: string | undefined): HTMLElement {
+function iconPin(icon: string, color: string | undefined, src?: string): HTMLElement {
   const el = document.createElement("div");
   el.className = "k-map-pin";
   if (color) el.style.setProperty("--pin", color);
@@ -95,7 +98,7 @@ function iconPin(icon: string, color: string | undefined): HTMLElement {
   head.className = "k-map-pin-head";
   const glyph = document.createElement("span");
   glyph.className = "k-map-pin-glyph";
-  glyph.appendChild(glyphElement(icon, 18));
+  glyph.appendChild(glyphElement(icon, 18, { src }));
   head.appendChild(glyph);
   el.appendChild(head);
   return el;
@@ -119,7 +122,9 @@ export function useMapMarkers(runtime: PotyroRuntime, pageId: string, rows: Reso
         const colorRaw = await resolve("color", row);
         const iconRaw = await resolve("display.icon", row);
         const icon = iconRaw == null ? "" : String(iconRaw).trim();
-        return { id: row.id, lat: geo.lat, lng: geo.lng, title, color: colorRaw == null ? undefined : String(colorRaw), ...(icon ? { icon } : {}) };
+        // A pin that is a picture the app ships (#425): its URL now, the pins are built outside React.
+        const iconSrc = isImagePath(icon) ? await ctx.files.url(icon).catch(() => null) : null;
+        return { id: row.id, lat: geo.lat, lng: geo.lng, title, color: colorRaw == null ? undefined : String(colorRaw), ...(icon ? { icon } : {}), ...(iconSrc ? { iconSrc } : {}) };
       }),
     ).then(async (ms) => {
       const list = ms.filter((m): m is MapMarker => m !== null);
@@ -466,7 +471,7 @@ export function MapView(props: BuiltinViewProps) {
       const bounds = new maplibre.LngLatBounds();
       for (const mk of markers) {
         // A record with its own glyph is pinned BY it: an emoji in a round badge of its colour.
-        const marker = (glyphDrawable(mk.icon) ? new maplibre.Marker({ element: iconPin(mk.icon, mk.color), anchor: "bottom" }) : new maplibre.Marker({ color: mk.color })).setLngLat([mk.lng, mk.lat]);
+        const marker = (glyphDrawable(mk.icon, mk.iconSrc) ? new maplibre.Marker({ element: iconPin(mk.icon, mk.color, mk.iconSrc), anchor: "bottom" }) : new maplibre.Marker({ color: mk.color })).setLngLat([mk.lng, mk.lat]);
         // Tapping a pin shows WHICH place it is, and offers a way in. Navigating straight off the
         // tap gave no way to just look at the map: every touch left the page.
         const onOpen = onOpenRef.current;

@@ -21,8 +21,15 @@ entity's, a page's, an action's, a `ui.sheet` item's, a `display.icon` per recor
 a Lucide icon** (`"shopping-cart"`, kebab-case as on lucide.dev; #425, DESIGN.md §3.5): the shell
 draws it in the system's stroke wherever it shows it (a tab, a tile, a row's lead, a button, the
 share image), from one lazy chunk of paths that the service worker precaches. Lucide's older names
-(`"edit"`, `"home"`) still resolve. An emoji from before keeps working, as the character it is; a
-name Lucide does not have shows the monogram (or nothing, where there is no name to make one from). The tile is the accent darkened,
+(`"edit"`, `"home"`) still resolve. An icon may also be a **picture**: a file the app ships
+(`icon: "icon.svg"`, `"art/logo.png"` — a path in its own folder, reached through `ctx.files`), an
+inline `<svg>…</svg>` string, or a `data:image/…` URL (the last two live in the source, which is what
+a generated app can carry; at most 64 KB). A picture is shown as it is, through `<img>` or drawn on a
+canvas — never inserted as markup, so nothing in it runs, sealed or not; the SVG text is cleaned of
+scripts, handlers and outside references besides. The launcher keeps a small copy of a shipped
+picture once the app has opened, for the Home card, the splash and the share card. An emoji from
+before keeps working, as the character it is; a name Lucide does not have, or a picture that cannot
+be reached, shows the monogram (or nothing, where there is no name to make one from). The tile is the accent darkened,
 in OKLCH, until white text on it reaches WCAG AA (4.5:1); an accent that already does is used as
 written. `category` (one lowercase word: `"games"`, `"camera"`, `"everyday"`) is where the launcher
 puts the app on Start: in the group for that word, made when the first app of the kind arrives.

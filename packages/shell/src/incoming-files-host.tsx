@@ -191,7 +191,7 @@ function ChooseApp({ files, onClose }: { files: File[]; onClose: () => void }) {
         ) : null}
         <ul className="k-share-apps" aria-label={t`Your apps`}>
           {apps.map((app) => {
-            const identity = tileIdentity({ key: app.key, name: app.name, icon: app.icon, accent: app.accent, hue: app.entry.hue });
+            const identity = tileIdentity({ key: app.key, name: app.name, icon: app.icon, image: app.image, accent: app.accent, hue: app.entry.hue });
             const badge = app.id === here ? t({ message: "This app", comment: "Badge: the app you were in when files arrived" }) : fits.includes(app.id) ? t({ message: "Takes these files", comment: "Badge: an app with a file field for this kind of file" }) : null;
             return (
               <li key={app.key}>
