@@ -334,7 +334,7 @@ NAVIGATION & UX
   \`"#f69536"\`; school/ideas yellow \`"#e2b93c"\`; nature/home green \`"#49de78"\`; party/games magenta
   \`"#dc6ad4"\`; sport red \`"#e54e3c"\`; study/night indigo \`"#5d7bf1"\`. Never pink (Potyro's own).
 - Give every entity a \`label\`, and every entity, every page and the app itself an \`icon\`: a Lucide
-  icon's name as on lucide.dev (\`"shopping-cart"\`, \`"map-pin"\`), never an emoji; distinct per page.
+  name as on lucide.dev (\`"shopping-cart"\`, \`"map-pin"\`), never an emoji; distinct per page.
 - Order a detail page's \`actions\` with the one people came for first (filled). Edit and Delete are the shell's, behind "More actions".
 - Money is \`{ type: "money", currency: "EUR" }\` — whole minor units (\`4200\` is €42.00), never a
   float; lists total it. Split with \`splitEvenly(total, people)\` from \`potyro\`.
@@ -350,16 +350,15 @@ NAVIGATION & UX
 - Things to tick — shopping, packing, chores, habits — are a \`checklist\` page, never a list whose
   rows open a form to flip a boolean: \`{ type: "checklist", entity: "item", done: "bought",
   text: "name", detail: "quantity", group: "aisle", hideDone: "collapse", quickAdd: true, onOpen: {...} }\`.
-  \`done\` is a boolean field (or an enum plus \`doneValue\`); \`quickAdd\` adds the typed text as the
-  display field; the detail page keeps the rest.
-- Exactly ONE top-level list page per entity (plural title, "Sessions"); never a top-level page for one record.
-- To show a record's details, add a hidden \`detail\` page and link the list to it with
+  \`done\`: a boolean field (or an enum plus \`doneValue\`); \`quickAdd\` adds typed text as the display field.
+- Exactly ONE top-level list page per entity (plural title); never a top-level page for one record.
+- A record's details: a hidden \`detail\` page the list links to with
   \`onOpen: { page: "<detailPageId>", param: { <detailParam>: "id" } }\`: rows then open + edit it.
   \`onOpen\` may instead be a function \`(record, ctx)\` — a map's \`onSelect\` likewise — e.g.
   \`ctx.views.map(page).select(record.id)\`.
 - Add \`quickActions\` for the main create flows: \`{ id, label, icon, entity, open: true }\` (\`open\`:
   land in it); \`mode: "menu"\` picks inline when the entity's only required field is one enum.
-- Top-level \`nav: "grid"\` when the app has 3+ entities (an object-grid home); else omit it.
+- Top-level \`nav: "grid"\` when the app has 3+ entities; else omit it.
 - When one entity is what everything else belongs to (a trip and its places, a project and its tasks),
   declare a \`scope\` (CAPABILITIES: \`ctx.scope\`), never \`ctx.params\` (per page) or \`ctx.storage\` (async).
   Options typed \`Dynamic<T>\` in the REFERENCE (a page \`title\`, \`emptyText\`, the map \`camera\`) may be a

@@ -69,6 +69,7 @@ import { isImagePath } from "potyro";
 import { iconDataUrlFrom } from "./icon-image.js";
 import { Seal } from "./seal.js";
 import { useAppHead } from "./app-head.js";
+import { appAppearance, useAppTheme } from "./app-theme.js";
 
 interface EditorState {
   entity: string;
@@ -185,6 +186,9 @@ interface AppProps {
   name?: string;
   /** The colour this device gave this app (its tile's hue), if any. */
   appAccent?: string;
+  /** Where the app's own theme (`theme.appearance`, #423) goes: the document while it is open (default),
+   *  or nowhere here — the Studio's phone frame wears it itself. */
+  themeScope?: "page" | "frame";
   /** How the current app was launched — for highlighting it in the launcher. */
   currentKind?: "user";
   onExport?: () => void;
@@ -209,7 +213,7 @@ interface AppProps {
   onTrustRequest?: () => void;
 }
 
-export function App({ runtime, provenance, toaster, appId, name, appAccent, currentKind, sync, onExport, onImport, onData, generator, picker, questions, navHost, lock, onPromote, arrival, onTrustRequest }: AppProps) {
+export function App({ runtime, provenance, toaster, appId, name, appAccent, themeScope = "page", currentKind, sync, onExport, onImport, onData, generator, picker, questions, navHost, lock, onPromote, arrival, onTrustRequest }: AppProps) {
   const { t } = useLingui();
   const def = runtime.definition;
   // The saved name (Rename) as it is; one still matching the source follows it, in the person's language.
@@ -899,6 +903,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
   const hue = hueOf(accent) ?? personHue(appId ?? "potyro");
   // The tab's title and icon are the app's while it is open (DESIGN.md §8.5, #424).
   useAppHead(appLabel, hue, Boolean(appId));
+  useAppTheme(appAppearance(appId ? appKey("user", appId) : undefined, def), Boolean(appId) && themeScope === "page");
   // An app someone else made — sealed, or kept/remixed from a link with its credit — wears the seal
   // at the foot of every page (§6, §8.1); the person's own apps do not.
   const sealed = provenance === "untrusted" || Boolean(appId && getUserApp(appId)?.credit);

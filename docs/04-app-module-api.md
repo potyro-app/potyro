@@ -38,7 +38,10 @@ on the right third with its icon on it, and the seal. An app someone else made (
 remixed from a link with its credit) wears the **"Made with Potyro" seal** at the foot of every page,
 the logo's symbol with its stroke in the nearest colour the logo sheet has, leading to potyro.com;
 the shell draws it outside the app's code. `theme.accent` is the colour the Studio chooses by the
-prompt's colour word or the app's subject (§8.3), never Potyro's own pink. The tile is the accent darkened,
+prompt's colour word or the app's subject (§8.3), never Potyro's own pink. `theme.appearance`
+(`"light"` · `"dark"` · `"system"`, the default) is the app's own theme (§8.2, #423): while it is
+open the page wears it, whatever the device's Look says; the Studio shows it in the phone frame
+alone and lets the person choose it per app on their device, which wins over the declared one. The tile is the accent darkened,
 in OKLCH, until white text on it reaches WCAG AA (4.5:1); an accent that already does is used as
 written. `category` (one lowercase word: `"games"`, `"camera"`, `"everyday"`) is where the launcher
 puts the app on Start: in the group for that word, made when the first app of the kind arrives.
