@@ -69,7 +69,7 @@ msgstr "“{appName}” quer enviar um texto a um serviço de IA (OpenRouter)."
 
 #: ../shell/src/main.tsx
 msgid "“{invited}” was shared with you."
-msgstr "“{invited}” foi compartilhado com você."
+msgstr "Compartilharam “{invited}” com você."
 
 #: ../shell/src/app-source.ts
 msgid "\"{key}\" can only be in one group"
@@ -103,7 +103,7 @@ msgstr "“{name}” aparece duas vezes neste arquivo."
 
 #: ../shell/src/main.tsx
 msgid "\"{name}\" is synced; a data import would overwrite what others share."
-msgstr "“{name}” está sincronizado; importar dados sobrescreveria o que os outros compartilham."
+msgstr "“{name}” está sincronizado: importar dados apagaria o que os outros compartilham."
 
 #: ../shell/src/demo-share.ts
 msgid "“{name}” is too big to fit in a link on its own. Send its package instead: in the Studio, Files → Save as a package."
@@ -119,7 +119,7 @@ msgstr "“{name}” nunca pediu para sincronizar."
 
 #: ../shell/src/main.tsx
 msgid "“{name}” runs on this device only: it has not been allowed to sync."
-msgstr "“{name}” roda só neste dispositivo: ele não teve permissão para sincronizar."
+msgstr "“{name}” roda só neste aparelho: ele não tem permissão pra sincronizar."
 
 #: ../shell/src/version-gate.ts
 msgid "“{name}” was just updated to a newer version."
@@ -131,11 +131,11 @@ msgstr "“{name}” foi feito por outra pessoa, então roda na caixa lacrada."
 
 #: ../shell/src/add-app.ts
 msgid "“{name}” was not added: its files could not be saved. {why}"
-msgstr "“{name}” não foi adicionado: não foi possível salvar os arquivos dele. {why}"
+msgstr "Não deu pra adicionar “{name}”: os arquivos dele não salvaram. {why}"
 
 #: ../shell/src/add-app.ts
 msgid "“{name}” was not fully updated: its files could not be saved. {why}"
-msgstr "“{name}” não foi atualizado por completo: não foi possível salvar os arquivos dele. {why}"
+msgstr "“{name}” não atualizou por completo: os arquivos dele não salvaram. {why}"
 
 #: ../shell/src/version-gate.ts
 msgid "“{name}” was updated by someone you share it with."
@@ -301,7 +301,7 @@ msgstr "{0, plural, one {Ele usa um recurso que apps compartilhados ainda não t
 #. placeholder {0}: step.done.files.kept.length
 #: ../shell/src/add-app-dialog.tsx
 msgid "{0, plural, one {Kept your own version of {keptFiles}: you changed it after it came with the app.} other {Kept your own version of {keptFiles}: you changed them after it came with the app.}}"
-msgstr "{0, plural, one {Sua versão de {keptFiles} foi mantida: você a mudou depois que ela veio com o app.} other {Suas versões de {keptFiles} foram mantidas: você as mudou depois que vieram com o app.}}"
+msgstr "{0, plural, one {A gente manteve sua versão de {keptFiles}: você mudou o arquivo depois que ele veio com o app.} other {A gente manteve suas versões de {keptFiles}: você mudou os arquivos depois que eles vieram com o app.}}"
 
 #. placeholder {0}: chosen.size
 #: ../shell/src/restore-apps.tsx
@@ -346,7 +346,7 @@ msgstr "{0, plural, one {Começar com o # registro de exemplo} other {Começar c
 #. placeholder {0}: step.done.files.removed.length
 #: ../shell/src/add-app-dialog.tsx
 msgid "{0, plural, one {The new version no longer comes with {removedFiles}, so it is gone.} other {The new version no longer comes with {removedFiles}, so they are gone.}}"
-msgstr "{0, plural, one {A nova versão não vem mais com {removedFiles}, então ele foi removido.} other {A nova versão não vem mais com {removedFiles}, então eles foram removidos.}}"
+msgstr "{0, plural, one {A versão nova não vem mais com {removedFiles}, então ele saiu.} other {A versão nova não vem mais com {removedFiles}, então eles saíram.}}"
 
 #. milliseconds
 #. milliseconds
@@ -552,7 +552,7 @@ msgstr "{entityName} por {byWhat}"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "{fetches, plural, one {It is fetched once, when you add the app, and kept with it: after that the app works without the internet.} other {They are fetched once, when you add the app, and kept with it: after that the app works without the internet.}}"
-msgstr "{fetches, plural, one {Ela é baixada uma vez, quando você adiciona o app, e fica guardada com ele: depois disso o app funciona sem internet.} other {Elas são baixadas uma vez, quando você adiciona o app, e ficam guardadas com ele: depois disso o app funciona sem internet.}}"
+msgstr "{fetches, plural, one {A gente baixa ela uma vez, quando você adiciona o app, e guarda junto: depois disso o app funciona sem internet.} other {A gente baixa elas uma vez, quando você adiciona o app, e guarda junto: depois disso o app funciona sem internet.}}"
 
 #. Board: the column for cards with no value in the field
 #: ../views/src/board.tsx
@@ -821,7 +821,7 @@ msgstr "{name}: mais"
 
 #: ../shell/src/main.tsx
 msgid "{notHere, plural, one {Exported {file}. # file is not on this device yet, so it is listed in the export but not inside it.} other {Exported {file}. # files are not on this device yet, so they are listed in the export but not inside it.}}"
-msgstr "{notHere, plural, one {{file} exportado. # arquivo ainda não está neste aparelho, então aparece na lista da exportação, mas não vai dentro.} other {{file} exportado. # arquivos ainda não estão neste aparelho, então aparecem na lista da exportação, mas não vão dentro.}}"
+msgstr "{notHere, plural, one {A gente exportou {file}. # arquivo ainda não chegou neste aparelho: ele aparece na lista, mas não vai dentro.} other {A gente exportou {file}. # arquivos ainda não chegaram neste aparelho: eles aparecem na lista, mas não vão dentro.}}"
 
 #. An unnamed row of a list field: the field's word and the row's number
 #: ../views/src/list-input.tsx
@@ -862,7 +862,7 @@ msgstr "{records, plural, one {# registro} other {# registros}}"
 
 #: ../shell/src/launcher.tsx
 msgid "{records, plural, one {Moved # record.} other {Moved # records.}}"
-msgstr "{records, plural, one {# registro movido.} other {# registros movidos.}}"
+msgstr "{records, plural, one {A gente moveu # registro.} other {A gente moveu # registros.}}"
 
 #: ../shell/src/inline-edit.tsx
 msgid "{repeats, plural, one {This text is written # time in the app — all of them change.} other {This text is written # times in the app — all of them change.}}"
@@ -967,11 +967,11 @@ msgstr "+1 semana"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "<0>{doneName}</0> is added."
-msgstr "<0>{doneName}</0> foi adicionado."
+msgstr "Pronto! <0>{doneName}</0> tá nos seus apps."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "<0>{doneName}</0> is updated, with your data as it was."
-msgstr "<0>{doneName}</0> foi atualizado, com seus dados como estavam."
+msgstr "<0>{doneName}</0> atualizou, e seus dados continuam como estavam."
 
 #: ../shell/src/trust-dialog.tsx
 msgid "<0>{name}</0> runs like the apps you made, with the same reach. Put it back in the sealed box to keep it away from the rest of Potyro again."
@@ -979,7 +979,7 @@ msgstr "<0>{name}</0> roda como os apps que você fez, com o mesmo alcance. Colo
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "<0>It only works when it runs as yours.</0> Only let it if you know who made it. Otherwise it stays sealed, and it will not open."
-msgstr "<0>Ele só funciona quando roda como seu.</0> Só permita se você sabe quem o fez. Senão, ele fica lacrado e não vai abrir."
+msgstr "<0>Ele só funciona rodando como seu.</0> Só deixa se você sabe quem fez. Senão ele fica lacrado e não abre."
 
 #: ../shell/src/history.tsx
 msgid "<0>lock.json</0> — the libraries it uses, and the exact copy of each"
@@ -987,11 +987,11 @@ msgstr "<0>lock.json</0> — as bibliotecas que ele usa, e a cópia exata de cad
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "<0>Parts of it only work when it runs as yours.</0> Only let it if you know who made it. Otherwise it stays sealed, and the parts that use it will not work."
-msgstr "<0>Partes dele só funcionam quando ele roda como seu.</0> Só permita se você sabe quem o fez. Senão, ele fica lacrado e as partes que usam essa biblioteca não vão funcionar."
+msgstr "<0>Partes dele só funcionam rodando como seu.</0> Só deixa se você sabe quem fez. Senão ele fica lacrado e as partes que usam essa biblioteca não funcionam."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "<0>Parts of it only work when it runs as yours.</0> Only let it if you know who made it. Otherwise it stays sealed, and the parts that use them will not work."
-msgstr "<0>Partes dele só funcionam quando ele roda como seu.</0> Só permita se você sabe quem o fez. Senão, ele fica lacrado e as partes que usam essas bibliotecas não vão funcionar."
+msgstr "<0>Partes dele só funcionam rodando como seu.</0> Só deixa se você sabe quem fez. Senão ele fica lacrado e as partes que usam essas bibliotecas não funcionam."
 
 #. A part of an app failed; {text} says what, e.g. 'it could not be shown: …'
 #: ../views/src/part-failure.tsx
@@ -1033,7 +1033,7 @@ msgstr "um banco de dados na thread principal"
 #. Demo bar: nothing done in the demo is kept
 #: ../shell/src/demo.tsx
 msgid "A demo: nothing you do here is kept"
-msgstr "Uma demonstração: nada do que você fizer aqui fica salvo"
+msgstr "Isto é um teste: nada do que você faz aqui fica salvo"
 
 #. Edit tile, Live connections: a local address like 192.168.1.20
 #: ../shell/src/live-connections-setting.tsx
@@ -1156,7 +1156,7 @@ msgstr "Sobre {name}"
 #. The bar above an app opened from a shared link
 #: ../shell/src/demo.tsx
 msgid "About this demo"
-msgstr "Sobre esta demonstração"
+msgstr "Sobre este teste"
 
 #. The colour the shell wears
 #: ../shell/src/look-panel.tsx
@@ -1170,7 +1170,7 @@ msgstr "Cor de destaque"
 #. A colour swatch; the number is the hue on the colour wheel
 #: ../shell/src/look-panel.tsx
 msgid "Accent hue {degrees}"
-msgstr "Tom de destaque {degrees}"
+msgstr "Tom {degrees}"
 
 #. Ask review: an app's actions the proposal would run
 #. Ask review: an app's actions the proposal would run
@@ -1326,7 +1326,7 @@ msgstr "Adicionar"
 
 #: ../shell/src/main.tsx
 msgid "Add it again from its package, and choose “Replace it, keep its data”: its records stay."
-msgstr "Adicione-o de novo a partir do pacote e escolha “Substituir, mantendo os dados”: os registros ficam."
+msgstr "Adiciona de novo pelo pacote e escolhe “Trocar e manter os dados”: os registros ficam."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Add it as a second app"
@@ -1408,8 +1408,8 @@ msgid "added by you"
 msgstr "adicionado por você"
 
 #: ../shell/src/add-app-dialog.tsx
-msgid "Adding {addingName}…"
-msgstr "Adicionando {addingName}…"
+msgid "Adding {addingName}"
+msgstr "Adicionando {addingName}"
 
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/incoming-files-host.tsx
@@ -1435,7 +1435,7 @@ msgstr "IA"
 
 #: ../shell/src/tile-editor.tsx
 msgid "AI in this app has used {aiSpentWords} of your OpenRouter credit on this device."
-msgstr "A IA deste app usou {aiSpentWords} do seu crédito do OpenRouter neste dispositivo."
+msgstr "A IA deste app já usou {aiSpentWords} do seu crédito do OpenRouter neste aparelho."
 
 #: ../shell/src/app-ai.ts
 msgid "AI is turned off for this app. Turn it on again in Edit tile."
@@ -1500,7 +1500,7 @@ msgstr "Já está no seu app."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Already on this device"
-msgstr "Já está neste dispositivo"
+msgstr "Já está neste aparelho"
 
 #: ../shell/src/look-panel.tsx
 msgid "Always dark"
@@ -1604,7 +1604,7 @@ msgstr "Apps que vão entrar"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Apps to try, and to make your own"
-msgstr "Apps para testar, e para tornar seus"
+msgstr "Apps pra testar e deixar do seu jeito"
 
 #: ../shell/src/guests-panel.tsx
 msgid "Are you {name}?"
@@ -1636,11 +1636,11 @@ msgstr "Organizar o Iniciar"
 
 #: ../shell/src/launcher-metro.tsx
 msgid "Arrow keys move between tiles. Alt with an arrow moves the chosen tile. Delete takes it off Start. Escape is done."
-msgstr "As setas passam de um bloco a outro. Alt com uma seta move o bloco escolhido. Delete o tira do Iniciar. Esc termina."
+msgstr "As setas passam de um bloco pro outro. Alt com uma seta move o bloco escolhido. Delete tira ele do Iniciar. Esc termina."
 
 #: ../shell/src/launcher-metro.tsx
 msgid "Arrow keys move between tiles. Enter opens. The menu key, or Shift+F10, arranges the tiles."
-msgstr "As setas passam de um bloco a outro. Enter abre. A tecla de menu, ou Shift+F10, organiza os blocos."
+msgstr "As setas passam de um bloco pro outro. Enter abre. A tecla de menu, ou Shift+F10, organiza os blocos."
 
 #. Button: send the request to Ask
 #. The feature that adds records with AI
@@ -1721,15 +1721,15 @@ msgstr "Voltar para uma página que funciona"
 
 #: ../shell/src/splash.tsx
 msgid "Back to my apps"
-msgstr "Voltar para meus apps"
+msgstr "Voltar pros meus apps"
 
 #: ../shell/src/tile-editor.tsx
 msgid "Back to the app's own icon"
-msgstr "Voltar para o ícone do próprio app"
+msgstr "Voltar pro ícone do app"
 
 #: ../shell/src/tile-editor.tsx
 msgid "Back to the app's own name"
-msgstr "Voltar para o nome do próprio app"
+msgstr "Voltar pro nome do app"
 
 #: ../shell/src/studio-preview.tsx
 msgid "Back to the chat"
@@ -1795,7 +1795,7 @@ msgstr "Livros que li, com uma nota e um comentário"
 
 #: ../shell/src/main.tsx
 msgid "Boot error: {why}"
-msgstr "Erro ao iniciar: {why}"
+msgstr "O Potyro não abriu. {why}"
 
 #. Point chip: a text box or other input inside an app's screen, lower case
 #: ../shell/src/point-target.ts
@@ -2116,7 +2116,7 @@ msgstr "Barato, rápido, contexto de 1M: comece por aqui"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Check it"
-msgstr "Verificar"
+msgstr "Conferir"
 
 #: ../shell/src/storage-report.tsx
 msgid "Check storage speed"
@@ -2153,7 +2153,7 @@ msgstr "Escolher um arquivo"
 
 #: ../shell/src/add-app.ts
 msgid "Choose a package zip on its own, or the app's source with the files it uses"
-msgstr "Escolha só um pacote zip, ou o código-fonte do app com os arquivos que ele usa"
+msgstr "Escolhe só um pacote zip, ou o código do app com os arquivos que ele usa"
 
 #: ../shell/src/launcher.tsx
 msgid "choose an app"
@@ -2373,7 +2373,7 @@ msgstr "copiado de “{name}”"
 
 #: ../shell/src/launcher.tsx
 msgid "Copied to “{copyName}”. It starts empty — the app, not the data."
-msgstr "Copiado para “{copyName}”. Ele começa vazio: o app, não os dados."
+msgstr "A gente copiou pra “{copyName}”. Ele começa vazio: vai o app, não os dados."
 
 #. Share dialog: copy an app's words (and link)
 #: ../shell/src/identity-panel.tsx
@@ -2397,7 +2397,7 @@ msgstr "copiar dados"
 
 #: ../shell/src/launcher.tsx
 msgid "Could not add it back: {reason}"
-msgstr "Não foi possível adicionar de volta: {reason}"
+msgstr "Não deu pra adicionar de volta. {reason}"
 
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
@@ -2406,7 +2406,7 @@ msgstr "Não foi possível adicionar"
 
 #: ../shell/src/launcher.tsx
 msgid "Could not change sync: {reason}"
-msgstr "Não foi possível mudar a sincronização: {reason}"
+msgstr "Não deu pra mudar a sincronização. {reason}"
 
 #: ../views/src/checklist.tsx
 msgid "Could not delete that"
@@ -2430,11 +2430,11 @@ msgstr "Não foi possível obter sua localização."
 
 #: ../shell/src/main.tsx
 msgid "Could not import that data: {why}"
-msgstr "Não foi possível importar esses dados: {why}"
+msgstr "Não deu pra importar esses dados. {why}"
 
 #: ../shell/src/main.tsx
 msgid "Could not join: {why}"
-msgstr "Não foi possível entrar: {why}"
+msgstr "Não deu pra entrar. {why}"
 
 #: ../shell/src/studio-engine.ts
 #: ../shell/src/studio-engine.ts
@@ -2467,7 +2467,7 @@ msgstr "Não foi possível salvar"
 #: ../shell/src/main.tsx
 #: ../shell/src/version-gate.ts
 msgid "Could not update your data: {why}"
-msgstr "Não foi possível atualizar seus dados: {why}"
+msgstr "Não deu pra atualizar seus dados. {why}"
 
 #: ../views/src/checklist.tsx
 msgid "Could not work out the rest of that item"
@@ -2500,11 +2500,11 @@ msgstr "Não foi possível acessar o serviço de IA. Verifique sua conexão e te
 
 #: ../shell/src/main.tsx
 msgid "Couldn’t run “{name}” as yours, so it opens sealed."
-msgstr "Não deu para rodar “{name}” como seu, então ele abre lacrado."
+msgstr "Não deu pra rodar “{name}” como seu, então ele abre lacrado."
 
 #: ../shell/src/main.tsx
 msgid "Couldn’t run “{name}” as yours, so it opens sealed. {why}"
-msgstr "Não deu para rodar “{name}” como seu, então ele abre lacrado. {why}"
+msgstr "Não deu pra rodar “{name}” como seu, então ele abre lacrado. {why}"
 
 #. Share dialog: Save a copy failed
 #: ../shell/src/share-body.tsx
@@ -2720,7 +2720,7 @@ msgstr "Detalhes"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Directly, with everything this device lets apps do. Leave it off for an app from someone else: it then runs in the sealed box."
-msgstr "Diretamente, com tudo o que este dispositivo permite aos apps. Deixe desligado para um app de outra pessoa: assim ele roda na caixa lacrada."
+msgstr "Direto, com tudo o que este aparelho deixa os apps fazerem. Deixa desligado num app de outra pessoa: aí ele roda na caixa lacrada."
 
 #. Ask review: throw the whole proposal away
 #: ../shell/src/ask-review.tsx
@@ -3113,7 +3113,7 @@ msgstr "Buscar"
 #: ../shell/src/launcher.tsx
 #: ../shell/src/launcher.tsx
 msgid "Find an app"
-msgstr "Encontrar um app"
+msgstr "Achar um app"
 
 #: ../shell/src/data-table.tsx
 #: ../shell/src/data-table.tsx
@@ -3146,7 +3146,7 @@ msgstr "Recolher"
 
 #: ../shell/src/look-panel.tsx
 msgid "Follows this device"
-msgstr "Igual a este dispositivo"
+msgstr "Igual ao aparelho"
 
 #: ../shell/src/ask-panel.tsx
 msgid "For {sourceLabel}, which this app names."
@@ -3210,7 +3210,7 @@ msgstr "deste app"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "From this device"
-msgstr "Deste dispositivo"
+msgstr "Deste aparelho"
 
 #: ../views/src/file-input.tsx
 msgid "From this device…"
@@ -3496,7 +3496,7 @@ msgstr "Não fiz o app: o que você pediu precisa de algo que o Potyro ainda nã
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "I wrote this. Run it as mine."
-msgstr "Eu escrevi este app. Rodar como meu."
+msgstr "Fui eu que fiz. Rodar como meu."
 
 #: ../shell/src/guests-panel.tsx
 msgid "I’m not on the list"
@@ -3535,7 +3535,7 @@ msgstr "importado"
 
 #: ../shell/src/main.tsx
 msgid "Imported data into {name}."
-msgstr "Dados importados para {name}."
+msgstr "A gente importou os dados pra {name}."
 
 #. Added to the question about a device on the home network when Potyro runs as a website: an https page cannot open plain ws:// connections
 #: ../shell/src/app-sockets.ts
@@ -3554,15 +3554,15 @@ msgstr "Na caixa lacrada ele roda e desenha as próprias telas, mas só chega ao
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "In the sealed box it will not open: tick “I wrote this” below to run it as yours."
-msgstr "Na caixa lacrada ele não vai abrir: marque “Eu escrevi este app” abaixo para rodá-lo como seu."
+msgstr "Na caixa lacrada ele não abre. Marca “Fui eu que fiz” aqui embaixo pra rodar como seu."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "In the sealed box it will not open."
-msgstr "Na caixa lacrada ele não vai abrir."
+msgstr "Na caixa lacrada ele não abre."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "In the sealed box it will not open. Once it is added you can let it run as yours — only do that if you know who made it."
-msgstr "Na caixa lacrada ele não vai abrir. Depois de adicionado, você pode deixá-lo rodar como seu; só faça isso se souber quem o fez."
+msgstr "Na caixa lacrada ele não abre. Depois de adicionar, você pode deixar ele rodar como seu. Só faz isso se souber quem fez."
 
 #: ../shell/src/share-chat.ts
 msgid "Include how this app was made?"
@@ -3630,7 +3630,7 @@ msgstr "Ele já tem esses valores."
 
 #: ../shell/src/add-app.ts
 msgid "It could not be read: {unreadable}"
-msgstr "Não foi possível ler: {unreadable}"
+msgstr "Não deu pra ler. {unreadable}"
 
 #: ../views/src/part-failure.tsx
 msgid "it could not be shown: {message}"
@@ -3638,11 +3638,11 @@ msgstr "não foi possível mostrar: {message}"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "It could not be tried in the sealed box: {trialProblem}"
-msgstr "Não foi possível testá-lo na caixa lacrada: {trialProblem}"
+msgstr "Não deu pra testar na caixa lacrada. {trialProblem}"
 
 #: ../shell/src/splash.tsx
 msgid "It could not open."
-msgstr "Não foi possível abrir."
+msgstr "Ele não abriu."
 
 #: ../shell/src/ask-panel.tsx
 msgid "It couldn’t make this fit"
@@ -3650,7 +3650,7 @@ msgstr "Não conseguiu encaixar isso"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "It draws its own screens, inside the sealed box: from there they reach your data and this device only through Potyro, and only what you allow."
-msgstr "Ele desenha as próprias telas, dentro da caixa lacrada: de lá elas só chegam aos seus dados e a este dispositivo pelo Potyro, e só ao que você permitir."
+msgstr "Ele desenha as próprias telas dentro da caixa lacrada. De lá, só chega aos seus dados e a este aparelho pelo Potyro, e só no que você deixar."
 
 #: ../shell/src/files-panel.tsx
 msgid "It goes from {appName} for good. Anything in the app that uses it will no longer find it."
@@ -3678,7 +3678,7 @@ msgstr "Ele também é removido do app e não pode ser recuperado."
 
 #: ../shell/src/main.tsx
 msgid "It needs a library from the internet to open, and you said not now."
-msgstr "Ele precisa de uma biblioteca da internet para abrir, e você disse agora não."
+msgstr "Ele precisa de uma biblioteca da internet pra abrir, e você disse agora não."
 
 #: ../shell/src/ask-panel.tsx
 msgid "It needs to know one thing"
@@ -3714,7 +3714,7 @@ msgstr "Ele roda na caixa lacrada, como os apps de outras pessoas. Você pode de
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "It runs in the sealed box: it can only reach what you allow, when it asks. If you know who made it, you can let it run as yours once it is added — from the app, or from its ⋯ menu on your apps."
-msgstr "Ele roda na caixa lacrada: só acessa o que você permitir, quando ele pedir. Se você sabe quem o fez, pode deixá-lo rodar como seu depois de adicionado, pelo próprio app ou pelo menu ⋯ dele nos seus apps."
+msgstr "Ele roda na caixa lacrada: só chega ao que você deixar, quando ele pedir. Se você sabe quem fez, depois de adicionar dá pra deixar ele rodar como seu, pelo próprio app ou pelo menu ⋯ dele nos seus apps."
 
 #: ../shell/src/app-ai.ts
 msgid "It uses your own OpenRouter key from Model settings, usually under 1¢ a request."
@@ -3734,15 +3734,15 @@ msgstr "Lá ele era compartilhado. Ele entra como uma cópia sua; compartilhe de
 
 #: ../shell/src/main.tsx
 msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Apps from other people run in the sealed box unless you say otherwise. You can change this later from the app header."
-msgstr "Os dados dele sincronizam com as pessoas que o compartilham: o que o app escreve neste aparelho, elas podem ler. Apps de outras pessoas rodam na caixa lacrada, a menos que você diga o contrário. Você pode mudar isso depois no topo do app."
+msgstr "Os dados dele sincronizam com quem compartilha: o que o app escreve neste aparelho, essas pessoas leem. Apps de outras pessoas rodam na caixa lacrada, a não ser que você diga outra coisa. Dá pra mudar isso depois, no topo do app."
 
 #: ../shell/src/main.tsx
 msgid "Its data syncs with the people sharing it: what the app writes on this device, they can read. Its screens are built with its own code, so it needs to run as yours to show them. You can change this later from the app header."
-msgstr "Os dados dele sincronizam com as pessoas que o compartilham: o que o app escreve neste aparelho, elas podem ler. As telas dele são feitas com o próprio código, então ele precisa rodar como seu para mostrá-las. Você pode mudar isso depois no topo do app."
+msgstr "Os dados dele sincronizam com quem compartilha: o que o app escreve neste aparelho, essas pessoas leem. As telas dele são feitas com o próprio código, então ele precisa rodar como seu pra mostrar. Dá pra mudar isso depois, no topo do app."
 
 #: ../shell/src/add-app.ts
 msgid "Its description says it is “{said}”, and its code says “{code}”, so it was not added."
-msgstr "A descrição diz que ele é “{said}”, e o código diz “{code}”, então ele não foi adicionado."
+msgstr "A descrição diz que ele é “{said}” e o código diz “{code}”, então a gente não adicionou."
 
 #: ../shell/src/package-libraries.ts
 msgid "Its file {file} is not the copy this app was saved with, so it was not added."
@@ -3771,8 +3771,8 @@ msgid "Join, run it as yours"
 msgstr "Entrar, rodar como seu"
 
 #: ../shell/src/splash.tsx
-msgid "Joining…"
-msgstr "Entrando…"
+msgid "Joining"
+msgstr "Entrando"
 
 #: ../shell/src/move-page.tsx
 msgid "joins the one here"
@@ -3962,7 +3962,7 @@ msgstr "Deixar eu dizer para quem é cada “{label}”"
 
 #: ../shell/src/tile-editor.tsx
 msgid "Let this app send what it asks about — a photo, some text — to an AI service."
-msgstr "Permita que este app envie aquilo sobre o que pergunta — uma foto, um texto — a um serviço de IA."
+msgstr "Deixar este app mandar pra um serviço de IA o que ele pergunta: uma foto, um texto."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Libraries"
@@ -4131,11 +4131,11 @@ msgstr "Magenta"
 #: ../shell/src/demo.tsx
 #: ../shell/src/launcher.tsx
 msgid "Make it mine"
-msgstr "Tornar meu"
+msgstr "Fazer o meu"
 
 #: ../shell/src/launcher.tsx
 msgid "Make the app you need"
-msgstr "Crie o app de que você precisa"
+msgstr "Faça o app de que você precisa"
 
 #: ../shell/src/share-sheet.tsx
 msgid "Make the link"
@@ -4276,7 +4276,7 @@ msgstr "Mais páginas"
 
 #: ../shell/src/add-app.ts
 msgid "More than one of these could be the app. Name the app's own file *.app.ts or *.app.tsx."
-msgstr "Mais de um destes pode ser o app. Dê ao arquivo do app o nome *.app.ts ou *.app.tsx."
+msgstr "Mais de um desses pode ser o app. Chama o arquivo do app de *.app.ts ou *.app.tsx."
 
 #: ../views/src/checklist.tsx
 msgid "Move to “{aboveName}”"
@@ -4288,7 +4288,7 @@ msgstr "Mover para {to}"
 
 #: ../shell/src/launcher-metro.tsx
 msgid "Moved {name}."
-msgstr "{name} movido."
+msgstr "A gente moveu {name}."
 
 #: ../views/src/reorder.ts
 msgid "Moved {what} to {where}."
@@ -4356,7 +4356,7 @@ msgstr "Diga o nome do parâmetro de consulta em que a chave vai."
 
 #: ../shell/src/launcher-metro.tsx
 msgid "Name this group"
-msgstr "Dê um nome a este grupo"
+msgstr "Dar nome ao grupo"
 
 #: ../shell/src/engine-settings.tsx
 msgid "needs a WebGPU browser"
@@ -4404,11 +4404,11 @@ msgstr "novo aqui"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "New on this device"
-msgstr "Novo neste dispositivo"
+msgstr "Novo neste aparelho"
 
 #: ../shell/src/look-panel.tsx
 msgid "New: try Tiles — your apps as a wall of coloured tiles you size and group. You can come back to Classic any time."
-msgstr "Novidade: experimente Blocos — seus apps como uma parede de blocos coloridos que você redimensiona e agrupa. Dá para voltar à Clássica a qualquer momento."
+msgstr "Novidade: experimenta os Blocos, seus apps numa parede de blocos coloridos que você ajusta e agrupa. Dá pra voltar pra Clássica quando quiser."
 
 #: ../views/src/calendar.tsx
 #: ../views/src/date-input.tsx
@@ -4434,7 +4434,7 @@ msgstr "Não"
 
 #: ../shell/src/main.tsx
 msgid "No app \"{appId}\" installed to import into."
-msgstr "Nenhum app “{appId}” instalado para importar."
+msgstr "Não tem nenhum app “{appId}” aqui pra receber os dados."
 
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
@@ -4449,7 +4449,7 @@ msgstr "Ainda não há apps neste dispositivo."
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
 msgid "No apps yet — press New app to make one."
-msgstr "Ainda não há apps: toque em Novo app para criar um."
+msgstr "Nada por aqui ainda. Bora criar o primeiro? Toca em Novo app."
 
 #: ../shell/src/history.tsx
 msgid "No changes between these two versions."
@@ -4471,7 +4471,7 @@ msgstr "nenhum campo “{0}” está escrito literalmente aqui"
 
 #: ../shell/src/add-app.ts
 msgid "No file was chosen"
-msgstr "Nenhum arquivo foi escolhido"
+msgstr "Você não escolheu nenhum arquivo"
 
 #: ../shell/src/files-panel.tsx
 msgid "No files yet"
@@ -4539,7 +4539,7 @@ msgstr "Nenhum texto do Potyro corresponde a isso."
 
 #: ../shell/src/add-app.ts
 msgid "None of these is an app: choose its source (a .ts or .tsx file) or a package zip."
-msgstr "Nenhum destes é um app: escolha o código-fonte dele (um arquivo .ts ou .tsx) ou um pacote zip."
+msgstr "Nenhum desses é um app. Escolhe o código dele (um arquivo .ts ou .tsx) ou um pacote zip."
 
 #: ../shell/src/ask-sources-panel.tsx
 msgid "none yet"
@@ -4547,7 +4547,7 @@ msgstr "nenhuma ainda"
 
 #: ../shell/src/main.tsx
 msgid "Not a valid Potyro export bundle."
-msgstr "Não é um pacote de exportação válido do Potyro."
+msgstr "Isso não é um arquivo exportado pelo Potyro."
 
 #: ../shell/src/engine-settings.tsx
 msgid "not available in this browser"
@@ -4699,11 +4699,11 @@ msgstr "nada próprio"
 
 #: ../shell/src/launcher-metro.tsx
 msgid "Nothing on Start. Pin an app from All apps."
-msgstr "Nada no Iniciar. Fixe um app em Todos os apps."
+msgstr "Nada no Iniciar ainda. Fixa um app lá em Todos os apps."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "nothing on this device"
-msgstr "nada neste dispositivo"
+msgstr "nada neste aparelho"
 
 #: ../shell/src/inline-edit.tsx
 msgid "Nothing on this screen is written as plain text in the app."
@@ -4745,7 +4745,7 @@ msgstr "Ainda não há nada para investigar"
 #. Load your apps: the button when no app is ticked
 #: ../shell/src/restore-apps.tsx
 msgid "Nothing to load"
-msgstr "Nada para carregar"
+msgstr "Nada pra carregar"
 
 #: ../shell/src/filter-chrome.tsx
 msgid "Nothing to pick yet."
@@ -4797,7 +4797,7 @@ msgstr "Desligado"
 
 #: ../shell/src/tile-editor.tsx
 msgid "Offer “Ask” in this app, to add records with AI."
-msgstr "Oferecer o “Ask” neste app, para adicionar registros com IA."
+msgstr "Mostrar o “Ask” neste app, pra adicionar registros com IA."
 
 #: ../shell/src/sync-status.tsx
 msgid "Offline · changes saved here"
@@ -4836,7 +4836,7 @@ msgstr "Neste dispositivo"
 
 #: ../shell/src/tile-editor.tsx
 msgid "On this device only. The app itself keeps its own name and look."
-msgstr "Só neste dispositivo. O app mantém o próprio nome e a própria aparência."
+msgstr "Só neste aparelho. O app continua com o nome e o jeito dele."
 
 #. Model settings heading: engines that run on this computer
 #: ../shell/src/engines.ts
@@ -4859,7 +4859,7 @@ msgstr "Modelo no dispositivo"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Once it is added you can let it run as yours. Only do that if you know who made it."
-msgstr "Depois de adicionado, você pode deixá-lo rodar como seu. Só faça isso se souber quem o fez."
+msgstr "Depois de adicionar, você pode deixar ele rodar como seu. Só faz isso se souber quem fez."
 
 #: ../shell/src/engines.ts
 msgid "One key, any hosted model — DeepSeek, Qwen, Llama. Cheap models are the point of measuring."
@@ -4897,11 +4897,11 @@ msgstr "Aqui só dá para mudar as traduções de um app."
 
 #: ../shell/src/add-app.ts
 msgid "Only http and https links can be fetched"
-msgstr "Só links http e https podem ser baixados"
+msgstr "A gente só baixa links http e https"
 
 #: ../shell/src/splash.tsx
 msgid "Only let it run as yours if you know who made it. Otherwise it stays sealed, and it will not open."
-msgstr "Só deixe rodar como seu se você souber quem o fez. Senão, ele fica lacrado e não vai abrir."
+msgstr "Só deixa rodar como seu se você souber quem fez. Senão ele fica lacrado e não abre."
 
 #. Files tab of a shared app: files kept outside its shared space
 #: ../shell/src/device-files.tsx
@@ -4978,15 +4978,15 @@ msgstr "Abrir app"
 msgid "Open your apps"
 msgstr "Abrir seus apps"
 
+#: ../shell/src/splash.tsx
+msgid "Opening"
+msgstr "Abrindo"
+
 #: ../shell/src/data-page.tsx
 #: ../shell/src/file-viewer.tsx
 #: ../shell/src/studio-files.tsx
 msgid "Opening {name}…"
 msgstr "Abrindo {name}…"
-
-#: ../shell/src/splash.tsx
-msgid "Opening…"
-msgstr "Abrindo…"
 
 #. Service name; keep as is
 #: ../shell/src/engines.ts
@@ -5051,11 +5051,11 @@ msgstr "Cole uma lista, um plano, uma tabela…"
 
 #: ../shell/src/add-app.ts
 msgid "Paste the app's source first"
-msgstr "Cole primeiro o código-fonte do app"
+msgstr "Cola o código do app antes"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Paste the source"
-msgstr "Colar o código-fonte"
+msgstr "Colar o código"
 
 #: ../shell/src/identity-panel.tsx
 msgid "Paste the words from your other device."
@@ -5113,8 +5113,8 @@ msgstr "imagem"
 
 #. Tile editor: choose an image file for the tile
 #: ../shell/src/tile-editor.tsx
-msgid "Picture…"
-msgstr "Imagem…"
+msgid "Picture"
+msgstr "Imagem"
 
 #: ../shell/src/launcher.tsx
 msgid "Pin"
@@ -5187,7 +5187,7 @@ msgstr "O próprio Potyro ocupado (calibração)"
 
 #: ../shell/src/look-panel.tsx
 msgid "Potyro pink"
-msgstr "Rosa Potyro"
+msgstr "Rosa do Potyro"
 
 #. Edit tile, Live connections: Potyro's own relay where apps play together
 #: ../shell/src/live-connections-setting.tsx
@@ -5259,8 +5259,8 @@ msgid "Reading {reading}…"
 msgstr "Lendo {reading}…"
 
 #: ../shell/src/add-app-dialog.tsx
-msgid "Reading it…"
-msgstr "Lendo…"
+msgid "Reading it"
+msgstr "Lendo o app"
 
 #: ../shell/src/files-panel.tsx
 msgid "Reading the folder…"
@@ -5470,7 +5470,7 @@ msgstr "Consertado com o arquivo inteiro."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Replace it, keep its data"
-msgstr "Substituir, mantendo os dados"
+msgstr "Trocar e manter os dados"
 
 #. Files: choose another file to put in this one's place
 #: ../shell/src/files-panel.tsx
@@ -5510,15 +5510,15 @@ msgstr "Obrigatório"
 #: ../shell/src/tile-editor.tsx
 #: ../shell/src/tile-editor.tsx
 msgid "Reset"
-msgstr "Redefinir"
+msgstr "Voltar ao original"
 
 #: ../shell/src/tile-editor.tsx
 msgid "Reset icon"
-msgstr "Redefinir ícone"
+msgstr "Voltar ao ícone original"
 
 #: ../shell/src/tile-editor.tsx
 msgid "Reset name"
-msgstr "Redefinir nome"
+msgstr "Voltar ao nome original"
 
 #: ../shell/src/history.tsx
 msgid "Restore v{seq}"
@@ -5740,7 +5740,7 @@ msgstr "Diga como diria a uma pessoa: “adicione uma avaliação”, “coloque
 
 #: ../shell/src/launcher.tsx
 msgid "Say what you need and Potyro builds an app you can share. Or open one of the examples below and change it."
-msgstr "Conta o que você precisa e o Potyro monta um app pra você compartilhar. Ou abre um dos exemplos abaixo e muda ele."
+msgstr "Conta o que você precisa e o Potyro monta um app pra você compartilhar. Ou abre um exemplo aqui embaixo e muda do seu jeito."
 
 #. Studio box while the microphone listens
 #: ../shell/src/studio.tsx
@@ -5808,7 +5808,7 @@ msgstr "Ver o pedido"
 
 #: ../shell/src/add-app.ts
 msgid "seed.json is not valid JSON: {why}"
-msgstr "seed.json não é um JSON válido: {why}"
+msgstr "O seed.json não está escrito em JSON válido. {why}"
 
 #. Ask: send the answer to its question
 #. Better-wording form: send the suggestion
@@ -5839,7 +5839,7 @@ msgstr "Envie este link. Quem abrir entra no seu app e pode mudá-lo."
 
 #: ../shell/src/launcher.tsx
 msgid "Send this link. Whoever opens it joins your app and its data."
-msgstr "Envie este link. Quem abrir entra no seu app e nos dados dele."
+msgstr "Manda este link. Quem abrir entra no seu app e nos dados dele."
 
 #: ../shell/src/studio.tsx
 msgid "Send to {label}"
@@ -5892,7 +5892,7 @@ msgstr "Compartilhar"
 
 #: ../shell/src/launcher.tsx
 msgid "Share “{name}”? This turns on sync and copies its data into the synced store. You can turn it off again later."
-msgstr "Compartilhar “{name}”? Isso liga a sincronização e copia os dados dele para o armazenamento sincronizado. Você pode desligar de novo depois."
+msgstr "Compartilhar “{name}”? Isso liga a sincronização e leva os dados dele junto. Dá pra desligar depois."
 
 #. The share sheet's title
 #: ../shell/src/share-sheet.tsx
@@ -5935,7 +5935,7 @@ msgstr "Compartilhado: as edições aqui chegam a todos"
 #: ../shell/src/demo.tsx
 #: ../shell/src/main.tsx
 msgid "Shared app"
-msgstr "App compartilhado"
+msgstr "App de outra pessoa"
 
 #: ../shell/src/move-page.tsx
 msgid "Shared apps come in as your own copy, with everything in them. People you shared with keep the one on the old site."
@@ -6017,11 +6017,11 @@ msgstr "Pequeno"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "So you can see what a change does. They are examples, not anyone’s own, and you can delete them. Leave it off to start empty."
-msgstr "Para você ver o que uma mudança faz. São exemplos, não são de ninguém, e você pode apagá-los. Desmarque para começar vazio."
+msgstr "Pra você ver o que uma mudança faz. São exemplos, não são de ninguém, e dá pra apagar. Desmarca pra começar vazio."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Some libraries only work in an app that runs as yours. If one of these does, you will be told as soon as it is added."
-msgstr "Algumas bibliotecas só funcionam em um app que roda como seu. Se uma destas for assim, você vai saber assim que ele for adicionado."
+msgstr "Algumas bibliotecas só funcionam num app que roda como seu. Se for o caso de uma dessas, a gente avisa assim que ele entrar."
 
 #: ../shell/src/app-source.ts
 msgid "some of these fields come from a spread or a computed key"
@@ -6041,7 +6041,7 @@ msgstr "Alguém em “{appName}” colocou pessoas antes de elas entrarem. Escol
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "Someone sent you one, or you made it somewhere else."
-msgstr "Alguém te mandou um, ou você fez em outro lugar."
+msgstr "Alguém te mandou, ou você fez em outro lugar."
 
 #: ../shell/src/people-panel.tsx
 msgid "someone who left"
@@ -6273,7 +6273,7 @@ msgstr "Apps sincronizados se encontram pelo seu próprio relay. Ele só vê dad
 #: ../shell/src/launcher.tsx
 #: ../shell/src/metro-tile.tsx
 msgid "Synced to your other devices"
-msgstr "Sincronizado com seus outros dispositivos"
+msgstr "Sincronizado com seus outros aparelhos"
 
 #. Appearance: follow the device's light/dark setting
 #: ../shell/src/look-panel.tsx
@@ -6325,7 +6325,7 @@ msgstr "Toque em uma parte do app para falar sobre ela"
 
 #: ../shell/src/launcher-metro.tsx
 msgid "Tap a tile to change it, or drag it."
-msgstr "Toque em um bloco para mudá-lo, ou arraste-o."
+msgstr "Toca num bloco pra mudar, ou arrasta."
 
 #: ../shell/src/inline-edit.tsx
 msgid "Tap highlighted text to change it."
@@ -6444,7 +6444,7 @@ msgstr "o app mudou desde que este texto foi lido: tente de novo"
 
 #: ../shell/src/demo.tsx
 msgid "The app could not be fetched. Check the connection and try again."
-msgstr "Não foi possível baixar o app. Verifique a conexão e tente de novo."
+msgstr "Não deu pra baixar o app. Confere a internet e tenta de novo."
 
 #: ../shell/src/live-connections-setting.tsx
 msgid "The app will ask for the address again."
@@ -6462,7 +6462,7 @@ msgstr "A cor do próprio app"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "The app's source"
-msgstr "O código-fonte do app"
+msgstr "O código do app"
 
 #: ../shell/src/backup-switch.tsx
 msgid "The apps already there stay there — this is not a delete. Turn sync off for an app individually to take it back off the relay."
@@ -6518,7 +6518,7 @@ msgstr "O serviço de IA gratuito não respondeu. Tente de novo em um minuto ou 
 
 #: ../shell/src/launcher-metro.tsx
 msgid "The group is gone; its tiles stay on Start."
-msgstr "O grupo saiu; os blocos continuam no Iniciar."
+msgstr "O grupo saiu. Os blocos continuam no Iniciar."
 
 #: ../shell/src/app-source.ts
 msgid "the groups must stay the groups that are there now"
@@ -6548,7 +6548,7 @@ msgstr "O link respondeu {status}"
 
 #: ../shell/src/add-app.ts
 msgid "The link could not be fetched from here"
-msgstr "Não foi possível baixar o link daqui"
+msgstr "Não deu pra baixar o link daqui"
 
 #. Share dialog: making the link to an app's page failed
 #: ../shell/src/share-body.tsx
@@ -6603,7 +6603,7 @@ msgstr "a grade de objetos (início)"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "The old version stays in History. Files you changed are kept."
-msgstr "A versão antiga fica no histórico. Os arquivos que você mudou são mantidos."
+msgstr "A versão antiga fica no Histórico. Os arquivos que você mudou ficam."
 
 #: ../shell/src/history.tsx
 msgid "the only version kept — nothing to compare against"
@@ -6684,11 +6684,11 @@ msgstr "Não há nada para investigar: esta gravação não tem título nem uma 
 
 #: ../shell/src/restore-apps.tsx
 msgid "These are on your account. Anything you leave unticked stays there — you can pull it onto this device later."
-msgstr "Eles estão na sua conta. O que você deixar desmarcado fica lá: você pode trazer para este dispositivo depois."
+msgstr "Eles estão na sua conta. O que você deixar desmarcado fica lá, e dá pra trazer pra este aparelho depois."
 
 #: ../shell/src/add-app.ts
 msgid "These files did not land in its folder: {list}."
-msgstr "Estes arquivos não chegaram à pasta dele: {list}."
+msgstr "Estes arquivos não chegaram na pasta dele: {list}."
 
 #: ../shell/src/app-folder.ts
 msgid "These translations can't be read, so they were not saved ({problem})."
@@ -6747,11 +6747,11 @@ msgstr "Este app mudou depois que a pergunta foi feita, então a resposta seria 
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "This app could not be previewed here, so what it keeps and asks for is not shown yet."
-msgstr "Não foi possível pré-visualizar este app aqui, então ainda não aparece o que ele guarda e o que ele pede."
+msgstr "Não deu pra abrir uma prévia deste app aqui, então ainda não dá pra ver o que ele guarda e o que ele pede."
 
 #: ../shell/src/add-app.ts
 msgid "This app could not be read: {unreadable}"
-msgstr "Não foi possível ler este app: {unreadable}"
+msgstr "Não deu pra ler este app. {unreadable}"
 
 #: ../shell/src/app-source.ts
 msgid "this app doesn't call defineApp with a plain object"
@@ -6763,7 +6763,7 @@ msgstr "Este app tem uma versão mais nova. Atualize para continuar fazendo muda
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "This app has problems and cannot be added:"
-msgstr "Este app tem problemas e não pode ser adicionado:"
+msgstr "Este app tem problemas e não dá pra adicionar:"
 
 #: ../shell/src/add-app.ts
 msgid ""
@@ -6957,21 +6957,21 @@ msgstr "Este link leva o app inteiro, então os chats o mostram sem imagem de pr
 
 #: ../shell/src/add-app.ts
 msgid "This link is a package zip, which this device can only fetch from a host that allows it. Download it and add it as a file."
-msgstr "Este link é um pacote zip, que este dispositivo só consegue baixar de um servidor que permita. Baixe e adicione como arquivo."
+msgstr "Este link é um pacote zip, e este aparelho só consegue baixar de um servidor que deixa. Baixa ele e adiciona como arquivo."
 
 #: ../shell/src/demo.tsx
 #: ../shell/src/demo.tsx
 #: ../shell/src/demo.tsx
 msgid "This link is damaged: the app in it could not be read. Ask whoever sent it for a new one."
-msgstr "Este link está danificado: não foi possível ler o app dentro dele. Peça um novo a quem o enviou."
+msgstr "Este link está estragado: não deu pra ler o app dentro dele. Pede um novo pra quem mandou."
 
 #: ../shell/src/demo.tsx
 msgid "This link no longer works: whoever shared it took it down, or it was never made."
-msgstr "Este link não funciona mais: quem o compartilhou o retirou, ou ele nunca existiu."
+msgstr "Este link não funciona mais. Quem compartilhou tirou do ar, ou ele nunca existiu."
 
 #: ../shell/src/main.tsx
 msgid "This link opens an app you don't have here. Ask whoever sent it to share the app with you, then open the link again."
-msgstr "Este link abre um app que você não tem aqui. Peça a quem enviou para compartilhar o app com você e abra o link de novo."
+msgstr "Este link abre um app que você não tem aqui. Pede pra quem mandou compartilhar o app com você e abre o link de novo."
 
 #: ../shell/src/realm-probe-screen.tsx
 msgid "This makes a sealed screen busy for 3 seconds, three ways, and measures whether Potyro froze meanwhile. The counter stops while it is frozen."
@@ -7032,7 +7032,7 @@ msgstr "não foi possível ler este código-fonte"
 
 #: ../shell/src/add-app.ts
 msgid "This source does not define an app (no `defineApp` with an id)"
-msgstr "Este código-fonte não define um app (não há `defineApp` com um id)"
+msgstr "Esse código não define um app (falta um `defineApp` com id)"
 
 #: ../shell/src/version-gate.ts
 msgid "This version changes how “{name}” stores its data."
@@ -7104,7 +7104,7 @@ msgstr "Vezes em que o agente recebeu um pedido de mudança que este app não co
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "To the app’s source or its package"
-msgstr "Para o código-fonte do app ou o pacote dele"
+msgstr "Pro código do app ou pro pacote dele"
 
 #: ../views/src/date-input.tsx
 #: ../views/src/date-input.tsx
@@ -7183,19 +7183,19 @@ msgstr "Desligar o Ask neste app"
 
 #: ../shell/src/launcher.tsx
 msgid "Turn off sync for “{name}”? Its data will be copied back to local-only storage."
-msgstr "Desligar a sincronização de “{name}”? Os dados dele vão ser copiados de volta para o armazenamento só local."
+msgstr "Desligar a sincronização de “{name}”? A gente traz os dados dele de volta só pra este aparelho."
 
 #: ../shell/src/launcher.tsx
 msgid "Turn on sync for “{name}”? Its data will be copied into the synced store. The old copy is kept, so you can turn this back off."
-msgstr "Ligar a sincronização de “{name}”? Os dados dele vão ser copiados para o armazenamento sincronizado. A cópia antiga é mantida, então dá para desligar de novo."
+msgstr "Ligar a sincronização de “{name}”? A gente leva os dados dele junto e guarda a cópia antiga, então dá pra desligar de novo."
 
 #: ../shell/src/launcher.tsx
 msgid "Turn sync off"
-msgstr "Desligar a sincronização"
+msgstr "Desligar sincronização"
 
 #: ../shell/src/launcher.tsx
 msgid "Turn sync on"
-msgstr "Ligar a sincronização"
+msgstr "Ligar sincronização"
 
 #: ../shell/src/share-sync.ts
 msgid "Turn sync on for this app first — sharing needs a space to invite into."
@@ -7315,7 +7315,7 @@ msgstr "atualizado por um colaborador"
 #: ../shell/src/main.tsx
 #: ../shell/src/version-gate.ts
 msgid "Updated your data from {was} to {to}."
-msgstr "Seus dados foram atualizados de {was} para {to}."
+msgstr "A gente atualizou seus dados de {was} pra {to}."
 
 #: ../shell/src/storage-elsewhere.tsx
 msgid "Use it here"
@@ -7337,7 +7337,7 @@ msgstr "Usar sua voz para descrever o app?"
 
 #: ../shell/src/look-panel.tsx
 msgid "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
-msgstr "Usada pela tela de apps e pelo Studio, e por qualquer app que não tenha uma cor própria; a cor de um app fica no bloco dele, em <0>Editar bloco</0>."
+msgstr "Vale pra tela de apps, pro Studio e pra todo app sem cor própria. A cor de um app fica no bloco dele, em <0>Editar bloco</0>."
 
 #. Checklist: what the app suggests adding, while the add box is empty
 #: ../views/src/checklist-usuals.tsx
@@ -7589,14 +7589,14 @@ msgstr "Largo"
 msgid "Work"
 msgstr "Trabalho"
 
+#: ../shell/src/splash.tsx
+#: ../shell/src/studio-thread-view.tsx
+msgid "Working"
+msgstr "Só um instante"
+
 #: ../shell/src/ask-panel.tsx
 msgid "Working on it…"
 msgstr "Trabalhando nisso…"
-
-#: ../shell/src/splash.tsx
-#: ../shell/src/studio-thread-view.tsx
-msgid "Working…"
-msgstr "Trabalhando…"
 
 #: ../shell/src/chat-panel.tsx
 msgid "Write a message…"
@@ -7703,7 +7703,7 @@ msgstr "Você esperava: {expectation}"
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "You get your own copy to change, beside anything you already have. Then the Studio opens on it and asks what you would like to change."
-msgstr "Você ganha uma cópia sua para mudar, ao lado do que já tem. Depois o Studio abre nela e pergunta o que você quer mudar."
+msgstr "Você ganha uma cópia sua pra mudar, ao lado do que já tem. Aí o Studio abre nela e pergunta o que você quer mudar."
 
 #: ../shell/src/activity-panel.tsx
 msgid "You set {field} to {to}"
@@ -7767,7 +7767,7 @@ msgstr "Seus apps ficam abertos em uma aba por vez, para que nada que você mude
 
 #: ../shell/src/look-panel.tsx
 msgid "Your apps as cards, with a pinned row"
-msgstr "Seus apps como cartões, com uma fileira fixada"
+msgstr "Seus apps em cartões, com uma fileira de fixados"
 
 #: ../shell/src/backup-switch.tsx
 msgid "Your apps on this account"

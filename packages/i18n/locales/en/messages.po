@@ -1408,8 +1408,8 @@ msgid "added by you"
 msgstr "added by you"
 
 #: ../shell/src/add-app-dialog.tsx
-msgid "Adding {addingName}…"
-msgstr "Adding {addingName}…"
+msgid "Adding {addingName}"
+msgstr "Adding {addingName}"
 
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/incoming-files-host.tsx
@@ -3771,8 +3771,8 @@ msgid "Join, run it as yours"
 msgstr "Join, run it as yours"
 
 #: ../shell/src/splash.tsx
-msgid "Joining…"
-msgstr "Joining…"
+msgid "Joining"
+msgstr "Joining"
 
 #: ../shell/src/move-page.tsx
 msgid "joins the one here"
@@ -4978,15 +4978,15 @@ msgstr "Open app"
 msgid "Open your apps"
 msgstr "Open your apps"
 
+#: ../shell/src/splash.tsx
+msgid "Opening"
+msgstr "Opening"
+
 #: ../shell/src/data-page.tsx
 #: ../shell/src/file-viewer.tsx
 #: ../shell/src/studio-files.tsx
 msgid "Opening {name}…"
 msgstr "Opening {name}…"
-
-#: ../shell/src/splash.tsx
-msgid "Opening…"
-msgstr "Opening…"
 
 #. Service name; keep as is
 #: ../shell/src/engines.ts
@@ -5113,8 +5113,8 @@ msgstr "picture"
 
 #. Tile editor: choose an image file for the tile
 #: ../shell/src/tile-editor.tsx
-msgid "Picture…"
-msgstr "Picture…"
+msgid "Picture"
+msgstr "Picture"
 
 #: ../shell/src/launcher.tsx
 msgid "Pin"
@@ -5259,8 +5259,8 @@ msgid "Reading {reading}…"
 msgstr "Reading {reading}…"
 
 #: ../shell/src/add-app-dialog.tsx
-msgid "Reading it…"
-msgstr "Reading it…"
+msgid "Reading it"
+msgstr "Reading it"
 
 #: ../shell/src/files-panel.tsx
 msgid "Reading the folder…"
@@ -7589,14 +7589,14 @@ msgstr "Wide"
 msgid "Work"
 msgstr "Work"
 
+#: ../shell/src/splash.tsx
+#: ../shell/src/studio-thread-view.tsx
+msgid "Working"
+msgstr "Working"
+
 #: ../shell/src/ask-panel.tsx
 msgid "Working on it…"
 msgstr "Working on it…"
-
-#: ../shell/src/splash.tsx
-#: ../shell/src/studio-thread-view.tsx
-msgid "Working…"
-msgstr "Working…"
 
 #: ../shell/src/chat-panel.tsx
 msgid "Write a message…"
