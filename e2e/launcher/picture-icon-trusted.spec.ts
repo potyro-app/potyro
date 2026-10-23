@@ -77,7 +77,7 @@ test("a person picks a picture of their own for a tile (#83): it is on the card 
   const dialog = page.getByRole("dialog", { name: "Edit tile: Groceries" });
   await expect(dialog).toBeVisible();
   const chooser = page.waitForEvent("filechooser");
-  await dialog.getByRole("button", { name: "Picture…" }).click();
+  await dialog.getByRole("button", { name: "Picture" }).click();
   await (await chooser).setFiles({ name: "me.png", mimeType: "image/png", buffer: Buffer.from(PNG.split(",")[1]!, "base64") });
   // The preview wears it, made small as a PNG; the text box gives way to a word.
   await expect(dialog.locator(".k-tile-editor-preview img.k-glyph-image")).toBeVisible();

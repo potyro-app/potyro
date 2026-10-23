@@ -120,7 +120,7 @@ test("reopening an app shows the whole conversation, even after a reload", async
   await expect(thread).toContainText("Jotter, or Jottings?");
   await expect(thread.locator(".k-thread-ask").last()).toHaveText("Jotter");
   await expect(thread.locator(".k-card[data-current]")).toBeVisible();
-  await expect(thread).not.toContainText("Working…");
+  await expect(thread).not.toContainText("Working");
 });
 
 test("a change that wasn't a request reads as something that happened, never as waiting", async ({ page }) => {
@@ -160,7 +160,7 @@ test("a change that wasn't a request reads as something that happened, never as 
 
   await page.getByRole("button", { name: "Studio", exact: true }).click();
   await expect(studio(page).locator(".k-thread-event", { hasText: "Jottings" })).toBeVisible({ timeout: 30_000 });
-  await expect(studio(page).locator(".k-thread")).not.toContainText("Working…");
+  await expect(studio(page).locator(".k-thread")).not.toContainText("Working");
   // An event, not an exchange: no question bubble made out of it.
   await expect(studio(page).locator(".k-thread-ask", { hasText: "Jottings" })).toHaveCount(0);
 });

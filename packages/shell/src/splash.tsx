@@ -115,7 +115,7 @@ export function Splash({ id, name, source, icon, verb = "Opening", failed, notFo
                     });
                   }}
                 >
-                  {busy ? t`Working…` : action.label}
+                  {busy ? t`Working` : action.label}
                 </button>
               ) : null}
               <button type="button" className="k-add" onClick={() => navigateTo({ kind: "home" })}>
@@ -125,7 +125,7 @@ export function Splash({ id, name, source, icon, verb = "Opening", failed, notFo
           </>
         ) : (
           <>
-            <p className="k-splash-verb">{verb === "Joining" ? t`Joining…` : t`Opening…`}</p>
+            <p className="k-splash-verb">{verb === "Joining" ? t`Joining` : t`Opening`}</p>
             {/* Indeterminate on purpose: nothing here knows how far along it is, and a bar that
                 pretends to would be lying at a moment the person is already waiting. */}
             <span className="k-splash-bar" aria-hidden />

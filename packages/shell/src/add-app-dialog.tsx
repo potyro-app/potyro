@@ -276,7 +276,7 @@ export function AddAppDialog({
         {step.kind === "reading" || step.kind === "installing" ? (
           <p className="k-add-app-busy" role="status">
             <span className="k-media-bar" aria-hidden />
-            {step.kind === "reading" ? t`Reading it…` : t`Adding ${addingName}…`}
+            {step.kind === "reading" ? t`Reading it` : t`Adding ${addingName}`}
           </p>
         ) : null}
 
