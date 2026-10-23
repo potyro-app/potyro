@@ -1563,6 +1563,7 @@ msgstr "Studio de apps"
 
 #: ../shell/src/look-panel.tsx
 #: ../shell/src/look-panel.tsx
+#: ../shell/src/studio.tsx
 msgid "Appearance"
 msgstr "Apariencia"
 
@@ -2359,8 +2360,10 @@ msgstr "Continuar “{0}”"
 msgid "Conversation"
 msgstr "Conversación"
 
+#. Studio: the published link is on the clipboard
 #: ../shell/src/realm-probe-screen.tsx
 #: ../shell/src/share-body.tsx
+#: ../shell/src/studio.tsx
 msgid "Copied"
 msgstr "Copiado"
 
@@ -2378,7 +2381,9 @@ msgstr "Copiada en “{copyName}”. Empieza vacía: la app, no los datos."
 msgid "Copy"
 msgstr "Copiar"
 
+#. Studio: copy the app's published link
 #: ../shell/src/share-body.tsx
+#: ../shell/src/studio.tsx
 msgid "Copy link"
 msgstr "Copiar enlace"
 
@@ -2558,6 +2563,7 @@ msgstr "Cian"
 
 #. Appearance
 #: ../shell/src/look-panel.tsx
+#: ../shell/src/studio.tsx
 msgid "Dark"
 msgstr "Oscuro"
 
@@ -3964,6 +3970,7 @@ msgstr "Bibliotecas"
 
 #. Appearance
 #: ../shell/src/look-panel.tsx
+#: ../shell/src/studio.tsx
 msgid "Light"
 msgstr "Claro"
 
@@ -5214,6 +5221,7 @@ msgstr "Mes anterior"
 
 #. Studio: share the app by a link
 #: ../shell/src/studio.tsx
+#: ../shell/src/studio.tsx
 msgid "Publish"
 msgstr "Publicar"
 
@@ -6269,6 +6277,7 @@ msgstr "Sincronizada con tus otros dispositivos"
 
 #. Appearance: follow the device's light/dark setting
 #: ../shell/src/look-panel.tsx
+#: ../shell/src/studio.tsx
 msgid "System"
 msgstr "Sistema"
 

@@ -816,7 +816,7 @@ export const structureSchema = z.object({
   // against the maps by `checkWords`, after this.
   language: zLanguage.optional(),
   languages: z.array(zLanguage).min(1).optional(),
-  theme: z.object({ accent: z.string().optional(), background: backdropSchema.optional() }).optional(),
+  theme: z.object({ accent: z.string().optional(), background: backdropSchema.optional(), appearance: z.enum(["light", "dark", "system"]).optional() }).optional(),
   // A function, or the sealed box's placeholder for one (a definition read out of it).
   tile: z.union([zFn, z.literal("__potyro_fn__")]).optional(),
   demo: z.union([zFn, z.literal("__potyro_fn__")]).optional(),

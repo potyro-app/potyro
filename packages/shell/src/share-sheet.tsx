@@ -9,6 +9,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { DEFAULT_NAME, peekIdentity } from "@potyro/identity";
 import { ShareBody } from "./dialog.js";
 import type { UserApp } from "./user-apps.js";
+import { appKey, updateEntry } from "./launcher-store.js";
 import type { MadeDemoLink } from "./demo-share.js";
 import { creditLine } from "./credit-words.js";
 import { shareEvent } from "./share-events.js";
@@ -55,7 +56,10 @@ export function ShareSheet({ app, onClose, onInvite, clipRoot }: ShareSheetProps
     setState({ kind: "making" });
     try {
       const { makeDemoLink } = await import("./demo-share.js");
-      setState({ kind: "made", made: await makeDemoLink(app, { by: showName ? myName : undefined }) });
+      const made = await makeDemoLink(app, { by: showName ? myName : undefined });
+      // A hosted link is the app published (#423): the Studio's Publish becomes Copy link.
+      if (made.hosted) updateEntry(appKey("user", app.id), { published: { link: made.link, at: new Date().toISOString() } });
+      setState({ kind: "made", made });
     } catch (e) {
       setState({ kind: "failed", why: e instanceof Error ? e.message : String(e) });
     }

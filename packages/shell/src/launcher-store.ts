@@ -38,6 +38,11 @@ export interface LauncherEntry {
   /** User override for the tile's colour: a hue on the same twelve-step wheel tiles derive from
    *  their key, chosen from the tile editor (#83). Falls back to the declared accent, then the key. */
   hue?: number;
+  /** This device's choice of light or dark for the app (the Studio's switch, #423); falls back to
+   *  the app's own `theme.appearance`, then the device's. */
+  appearance?: "light" | "dark" | "system";
+  /** The hosted link the app was published with (#423): Publish becomes Copy link once there is one. */
+  published?: { link: string; at: string };
   pinned?: boolean;
   /** Manual position among pinned. */
   order?: number;

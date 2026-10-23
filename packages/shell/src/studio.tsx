@@ -59,6 +59,7 @@ import type { MessageDescriptor } from "@lingui/core";
 import { ShareSheet } from "./share-sheet.js";
 import { getEntry, updateEntry } from "./launcher-store.js";
 import { hueColour } from "./tile-identity.js";
+import type { Appearance } from "./app-theme.js";
 import { tracoOf } from "./app-colour.js";
 
 /** The eleven hours an app may wear (DESIGN.md §10); 12 o'clock is Potyro's own and stays empty. */
@@ -191,6 +192,11 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   // The app's colour, chosen on the clock above its preview: the launcher's tile colour (#83), so
   // it is the same colour everywhere; the preview wears it at once.
   const [hue, setHue] = useState<number | undefined>(undefined);
+  // The app's theme on this device — light, dark or the system's — chosen beside the clock (#423).
+  const [appearance, setAppearance] = useState<Appearance>("system");
+  // Published once (a hosted link made): the bar's Publish becomes Copy link.
+  const [published, setPublished] = useState<string | undefined>(undefined);
+  const [copied, setCopied] = useState(false);
   const [held, setHeld] = useState<Held | null>(null);
   const [working, setWorking] = useState<string | null>(null);
   const [description, setDescription] = useState(initialDescription ?? "");
@@ -640,6 +646,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       ? ([
           "separator",
           { key: "rename", label: t`Rename`, icon: I.edit, onSelect: () => void rename() },
+          ...(published ? [{ key: "publish", label: t`Publish`, icon: I.share, onSelect: () => setPublishing(true) } as MenuEntry] : []),
           { key: "duplicate", label: t`Duplicate`, icon: I.duplicate, hint: t`the app, not its data`, onSelect: () => void duplicate(), disabled: busy },
         ] as MenuEntry[])
       : []),
@@ -650,10 +657,30 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   ];
 
   const canOpen = preview !== null && (hasApp || held !== null);
-  useEffect(() => setHue(appId ? getEntry(`user:${appId}`).hue : undefined), [appId]);
+  useEffect(() => {
+    const entry = appId ? getEntry(`user:${appId}`) : undefined;
+    setHue(entry?.hue);
+    setAppearance(entry?.appearance ?? "system");
+    setPublished(entry?.published?.link);
+  }, [appId, publishing]);
   const pickHue = (h: number | undefined): void => {
     setHue(h);
     if (appId) updateEntry(`user:${appId}`, { hue: h });
+  };
+  const pickAppearance = (a: Appearance): void => {
+    setAppearance(a);
+    if (appId) updateEntry(`user:${appId}`, { appearance: a });
+  };
+  const copyLink = async (): Promise<void> => {
+    if (!published) return;
+    try {
+      await navigator.clipboard.writeText(published);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // No clipboard here: the sheet has the link and every other way to hand it on.
+      setPublishing(true);
+    }
   };
   const showPreview = previewOpen && preview !== null;
   const tabs =
@@ -686,6 +713,13 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               style={{ ["--hora" as string]: h.hora, background: tracoOf(h.hue) }}
               onClick={() => pickHue(h.hue)}
             />
+          ))}
+        </div>
+        <div className="k-appearance" role="radiogroup" aria-label={t`Appearance`}>
+          {(["light", "dark", "system"] as const).map((a) => (
+            <button key={a} type="button" role="radio" className="k-appearance-choice" aria-checked={appearance === a} data-appearance={a} onClick={() => pickAppearance(a)}>
+              {a === "light" ? t`Light` : a === "dark" ? t`Dark` : t`System`}
+            </button>
           ))}
         </div>
       </>
@@ -731,9 +765,15 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               </button>
             ) : null)}
           {wide && appId && getUserApp(appId) ? (
-            <button type="button" className="k-add k-primary-action k-studio-publish" onClick={() => setPublishing(true)}>
-              <Trans comment="Studio: share the app by a link">Publish</Trans>
-            </button>
+            published ? (
+              <button type="button" className="k-add k-primary-action k-studio-publish" data-published onClick={() => void copyLink()}>
+                {copied ? <Trans comment="Studio: the published link is on the clipboard">Copied</Trans> : <Trans comment="Studio: copy the app's published link">Copy link</Trans>}
+              </button>
+            ) : (
+              <button type="button" className="k-add k-primary-action k-studio-publish" onClick={() => setPublishing(true)}>
+                <Trans comment="Studio: share the app by a link">Publish</Trans>
+              </button>
+            )
           ) : null}
           <ActionMenu label={t`Studio menu`} trigger={I.more} entries={menu} buttonClassName="k-studio-more" />
         </header>
@@ -842,6 +882,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           tabs={tabs}
           above={adjust}
           appAccent={hue !== undefined ? hueColour(hue) : undefined}
+          appearance={appearance}
           version={items.reduce<number | undefined>((v, i) => (i.type === "version" && i.current ? i.seq : v), undefined)}
           unsaved={held !== null}
           onBack={() => {
