@@ -62,11 +62,13 @@ import { languagePrefs } from "./locale.js";
 import { optionLabel } from "@potyro/views";
 import { acceptLinkParams } from "potyro";
 import type { Arrival } from "./app-link.js";
-import { tracoStyle } from "./app-colour.js";
+import { tracoStyle, hueOf } from "./app-colour.js";
 import { I } from "./icons.js";
 import { AppColourContext, IconFilesContext } from "@potyro/views";
 import { isImagePath } from "potyro";
 import { iconDataUrlFrom } from "./icon-image.js";
+import { Seal } from "./seal.js";
+import { useAppHead } from "./app-head.js";
 
 interface EditorState {
   entity: string;
@@ -894,6 +896,12 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
    */
   const accent = appAccent ?? def.theme?.accent;
   const tracoVars = useMemo(() => tracoStyle(accent, personHue(appId ?? "potyro")), [accent, appId]);
+  const hue = hueOf(accent) ?? personHue(appId ?? "potyro");
+  // The tab's title and icon are the app's while it is open (DESIGN.md §8.5, #424).
+  useAppHead(appLabel, hue, Boolean(appId));
+  // An app someone else made — sealed, or kept/remixed from a link with its credit — wears the seal
+  // at the foot of every page (§6, §8.1); the person's own apps do not.
+  const sealed = provenance === "untrusted" || Boolean(appId && getUserApp(appId)?.credit);
 
   // What the chrome shows (#111). Pages carry an icon — the entity's, else one for the view type —
   // because a tab bar without icons is a row of truncated words. Through `navigate`, NOT
@@ -1193,6 +1201,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
         // it edge to edge with the controls on top.
         fullBleed={pageView?.type === "map" && !currentPage?.layout}
         locked={Boolean(locked)}
+        seal={sealed ? <Seal hue={hue} /> : undefined}
         fullscreen={fullscreen ? { onExit: exitFullscreen } : undefined}
       >
       {locked ? <LockBanner state={locked} /> : null}

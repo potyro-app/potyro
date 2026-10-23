@@ -329,44 +329,43 @@ it, and lookup("<name>") reads any of them. Read the declaration before you writ
 ${capabilityIndex()}
 
 NAVIGATION & UX
+- \`name\`: the person's words, else 1–3 concrete words. \`theme.accent\` is the app's colour: the prompt's
+  colour word, else by subject — money/work blue \`"#37adf3"\`; health/travel mint \`"#44d8c1"\`; food orange
+  \`"#f69536"\`; school/ideas yellow \`"#e2b93c"\`; nature/home green \`"#49de78"\`; party/games magenta
+  \`"#dc6ad4"\`; sport red \`"#e54e3c"\`; study/night indigo \`"#5d7bf1"\`. Never pink (Potyro's own).
 - Give every entity a \`label\`, and every entity, every page and the app itself an \`icon\`: a Lucide
   icon's name as on lucide.dev (\`"shopping-cart"\`, \`"map-pin"\`), never an emoji; distinct per page.
-- Order a detail page's \`actions\` with the one people came for first (the one filled button; the rest
-  plain beside it). Edit and Delete are the shell's, behind "More actions".
+- Order a detail page's \`actions\` with the one people came for first (filled). Edit and Delete are the shell's, behind "More actions".
 - Money is \`{ type: "money", currency: "EUR" }\` — whole minor units (\`4200\` is €42.00), never a
   float; lists total it. Split with \`splitEvenly(total, people)\` from \`potyro\`.
-- Give a number field its \`unit\` (\`unit: "kg"\`, \`"min"\`, \`"days"\`) and \`integer: true\` when
-  it counts things; the form shows the unit inside the field and a − / + stepper. A \`duration\`
-  field's \`unit\` says what the stored number is (\`"min"\`, \`"h"\`).
-- Arrange an entity's fields with \`groups: [{ title, fields: [...] }]\` when it has more than four:
-  the form and the detail page show the same titled sections (a group may list computed keys, headed
-  by their \`label\`); \`collapsed: true\` for a long secondary group. Give a field \`help\` when its name
-  does not say what to enter, a \`placeholder\` example for free text, and \`width: "half"\` to two
-  short neighbours so they share a row.
+- Give a number field its \`unit\` (\`"kg"\`, \`"min"\`, \`"days"\`) and \`integer: true\` when it counts
+  things (the form shows the unit and a − / + stepper); a \`duration\` field's \`unit\` says what the
+  stored number is (\`"min"\`, \`"h"\`).
+- Arrange an entity's fields with \`groups: [{ title, fields: [...] }]\` when it has more than four (the
+  form and the detail show the same titled sections; computed keys may be listed; \`collapsed: true\` for
+  a long secondary one). Give a field \`help\` when its name does not say what to enter, a \`placeholder\`
+  example for free text, and \`width: "half"\` to two short neighbours so they share a row.
 - Pick the view the records want: a stage or status → \`board\`; read back by when → \`timeline\`; "how am I
   doing" → a \`stats\` and a \`chart\` in a \`layout\`; who owes whom → \`aggregate\` (CAPABILITIES).
-- A list of things to tick — shopping, packing, chores, habits — is a \`checklist\` page, never a list
-  whose rows open a form to flip a boolean: \`{ type: "checklist", entity: "item", done: "bought",
+- Things to tick — shopping, packing, chores, habits — are a \`checklist\` page, never a list whose
+  rows open a form to flip a boolean: \`{ type: "checklist", entity: "item", done: "bought",
   text: "name", detail: "quantity", group: "aisle", hideDone: "collapse", quickAdd: true, onOpen: {...} }\`.
   \`done\` is a boolean field (or an enum plus \`doneValue\`); \`quickAdd\` adds the typed text as the
-  display field. Keep the detail page for the rest of the fields.
+  display field; the detail page keeps the rest.
 - Exactly ONE top-level list page per entity (plural title, "Sessions"); never a top-level page for one record.
 - To show a record's details, add a hidden \`detail\` page and link the list to it with
   \`onOpen: { page: "<detailPageId>", param: { <detailParam>: "id" } }\`: rows then open + edit it.
   \`onOpen\` may instead be a function \`(record, ctx)\` — a map's \`onSelect\` likewise — e.g.
   \`ctx.views.map(page).select(record.id)\`.
-- Add \`quickActions\` for the main create flows: \`{ id, label, icon, entity, open: true }\` (\`open\`
-  lands in the new record); \`mode: "menu"\` picks inline when the entity's only required field is one enum.
-- Set top-level \`nav: "grid"\` when the app has 3+ entities (an object-grid home); otherwise omit it.
+- Add \`quickActions\` for the main create flows: \`{ id, label, icon, entity, open: true }\` (\`open\`:
+  land in it); \`mode: "menu"\` picks inline when the entity's only required field is one enum.
+- Top-level \`nav: "grid"\` when the app has 3+ entities (an object-grid home); else omit it.
 - When one entity is what everything else belongs to (a trip and its places, a project and its tasks),
   declare a \`scope\` (CAPABILITIES: \`ctx.scope\`), never \`ctx.params\` (per page) or \`ctx.storage\` (async).
-  Options typed \`Dynamic<T>\` in the REFERENCE — a page \`title\`, a list's \`emptyText\`, an aggregate's \`title\`, the
-  map \`camera\` — may be a function of ctx: \`title: (ctx) => \\\`Places in \${ctx.scope.trip?.city}\\\`\`,
-  \`camera: (ctx) => ctx.scope.trip?.location ? { center: [lng, lat], zoom: 11 } : "fit"\`. \`sort\` receives
-  ctx as its THIRD argument: \`(a, b, ctx) => ...\`.
-- Do NOT expose sub-records (e.g. a session's individual sets) as their own top-level tab — model them
-  as a nested \`list\` field or reach them from the parent's detail.
-- Provide entity \`actions\` for common per-record operations (e.g. mark done, log a set, water plant).
+  Options typed \`Dynamic<T>\` in the REFERENCE (a page \`title\`, \`emptyText\`, the map \`camera\`) may be a
+  function of ctx; \`sort\` receives ctx as its THIRD argument: \`(a, b, ctx) => ...\`.
+- Sub-records (a session's sets) are a nested \`list\` field or reached from the parent's detail, never
+  a top-level tab. Entity \`actions\` for per-record operations (mark done, log a set, water plant).
 
 SIZE BUDGET — build the SMALLEST app that answers the ask. Measured: without this section the
 generator turned a two-line request into 4 entities / 17 fields; with it, the same corpus produced
