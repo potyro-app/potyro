@@ -17,14 +17,17 @@ import { useLocale } from "@potyro/i18n";
 import { attentionOf, describeAttention, type InstalledApp } from "./launcher-store.js";
 import { tileIdentity } from "./tile-identity.js";
 import { TileGlyph } from "./tile-glyph.js";
-import { tileBackground } from "./tile-colour.js";
+import { hueOf, tracoOf } from "./app-colour.js";
 import { hasLiveFace } from "./tile-content.js";
 import type { Placed, TileSize } from "./launcher-wall.js";
 
 /** The tile's colours: the app's own (contrast-checked) and, kept for the tile editor's preview, the raw accent. */
 export function tileColours(app: InstalledApp): { background: string; accent: string; identity: ReturnType<typeof tileIdentity> } {
   const identity = tileIdentity(app);
-  return { background: tileBackground(identity.accent, identity.hue), accent: identity.accent, identity };
+  // The app's hour on the colour clock (DESIGN.md §3.1), the same block Home's card wears: a person's
+  // chosen hue, else the app's declared colour's hue, else the one its key gives. Graphite on it.
+  const hue = typeof app.hue === "number" ? app.hue : (hueOf(identity.accent) ?? identity.hue);
+  return { background: tracoOf(hue), accent: identity.accent, identity };
 }
 
 /** The badge's number: what wants attention (#86) first, else the live tile's own count. */

@@ -5,6 +5,9 @@
 // its content and stay what the app wrote.
 import {
   Activity,
+  ArrowDown,
+  ChevronsDownUp,
+  ChevronsUpDown,
   ArrowUp,
   Calendar,
   ChartBar,
@@ -105,6 +108,10 @@ export const I = {
   gallery: icon(Images),
   group: icon(LayoutGrid),
   ungroup: icon(Ungroup),
+  fold: icon(ChevronsDownUp),
+  unfold: icon(ChevronsUpDown),
+  up: icon(ArrowUp),
+  down: icon(ArrowDown),
   // A page by its view's kind, when the page has no icon of its own: at 24, the tab bar's size.
   list: icon(List, 24),
   galleryView: icon(Images, 24),
