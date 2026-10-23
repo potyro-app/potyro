@@ -144,7 +144,7 @@ test("a file dropped on Potyro goes into the app the person picks", async ({ pag
   await expect(page.getByRole("button", { name: /Your data/ })).toBeVisible({ timeout: 30_000 });
   await drop(page, "body", [{ name: "trip.md", type: "text/markdown", body: "# Lisbon" }]);
 
-  const ask = page.getByRole("dialog", { name: "Add this file to…" });
+  const ask = page.getByRole("dialog", { name: "Add this file to" });
   await expect(ask).toContainText("trip.md");
   // The app with a file field that takes .md is pointed out first.
   await expect(ask.locator(".k-share-app").first()).toContainText("Notes with files");
