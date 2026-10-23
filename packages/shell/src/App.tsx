@@ -1094,7 +1094,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, curr
     >
       <AppChrome
         name={appLabel}
-        icon={def.icon ?? "◆"}
+        icon={def.icon}
         scope={scopeDef ? <ScopeSwitcher runtime={runtime} appName={appLabel} appId={scopeAppId} onNew={newScope} /> : null}
         status={
           <>

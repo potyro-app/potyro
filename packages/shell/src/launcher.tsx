@@ -149,9 +149,10 @@ function Tile({ app, active, onOpen, now }: { app: InstalledApp; active: boolean
       onClick={onOpen}
     >
       <span className="k-launch-block">
-        {/* The card wears the app's initials in the display face (DESIGN.md §6, "símbolo/inicial"); the
-            app's own icon stays in its chrome. An icon the person chose for the tile (#83) is theirs, and shows. */}
-        <Avatar app={app} identity={app.entry.icon?.trim() ? identity : { ...identity, glyph: personInitials(app.name, app.id), kind: "monogram" }} attention={attention.total} />
+        {/* The card wears the app's icon, drawn in the system's stroke (#425; DESIGN.md §6 "símbolo/inicial":
+            the symbol when there is one, the initials only for an app that declares none). An icon the
+            person chose for the tile (#83) is theirs, and wins. */}
+        <Avatar app={app} identity={identity} attention={attention.total} />
       </span>
       <span className="k-launch-body">
         <span className="k-launch-name">{app.name}</span>
