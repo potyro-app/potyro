@@ -3,7 +3,7 @@
 export { defineApp, isPotyroApp } from "./defineApp.js";
 export { f } from "./fields.js";
 export { humanizeKey } from "./humanize.js";
-export { LUCIDE_NAME, ICON_MAX, GLYPH_MAX, isLucideName, isIcon } from "./icon.js";
+export { LUCIDE_NAME, ICON_MAX, GLYPH_MAX, ICON_IMAGE_MAX, isLucideName, isImageIcon, isImagePath, iconKind, isIcon, type IconKind } from "./icon.js";
 export { actionInfo, actionInputProblem, actionRun, type ActionInfo } from "./actions.js";
 export { computedInfo, computedRun, type ComputedInfo } from "./computed.js";
 export { formatMoney, parseMoney, splitEvenly, splitByShares, shareOf, minorDigits } from "./money.js";

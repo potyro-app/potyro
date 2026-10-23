@@ -784,8 +784,8 @@ export interface SourceDef {
 export interface AppDefinition {
   id: string;
   name: Words;
-  /** The app's icon: a Lucide name (`"shopping-cart"`, kebab-case as on lucide.dev), drawn in the
-   *  system's stroke. Without it, a monogram of the name in its colour. */
+  /** The app's icon: a Lucide name (`"shopping-cart"`, as on lucide.dev), drawn in the system's
+   *  stroke; or a picture — a shipped file (`"icon.svg"`), an inline `<svg>`, a `data:` image. */
   icon?: string;
   version: string;
   /** The DATA version: bump it only when records change shape, never for words. */

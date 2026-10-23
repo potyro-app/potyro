@@ -40,3 +40,17 @@ describe("tileIdentity overrides", () => {
     expect(tileIdentity({ key: "user:x", name: "Xylo", hue: 25 })).toMatchObject({ accent: "oklch(72% 0.13 25)", kind: "monogram" });
   });
 });
+
+describe("a picture as the icon (#425)", () => {
+  it("shows the monogram for a shipped picture until it has been read, then the picture", () => {
+    const before = tileIdentity({ key: "user:shop", name: "Corner shop", icon: "icon.svg" });
+    expect(before.kind).toBe("monogram");
+    expect(before.glyph).not.toContain("icon.svg");
+    const after = tileIdentity({ key: "user:shop", name: "Corner shop", icon: "icon.svg", image: "data:image/png;base64,AAAA" });
+    expect(after).toMatchObject({ kind: "icon", glyph: "data:image/png;base64,AAAA", monogram: before.glyph });
+  });
+
+  it("takes a picture carried in the string as the icon", () => {
+    expect(tileIdentity({ key: "user:x", name: "X", icon: "data:image/png;base64,AAAA" }).kind).toBe("icon");
+  });
+});

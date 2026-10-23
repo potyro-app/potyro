@@ -12,6 +12,7 @@
 
 import { isLucideName, lucideKnown } from "@potyro/design";
 import { personHue, personInitials } from "@potyro/runtime";
+import { isImagePath } from "potyro";
 
 /** The twelve hues a tile can be, evenly spread — the same wheel `personHue` picks from. */
 export const TILE_HUES: readonly number[] = [25, 55, 85, 115, 145, 175, 205, 235, 265, 295, 325, 355];
@@ -30,13 +31,16 @@ export interface TileIdentity {
 
 export const hueColour = (hue: number): string => `oklch(72% 0.13 ${hue})`;
 
-export function tileIdentity(app: { key: string; name: string; icon?: string; accent?: string; hue?: number }): TileIdentity {
+export function tileIdentity(app: { key: string; name: string; icon?: string; image?: string; accent?: string; hue?: number }): TileIdentity {
   const derived = personHue(app.key);
   const chosen = typeof app.hue === "number" ? app.hue : undefined;
   const hue = chosen ?? derived;
   const accent = chosen !== undefined ? hueColour(chosen) : app.accent?.trim() || hueColour(derived);
   const icon = app.icon?.trim();
   const monogram = personInitials(app.name, app.key.replace(/^[a-z]+:/, ""));
+  // A picture the app ships (`icon: "icon.svg"`, #425) is on the tile once it has been read into
+  // `image` (the app opened once); until then, the monogram — never the path as text.
+  if (isImagePath(icon)) return app.image ? { glyph: app.image, kind: "icon", monogram, accent, hue } : { glyph: monogram, kind: "monogram", monogram, accent, hue };
   // A Lucide name the paths turn out not to have is no icon at all: the monogram, not the name as text.
   if (icon && (!isLucideName(icon) || lucideKnown(icon))) return { glyph: icon, kind: "icon", monogram, accent, hue };
   return { glyph: monogram, kind: "monogram", monogram, accent, hue };

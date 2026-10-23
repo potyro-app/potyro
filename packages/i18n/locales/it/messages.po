@@ -1085,6 +1085,10 @@ msgstr "Un pacchetto (.zip), oppure il file dell’app con i file che usa"
 msgid "A packing list I can reuse for trips"
 msgstr "Una lista per la valigia da riusare a ogni viaggio"
 
+#: ../shell/src/tile-editor.tsx
+msgid "A picture of your own on the tile"
+msgstr "Una tua immagine sul riquadro"
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "A query parameter named…"
 msgstr "Un parametro di query chiamato…"
@@ -5098,6 +5102,11 @@ msgstr "Scegli un punto sulla mappa"
 msgid "picture"
 msgstr "immagine"
 
+#. Tile editor: choose an image file for the tile
+#: ../shell/src/tile-editor.tsx
+msgid "Picture…"
+msgstr "Immagine…"
+
 #: ../shell/src/launcher.tsx
 msgid "Pin"
 msgstr "Fissa"
@@ -7037,6 +7046,7 @@ msgid "Through your browser’s speech service"
 msgstr "Tramite il servizio vocale del tuo browser"
 
 #: ../shell/src/tile-editor.tsx
+#: ../shell/src/tile-editor.tsx
 msgid "Tile icon"
 msgstr "Icona del riquadro"
 
@@ -7825,6 +7835,11 @@ msgstr "Il tuo ordine: trascina i riquadri, o Alt+frecce"
 #: ../shell/src/App.tsx
 msgid "your own copy to change"
 msgstr "la tua copia da cambiare"
+
+#. Tile editor: the icon is a picture the person picked
+#: ../shell/src/tile-editor.tsx
+msgid "Your picture"
+msgstr "La tua immagine"
 
 #. Detail of the question before voice input, when the words are made on the device
 #: ../shell/src/app-speech.ts

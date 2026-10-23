@@ -17,6 +17,9 @@ import { aiStanding, setAiStanding, type AiStanding } from "./ai-setting.js";
 import { formatSpend, spentIn } from "./ask-spend.js";
 import { LiveConnectionsSetting, liveRows, saveLiveRows, type LiveRow } from "./live-connections-setting.js";
 import { fmt } from "@potyro/i18n";
+import { pickFilesFromInput } from "@potyro/capabilities";
+import { isImageIcon } from "potyro";
+import { iconDataUrl } from "./icon-image.js";
 
 const hueNumber = (h: number): string => fmt.number(h);
 
@@ -98,7 +101,26 @@ export function TileEditor({ app, onClose }: Props) {
             <Trans comment="Tile editor: the emoji or letters shown on the tile">Icon</Trans>
           </span>
           <span className="k-tile-editor-row">
-            <input className="k-input k-tile-editor-icon-input" value={icon} placeholder={declaredIcon ?? t({ message: "monogram", comment: "Tile editor placeholder: with no icon the tile shows the name's first letters" })} aria-label={t`Tile icon`} maxLength={8} onChange={(e) => setIcon(e.target.value)} />
+            {isImageIcon(icon) ? (
+              <span className="k-input k-tile-editor-icon-input k-tile-editor-picture" aria-label={t`Tile icon`}>
+                <Trans comment="Tile editor: the icon is a picture the person picked">Your picture</Trans>
+              </span>
+            ) : (
+              <input className="k-input k-tile-editor-icon-input" value={icon} placeholder={declaredIcon && !isImageIcon(declaredIcon) ? declaredIcon : t({ message: "monogram", comment: "Tile editor placeholder: with no icon the tile shows the name's first letters" })} aria-label={t`Tile icon`} maxLength={8} onChange={(e) => setIcon(e.target.value)} />
+            )}
+            <button
+              type="button"
+              className="k-add"
+              onClick={() =>
+                void pickFilesFromInput({ accept: "image/*" }).then(async (files) => {
+                  const picked = files[0] ? await iconDataUrl(files[0]) : null;
+                  if (picked) setIcon(picked);
+                })
+              }
+              title={t`A picture of your own on the tile`}
+            >
+              <Trans comment="Tile editor: choose an image file for the tile">Picture…</Trans>
+            </button>
             <button type="button" className="k-add" disabled={!icon} onClick={() => setIcon("")} aria-label={t`Reset icon`} title={t`Back to the app's own icon`}>
               <Trans comment="Tile editor: undo this device's override">Reset</Trans>
             </button>

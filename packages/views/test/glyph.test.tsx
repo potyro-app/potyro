@@ -49,3 +49,17 @@ describe("Glyph", () => {
     expect(glyphOf(undefined)).toBeNull();
   });
 });
+
+describe("Glyph with a picture (#425)", () => {
+  it("shows an inline <svg> or a data: image as an <img>, never as markup", () => {
+    const html = renderToStaticMarkup(<Glyph icon='<svg viewBox="0 0 24 24"><script>1</script><path d="M1 1"/></svg>' size={40} />);
+    expect(html).toMatch(/^<img class="k-glyph k-glyph-image" src="data:image\/svg\+xml;utf8,/);
+    expect(html).not.toContain("<script");
+    expect(html).toContain('width="40"');
+    expect(renderToStaticMarkup(<Glyph icon="data:image/png;base64,iVBORw0KGgo=" />)).toContain('src="data:image/png;base64,iVBORw0KGgo="');
+  });
+
+  it("shows the fallback for a shipped file's path with no app around to read it", () => {
+    expect(renderToStaticMarkup(<Glyph icon="icon.svg" fallback="AB" />)).toBe("AB");
+  });
+});
