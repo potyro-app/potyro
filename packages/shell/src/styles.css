@@ -76,11 +76,15 @@
   --warn: var(--warning);
   /* A chart's single series (#109): the app's own colour, at the level that reads as a line. */
   --series-1: var(--tinta);
-  /* A Start tile (#96): white on the app's own colour, in every theme — the colour is darkened
-     until white reads on it (tile-colour.ts). `--tile-shade` darkens a photo under its words. */
+  /* A tile's ink. Classic's tiles and anything still on the old darkened colour: white. The Start
+     wall (`.k-metro`) puts graphite on the app's traço instead (2026-10-24). `--tile-shade` darkens
+     a photo under its words. */
   --tile-ink: oklch(100% 0 0);
   --tile-ink-soft: oklch(100% 0 0 / 0.86);
   --tile-shade: oklch(0% 0 0 / 0.62);
+  /* Words over a photo, on that shade. */
+  --on-photo: oklch(100% 0 0);
+  --on-photo-soft: oklch(100% 0 0 / 0.86);
   /* What sits behind a sheet or a modal: graphite at 40% (DESIGN.md §6), in both themes. */
   --scrim: rgba(35, 31, 32, 0.4);
   --scrim-soft: rgba(35, 31, 32, 0.32);
@@ -14184,8 +14188,8 @@ button.k-metro-group-name {
 }
 /* Over a photo the words are white, on a shade from the bottom that the name and count sit on too. */
 .k-metro-face:has(> .k-metro-photo) {
-  --tile-ink: oklch(100% 0 0);
-  --tile-ink-soft: oklch(100% 0 0 / 0.86);
+  --tile-ink: var(--on-photo);
+  --tile-ink-soft: var(--on-photo-soft);
   color: var(--tile-ink);
 }
 .k-metro-face:has(> .k-metro-photo)::after {
