@@ -4099,8 +4099,10 @@ msgstr "made by the app"
 
 #. Demo bar: links to Potyro itself
 #. Demo bar: links to Potyro itself
+#. The seal at the foot of an app made with Potyro by someone else; links to potyro.com
 #: ../shell/src/demo-share.ts
 #: ../shell/src/demo.tsx
+#: ../shell/src/seal.tsx
 msgid "Made with Potyro"
 msgstr "Made with Potyro"
 
