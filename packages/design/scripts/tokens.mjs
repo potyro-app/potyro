@@ -22,9 +22,33 @@ export const FONT_FACES = `/* The fonts ship with the app (offline-first): Googl
 
 const IMPORT = /^@import url\("https:\/\/fonts\.googleapis\.com\/[^\n]*\n/m;
 
+/**
+ * The dark theme's colour tokens — the designer's block under `prefers-color-scheme: dark` — and the
+ * light values of the same tokens, each as a CLASS as well as the root rules: `.k-theme-dark` /
+ * `.k-theme-light`. An app may ask for its own theme (DESIGN.md §8.2, #423), and the Studio shows it
+ * in a phone frame beside a conversation that keeps the platform's: the frame wears the class.
+ */
+export function scopedThemes(source) {
+  const dark = /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{([\s\S]*?)\n  \}/.exec(source);
+  const light = /^:root \{([\s\S]*?)^\}/m.exec(source);
+  if (!dark || !light) throw new Error("source/potyro-tokens.css: the :root and dark blocks were not found");
+  const darkBody = dark[1].replace(/^  /gm, "").trim();
+  const names = [...darkBody.matchAll(/(--[a-z0-9-]+):/g)].map((m) => m[1]);
+  const lightLines = [];
+  for (const name of new Set(names)) {
+    const m = new RegExp(`${name.replace(/[-]/g, "\\-")}:\\s*([^;]+);`).exec(light[1]);
+    if (m) lightLines.push(`${name}: ${m[1].trim()};`);
+  }
+  return (
+    `\n/* ── Um tema por elemento (#423): as mesmas cores do tema, como classe ────────── */\n` +
+    `.k-theme-dark {\n  ${darkBody.split("\n").join("\n  ")}\n}\n` +
+    `.k-theme-light {\n  color-scheme: light;\n  ${lightLines.join("\n  ")}\n}\n`
+  );
+}
+
 export function generate(source) {
   if (!IMPORT.test(source)) throw new Error("source/potyro-tokens.css: the Google Fonts @import line was not found");
-  return source.replace(IMPORT, FONT_FACES + "\n");
+  return source.replace(IMPORT, FONT_FACES + "\n") + scopedThemes(source);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
