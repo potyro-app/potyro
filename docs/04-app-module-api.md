@@ -29,7 +29,16 @@ canvas — never inserted as markup, so nothing in it runs, sealed or not; the S
 scripts, handlers and outside references besides. The launcher keeps a small copy of a shipped
 picture once the app has opened, for the Home card, the splash and the share card. An emoji from
 before keeps working, as the character it is; a name Lucide does not have, or a picture that cannot
-be reached, shows the monogram (or nothing, where there is no name to make one from). The tile is the accent darkened,
+be reached, shows the monogram (or nothing, where there is no name to make one from).
+
+The shell makes the rest of an app's identity from these (DESIGN.md §8.5, #424): while the app is
+open the browser tab carries its name and a **favicon** — a circle of its colour with its initial —
+and a demo link's **share image** (1200×630) is its name in the display face, a block of its colour
+on the right third with its icon on it, and the seal. An app someone else made (sealed, or kept or
+remixed from a link with its credit) wears the **"Made with Potyro" seal** at the foot of every page,
+the logo's symbol with its stroke in the nearest colour the logo sheet has, leading to potyro.com;
+the shell draws it outside the app's code. `theme.accent` is the colour the Studio chooses by the
+prompt's colour word or the app's subject (§8.3), never Potyro's own pink. The tile is the accent darkened,
 in OKLCH, until white text on it reaches WCAG AA (4.5:1); an accent that already does is used as
 written. `category` (one lowercase word: `"games"`, `"camera"`, `"everyday"`) is where the launcher
 puts the app on Start: in the group for that word, made when the first app of the kind arrives.
