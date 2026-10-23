@@ -20,6 +20,13 @@ export const PortalRootContext = createContext<HTMLElement | null>(null);
  * Potyro's rosa inside a green app. A portalled root wears these and the `k-traco` class.
  */
 export const AppColourContext = createContext<Record<string, string> | null>(null);
+
+/**
+ * How a picture icon that names a file the app ships (`icon: "icon.svg"`, #425) becomes a URL: the
+ * open app's `ctx.files.url`, provided by the shell around an app's pages. Null where no app is open
+ * (the launcher), where such an icon falls back.
+ */
+export const IconFilesContext = createContext<((path: string) => Promise<string | null>) | null>(null);
 export function useAppColour(): { className: string; style: Record<string, string> | undefined } {
   const vars = useContext(AppColourContext);
   return { className: vars ? " k-traco" : "", style: vars ?? undefined };
