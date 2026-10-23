@@ -367,7 +367,7 @@ async function openLinkedApp(target: AppTarget): Promise<boolean> {
 async function bootDemo(root: HTMLElement, link: DemoLink, target?: AppTarget): Promise<void> {
   const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
   setShellCaps(caps);
-  const [{ loadDemoPackage, openDemo, demoName, DemoScreen, DemoDeclined, leaveDemoPath }, { shareEvent }] = await Promise.all([import("./demo.js"), import("./share-events.js")]);
+  const [{ loadDemoPackage, openDemo, demoName, DemoScreen, DemoDeclined, leaveDemoPath, LinkGoneError }, { shareEvent }] = await Promise.all([import("./demo.js"), import("./share-events.js")]);
   // Anywhere a demo goes next — home, an app it was kept as — is the shell at the site's root, by a
   // page load: the demo's runtime is not one the router knows how to put away.
   setRouteHandler(() => {
@@ -380,7 +380,7 @@ async function bootDemo(root: HTMLElement, link: DemoLink, target?: AppTarget): 
   try {
     pkg = await loadDemoPackage(link);
   } catch (e) {
-    mount(root, <Splash name={shared} failed={e instanceof Error ? e.message : String(e)} />);
+    mount(root, <Splash name={shared} failed={e instanceof Error ? e.message : String(e)} notFound={e instanceof LinkGoneError} />);
     return;
   }
   const name = demoName(pkg);

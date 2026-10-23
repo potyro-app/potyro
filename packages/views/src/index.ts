@@ -7,6 +7,7 @@ export { defaultRegistry, resolveViewComponent } from "./registry.js";
 export { ListView, GalleryView, TableView, EmptyState } from "./builtins.js";
 export { DetailView } from "./detail.js";
 export { Lead, initialOf, leadSwatch, firstPhotoField, mediaFieldFor, type LeadKind } from "./lead.js";
+export { Mascot, Waiting, type MascotMode, type MascotProps } from "./mascot.js";
 export { Glyph, glyphOf, glyphElement, glyphDrawable, useLucide, useIconUrl, type GlyphProps, type GlyphSize } from "./glyph.js";
 export { cleanSvg, imageIconSrc } from "./icon-image.js";
 export { PageCountContext, useReportCount, type PageCountListener } from "./page-count.js";

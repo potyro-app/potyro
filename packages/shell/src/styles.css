@@ -17332,3 +17332,111 @@ img.k-glyph-image {
   background: var(--bg);
   color: var(--ink);
 }
+
+/* The mascot's edge moments (DESIGN.md §4.2, #426). A success: it comes in with the boing. */
+.k-mascot-enter {
+  animation: k-mascot-enter var(--dur-slow) var(--ease-boing) both;
+  transform-origin: 50% 100%;
+}
+@keyframes k-mascot-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* A long wait: the coloured stroke draws itself, over and over. The path is ~80 units around. */
+.k-mascot-drawing .k-mascot-stroke {
+  fill: none;
+  stroke: var(--traco);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 84;
+  stroke-dashoffset: 84;
+  animation: k-mascot-draw 1.8s var(--ease) infinite;
+}
+@keyframes k-mascot-draw {
+  0% {
+    stroke-dashoffset: 84;
+  }
+  60% {
+    stroke-dashoffset: 0;
+  }
+  80% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+.k-waiting {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.k-waiting .k-mascot {
+  flex: none;
+}
+.k-waiting-bar {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-mascot-enter {
+    animation: k-fade-in var(--dur-base) var(--ease) both;
+  }
+  @keyframes k-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  /* Less motion: the stroke is simply there, and a bar says the wait instead. */
+  .k-mascot-drawing .k-mascot-stroke {
+    fill: var(--traco);
+    stroke: none;
+    animation: none;
+  }
+  .k-waiting-bar {
+    display: block;
+    position: relative;
+    width: 56px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .k-waiting-bar::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 40%;
+    border-radius: inherit;
+    background: var(--accent);
+    animation: k-waiting-bar 1.6s linear infinite;
+  }
+  @keyframes k-waiting-bar {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(250%);
+    }
+  }
+}
+.k-share-try-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.k-card-mascot {
+  float: right;
+  margin-left: var(--space-2);
+}
+.k-splash-mascot {
+  margin: 0 auto;
+}

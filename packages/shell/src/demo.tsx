@@ -44,6 +44,9 @@ const demoPerson = (): Person => ({ id: "demo-viewer", name: t({ message: "You",
 export class DemoDeclined extends Error {}
 
 /** The package a demo link carries. Throws in plain words when it cannot be read. */
+/** A link that leads nowhere any more (a 404): the splash says so with the mascot, not as an error. */
+export class LinkGoneError extends Error {}
+
 export async function loadDemoPackage(link: DemoLink): Promise<AppPackage> {
   if (link.kind === "inline") {
     try {
@@ -57,7 +60,7 @@ export async function loadDemoPackage(link: DemoLink): Promise<AppPackage> {
   try {
     zip = await fetchHostedPackage(link.id, link.key);
   } catch (e) {
-    if (e instanceof GoneError) throw new Error(t`This link no longer works: whoever shared it took it down, or it was never made.`);
+    if (e instanceof GoneError) throw new LinkGoneError(t`This link no longer works: whoever shared it took it down, or it was never made.`);
     if (e instanceof TypeError) throw new Error(t`The app could not be fetched. Check the connection and try again.`);
     throw new Error(t`This link is damaged: the app in it could not be read. Ask whoever sent it for a new one.`);
   }
