@@ -1087,7 +1087,7 @@ msgstr "Uma lista de bagagem para reusar em toda viagem"
 
 #: ../shell/src/tile-editor.tsx
 msgid "A picture of your own on the tile"
-msgstr ""
+msgstr "Uma imagem sua no bloco"
 
 #: ../shell/src/ask-sources-panel.tsx
 msgid "A query parameter named…"
@@ -5105,7 +5105,7 @@ msgstr "imagem"
 #. Tile editor: choose an image file for the tile
 #: ../shell/src/tile-editor.tsx
 msgid "Picture…"
-msgstr ""
+msgstr "Imagem…"
 
 #: ../shell/src/launcher.tsx
 msgid "Pin"
@@ -7839,7 +7839,7 @@ msgstr "sua própria cópia para mudar"
 #. Tile editor: the icon is a picture the person picked
 #: ../shell/src/tile-editor.tsx
 msgid "Your picture"
-msgstr ""
+msgstr "Sua imagem"
 
 #. Detail of the question before voice input, when the words are made on the device
 #: ../shell/src/app-speech.ts
