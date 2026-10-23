@@ -273,7 +273,7 @@ export function boxOf(el: Element): DOMRect {
   return range.getBoundingClientRect();
 }
 
-/** Edit mode's target as a part to point at — "More changes…" carries it into the Studio. */
+/** Edit mode's target as a part to point at — "More changes" carries it into the Studio. */
 export function pointFromInline(target: InlineTarget): PointRef | null {
   if (target.kind === "page") return { kind: "page", page: target.page.id };
   const part = target.node.parentElement?.closest("[data-k-part]")?.getAttribute("data-k-part") ?? undefined;

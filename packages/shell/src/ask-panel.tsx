@@ -413,14 +413,14 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
             <span className="k-ask-pulse" aria-hidden />
             <p>
               {phase.kind === "saving"
-                ? t`Adding…`
+                ? t`Adding`
                 : placing
-                  ? t`Putting places at their address (${placedNow} of ${placedOf})…`
+                  ? t`Putting places at their address (${placedNow} of ${placedOf})`
                 : tries
-                  ? t`Fitting it to ${name}’s fields (try ${attempt})…`
+                  ? t`Fitting it to ${name}’s fields (try ${attempt})`
                   : reading
-                    ? t`Reading ${reading}…`
-                    : t`Working on it…`}
+                    ? t`Reading ${reading}`
+                    : t`Working on it`}
             </p>
             {phase.kind === "working" ? (
               <button

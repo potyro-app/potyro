@@ -77,7 +77,7 @@ export function StepsView(props: BuiltinViewProps) {
     };
   }, [runtime, storageKey]);
 
-  if (loading || done === null) return <p className="k-loading">{t`Loading…`}</p>;
+  if (loading || done === null) return <p className="k-loading">{t`Loading`}</p>;
   if (!record) return <p className="k-empty">{t`Not found.`}</p>;
 
   const steps: Resolved[] = Array.isArray(record[view.list]) ? (record[view.list] as Resolved[]) : [];

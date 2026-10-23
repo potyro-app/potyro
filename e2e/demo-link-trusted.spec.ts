@@ -126,7 +126,7 @@ for (const box of ["realm", "quickjs"] as const) {
       await frame.getByRole("button", { name: "Next step" }).click();
       await expect(frame.getByText(/Step 2 of \d+/).first()).toBeVisible();
     } else {
-      await viewer.getByRole("button", { name: "Run it as mine…" }).click();
+      await viewer.getByRole("button", { name: "Run it as mine" }).click();
       const card = viewer.getByRole("dialog", { name: "Add an app" });
       await expect(card.getByRole("heading", { name: "Recipes" })).toBeVisible({ timeout: 30_000 });
       await expect(viewer.getByRole("heading", { name: "Let it run as yours?" })).toHaveCount(0);

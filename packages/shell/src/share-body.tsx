@@ -126,7 +126,7 @@ export function ShareBody({ link: given, pendingLink, text, files, onHanded, onD
 
   const status =
     state === "making"
-      ? t({ message: "Making the link…", comment: "Share dialog: the link to an app's page is being made" })
+      ? t({ message: "Making the link", comment: "Share dialog: the link to an app's page is being made" })
       : state === "unmade"
         ? t({ message: "The link could not be made. The words can still be sent.", comment: "Share dialog: making the link to an app's page failed" })
         : state === "copied"
@@ -179,7 +179,7 @@ export function ShareBody({ link: given, pendingLink, text, files, onHanded, onD
         ) : null}
         {canShare ? (
           <button ref={primary === "share" ? primaryRef : undefined} type="button" className={`k-add${primary === "share" ? " k-primary-action" : ""}`} data-share="native" disabled={making} onClick={() => void shareNative()}>
-            <Trans comment="Opens the device's own share sheet">Share…</Trans>
+            <Trans comment="Opens the device's own share sheet">Share</Trans>
           </button>
         ) : null}
         {canCopy ? (

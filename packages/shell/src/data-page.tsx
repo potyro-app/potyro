@@ -167,7 +167,7 @@ function AppData({ app, files, onFiles }: { app: InstalledApp; files: boolean; o
 
   const name = app.name;
   if (failed) return <>{head}<p className="k-data-note k-data-error"><Trans>Couldn’t open {name}’s data: {failed}</Trans></p></>;
-  if (!session) return <>{head}<p className="k-muted k-data-note"><Trans>Opening {name}…</Trans></p></>;
+  if (!session) return <>{head}<p className="k-muted k-data-note"><Trans>Opening {name}</Trans></p></>;
   // An app with no kinds of record can still have files: the Files tab is all it shows.
   const onFilesTab = files || session.entities.length === 0;
   const current = onFilesTab ? null : (session.entities.find((e) => e.key === entity) ?? session.entities[0]!);

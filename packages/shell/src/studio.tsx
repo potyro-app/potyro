@@ -158,7 +158,7 @@ export interface StudioProps {
   initialAppId?: string;
   /** An unfinished conversation to pick up (the launcher's drafts). */
   initialDraftId?: string;
-  /** A part of the app already pointed at — edit mode's "More changes…" on a label (#284). */
+  /** A part of the app already pointed at — edit mode's "More changes" on a label (#284). */
   initialPoint?: Pointed;
 }
 
@@ -383,7 +383,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
 
   /** A source arrived: check it, repair it once if its structure is wrong, then keep it or hold it. */
   const land = async (next: string, summary: string, note: string, loss: string | null, extra: Pick<NewMessage, "platform"> = {}): Promise<void> => {
-    setWorking(t`Checking it…`);
+    setWorking(t`Checking it`);
     let src = next;
     let said = summary;
     let lost = loss;
@@ -827,7 +827,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               className="k-composer-input"
               aria-label={t`Describe the app`}
               placeholder={
-                listening ? t({ message: "Say what you want…", comment: "Studio box while the microphone listens" }) : point ? t`What should be different about it?` : hasApp ? t`Ask for a change…` : t`Describe the app you want…`
+                listening ? t({ message: "Say what you want", comment: "Studio box while the microphone listens" }) : point ? t`What should be different about it?` : hasApp ? t`Ask for a change` : t`Describe the app you want`
               }
               rows={2}
               value={description}

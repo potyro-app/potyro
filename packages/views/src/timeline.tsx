@@ -162,7 +162,7 @@ export function TimelineView(props: BuiltinViewProps) {
       ? (row: Resolved) => onEdit(view.entity, String(row.id))
       : undefined);
 
-  if (loading || dated === null) return <p className="k-loading">{t`Loading…`}</p>;
+  if (loading || dated === null) return <p className="k-loading">{t`Loading`}</p>;
   if (!dated.length) return <p className="k-empty" data-k-wording>{emptyText}</p>;
 
   return (

@@ -141,7 +141,7 @@ test.describe("desktop", () => {
 
     // A copy, with its items, under the name asked for.
     await scope(page).click();
-    await menu.getByRole("menuitem", { name: "Duplicate…" }).click();
+    await menu.getByRole("menuitem", { name: "Duplicate", exact: true }).click();
     const ask = page.getByRole("dialog");
     await ask.getByRole("textbox").fill("Next party");
     await ask.getByRole("button", { name: "OK" }).click();
@@ -161,7 +161,7 @@ test.describe("desktop", () => {
     await scope(page).click();
     await menu.getByRole("menuitem", { name: "Party", exact: true }).click();
     await scope(page).click();
-    await menu.getByRole("menuitem", { name: "Delete…" }).click();
+    await menu.getByRole("menuitem", { name: "Delete", exact: true }).click();
     await expect(page.getByRole("dialog")).toContainText("Delete “Party”?");
     await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
     await expect(scope(page)).not.toContainText("Party", { timeout: 10_000 });

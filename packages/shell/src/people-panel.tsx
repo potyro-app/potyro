@@ -132,7 +132,7 @@ export function PeoplePanel({
         </header>
         <p className="k-muted">{sync ? <Trans>Everyone who can open “{appName}”.</Trans> : <Trans>“{appName}” is only on this device. Share it to invite the people below.</Trans>}</p>
         {members === null ? <p className="k-loading">
-            <Trans>Loading…</Trans>
+            <Trans>Loading</Trans>
           </p> : null}
         <ul className="k-people-list">
           {(members ?? []).map((m) => (

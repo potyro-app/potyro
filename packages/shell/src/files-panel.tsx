@@ -222,7 +222,7 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra, shared
     { key: "open", label: t({ message: "Open", comment: "Files: open a file in the viewer" }), icon: I.open, onSelect: () => setViewing(f) },
     { key: "save", label: t`Save a copy`, icon: I.download, onSelect: () => void saveCopy(f) },
     { key: "rename", label: t`Rename`, icon: I.edit, onSelect: () => void rename(f) },
-    { key: "replace", label: t({ message: "Replace…", comment: "Files: choose another file to put in this one's place" }), icon: I.replace, onSelect: () => void replace(f) },
+    { key: "replace", label: t({ message: "Replace", comment: "Files: choose another file to put in this one's place" }), icon: I.replace, onSelect: () => void replace(f) },
     "separator",
     { key: "delete", label: t`Delete`, danger: true, onSelect: () => void remove(f) },
   ];
@@ -295,7 +295,7 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra, shared
         </header>
       ) : null}
       {usage ? <SpaceMeter usage={usage} /> : null}
-      {files === null ? <p className="k-files-summary">{t`Reading the folder…`}</p> : null}
+      {files === null ? <p className="k-files-summary">{t`Reading the folder`}</p> : null}
       {failed ? (
         <p className="k-files-error" role="alert">
           {failed}

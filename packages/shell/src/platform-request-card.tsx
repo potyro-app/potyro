@@ -99,7 +99,7 @@ export function PlatformRequestCard({ ask, sent, review, onSend }: PlatformReque
           ) : null}
           <div className="k-card-actions">
             <button type="button" className="k-card-open" disabled={step.kind !== "idle"} onClick={() => void open()}>
-              {step.kind === "sending" ? t`Sending…` : sent?.state === "saved" ? t`Try sending again` : t`Send to the Potyro team`}
+              {step.kind === "sending" ? t`Sending` : sent?.state === "saved" ? t`Try sending again` : t`Send to the Potyro team`}
             </button>
           </div>
         </>

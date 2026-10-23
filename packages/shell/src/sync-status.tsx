@@ -14,7 +14,7 @@ type State = "off" | "local" | "connecting" | "synced" | "offline";
 
 const LABEL: Record<Exclude<State, "off">, MessageDescriptor> = {
   local: msg`Sync on · no relay`,
-  connecting: msg`Connecting…`,
+  connecting: msg`Connecting`,
   synced: msg({ message: "Synced", comment: "Header status: this app's data reaches the relay" }),
   offline: msg`Offline · changes saved here`,
 };

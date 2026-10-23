@@ -253,7 +253,7 @@ export function ListView(props: BuiltinViewProps) {
   const openRow = rowOpener(runtime, pageId, view.onOpen, navigate) ?? (onEdit ? (row: Resolved) => onEdit(view.entity, String(row.id)) : undefined);
 
   if (error) return <LoadError message={error} />;
-  if (loading || !groups) return <p className="k-loading">{t`Loading…`}</p>;
+  if (loading || !groups) return <p className="k-loading">{t`Loading`}</p>;
   if (!rows.length) return <EmptyState runtime={runtime} pageId={pageId} entity={view.entity} text={emptyText} onCreate={byPeople(runtime, view.entity) ? onCreate : undefined} />;
 
   // A row carries the app's own row actions and a chevron; Edit is the tap itself, and Delete
@@ -391,7 +391,7 @@ export function GalleryView(props: BuiltinViewProps) {
   const openCard = rowOpener(runtime, pageId, view.onOpen, navigate) ?? (onEdit ? (row: Resolved) => onEdit(view.entity, String(row.id)) : undefined);
 
   if (error) return <LoadError message={error} />;
-  if (loading || !groups) return <p className="k-loading">{t`Loading…`}</p>;
+  if (loading || !groups) return <p className="k-loading">{t`Loading`}</p>;
   if (!rows.length) return <EmptyState runtime={runtime} pageId={pageId} entity={view.entity} text={emptyText} onCreate={byPeople(runtime, view.entity) ? onCreate : undefined} />;
 
   const cellIndex = new Map(rows.map((r, i) => [r.id, i]));
@@ -458,7 +458,7 @@ export function TableView(props: BuiltinViewProps) {
   useReportCount(loading || error ? undefined : rows.length);
 
   if (error) return <LoadError message={error} />;
-  if (loading || !groups) return <p className="k-loading">{t`Loading…`}</p>;
+  if (loading || !groups) return <p className="k-loading">{t`Loading`}</p>;
   if (!rows.length) return <p className="k-empty">{t`No matching rows.`}</p>;
   // Figures line up on the right, as in every table people read for numbers; a column is numeric
   // when its values are.

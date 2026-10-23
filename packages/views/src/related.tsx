@@ -130,7 +130,7 @@ export function RelatedRecords({ runtime, pageId, index, recordId, spec, navigat
   // Records only the app writes (`editableBy: "app"`) are not added by hand.
   const add = onCreate && byPeople(runtime, spec.entity) ? () => onCreate(spec.entity, { [spec.via]: recordId }) : undefined;
 
-  if (loading) return <p className="k-loading">{t`Loading…`}</p>;
+  if (loading) return <p className="k-loading">{t`Loading`}</p>;
 
   if (view === "chart") {
     const bars = relatedBars(rows, spec);

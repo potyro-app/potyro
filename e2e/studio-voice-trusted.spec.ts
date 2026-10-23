@@ -135,7 +135,7 @@ test.describe("Firefox: a recording, written down by the AI relay", () => {
     await expect(strip(page)).toContainText("Sent to OpenRouter to write down");
     await page.waitForTimeout(800); // a moment of (fake) sound
     await mic(studio).click();
-    await expect(strip(page)).toContainText("Writing down what you said…");
+    await expect(strip(page)).toContainText("Writing down what you said");
     await expect(box(studio)).toHaveValue("A shopping list for the week");
     await expect(strip(page)).toHaveCount(0);
 
