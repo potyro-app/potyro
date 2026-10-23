@@ -45,7 +45,7 @@ const LANGUAGES = [
   },
   {
     tag: "pt-BR",
-    find: "Encontrar um app",
+    find: "Achar um app",
     you: "Você",
     language: "Idioma",
     newApp: /Novo app/,

@@ -119,7 +119,7 @@ export function TileEditor({ app, onClose }: Props) {
               }
               title={t`A picture of your own on the tile`}
             >
-              <Trans comment="Tile editor: choose an image file for the tile">Picture…</Trans>
+              <Trans comment="Tile editor: choose an image file for the tile">Picture</Trans>
             </button>
             <button type="button" className="k-add" disabled={!icon} onClick={() => setIcon("")} aria-label={t`Reset icon`} title={t`Back to the app's own icon`}>
               <Trans comment="Tile editor: undo this device's override">Reset</Trans>
