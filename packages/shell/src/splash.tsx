@@ -10,6 +10,7 @@
 // and a bar that says something is happening. The tile is the same identity the user just tapped,
 // which is what makes this feel like the app opening rather than a screen in between.
 
+import { Mascot } from "@potyro/views";
 import { useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { tileIdentity } from "./tile-identity.js";
@@ -37,6 +38,8 @@ export interface SplashProps {
    * in the app's own colours, rather than a blank page or a line of text in the corner.
    */
   failed?: string;
+  /** Not an error but nothing there (a 404, a link taken down): the mascot instead of the app's tile. */
+  notFound?: boolean;
   /**
    * The sealed app that failed, when running it as yours is what would fix it (promotion.ts): the
    * screen then offers exactly that. Never for code that does not match its lock.
@@ -54,7 +57,7 @@ export interface SplashProps {
 const declared = (source: string | undefined, key: string): string | undefined =>
   source ? (new RegExp(`^\\s*${key}:\\s*"([^"]+)"`, "m").exec(source)?.[1] ?? undefined) : undefined;
 
-export function Splash({ id, name, source, icon, verb = "Opening", failed, promote, action }: SplashProps) {
+export function Splash({ id, name, source, icon, verb = "Opening", failed, notFound, promote, action }: SplashProps) {
   const [busy, setBusy] = useState(false);
   const [actionFailed, setActionFailed] = useState<string | null>(null);
   // The launcher's entry carries what THIS device calls the app — a nickname, another emoji, a
@@ -74,15 +77,22 @@ export function Splash({ id, name, source, icon, verb = "Opening", failed, promo
   return (
     <div className={failed ? "k-splash k-splash-failed" : "k-splash"} role={failed ? "alert" : "status"} aria-live="polite">
       <div className="k-splash-body" style={{ ["--tile-accent" as string]: identity.accent }}>
-        <span className={`k-splash-tile k-splash-tile-${identity.kind}`} aria-hidden>
-          <TileGlyph identity={identity} size={48} />
-        </span>
+        {notFound ? (
+          <Mascot size={64} className="k-splash-mascot" />
+        ) : (
+          <span className={`k-splash-tile k-splash-tile-${identity.kind}`} aria-hidden>
+            <TileGlyph identity={identity} size={48} />
+          </span>
+        )}
         <p className="k-splash-name">{entry?.displayName ?? name}</p>
         {failed ? (
           <>
-            <p className="k-splash-verb">
-              <Trans>It could not open.</Trans>
-            </p>
+            {/* A 404 is not a failure of the app's: no "it could not open", only what happened. */}
+            {notFound ? null : (
+              <p className="k-splash-verb">
+                <Trans>It could not open.</Trans>
+              </p>
+            )}
             <p className="k-splash-why">{actionFailed ?? failed}</p>
             {promote ? (
               <p className="k-splash-why k-splash-advice">

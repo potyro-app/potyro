@@ -4,6 +4,7 @@
 //                           Sent by copying it, through WhatsApp or Telegram, or the device's own sheet.
 //   A 15-second clip      — only where the app is on screen: a video of it, to post (docs/24 §8).
 //   Use it together       — an invite into the app AND its records (the existing #join= link, sync on).
+import { Mascot } from "@potyro/views";
 import { useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { DEFAULT_NAME, peekIdentity } from "@potyro/identity";
@@ -131,7 +132,9 @@ export function ShareSheet({ app, onClose, onInvite, clipRoot }: ShareSheetProps
         </header>
 
         <section className="k-share-way k-share-way-try" aria-labelledby="k-share-try-title">
-          <h3 id="k-share-try-title">
+          <h3 id="k-share-try-title" className="k-share-try-title">
+            {/* A success (DESIGN.md §4.2): the link is made, the mascot comes in. */}
+            {state.kind === "made" ? <Mascot mode="enter" size={32} /> : null}
             <Trans>A link anyone can try</Trans>
           </h3>
           <p className="k-muted">
