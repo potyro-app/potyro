@@ -45,7 +45,7 @@ test("the chosen engine drives BOTH create and modify", async ({ page }) => {
 
   await studio.getByRole("textbox", { name: "Describe the app" }).fill("a reading tracker");
   await go.click();
-  await expect(studio.getByText(/via OpenRouter · DeepSeek V4 Flash… \d+s/)).toBeVisible({ timeout: 10_000 });
+  await expect(studio.getByText(/via OpenRouter · DeepSeek V4 Flash · \d+s/)).toBeVisible({ timeout: 10_000 });
   const preview = await openFromCard(studio);
   await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 60_000 });
 
