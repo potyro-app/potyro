@@ -24,6 +24,7 @@ import { pictureOf, usePictureUrl } from "./picture.js";
 import { backdropImage, pageOf } from "./backdrop.js";
 import { useDeleteRecord } from "./builtins.js";
 import { RelatedRecords, type RelatedSpec } from "./related.js";
+import { Glyph } from "./glyph.js";
 
 /** A section of the page: fields, or the records that point at this one (`related`). */
 type DetailGroup = ResolvedGroup & { related?: RelatedSpec; index?: number };
@@ -232,7 +233,11 @@ export function DetailView(props: BuiltinViewProps) {
         <div className="k-detail-hero-body">
           {cover === "none" ? null : (
             <span className="k-detail-kicker" data-k-wording>
-              {entityDef?.icon ? <span aria-hidden>{entityDef.icon} </span> : null}
+              {entityDef?.icon ? (
+                <>
+                  <Glyph icon={entityDef.icon} size={16} />{" "}
+                </>
+              ) : null}
               {entityDef?.label ?? humanizeKey(view.entity)}
             </span>
           )}

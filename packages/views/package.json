@@ -15,6 +15,7 @@
   "dependencies": {
     "@lingui/core": "^5.9.5",
     "@lingui/react": "^5.9.5",
+    "@potyro/design": "workspace:^",
     "@potyro/i18n": "workspace:*",
     "@potyro/runtime": "workspace:*",
     "maplibre-gl": "^6.0.0",

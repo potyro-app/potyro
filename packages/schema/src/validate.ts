@@ -12,6 +12,15 @@ import { LINK_LIMITS, LINK_PARAM_NAME } from "./links.js";
 import { z } from "zod";
 import { ENUM_COLORS, FIELD_TYPES } from "./types/fields.js";
 import { isWordsSchema, zLanguage, zWords, zWordsNonEmpty } from "./words-schema.js";
+import { ICON_MAX, isIcon } from "./icon.js";
+
+/** An icon (#425): a Lucide name ("shopping-cart", as on lucide.dev) — or one emoji / short glyph. */
+const zIcon = z
+  .string()
+  .min(1)
+  .max(ICON_MAX)
+  .refine(isIcon, { message: 'an icon is a Lucide name ("shopping-cart", kebab-case as on lucide.dev) or one emoji' })
+  .optional();
 
 /** A value that must be a function (logic — not validated further). */
 const zFn = z.custom<(...a: unknown[]) => unknown>(
@@ -172,7 +181,7 @@ const actionDefSchema = z
   .object({
     run: z.union([zFn, z.literal("__potyro_fn__")]),
     label: zWordsNonEmpty.optional(),
-    icon: z.string().min(1).max(8).optional(),
+    icon: zIcon,
     description: z.string().optional(),
     input: z.record(fieldSchema).optional(),
   })
@@ -191,7 +200,7 @@ const computedDefSchema = z
 
 const entitySchema = z.object({
   label: zWords.optional(),
-  icon: z.string().optional(),
+  icon: zIcon,
   displayField: z.string().optional(),
   fields: z.record(fieldSchema),
   groups: z.array(fieldGroupSchema).optional(),
@@ -203,7 +212,7 @@ const entitySchema = z.object({
 const quickActionSchema = z.object({
   id: z.string().min(1),
   label: zWordsNonEmpty,
-  icon: z.string().optional(),
+  icon: zIcon,
   entity: z.string().min(1),
   mode: z.enum(["auto", "form", "menu", "instant"]).optional(),
   open: z.boolean().optional(),
@@ -643,7 +652,7 @@ function customViewIssue(view: unknown): string | null {
 /** A button in the page's chrome: its own label, and a real function to run (hard rule #1). */
 const pageActionSchema = z.object({
   label: zWordsNonEmpty,
-  icon: z.string().min(1).max(8).optional(),
+  icon: zIcon,
   run: zFn,
   when: zFn.optional(),
 });
@@ -653,7 +662,7 @@ const pageSchema = z
     id: z.string().min(1),
     title: zDynamicWords,
     description: zWords.optional(),
-    icon: z.string().min(1).max(8).optional(),
+    icon: zIcon,
     hidden: z.boolean().optional(),
     summary: z.array(summaryValueSchema).optional(),
     add: z.number().int().min(0).optional(),
@@ -799,7 +808,7 @@ const sourceSchema = z
 export const structureSchema = z.object({
   id: z.string().min(1).regex(/^[a-z0-9][a-z0-9-]*$/, "id must be a lowercase slug"),
   name: zWordsNonEmpty,
-  icon: z.string().min(1).max(8).optional(),
+  icon: zIcon,
   version: z.string().regex(SEMVER, "version must be semver (e.g. 1.0.0)"),
   schemaVersion: z.number().int().min(1),
   // The language the app's words are written in, and every language it carries (#302). Checked

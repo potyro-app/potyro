@@ -19,6 +19,7 @@ import { fmt } from "@potyro/i18n";
 import type { Store } from "@potyro/store";
 import { useInstalledApps, type InstalledApp } from "./launcher-store.js";
 import { tileIdentity } from "./tile-identity.js";
+import { TileGlyph } from "./tile-glyph.js";
 import { openDataSession, type DataSession } from "./data-runtime.js";
 import { shellCaps } from "./shell-caps.js";
 import { canGoBack, navigateTo, urlFor } from "./router.js";
@@ -101,7 +102,7 @@ function AppChoice({ app, current, onChoose }: { app: InstalledApp; current: boo
       onClick={onChoose}
     >
       <span className="k-datapage-app-glyph" data-kind={identity.kind} aria-hidden>
-        {identity.glyph}
+        <TileGlyph identity={identity} size={24} />
       </span>
       <span className="k-datapage-app-name">{app.name}</span>
       {app.sync ? <span className="k-data-shared" title={t`Shared — edits here reach everyone in it`}>

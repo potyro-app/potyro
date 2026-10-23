@@ -464,9 +464,9 @@ async function addRecipe(ctx: Ctx): Promise<void> {
   const how = await ctx.ui.sheet({
     title: ctx.t("Add a recipe"),
     items: [
-      { id: "photo", icon: "📷", label: ctx.t("From a photo"), detail: ctx.t("A cookbook page or a screenshot") },
-      { id: "paste", icon: "📋", label: ctx.t("Paste the text"), detail: ctx.t("From a website, a message, a caption") },
-      { id: "type", icon: "✏️", label: ctx.t("Type it in") },
+      { id: "photo", icon: "camera", label: ctx.t("From a photo"), detail: ctx.t("A cookbook page or a screenshot") },
+      { id: "paste", icon: "clipboard-list", label: ctx.t("Paste the text"), detail: ctx.t("From a website, a message, a caption") },
+      { id: "type", icon: "pencil", label: ctx.t("Type it in") },
     ],
   });
   if (how === "photo" || how === "paste") return captureRecipe(ctx, how);
@@ -502,7 +502,7 @@ async function putAway(ctx: Ctx): Promise<void> {
 export default defineApp({
   id: "recipes",
   name: "Recipes",
-  icon: "🍳",
+  icon: "cooking-pot",
   version: "2.0.0",
   schemaVersion: 1,
   language: "en",
@@ -514,7 +514,7 @@ export default defineApp({
   // Adding a recipe is rare next to choosing and cooking it: a quiet button beside the cookbook's
   // search, never a floating one. An ingredient is added where the pantry is — its page's own button.
   quickActions: [
-    { id: "add-ingredient", label: "Add: Ingredient", icon: "🥕", entity: "ingredient", mode: "form" },
+    { id: "add-ingredient", label: "Add: Ingredient", icon: "carrot", entity: "ingredient", mode: "form" },
   ],
   category: "everyday",
   // The launcher tile (docs/04 §Tile): tonight's dinner when the week has one, else what to cook next
@@ -544,7 +544,7 @@ export default defineApp({
   entities: {
     ingredient: {
       label: "Ingredient",
-      icon: "🥕",
+      icon: "carrot",
       displayField: "name",
       fields: {
         name: { type: "text", required: true, label: "Name" },
@@ -658,7 +658,7 @@ export default defineApp({
 
     recipe: {
       label: "Recipe",
-      icon: "🍳",
+      icon: "cooking-pot",
       displayField: "name",
       fields: {
         name: { type: "text", required: true, placeholder: "Shakshuka", label: "Name" },
@@ -834,7 +834,7 @@ export default defineApp({
       actions: {
         markCooked: {
           label: "Cooked it",
-          icon: "✓",
+          icon: "check",
           description: "Record that this recipe was cooked today.",
           run: async (r, ctx) => {
             await ctx.patch("recipe", r.id, {
@@ -853,7 +853,7 @@ export default defineApp({
         },
         plan: {
           label: "Plan it",
-          icon: "📅",
+          icon: "calendar",
           description: "Put this recipe on a day of the week's plan.",
           input: {
             date: { type: "datetime", required: true, label: "Day" },
@@ -877,7 +877,7 @@ export default defineApp({
         },
         shop: {
           label: "Add to shopping",
-          icon: "🛒",
+          icon: "shopping-cart",
           description: "Put this recipe's missing ingredients on the shopping list.",
           run: async (r, ctx) => {
             // What the pantry lacks, offered to pick from: untick what you have after all.
@@ -902,7 +902,7 @@ export default defineApp({
     // A meal on the week's plan: a recipe on a day.
     meal: {
       label: "Meal",
-      icon: "📅",
+      icon: "calendar",
       displayField: "title",
       fields: {
         recipe: { type: "relation", to: "recipe", required: true, label: "Recipe" },
@@ -929,7 +929,7 @@ export default defineApp({
       actions: {
         cook: {
           label: "Cook",
-          icon: "🍳",
+          icon: "cooking-pot",
           run: async (m, ctx) => {
             if (m.recipe?.id) ctx.navigate("cook", { recipeId: m.recipe.id });
           },
@@ -941,7 +941,7 @@ export default defineApp({
     // marks that ingredient in stock — and "What can I cook?" grows.
     buy: {
       label: "Shopping item",
-      icon: "🛒",
+      icon: "shopping-cart",
       displayField: "name",
       fields: {
         name: { type: "text", required: true, label: "Name" },
@@ -960,10 +960,10 @@ export default defineApp({
       // first. Adding one is rare next to that: a quiet button beside the search, whose three ways in
       // are a photo or pasted text that AI reads for you, or typing it.
       id: "all",
-      icon: "🍳",
+      icon: "cooking-pot",
       title: "Recipes",
       description: "Your cookbook, keepers first.",
-      actions: [{ label: "Add a recipe", icon: "＋", run: addRecipe }],
+      actions: [{ label: "Add a recipe", icon: "plus", run: addRecipe }],
       // It is the phone's "+" in the top bar: there when wanted, never in the way.
       add: 0,
       view: {
@@ -1014,7 +1014,7 @@ export default defineApp({
     {
       // The week's plan: a recipe on a day. Plan one from its page; tap a meal to cook it.
       id: "week",
-      icon: "📅",
+      icon: "calendar",
       title: "This week",
       description: "What's cooking, day by day. Plan a recipe from its page.",
       view: {
@@ -1039,10 +1039,10 @@ export default defineApp({
     {
       // The shopping list the recipes make. Put away what you bought and the pantry knows.
       id: "shopping",
-      icon: "🛒",
+      icon: "shopping-cart",
       title: "Shopping",
       description: "What your recipes need. Tick it in the shop, then put it away.",
-      actions: [{ label: "Put away", icon: "🧺", run: putAway }],
+      actions: [{ label: "Put away", icon: "shopping-basket", run: putAway }],
       view: {
         type: "checklist",
         entity: "buy",
@@ -1066,7 +1066,7 @@ export default defineApp({
     // ---- ingredients are first-class: their own list + detail pages ----
     {
       id: "pantry",
-      icon: "🥕",
+      icon: "carrot",
       title: "Pantry",
       description: "Your pantry. What's in stock decides what you can cook.",
       // What you have, as a list you tick: ticked is in stock. That is what decides "Can cook now".

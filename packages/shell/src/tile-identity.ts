@@ -10,15 +10,18 @@
 // `name` / `icon` (the launcher store does that), and `hue` is their colour, which wins over the
 // declared accent — it is their device.
 
+import { isLucideName, lucideKnown } from "@potyro/design";
 import { personHue, personInitials } from "@potyro/runtime";
 
 /** The twelve hues a tile can be, evenly spread — the same wheel `personHue` picks from. */
 export const TILE_HUES: readonly number[] = [25, 55, 85, 115, 145, 175, 205, 235, 265, 295, 325, 355];
 
 export interface TileIdentity {
-  /** What goes in the avatar: the icon, or the monogram. */
+  /** What goes in the avatar: the icon (a Lucide name or an emoji — draw it with `TileGlyph`), or the monogram. */
   glyph: string;
   kind: "icon" | "monogram";
+  /** The monogram, whichever kind: what an icon Lucide turns out not to have falls back to. */
+  monogram: string;
   /** A CSS colour: the user's hue, else the declared accent, else one derived from the key. */
   accent: string;
   /** The hue in use when the colour is a hue (derived or chosen); the derived one otherwise. */
@@ -33,6 +36,8 @@ export function tileIdentity(app: { key: string; name: string; icon?: string; ac
   const hue = chosen ?? derived;
   const accent = chosen !== undefined ? hueColour(chosen) : app.accent?.trim() || hueColour(derived);
   const icon = app.icon?.trim();
-  if (icon) return { glyph: icon, kind: "icon", accent, hue };
-  return { glyph: personInitials(app.name, app.key.replace(/^[a-z]+:/, "")), kind: "monogram", accent, hue };
+  const monogram = personInitials(app.name, app.key.replace(/^[a-z]+:/, ""));
+  // A Lucide name the paths turn out not to have is no icon at all: the monogram, not the name as text.
+  if (icon && (!isLucideName(icon) || lucideKnown(icon))) return { glyph: icon, kind: "icon", monogram, accent, hue };
+  return { glyph: monogram, kind: "monogram", monogram, accent, hue };
 }

@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { FilterChip as SourceChip, Localized } from "potyro";
-import { optionLabel, usePortalRoot } from "@potyro/views";
+import { Glyph, optionLabel, usePortalRoot } from "@potyro/views";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { fmt } from "@potyro/i18n";
 
@@ -94,7 +94,7 @@ function PageActions({ runtime, pageId, params }: { runtime: PotyroRuntime; page
             void runtime.runPageAction(pageId, index, params).finally(() => setBusy(null));
           }}
         >
-          {action.icon ? <span aria-hidden>{action.icon}</span> : null}
+          <Glyph icon={action.icon} size={16} />
           {action.label}
         </button>
       ))}

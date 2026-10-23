@@ -49,7 +49,7 @@ export interface ActionDef {
   run: ActionFn;
   /** Button text; default: the key, humanised. */
   label?: Words;
-  /** A glyph before the label on its compact buttons. */
+  /** An icon before the label on its compact buttons: a Lucide name (`"play"`). */
   icon?: string;
   /** What it does, for Ask. */
   description?: string;
@@ -71,7 +71,7 @@ export interface ComputedDef {
 
 export interface EntityDef {
   label?: Words;
-  /** Optional glyph/emoji for launcher tiles + quick-action buttons (e.g. "🏋"). */
+  /** Its icon: a Lucide name (`"dumbbell"`). */
   icon?: string;
   displayField?: string;
   fields: Record<string, Field>;
@@ -97,7 +97,7 @@ export type OnOpen = { page: string; param?: Record<string, string> } | ((record
 export interface ListDisplay {
   primary?: Binding;
   secondary?: Binding;
-  /** An emoji per record: the row's lead, the map's pin. */
+  /** An icon per record (a Lucide name, `(r) => KIND_ICON[r.kind]`): the row's lead, the map's pin. */
   icon?: Binding;
   media?: string;
   badges?: string[];
@@ -325,7 +325,7 @@ export interface ChecklistView {
   donePlacement?: "sink" | "stay";
   /** An input at the bottom: type, Enter, next — creates a record with the text as its display field. */
   quickAdd?: boolean | ChecklistQuickAdd;
-  /** An emoji per item, before its text. */
+  /** An icon per item (a Lucide name), before its text. */
   icon?: Binding;
   /** `"tiles"`: items as a grid of big tappable tiles. Default `"rows"`. */
   layout?: "rows" | "tiles";
@@ -600,7 +600,7 @@ export const LAYOUT_TYPES = ["stack", "grid", "split", "tabs"] as const;
  */
 export interface PageAction {
   label: Words;
-  /** One emoji or short glyph, shown before the label. */
+  /** A Lucide name, before the label. */
   icon?: string;
   run: (ctx: Ctx) => void | Promise<void>;
   /** Whether it applies now, from the page's rows ("Done shopping" once something is ticked). */
@@ -617,7 +617,7 @@ export interface Page {
   primaryAction?: string | number;
   /** This page's ground; overrides `theme.background`. */
   background?: Backdrop;
-  /** One emoji for the page's tab; default: the entity's icon. */
+  /** A Lucide name, distinct per page; default: the entity's. */
   icon?: string;
   hidden?: boolean;
   /** Figures shown above the view, computed over the page's filtered rows. */
@@ -735,6 +735,7 @@ export interface Theme {
 export interface QuickAction {
   id: string;
   label: Words;
+  /** A Lucide name. */
   icon?: string;
   entity: string;
   /** `instant` creates the record straight from field defaults + `prefill` with NO form — the point
@@ -783,8 +784,8 @@ export interface SourceDef {
 export interface AppDefinition {
   id: string;
   name: Words;
-  /** One emoji or short glyph for the app's launcher tile (e.g. "🏋"). Without it the tile shows a
-   *  monogram of the name in a colour derived from the app, which cannot collide by accident. */
+  /** The app's icon: a Lucide name (`"shopping-cart"`, kebab-case as on lucide.dev), drawn in the
+   *  system's stroke. Without it, a monogram of the name in its colour. */
   icon?: string;
   version: string;
   /** The DATA version: bump it only when records change shape, never for words. */

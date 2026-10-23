@@ -4,6 +4,7 @@
 // records. This draws only what the link already carries — the app's name, icon and colour, and a few
 // lines of its DEMO records — 1200×630, the size every network's large card expects, as a JPEG kept
 // under 300 KB (WhatsApp drops bigger ones).
+import { isLucideName, lucidePath, lucideReady } from "@potyro/design";
 import type { DemoSeed } from "./demo-package.js";
 
 export const CARD_W = 1200;
@@ -123,9 +124,26 @@ export function drawCard(ctx: Ctx, c: CardContent): void {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = INK;
-  const glyph = c.icon?.trim() || c.name.slice(0, 2).toUpperCase();
-  ctx.font = c.icon?.trim() ? `120px ${sans}` : `bold 96px ${serif}`;
-  ctx.fillText(glyph, tile.x + tile.s / 2, tile.y + tile.s / 2 + 6);
+  const icon = c.icon?.trim();
+  const path = icon && isLucideName(icon) ? lucidePath(icon) : undefined;
+  if (path && typeof Path2D !== "undefined") {
+    // The icon in the system's stroke (#425): Lucide's 24-box scaled to 120px, the stroke with it.
+    const box = 120;
+    ctx.save();
+    ctx.translate(tile.x + (tile.s - box) / 2, tile.y + (tile.s - box) / 2);
+    ctx.scale(box / 24, box / 24);
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = INK;
+    ctx.stroke(new Path2D(path));
+    ctx.restore();
+  } else {
+    // An emoji as the character it is; a name Lucide has not, or no icon, as the monogram.
+    const emoji = icon && !isLucideName(icon) ? icon : undefined;
+    ctx.font = emoji ? `120px ${sans}` : `bold 96px ${serif}`;
+    ctx.fillText(emoji ?? c.name.slice(0, 2).toUpperCase(), tile.x + tile.s / 2, tile.y + tile.s / 2 + 6);
+  }
 
   // Name and maker.
   const left = 350;
@@ -212,6 +230,7 @@ export async function renderPreviewCard(c: CardContent): Promise<Uint8Array | nu
   canvas.height = CARD_H;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
+  if (isLucideName(c.icon?.trim())) await lucideReady();
   drawCard(ctx, c);
   for (const quality of [0.86, 0.75, 0.6, 0.45]) {
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));

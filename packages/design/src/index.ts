@@ -2,3 +2,4 @@
 // designer's own files, kept verbatim under source/); the values are tokens.css; this is the
 // colour clock, for the places that need a colour from an angle at runtime.
 export * from "./color.js";
+export { LUCIDE_NAME, isLucideName, lucideReady, lucideLoaded, lucidePath, lucideKnown, onLucide, primeLucide } from "./lucide.js";

@@ -52,6 +52,7 @@ import { useWallDrag } from "./wall-drag.js";
 import { categoryName } from "./launcher-groups.js";
 import { refreshTiles, TILE_REFRESH_MS } from "./tile-runner.js";
 import { TILE_HUES, hueColour } from "./tile-identity.js";
+import { TileGlyph } from "./tile-glyph.js";
 import { shellDialogs } from "./dialog.js";
 import { DatabaseIcon } from "./data-icon.js";
 import { DEFAULT_NAME, peekIdentity } from "@potyro/identity";
@@ -712,7 +713,7 @@ function Folder(props: {
             const { background, identity } = tileColours(a);
             return (
               <span key={a.key} className="k-metro-mosaic-cell" style={{ "--tile-bg": background } as CSSProperties}>
-                {identity.glyph}
+                <TileGlyph identity={identity} size={20} />
               </span>
             );
           })}
@@ -837,7 +838,7 @@ function AllApps(p: MetroHomeProps & { query: string; setQuery: (q: string) => v
       <div key={a.key} className="k-launch-item k-metro-row" data-key={a.key} {...p.inertUnless(a.key)}>
         <button type="button" className="k-launch-tile k-metro-row-open" data-active={p.isSelected(a) || undefined} style={{ "--tile-accent": accent, "--tile-bg": background } as CSSProperties} onClick={() => p.onOpen(a)}>
           <span className="k-launch-avatar k-metro-mini" data-kind={identity.kind} aria-hidden>
-            {identity.glyph}
+            <TileGlyph identity={identity} size={24} />
             {attention.total ? <span className="k-launch-badge">{attention.total > 99 ? "99+" : attention.total}</span> : null}
           </span>
           <span className="k-launch-name">{a.name}</span>

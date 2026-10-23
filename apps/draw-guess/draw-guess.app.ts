@@ -17,7 +17,7 @@ import { mountPlay } from "./play.js";
 export default defineApp({
   id: "draw-guess",
   name: "Draw & Guess",
-  icon: "✏️",
+  icon: "pencil",
   version: "1.0.0",
   schemaVersion: 1,
   language: "en",
@@ -29,7 +29,7 @@ export default defineApp({
   entities: {
     game: {
       label: "Game",
-      icon: "🏆",
+      icon: "trophy",
       displayField: "title",
       fields: {
         title: { type: "text", required: true, label: "Winner" },
@@ -44,7 +44,7 @@ export default defineApp({
     {
       id: "play",
       title: "Play",
-      icon: "✏️",
+      icon: "pencil",
       // An invite link opens this page with the game's code (docs/24 §11): it fills the box, and the
       // person taps Join. Nothing joins by itself.
       link: { params: ["code"] },
@@ -53,7 +53,7 @@ export default defineApp({
     {
       id: "games",
       title: "Past games",
-      icon: "🏆",
+      icon: "trophy",
       view: {
         type: "list",
         entity: "game",

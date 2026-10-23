@@ -568,8 +568,8 @@ function mountCatch(el: HTMLElement, props: ViewProps): () => void {
     const pick = await ctx.ui.sheet<"camera" | "library">({
       title: ctx.t(W.newPhotoTitle),
       items: [
-        { id: "camera", label: ctx.t(W.take), icon: "📷" },
-        { id: "library", label: ctx.t(W.library), icon: "🖼" },
+        { id: "camera", label: ctx.t(W.take), icon: "camera" },
+        { id: "library", label: ctx.t(W.library), icon: "image" },
       ],
     });
     if (pick) await fromCamera(pick);
@@ -803,7 +803,7 @@ function mountGallery(el: HTMLElement, props: ViewProps): () => void {
 export default defineApp({
   id: "palette-catcher",
   name: W.appName,
-  icon: "🎨",
+  icon: "palette",
   version: "1.0.0",
   schemaVersion: 1,
   language: "en",
@@ -816,7 +816,7 @@ export default defineApp({
     {
       id: "type",
       label: { en: "Type in a palette", "pt-BR": "Digitar uma paleta", de: "Palette eintippen", es: "Escribir una paleta", pl: "Wpisz paletę", it: "Scrivi una palette" },
-      icon: "✎",
+      icon: "pencil",
       entity: "palette",
       mode: "form",
       openPage: "gallery",
@@ -851,13 +851,13 @@ export default defineApp({
     {
       id: "catch",
       title: { en: "Catch", "pt-BR": "Capturar", de: "Einfangen", es: "Atrapar", pl: "Łap", it: "Cattura" },
-      icon: "🎨",
+      icon: "palette",
       view: { type: "custom", entity: "palette", mount: mountCatch },
     },
     {
       id: "gallery",
       title: { en: "Gallery", "pt-BR": "Galeria", de: "Galerie", es: "Galería", pl: "Galeria", it: "Galleria" },
-      icon: "🖼",
+      icon: "image",
       view: { type: "custom", entity: "palette", mount: mountGallery },
     },
   ],

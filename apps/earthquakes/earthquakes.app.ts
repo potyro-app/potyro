@@ -37,19 +37,19 @@ function chipFilter(r: Resolved, ctx: Ctx): boolean {
 const byTime = (a: Resolved, b: Resolved) => (toDate(b.time)?.getTime() ?? 0) - (toDate(a.time)?.getTime() ?? 0);
 
 const ACTIONS = {
-  watch: { label: msg("Watch live"), icon: "▶", run: watchLive },
-  stop: { label: msg("Stop"), icon: "■", run: stopWatching },
+  watch: { label: msg("Watch live"), icon: "play", run: watchLive },
+  stop: { label: msg("Stop"), icon: "square", run: stopWatching },
   demo: {
     label: msg("Demo"),
-    icon: "✨",
+    icon: "sparkles",
     run: async (ctx: Ctx) => {
       const demos = await ctx.query("quake", { filter: (r) => r.demo === true, limit: 1 });
       if (!demos.length) return playDemo(ctx);
       const pick = await ctx.ui.menu({
         title: ctx.t("Demo"),
         items: [
-          { id: "play", icon: "✨", label: ctx.t("Play the demo again"), detail: ctx.t("Real earthquakes from earlier, replayed here. Nothing is sent.") },
-          { id: "clear", icon: "🧹", destructive: true, label: ctx.t("Clear the demo") },
+          { id: "play", icon: "sparkles", label: ctx.t("Play the demo again"), detail: ctx.t("Real earthquakes from earlier, replayed here. Nothing is sent.") },
+          { id: "clear", icon: "brush-cleaning", destructive: true, label: ctx.t("Clear the demo") },
         ],
       });
       if (pick === "play") await playDemo(ctx);
@@ -129,7 +129,7 @@ const EMPTY = msg("No earthquakes here yet. Tap “Watch live” to follow EMSC'
 export default defineApp({
   id: "earthquakes",
   name: "Earthquakes",
-  icon: "🌍",
+  icon: "globe",
   version: "1.0.0",
   schemaVersion: 1,
   language: "en",
@@ -146,7 +146,7 @@ export default defineApp({
       // Only the feed writes these: no Add, Edit or Delete for people (docs/03 editableBy).
       editableBy: "app",
       label: "Earthquake",
-      icon: "🌍",
+      icon: "globe",
       displayField: "place",
       fields: {
         place: { type: "text", required: true, label: "Where" },
@@ -197,7 +197,7 @@ export default defineApp({
     {
       id: "live",
       title: "Map",
-      icon: "🗺️",
+      icon: "map",
       actions: [ACTIONS.watch, ACTIONS.stop, ACTIONS.demo],
       layout: {
         type: "stack",
@@ -225,7 +225,7 @@ export default defineApp({
     {
       id: "latest",
       title: { text: "Latest", context: "title" },
-      icon: "⏱️",
+      icon: "timer",
       actions: [ACTIONS.watch, ACTIONS.stop, ACTIONS.demo],
       layout: {
         type: "stack",
@@ -249,7 +249,7 @@ export default defineApp({
     {
       id: "strongest",
       title: "Strongest",
-      icon: "📈",
+      icon: "trending-up",
       summary: [
         { label: "In the last 24 h", op: "count" },
         {
@@ -275,8 +275,8 @@ export default defineApp({
     {
       id: "near",
       title: "Near me",
-      icon: "📍",
-      actions: [{ label: "Alerts…", icon: "🔔", run: editAlerts }],
+      icon: "map-pin",
+      actions: [{ label: "Alerts…", icon: "bell", run: editAlerts }],
       view: {
         type: "list",
         entity: "quake",

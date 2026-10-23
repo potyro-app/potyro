@@ -659,7 +659,7 @@ function mountStats(el: HTMLElement, props: ViewProps): () => void {
 export default defineApp({
   id: "daily-puzzle",
   name: W.appName,
-  icon: "🧩",
+  icon: "puzzle",
   version: "1.0.0",
   schemaVersion: 1,
   language: "en",
@@ -683,7 +683,7 @@ export default defineApp({
     },
   },
   pages: [
-    { id: "today", title: W.today, icon: "🧩", view: { type: "custom", entity: "game", mount: mountToday } },
-    { id: "stats", title: W.stats, icon: "📊", view: { type: "custom", entity: "game", mount: mountStats } },
+    { id: "today", title: W.today, icon: "puzzle", view: { type: "custom", entity: "game", mount: mountToday } },
+    { id: "stats", title: W.stats, icon: "chart-bar", view: { type: "custom", entity: "game", mount: mountStats } },
   ],
 });

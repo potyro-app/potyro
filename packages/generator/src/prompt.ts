@@ -40,12 +40,12 @@ export default defineApp({
   version: "1.0.0",
   schemaVersion: 1,
   quickActions: [
-    { id: "add-book", label: "Add book", icon: "＋", entity: "book", open: true },
+    { id: "add-book", label: "Add book", icon: "plus", entity: "book", open: true },
   ],
   entities: {
     book: {
       label: "Book",
-      icon: "📚",
+      icon: "book",
       displayField: "title",
       fields: {
         title: { type: "text", required: true },
@@ -112,7 +112,7 @@ export default defineApp({
   entities: {
     glass: {
       label: "Glass",
-      icon: "💧",
+      icon: "droplet",
       displayField: "ml",
       fields: { ml: { type: "number", default: 250 }, at: { type: "datetime", default: (ctx) => ctx.now() } },
     },
@@ -329,8 +329,8 @@ it, and lookup("<name>") reads any of them. Read the declaration before you writ
 ${capabilityIndex()}
 
 NAVIGATION & UX
-- Give every entity a \`label\`, and every entity, every page and the app itself an \`icon\` (one emoji,
-  distinct per page: pages are a tab bar on a phone; the app's is its launcher tile).
+- Give every entity a \`label\`, and every entity, every page and the app itself an \`icon\`: a Lucide
+  icon's name as on lucide.dev (\`"shopping-cart"\`, \`"map-pin"\`), never an emoji; distinct per page.
 - Order a detail page's \`actions\` with the one people came for first (the one filled button; the rest
   plain beside it). Edit and Delete are the shell's, behind "More actions".
 - Money is \`{ type: "money", currency: "EUR" }\` — whole minor units (\`4200\` is €42.00), never a

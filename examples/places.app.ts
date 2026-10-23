@@ -36,7 +36,7 @@ const distanceKm = (a: { lat: number; lng: number }, b: { lat: number; lng: numb
 };
 
 const KINDS = ["restaurant", "bar", "cafe", "pizza", "bakery", "museum", "park", "viewpoint", "shop", "stay", "other"];
-const KIND_GLYPH: Record<string, string> = { restaurant: "🍽️", bar: "🍸", cafe: "☕", pizza: "🍕", bakery: "🥐", museum: "🖼️", park: "🌳", viewpoint: "👀", shop: "🛍️", stay: "🏨", other: "📍" };
+const KIND_ICON: Record<string, string> = { restaurant: "utensils", bar: "wine", cafe: "coffee", pizza: "pizza", bakery: "croissant", museum: "landmark", park: "trees", viewpoint: "eye", shop: "shopping-bag", stay: "hotel", other: "map-pin" };
 const KIND_COLOR: Record<string, string> = { restaurant: "#C0574D", bar: "#8E5BB5", cafe: "#A0703C", pizza: "#D9822B", bakery: "#E4A93C", museum: "#5B6EE1", park: "#3C9A5F", viewpoint: "#2E9AA6", shop: "#D45D8F", stay: "#5FB0E4", other: "#7A8794" };
 
 /** A category in the person's language: the same words as `kind`'s labels below. */
@@ -106,7 +106,7 @@ function placeLine(p: Resolved, ctx: Ctx): string {
     : p.openNow
       ? ctx.t("open now")
       : ctx.t("closed");
-  return `${KIND_GLYPH[String(p.kind)] ?? "📍"} ${kindName(p.kind, ctx)} · ${open}`;
+  return `${kindName(p.kind, ctx)} · ${open}`;
 }
 
 /**
@@ -126,8 +126,8 @@ async function rankPlace(p: Resolved, ctx: Ctx): Promise<void> {
     const answer = await ctx.ui.sheet({
       title: ctx.t("{name}: better or worse than {other}?", { name: String(p.name), other: String(other.name) }),
       items: [
-        { id: "better", icon: "👍", label: ctx.t("Better") },
-        { id: "worse", icon: "👎", label: ctx.t("Worse") },
+        { id: "better", icon: "thumbs-up", label: ctx.t("Better") },
+        { id: "worse", icon: "thumbs-down", label: ctx.t("Worse") },
       ],
     });
     if (!answer) return; // closed: nothing changes
@@ -187,7 +187,7 @@ const TO_STATUS: MigrationStep[] = [
 export default defineApp({
   id: "places",
   name: "Places",
-  icon: "📍",
+  icon: "map-pin",
   version: "2.0.0",
   schemaVersion: 2,
   language: "en",
@@ -200,7 +200,7 @@ export default defineApp({
   // map and the lists; a new place is filed in it.
   scope: { entity: "collection", label: "List" },
   quickActions: [
-    { id: "add-place", label: "Add: Place", icon: "📍", entity: "place", mode: "form" },
+    { id: "add-place", label: "Add: Place", icon: "map-pin", entity: "place", mode: "form" },
   ],
   // The launcher tile (docs/04 §Tile): the places still to visit.
   tile: async (ctx) => {
@@ -222,7 +222,7 @@ export default defineApp({
     // A list of places you keep together and can share: "Date night", "Lisbon weekend".
     collection: {
       label: "List",
-      icon: "🗂️",
+      icon: "folder",
       displayField: "name",
       fields: {
         name: { type: "text", required: true, label: "Name", placeholder: "Date night" },
@@ -233,7 +233,7 @@ export default defineApp({
 
     place: {
       label: "Place",
-      icon: "📍",
+      icon: "map-pin",
       displayField: "name",
       fields: {
         name: { type: "text", required: true, label: "Name" },
@@ -339,7 +339,7 @@ export default defineApp({
       actions: {
         logVisit: {
           label: "Log a visit",
-          icon: "📸",
+          icon: "camera",
           description: "Record a visit to this place: when, what you had, who you were with.",
           input: {
             at: { type: "datetime", required: true, label: "When" },
@@ -357,7 +357,7 @@ export default defineApp({
         },
         rank: {
           label: "Rank it",
-          icon: "🏅",
+          icon: "medal",
           description: "Place it among the places of its own kind you have been to, by comparing it with them one at a time.",
           run: async (p, ctx) => {
             await rankPlace(p, ctx);
@@ -365,7 +365,7 @@ export default defineApp({
         },
         favourite: {
           label: "Favourite",
-          icon: "♥",
+          icon: "heart",
           run: async (p, ctx) => {
             await ctx.patch("place", p.id, { status: p.status === "favourite" ? "been" : "favourite" });
           },
@@ -376,7 +376,7 @@ export default defineApp({
     // One time you were there: the memory a place keeps.
     visit: {
       label: "Visit",
-      icon: "📸",
+      icon: "camera",
       displayField: "title",
       fields: {
         place: { type: "relation", to: "place", required: true, label: "Place" },
@@ -401,17 +401,17 @@ export default defineApp({
     {
       id: "map",
       title: "Map",
-      icon: "🗺️",
+      icon: "map",
       // A button the APP puts on the page, running an ordinary function (#216). "Show me all of
       // them" is the other half of the built-in "where am I" — and it is app code, not a host
       // feature, which is the point: `ctx.views` reaches the map that is on screen.
       actions: [
         {
           label: "Show all",
-          icon: "⤢",
+          icon: "maximize-2",
           run: (ctx) => void ctx.views.map("map").fit(),
         },
-        { label: "Save this spot", icon: "📍", run: saveHere },
+        { label: "Save this spot", icon: "map-pin", run: saveHere },
       ],
       view: {
         type: "map",
@@ -428,7 +428,7 @@ export default defineApp({
         // map, so reading one never costs you the view you navigated to.
         display: {
           // The pin itself is the kind's emoji: ☕ here, 🍸 there.
-          icon: (p) => KIND_GLYPH[String(p.kind)] ?? "📍",
+          icon: (p) => KIND_ICON[String(p.kind)] ?? "map-pin",
           primary: "name",
           secondary: (p, ctx) =>
             [placeLine(p, ctx), typeof p.rating === "number" ? `${ctx.format.number(p.rating)}★` : "", p.mustOrder ? `“${p.mustOrder}”` : ""].filter(Boolean).join(" · "),
@@ -461,7 +461,7 @@ export default defineApp({
     {
       id: "list",
       title: "All places",
-      icon: "📍",
+      icon: "map-pin",
       description: "Favourites first, by kind. Rank a place against the others of its kind.",
       // Figures over the page's filtered rows. Both forms: `op` for a plain aggregate (declarative,
       // so the structural editor can edit it), a `value` function for the one that needs a rule.
@@ -532,7 +532,7 @@ export default defineApp({
       // Where you have been: every visit on a rail, by month, with its photo.
       id: "memories",
       title: "Memories",
-      icon: "📸",
+      icon: "camera",
       description: "Every visit you logged, what you had and who you were with.",
       view: {
         type: "timeline",

@@ -98,8 +98,8 @@ async function addPlant(ctx: Ctx): Promise<void> {
   const how = await ctx.ui.sheet({
     title: ctx.t("Add a plant"),
     items: [
-      { id: "photo", icon: "📷", label: ctx.t("From a photo"), detail: ctx.t("AI suggests what it is and how often to water") },
-      { id: "type", icon: "✏️", label: ctx.t("Type it in") },
+      { id: "photo", icon: "camera", label: ctx.t("From a photo"), detail: ctx.t("AI suggests what it is and how often to water") },
+      { id: "type", icon: "pencil", label: ctx.t("Type it in") },
     ],
   });
   if (!how) return;
@@ -155,7 +155,7 @@ async function addPlant(ctx: Ctx): Promise<void> {
 export default defineApp({
   id: "plants",
   name: "Plants",
-  icon: "🌱",
+  icon: "sprout",
   version: "2.0.0",
   schemaVersion: 1,
   language: "en",
@@ -182,13 +182,13 @@ export default defineApp({
   permissions: { camera: true, notifications: true, ai: true },
   // The "+" on Today and Plants runs addPlant (a photo AI reads, or typed); this is the whole form.
   quickActions: [
-    { id: "add-plant", label: "Add: Plant", icon: "🌱", entity: "plant", mode: "form" },
+    { id: "add-plant", label: "Add: Plant", icon: "sprout", entity: "plant", mode: "form" },
   ],
 
   entities: {
     plant: {
       label: "Plant",
-      icon: "🌱",
+      icon: "sprout",
       displayField: "name",
       fields: {
         name: { type: "text", required: true, label: "Name" },
@@ -313,7 +313,7 @@ export default defineApp({
       actions: {
         water: {
           label: "Water",
-          icon: "💧",
+          icon: "droplet",
           description: "Record that this plant was watered now.",
           run: async (p, ctx) => {
             await logCare(ctx, p, "water", ctx.now());
@@ -321,7 +321,7 @@ export default defineApp({
         },
         snooze: {
           label: "Soil still wet",
-          icon: "⏳",
+          icon: "hourglass",
           description: "The soil is still wet: ask again in two days. Twice in a row stretches the plant's rhythm by a day.",
           run: async (p, ctx) => {
             // The rule, readable: two "still wet" in a row and the plant drinks less often than you thought.
@@ -338,7 +338,7 @@ export default defineApp({
         },
         logCare: {
           label: "Log care…",
-          icon: "📝",
+          icon: "notebook-pen",
           description: "Record a watering, a feed, misting, repotting or a note, on any day — today or earlier.",
           input: {
             kind: {
@@ -369,7 +369,7 @@ export default defineApp({
     // Every watering, feed and repot, on the day it happened: the plant's history.
     care: {
       label: { text: "Care", context: "care" },
-      icon: "💧",
+      icon: "droplet",
       displayField: "title",
       fields: {
         plant: { type: "relation", to: "plant", required: true, label: "Plant" },
@@ -408,9 +408,9 @@ export default defineApp({
     {
       id: "today",
       title: "Today",
-      icon: "☀️",
+      icon: "sun",
       description: "Who wants water today, room by room, and who comes next.",
-      actions: [{ label: "Add a plant", icon: "＋", run: addPlant }],
+      actions: [{ label: "Add a plant", icon: "plus", run: addPlant }],
       add: 0,
       summary: [
         {
@@ -475,10 +475,10 @@ export default defineApp({
     {
       // Every plant as a photo, by where it lives.
       id: "list",
-      actions: [{ label: "Add a plant", icon: "＋", run: addPlant }],
+      actions: [{ label: "Add a plant", icon: "plus", run: addPlant }],
       add: 0,
       title: "Plants",
-      icon: "🪴",
+      icon: "leaf",
       description: "Every plant in the house, by its photo.",
       view: {
         type: "list",
@@ -515,7 +515,7 @@ export default defineApp({
       // What was done, and when: every plant's care on one rail, newest first.
       id: "care-log",
       title: "Care log",
-      icon: "📖",
+      icon: "book-open",
       description: "Every watering, feed and repot. Log one on a plant's page, any day.",
       view: {
         type: "timeline",
