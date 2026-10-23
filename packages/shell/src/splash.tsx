@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { tileIdentity } from "./tile-identity.js";
+import { TileGlyph } from "./tile-glyph.js";
 import { appKey, getEntry } from "./launcher-store.js";
 import { navigateTo } from "./router.js";
 import { PromoteButton } from "./trust-dialog.js";
@@ -73,7 +74,7 @@ export function Splash({ id, name, source, icon, verb = "Opening", failed, promo
     <div className={failed ? "k-splash k-splash-failed" : "k-splash"} role={failed ? "alert" : "status"} aria-live="polite">
       <div className="k-splash-body" style={{ ["--tile-accent" as string]: identity.accent }}>
         <span className={`k-splash-tile k-splash-tile-${identity.kind}`} aria-hidden>
-          {identity.glyph}
+          <TileGlyph identity={identity} size={48} />
         </span>
         <p className="k-splash-name">{entry?.displayName ?? name}</p>
         {failed ? (

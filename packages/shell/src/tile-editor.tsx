@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { updateEntry, type InstalledApp } from "./launcher-store.js";
 import { TILE_HUES, hueColour, tileIdentity } from "./tile-identity.js";
+import { TileGlyph } from "./tile-glyph.js";
 import { askEnabled, setAskEnabled } from "./ask-setting.js";
 import { aiStanding, setAiStanding, type AiStanding } from "./ai-setting.js";
 import { formatSpend, spentIn } from "./ask-spend.js";
@@ -73,7 +74,9 @@ export function TileEditor({ app, onClose }: Props) {
             </p>
           </div>
           <div className="k-tile-editor-preview" style={{ "--tile-accent": preview.accent } as CSSProperties} aria-hidden>
-            <span className="k-launch-avatar" data-kind={preview.kind}>{preview.glyph}</span>
+            <span className="k-launch-avatar" data-kind={preview.kind}>
+              <TileGlyph identity={preview} size={36} />
+            </span>
             <span className="k-launch-name">{name.trim() || declaredName}</span>
           </div>
         </header>

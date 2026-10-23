@@ -13,6 +13,7 @@ import { AddAppDialog } from "./add-app-dialog.js";
 import { fitsFor, isAppArrival, landFiles, offerFiles, onOffer, takeOffer } from "./incoming-files.js";
 import { useInstalledApps, type InstalledApp } from "./launcher-store.js";
 import { tileIdentity } from "./tile-identity.js";
+import { TileGlyph } from "./tile-glyph.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { navigateTo } from "./router.js";
 import { totalSize } from "./app-folder.js";
@@ -203,7 +204,7 @@ function ChooseApp({ files, onClose }: { files: File[]; onClose: () => void }) {
                   onClick={() => void choose(app)}
                 >
                   <span className="k-launch-avatar" data-kind={identity.kind} aria-hidden>
-                    {identity.glyph}
+                    <TileGlyph identity={identity} size={24} />
                   </span>
                   <span className="k-share-app-name">{app.name}</span>
                   {busy === app.id ? (

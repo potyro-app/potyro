@@ -6,6 +6,7 @@
 import { useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { useAppColour } from "./portal-root.js";
+import { glyphOf } from "./glyph.js";
 import { createPortal } from "react-dom";
 
 export interface MenuItem {
@@ -133,7 +134,7 @@ export function ActionMenu({ label, trigger, title, entries, className, buttonCl
                       }}
                     >
                       <span className="k-menu-icon" aria-hidden>
-                        {entry.icon ?? ""}
+                        {glyphOf(entry.icon)}
                       </span>
                       <span className="k-menu-label">{entry.label}</span>
                       {entry.hint ? (
@@ -224,7 +225,7 @@ export function ChoicePanel({ title, items, anchor, onChoose, onDismiss }: Choic
       onClick={() => onChoose(item.key)}
     >
       <span className="k-menu-icon" aria-hidden>
-        {item.icon ?? ""}
+        {glyphOf(item.icon)}
       </span>
       <span className="k-menu-text">
         <span className="k-menu-label">{item.label}</span>

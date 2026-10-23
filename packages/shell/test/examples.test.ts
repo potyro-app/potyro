@@ -57,8 +57,8 @@ describe("seedExamples", () => {
   it("gives the launcher the examples' identity like any other app's", async () => {
     await seedExamples({ trusted: true, now: NOW });
     await ensureIdentities(listInstalledApps());
-    expect(listInstalledApps().find((a) => a.id === "workout")).toMatchObject({ name: "Workout", icon: "🏋", accent: "#B6E62E" });
-    expect(listInstalledApps().find((a) => a.id === "recipes")).toMatchObject({ name: "Recipes", icon: "🍳" });
+    expect(listInstalledApps().find((a) => a.id === "workout")).toMatchObject({ name: "Workout", icon: "dumbbell", accent: "#B6E62E" });
+    expect(listInstalledApps().find((a) => a.id === "recipes")).toMatchObject({ name: "Recipes", icon: "cooking-pot" });
   });
 });
 

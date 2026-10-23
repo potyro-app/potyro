@@ -19,6 +19,7 @@ import { defaultApproval, valuesToSave } from "./ask-verdicts.js";
 import { titleOf, type LinkNames } from "./ask-review-parts.js";
 import { EntityTable, RowCard, type RowState } from "./ask-review-layouts.js";
 import { EditCard, type EditState } from "./ask-review-edits.js";
+import { Glyph } from "@potyro/views";
 
 export interface AcceptedRun {
   entity: string;
@@ -215,7 +216,11 @@ export function ReviewPanel({
         {groups.map(([entity, list]) => (
           <section key={entity} className="k-ask-group" aria-label={def.entities[entity]?.label ?? humanizeKey(entity)}>
             <h3 className="k-ask-group-head">
-              {def.entities[entity]?.icon ? <span aria-hidden>{def.entities[entity]!.icon} </span> : null}
+              {def.entities[entity]?.icon ? (
+                <>
+                  <Glyph icon={def.entities[entity]!.icon} size={16} />{" "}
+                </>
+              ) : null}
               {def.entities[entity]?.label ?? humanizeKey(entity)}
               <span className="k-ask-group-count">{fmt.number(list.length)}</span>
             </h3>

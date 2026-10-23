@@ -477,7 +477,7 @@ function mountKept(el: HTMLElement, props: ViewProps): () => void {
 export default defineApp({
   id: "qr-maker",
   name: W.appName,
-  icon: "▦",
+  icon: "qr-code",
   version: "1.0.0",
   schemaVersion: 1,
   language: "en",
@@ -513,7 +513,7 @@ export default defineApp({
   },
   demo,
   pages: [
-    { id: "make", title: W.make, icon: "▦", view: { type: "custom", entity: "code", mount: mountMake } },
-    { id: "kept", title: W.kept, icon: "🗂", view: { type: "custom", entity: "code", mount: mountKept } },
+    { id: "make", title: W.make, icon: "qr-code", view: { type: "custom", entity: "code", mount: mountMake } },
+    { id: "kept", title: W.kept, icon: "folder", view: { type: "custom", entity: "code", mount: mountKept } },
   ],
 });

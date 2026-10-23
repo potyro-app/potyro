@@ -16,6 +16,7 @@ import { plural } from "@lingui/core/macro";
 import { useLocale } from "@potyro/i18n";
 import { attentionOf, describeAttention, type InstalledApp } from "./launcher-store.js";
 import { tileIdentity } from "./tile-identity.js";
+import { TileGlyph } from "./tile-glyph.js";
 import { tileBackground } from "./tile-colour.js";
 import { hasLiveFace } from "./tile-content.js";
 import type { Placed, TileSize } from "./launcher-wall.js";
@@ -121,7 +122,7 @@ export function MetroTile(p: MetroTileProps) {
 
   const glyph = (
     <span className="k-launch-avatar k-metro-glyph" data-kind={identity.kind} aria-hidden>
-      {identity.glyph}
+      <TileGlyph identity={identity} size={size === "small" ? 28 : 40} />
     </span>
   );
   const name = <span className={size === "small" ? "k-launch-name k-visually-hidden" : "k-launch-name k-metro-name"}>{app.name}</span>;

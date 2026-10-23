@@ -18,19 +18,19 @@ import { JETSTREAM_HOST, PROFILE_HOST, sparkline, toDate } from "./watch.js";
 import { agoText, lastHourText, perMinuteText, STATE_HINTS, STATE_WORDS, type FeedState } from "./words.js";
 
 const ACTIONS = {
-  watch: { label: msg("Watch live"), icon: "▶", run: watchLive },
-  stop: { label: msg("Stop"), icon: "■", run: stopWatching },
+  watch: { label: msg("Watch live"), icon: "play", run: watchLive },
+  stop: { label: msg("Stop"), icon: "square", run: stopWatching },
   demo: {
     label: msg("Demo"),
-    icon: "✨",
+    icon: "sparkles",
     run: async (ctx: Ctx) => {
       const demos = await ctx.query("post", { filter: (r) => r.demo === true, limit: 1 });
       if (!demos.length) return playDemo(ctx);
       const pick = await ctx.ui.menu({
         title: ctx.t("Demo"),
         items: [
-          { id: "play", icon: "✨", label: ctx.t("Play the demo again"), detail: ctx.t("Invented posts, played here. Nothing is sent.") },
-          { id: "clear", icon: "🧹", destructive: true, label: ctx.t("Clear the demo") },
+          { id: "play", icon: "sparkles", label: ctx.t("Play the demo again"), detail: ctx.t("Invented posts, played here. Nothing is sent.") },
+          { id: "clear", icon: "brush-cleaning", destructive: true, label: ctx.t("Clear the demo") },
         ],
       });
       if (pick === "play") await playDemo(ctx);
@@ -96,7 +96,7 @@ const byAt = (a: Resolved, b: Resolved) => (toDate(b.at)?.getTime() ?? 0) - (toD
 export default defineApp({
   id: "word-watch",
   name: "Word Watch",
-  icon: "🦋",
+  icon: "bird",
   version: "1.0.0",
   schemaVersion: 1,
   language: "en",
@@ -110,7 +110,7 @@ export default defineApp({
   entities: {
     word: {
       label: "Word",
-      icon: "🔤",
+      icon: "case-sensitive",
       displayField: "word",
       fields: {
         word: { type: "text", required: true, label: "Word or phrase", placeholder: "coffee" },
@@ -136,7 +136,7 @@ export default defineApp({
       // Only the feed writes these: no Add, Edit or Delete for people (docs/03 editableBy).
       editableBy: "app",
       label: "Post",
-      icon: "💬",
+      icon: "message-circle",
       displayField: "text",
       fields: {
         text: { type: "text", multiline: true, required: true, label: "Post" },
@@ -186,7 +186,7 @@ export default defineApp({
     {
       id: "live",
       title: "Live",
-      icon: "📡",
+      icon: "radio-tower",
       actions: [ACTIONS.watch, ACTIONS.stop, ACTIONS.demo],
       layout: {
         type: "stack",
@@ -215,7 +215,7 @@ export default defineApp({
     {
       id: "trend",
       title: "Per minute",
-      icon: "📊",
+      icon: "chart-bar",
       layout: {
         type: "stack",
         items: [
@@ -252,8 +252,8 @@ export default defineApp({
     {
       id: "words",
       title: "Words",
-      icon: "🔤",
-      actions: [{ label: "Add a word", icon: "＋", run: addWord }],
+      icon: "case-sensitive",
+      actions: [{ label: "Add a word", icon: "plus", run: addWord }],
       view: {
         type: "list",
         entity: "word",

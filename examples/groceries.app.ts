@@ -106,7 +106,7 @@ function addedBy(item: Resolved, ctx: Ctx): string {
 export default defineApp({
   id: "groceries",
   name: "Groceries",
-  icon: "🛒",
+  icon: "shopping-cart",
   version: "4.0.0",
   // 3.0.0: a bought item is remembered instead of deleted. A copy before it would show every
   // remembered item back on the list, so the data version moves and an older copy waits (KA-22).
@@ -146,7 +146,7 @@ export default defineApp({
     // A list: "Weekly shop", "Party", "Hardware store". Its items are the items pointing at it.
     list: {
       label: "List",
-      icon: "📝",
+      icon: "notebook-pen",
       displayField: "name",
       fields: {
         name: {
@@ -161,7 +161,7 @@ export default defineApp({
     // The aisles of the shop you actually go to — so the list comes out in walking order.
     aisle: {
       label: "Aisle",
-      icon: "🧭",
+      icon: "compass",
       displayField: "name",
       fields: {
         name: {
@@ -176,7 +176,7 @@ export default defineApp({
 
     item: {
       label: "Item",
-      icon: "🛒",
+      icon: "shopping-cart",
       displayField: "name",
       fields: {
         name: {
@@ -244,7 +244,7 @@ export default defineApp({
         // One tap from Usuals: back on the list, in the aisle it was in.
         again: {
           label: "Add",
-          icon: "＋",
+          icon: "plus",
           run: async (item, ctx) => {
             const items = await ctx.query("item");
             const twin = items.find((o) => o.id !== item.id && onList(o) && norm(o.name) === norm(item.name));
@@ -264,7 +264,7 @@ export default defineApp({
     {
       id: "shopping",
       title: "List",
-      icon: "🛒",
+      icon: "shopping-cart",
       description: "Tick things as they go in the basket. Done shopping puts them away for next time.",
       // One line above the list: what is left, and what is in the basket.
       summary: [
@@ -282,7 +282,7 @@ export default defineApp({
       actions: [
         {
           label: "Done shopping",
-          icon: "✓",
+          icon: "check",
           run: doneShopping,
           when: (rows) => rows.some((i) => i.bought),
         },

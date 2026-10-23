@@ -16,6 +16,7 @@ import { Fold, foldKey } from "./fold.js";
 import { byPeople, editLockFor } from "./edit-lock.js";
 import { MoneyValue, moneyColumn, MoneyTotal } from "./money-input.js";
 import { Lead, initialOf, leadSwatch, type LeadKind } from "./lead.js";
+import { Glyph } from "./glyph.js";
 import { useReportCount } from "./page-count.js";
 import { pageOf } from "./backdrop.js";
 import { Mascot } from "./mascot.js";
@@ -121,7 +122,7 @@ export function RowActions({
           <button key={a} type="button" className="k-action k-row-action" onClick={() => void runtime.runAction(entity, a, id)}>
             {icon ? (
               <span className="k-row-action-icon" aria-hidden>
-                {icon}
+                <Glyph icon={icon} size={16} />
               </span>
             ) : null}
             <span className="k-row-action-label">{info?.label ?? humanizeKey(a)}</span>
@@ -417,7 +418,7 @@ export function GalleryView(props: BuiltinViewProps) {
               {cell.mediaUrl ? (
                 <img src={cell.mediaUrl} alt="" loading="lazy" decoding="async" draggable={false} />
               ) : lead === "none" && !cell.icon ? null : (
-                <Lead text={primary} badges={cell.badges} kind={cell.icon ? "icon" : lead} icon={cell.icon ?? entityDef?.icon} className="k-card-glyph" />
+                <Lead text={primary} badges={cell.badges} kind={cell.icon ? "icon" : lead} icon={cell.icon ?? entityDef?.icon} className="k-card-glyph" size={80} />
               )}
             </span>
             <span className="k-card-caption">

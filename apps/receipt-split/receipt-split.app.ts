@@ -44,7 +44,7 @@ async function readReceipt(ctx: Ctx): Promise<void> {
 export default defineApp({
   id: "receipt-split",
   name: "Receipt Split",
-  icon: "🧾",
+  icon: "receipt",
   version: "1.0.0",
   schemaVersion: 1,
   language: "en",
@@ -67,8 +67,8 @@ export default defineApp({
     {
       id: "items",
       title: "Items",
-      icon: "🧾",
-      actions: [{ label: "Read a receipt", icon: "📷", run: readReceipt }],
+      icon: "receipt",
+      actions: [{ label: "Read a receipt", icon: "camera", run: readReceipt }],
       summary: [
         { label: "Items", op: "count" },
         { label: "Total", field: "price", op: "sum" },

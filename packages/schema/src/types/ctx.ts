@@ -192,6 +192,7 @@ export interface UiItem<T = string> {
   id: T;
   label: Words;
   detail?: Words;
+  /** A Lucide name. */
   icon?: string;
   destructive?: boolean;
 }

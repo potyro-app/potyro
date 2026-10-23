@@ -45,6 +45,7 @@ import { useRowGroups } from "./row-groups.js";
 import { useReorder } from "./reorder.js";
 import { byPeople } from "./edit-lock.js";
 import { UsualChips, useUsuals } from "./checklist-usuals.js";
+import { Glyph } from "./glyph.js";
 
 /**
  * How long a ticked row stays where it is before it sinks.
@@ -698,13 +699,13 @@ export function ChecklistView(props: BuiltinViewProps) {
           <InlineText value={rt.text} label={t`Rename ${name}`} onSave={(text) => void renameRow(r, text)} onCancel={() => setEditingRow(null)} />
         ) : view.editText && arranging ? (
           <button type="button" className="k-check-text k-check-rename" onClick={() => setEditingRow(id)} aria-label={t`Rename ${name}`}>
-            {rt.icon ? <span className="k-check-icon" aria-hidden>{rt.icon}</span> : null}
+            {rt.icon ? <span className="k-check-icon" aria-hidden><Glyph icon={rt.icon} size={20} /></span> : null}
             <span className="k-check-label">{rt.text}</span>
             {rt.detail ? <span className="k-check-detail">{rt.detail}</span> : null}
           </button>
         ) : (
           <span className="k-check-text">
-            {rt.icon ? <span className="k-check-icon" aria-hidden>{rt.icon}</span> : null}
+            {rt.icon ? <span className="k-check-icon" aria-hidden><Glyph icon={rt.icon} size={20} /></span> : null}
             <span className="k-check-label">{rt.text}</span>
             {rt.detail ? <span className="k-check-detail">{rt.detail}</span> : null}
           </span>
