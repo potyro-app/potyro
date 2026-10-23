@@ -1,6 +1,6 @@
 // An icon is a Lucide name or one emoji (#425): the validator takes both, and nothing in between.
 import { describe, expect, it } from "vitest";
-import { defineApp, isIcon, isLucideName } from "../src/index.js";
+import { defineApp, iconKind, isIcon, isImageIcon, isImagePath, isLucideName } from "../src/index.js";
 
 const app = (icon: string, where: "app" | "entity" | "page" | "action") =>
   defineApp({
@@ -49,4 +49,28 @@ describe("defineApp", () => {
       expect(() => app("Shopping Cart!", where)).toThrow(/Lucide name/);
     });
   }
+});
+
+describe("pictures as icons (#425)", () => {
+  it("knows a shipped file's path, an inline <svg> and a data: image", () => {
+    expect(isImageIcon("icon.svg")).toBe(true);
+    expect(isImagePath("art/logo.png")).toBe(true);
+    expect(isImageIcon("<svg viewBox=\"0 0 24 24\"><path d=\"M1 1\"/></svg>")).toBe(true);
+    expect(isImagePath("<svg/>")).toBe(false);
+    expect(isImageIcon("data:image/png;base64,iVBORw0KGgo=")).toBe(true);
+    expect(isImageIcon("data:text/html,<b>x</b>")).toBe(false);
+    expect(isImageIcon("../secret.png")).toBe(false);
+    expect(isImageIcon("https://example.com/a.png")).toBe(false);
+    expect(isImageIcon("shopping-cart")).toBe(false);
+    expect(isImageIcon("🛒")).toBe(false);
+    expect(iconKind("icon.svg")).toBe("image");
+    expect(iconKind("shopping-cart")).toBe("lucide");
+    expect(iconKind("🛒")).toBe("glyph");
+  });
+
+  it("defineApp takes a picture as the app's icon, within its size", () => {
+    expect(() => app("icon.svg", "app")).not.toThrow();
+    expect(() => app("<svg viewBox=\"0 0 24 24\"><path d=\"M1 1\"/></svg>", "entity")).not.toThrow();
+    expect(() => app(`<svg>${"x".repeat(70_000)}</svg>`, "app")).toThrow();
+  });
 });

@@ -1,27 +1,33 @@
 // One icon of an app's, drawn the system's way (DESIGN.md §3.5, #425). An app's `icon` is a Lucide
-// name ("shopping-cart") — drawn as that icon, stroke 2 with round caps, the stroke of the logo — or,
-// from before, an emoji or a short glyph, shown as the character it is. Every place the shell shows
-// an app's icon (a tab, a tile, a row's lead, a button, a menu row) goes through here, so a name is
+// name ("shopping-cart") — drawn as that icon, stroke 2 with round caps, the stroke of the logo — a
+// picture (a file it ships, an inline <svg>, a data: URL) — shown as it is, through <img> — or, from
+// before, an emoji or a short glyph, shown as the character it is. Every place the shell shows an
+// app's icon (a tab, a tile, a row's lead, a button, a menu row) goes through here, so a name is
 // the same picture everywhere and an unknown one never shows as text.
 //
-// The paths are one lazy chunk (@potyro/design): the first Lucide name seen starts the load, and
+// The Lucide paths are one lazy chunk (@potyro/design): the first name seen starts the load, and
 // until it lands the icon's room is kept empty — a fallback that flashes and is replaced is worse
 // than a beat of nothing. A name Lucide has not shows `fallback` (an initial, a plus) or nothing.
+// A picture that names a shipped file is resolved through `IconFilesContext` (the open app's
+// `ctx.files.url`); with no app open around it, it shows the fallback too.
 
 import { isLucideName, lucideLoaded, lucidePath, lucideReady, onLucide } from "@potyro/design";
+import { isImageIcon, isImagePath } from "potyro";
 import type { CSSProperties, ReactNode } from "react";
-import { useSyncExternalStore } from "react";
+import { useContext, useEffect, useState, useSyncExternalStore } from "react";
+import { imageIconSrc } from "./icon-image.js";
+import { IconFilesContext } from "./portal-root.js";
 
 /** The icon's box, in px: 16 inline, 20 default, 24 in a tab bar — larger on tiles and heroes. */
 export type GlyphSize = number;
 
 export interface GlyphProps {
-  /** A Lucide name, an emoji, a short glyph — or nothing. */
+  /** A Lucide name, a picture, an emoji, a short glyph — or nothing. */
   icon: string | undefined | null;
   /** The box, in px. The stroke is 2px up to 24 and scales with the box above it, as the logo's. */
   size?: GlyphSize;
   className?: string;
-  /** What to show for a name Lucide has not, or no icon at all. */
+  /** What to show for a name Lucide has not, a picture that cannot be reached, or no icon at all. */
   fallback?: ReactNode;
   style?: CSSProperties;
 }
@@ -31,11 +37,54 @@ export function useLucide(): boolean {
   return useSyncExternalStore(onLucide, lucideLoaded, lucideLoaded);
 }
 
-/** The icon as an element: an <svg> for a Lucide name, a <span> for a glyph, `fallback` otherwise. */
+/**
+ * The URL of a picture icon that names a shipped file, through the open app's files: undefined
+ * while it is being looked up, null when there is no app around or the file is not here.
+ */
+export function useIconUrl(path: string | null): string | null | undefined {
+  const resolve = useContext(IconFilesContext);
+  const [state, setState] = useState<{ path: string; url: string | null } | null>(null);
+  useEffect(() => {
+    if (!path || !resolve) return;
+    let live = true;
+    let minted: string | null = null;
+    resolve(path).then(
+      (url) => {
+        if (!live) return;
+        if (url?.startsWith("blob:")) minted = url;
+        setState({ path, url });
+      },
+      () => live && setState({ path, url: null }),
+    );
+    return () => {
+      live = false;
+      if (minted) URL.revokeObjectURL(minted);
+    };
+  }, [path, resolve]);
+  if (!path) return null;
+  if (!resolve) return null;
+  return state?.path === path ? state.url : undefined;
+}
+
+function Picture({ src, size, className, style }: { src: string; size: number; className: string; style?: CSSProperties }): ReactNode {
+  return <img className={`${className} k-glyph-image`} src={src} alt="" width={size} height={size} draggable={false} decoding="async" style={style} />;
+}
+
+/** The icon as an element: an <svg> for a Lucide name, an <img> for a picture, a <span> for a glyph, `fallback` otherwise. */
 export function Glyph({ icon, size = 20, className, fallback = null, style }: GlyphProps): ReactNode {
   const loaded = useLucide();
+  const path = isImagePath(icon) ? (icon as string) : null;
+  const fileUrl = useIconUrl(path);
   const cls = className ? `k-glyph ${className}` : "k-glyph";
   if (!icon) return fallback;
+  if (isImageIcon(icon)) {
+    if (path) {
+      if (fileUrl === undefined) return <span className={`${cls} k-glyph-pending`} style={{ width: size, height: size, ...style }} aria-hidden />;
+      return fileUrl ? <Picture src={fileUrl} size={size} className={cls} style={style} /> : fallback;
+    }
+    const src = imageIconSrc(icon);
+    return src ? <Picture src={src} size={size} className={cls} style={style} /> : fallback;
+  }
   if (!isLucideName(icon)) {
     return (
       <span className={`${cls} k-glyph-text`} style={style} aria-hidden>
@@ -69,9 +118,13 @@ export function Glyph({ icon, size = 20, className, fallback = null, style }: Gl
   );
 }
 
-/** Whether an icon can be drawn now: a glyph always, a Lucide name once the paths are here and have it. */
-export function glyphDrawable(icon: string | undefined | null): icon is string {
+/**
+ * Whether an icon can be drawn now: a glyph always, a Lucide name once the paths are here and have
+ * it, a picture carried in the string always, a shipped file's picture once its `src` is known.
+ */
+export function glyphDrawable(icon: string | undefined | null, src?: string | null): icon is string {
   if (!icon) return false;
+  if (isImageIcon(icon)) return isImagePath(icon) ? Boolean(src) : imageIconSrc(icon) !== undefined;
   return !isLucideName(icon) || lucidePath(icon) !== undefined;
 }
 
@@ -79,10 +132,25 @@ const SVG = "http://www.w3.org/2000/svg";
 
 /**
  * The icon as a DOM element, for markup built outside React (a map's pin): the <svg> for a Lucide
- * name the paths have, a <span> for a glyph. Call `lucideReady()` first; a name not loaded or not
- * known comes back as an empty, sized span.
+ * name the paths have, an <img> for a picture (`src` for one that names a shipped file), a <span>
+ * for a glyph. Call `lucideReady()` first; a name not loaded or not known comes back as an empty,
+ * sized span.
  */
-export function glyphElement(icon: string, size: GlyphSize = 20): HTMLElement | SVGElement {
+export function glyphElement(icon: string, size: GlyphSize = 20, opts: { src?: string | null } = {}): HTMLElement | SVGElement {
+  if (isImageIcon(icon)) {
+    const src = isImagePath(icon) ? opts.src : imageIconSrc(icon);
+    if (src) {
+      const img = document.createElement("img");
+      img.className = "k-glyph k-glyph-image";
+      img.src = src;
+      img.alt = "";
+      img.width = size;
+      img.height = size;
+      img.draggable = false;
+      return img;
+    }
+    return pending(size);
+  }
   if (!isLucideName(icon)) {
     const span = document.createElement("span");
     span.className = "k-glyph k-glyph-text";
@@ -90,13 +158,7 @@ export function glyphElement(icon: string, size: GlyphSize = 20): HTMLElement | 
     return span;
   }
   const d = lucidePath(icon);
-  if (!d) {
-    const span = document.createElement("span");
-    span.className = "k-glyph k-glyph-pending";
-    span.style.width = `${size}px`;
-    span.style.height = `${size}px`;
-    return span;
-  }
+  if (!d) return pending(size);
   const svg = document.createElementNS(SVG, "svg");
   svg.setAttribute("class", "k-glyph k-icon");
   svg.setAttribute("width", String(size));
@@ -113,6 +175,14 @@ export function glyphElement(icon: string, size: GlyphSize = 20): HTMLElement | 
   path.setAttribute("d", d);
   svg.appendChild(path);
   return svg;
+}
+
+function pending(size: number): HTMLElement {
+  const span = document.createElement("span");
+  span.className = "k-glyph k-glyph-pending";
+  span.style.width = `${size}px`;
+  span.style.height = `${size}px`;
+  return span;
 }
 
 /**

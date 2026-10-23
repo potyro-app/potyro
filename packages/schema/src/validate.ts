@@ -12,14 +12,15 @@ import { LINK_LIMITS, LINK_PARAM_NAME } from "./links.js";
 import { z } from "zod";
 import { ENUM_COLORS, FIELD_TYPES } from "./types/fields.js";
 import { isWordsSchema, zLanguage, zWords, zWordsNonEmpty } from "./words-schema.js";
-import { ICON_MAX, isIcon } from "./icon.js";
+import { ICON_IMAGE_MAX, isIcon } from "./icon.js";
 
-/** An icon (#425): a Lucide name ("shopping-cart", as on lucide.dev) — or one emoji / short glyph. */
+/** An icon (#425): a Lucide name ("shopping-cart", as on lucide.dev), a picture (a shipped file's path,
+ *  an inline <svg>, a data: image) — or one emoji / short glyph. */
 const zIcon = z
   .string()
   .min(1)
-  .max(ICON_MAX)
-  .refine(isIcon, { message: 'an icon is a Lucide name ("shopping-cart", kebab-case as on lucide.dev) or one emoji' })
+  .max(ICON_IMAGE_MAX)
+  .refine(isIcon, { message: 'an icon is a Lucide name ("shopping-cart", kebab-case as on lucide.dev), a picture ("icon.svg", an inline <svg>, a data:image URL) or one emoji' })
   .optional();
 
 /** A value that must be a function (logic — not validated further). */

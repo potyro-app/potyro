@@ -61,7 +61,7 @@ export function SharePage() {
       </figure>
       <ul className="k-share-apps" aria-label={t`Your apps`}>
         {apps.map((app, i) => {
-          const identity = tileIdentity({ key: app.key, name: app.name, icon: app.icon, accent: app.accent, hue: app.entry.hue });
+          const identity = tileIdentity({ key: app.key, name: app.name, icon: app.icon, image: app.image, accent: app.accent, hue: app.entry.hue });
           const best = i === 0 && fits[0] === app.id;
           return (
             <li key={app.key}>

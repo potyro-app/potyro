@@ -274,6 +274,11 @@ export const CAPABILITIES: readonly Capability[] = [
       { of: "GalleryView", name: "aspect" },
       { of: "ActionDef", name: "icon" },
     ],
+    notes: [
+      "An `icon` is a Lucide name first (\"shopping-cart\"). When the person asks for a picture or a logo as the icon, it may be",
+      "an inline `<svg>…</svg>` string (small, viewBox 0 0 24 24, no script) or a `data:image/…` URL; a file the app ships works",
+      "too (`icon: \"icon.svg\"`). A picture is shown as it is, not in the system's stroke.",
+    ].join("\n"),
     cues: /ctx\.media\b|\b(photo|photos|picture|pictures|image|images|zdjęci\w*|foto\w*|bild\w*|imagen\w*|cover|hero|backgrounds?|wallpaper|full ?screen|look\w*|design\w*|beautiful|pretty|prettier|playful|professional|polish\w*|prominent|big button|call to action|tło|wygląd\w*|fundo|aparência|hintergrund|aussehen|fondo|aspecto|sfondo)\b/i,
     uses: /ctx\.media\b|\b(cover|background|primaryAction|facts|lead|aspect)\s*:/,
   },

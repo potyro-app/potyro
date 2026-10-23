@@ -53,6 +53,10 @@ export interface LauncherEntry {
   signals?: AppSignals;
   /** Its live tile's last answer (docs/04 §Tile), for the version of the app it was run on. */
   tile?: TileCache;
+  /** When the declared `icon` names a picture the app ships (`"icon.svg"`, #425): that picture,
+   *  small, as a `data:` URL, read once the app opened (`rememberIconImage`) — so the Home card,
+   *  the splash and the share card have it without the app's files. For one version of the source. */
+  iconImage?: { hash: string; image: string };
 }
 
 /**
@@ -164,6 +168,8 @@ export interface InstalledApp {
   /** For the tile: the user's own icon for it (#83), else the declared one (#82) once the source
    *  has been read. */
   icon?: string;
+  /** The small copy of a shipped picture icon (`identity.image`), when the tile shows the declared icon. */
+  image?: string;
   /** The declared accent (#82). */
   accent?: string;
   /** The user's own colour for the tile (#83), a hue. */
@@ -195,6 +201,21 @@ export function sourceHash(source: string): string {
 }
 
 const reading = new Set<string>();
+
+/**
+ * Keep the small picture of an app whose icon names a file it ships (#425), beside the identity it
+ * was read for — the Home card, the splash and the share card show it without the app's files.
+ */
+export function rememberIconImage(key: AppKey, source: string, image: string): void {
+  const hash = sourceHash(source);
+  const prev = getEntry(key).iconImage;
+  if (prev?.hash === hash && prev.image === image) return;
+  try {
+    updateEntry(key, { iconImage: { hash, image } });
+  } catch {
+    // storage full: the card keeps its monogram
+  }
+}
 
 /**
  * Read the declared identity of every app whose cached one is missing or stale, and store it.
@@ -351,6 +372,7 @@ export function listInstalledApps(): InstalledApp[] {
       // A translated app's tile says its name in the person's language, unless they renamed it (#302).
       name: entry.displayName ?? (identity?.names ? shownName(user.name, { name: identity.names, language: identity.language, languages: identity.languages }, languagePrefs()) : user.name),
       ...(entry.icon ?? identity?.icon ? { icon: entry.icon ?? identity?.icon } : {}),
+      ...(entry.iconImage?.hash === sourceHash(user.source) && !entry.icon ? { image: entry.iconImage.image } : {}),
       ...(identity?.accent ? { accent: identity.accent } : {}),
       ...(typeof entry.hue === "number" ? { hue: entry.hue } : {}),
       trusted: user.trusted !== false,
