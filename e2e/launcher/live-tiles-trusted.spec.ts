@@ -6,37 +6,45 @@ test.beforeEach(async ({ page }) => {
   await useStart(page);
 });
 
-// The Start screen's tiles (#96; owner, 2026-10-15): each app's own colour with white on it that
-// reads (AA), and the live face an app declares (`AppDefinition.tile`, docs/04 §Tile) — run after the
+// The Start screen's tiles (#96; owner, 2026-10-15): each app's hour on the colour clock with graphite
+// on it that reads (AA; the design pass, 2026-10-24), and the live face an app declares (`AppDefinition.tile`, docs/04 §Tile) — run after the
 // wall paints, run again when the app's data changes, silent when it fails.
 
 const tile = (page: Page, key: string): Locator => page.locator(`.k-metro-wall .k-metro-cell[data-key="${key}"] .k-metro-tile`);
 const liveFace = (page: Page, key: string): Locator => page.locator(`.k-metro-wall .k-metro-cell[data-key="${key}"] .k-metro-face-live`);
 
-/** White on the tile's painted background, as WCAG computes it — read back through a canvas, so any colour syntax works. */
+/** The tile's own text colour on its painted background, as WCAG computes it — both read back through
+ *  a canvas, so any colour syntax works. */
 async function contrastOnTile(t: Locator): Promise<number> {
   return t.evaluate((el) => {
-    const bg = getComputedStyle(el).backgroundColor;
-    const ctx = document.createElement("canvas").getContext("2d")!;
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, 1, 1);
-    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    const rgb = (css: string): [number, number, number] => {
+      const ctx = document.createElement("canvas").getContext("2d")!;
+      ctx.fillStyle = css;
+      ctx.fillRect(0, 0, 1, 1);
+      const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+      return [r!, g!, b!];
+    };
     const lin = (c: number) => ((c /= 255) <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-    const y = 0.2126 * lin(r!) + 0.7152 * lin(g!) + 0.0722 * lin(b!);
-    return 1.05 / (y + 0.05);
+    const lum = ([r, g, b]: [number, number, number]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    const cs = getComputedStyle(el);
+    const [a, b] = [lum(rgb(cs.backgroundColor)), lum(rgb(cs.color))].sort((x, y) => y - x);
+    return (a! + 0.05) / (b! + 0.05);
   });
 }
 
 test.describe("first run, the examples", () => {
   test.use({ viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true });
 
-  test("every tile is its app's colour with white that reads, and the pale ones are darkened to reach it", async ({ page }) => {
+  test("every tile is its app's hour on the colour clock, with graphite on it that reads", async ({ page }) => {
+    // DESIGN.md §3.1: an app's colour is an angle; its tile is that hour's traço, graphite on it (as
+    // Home's cards). A declared colour gives only its hue — Plants' #7FCF8E is not painted as written.
     await page.goto("/");
     await expect(tile(page, "user:plants")).toBeVisible({ timeout: 30_000 });
     const keys = await page.locator(".k-metro-wall .k-metro-cell[data-key]").evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.key!));
     expect(keys.length).toBeGreaterThanOrEqual(6);
     for (const key of keys) expect(await contrastOnTile(tile(page, key)), key).toBeGreaterThanOrEqual(4.5);
-    // Plants declares #7FCF8E — 1.8:1 under white as written. Its tile is its green, darker.
+    const ink = await tile(page, "user:plants").evaluate((el) => getComputedStyle(el).color);
+    expect(ink).toBe("rgb(35, 31, 32)");
     const bg = await tile(page, "user:plants").evaluate((el) => getComputedStyle(el).backgroundColor);
     expect(bg).not.toMatch(/^rgb\(127, 207, 142\)$/);
   });

@@ -1727,6 +1727,9 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
 }
 .k-data-tabs {
   display: flex;
+  /* Never squeezed by what is under it: a scroller in a flex column may shrink below its content,
+     and a long Files list did that to the tabs, then covered them (owner, 2026-10-24). */
+  flex: none;
   gap: var(--space-4);
   border-bottom: 1px solid var(--line);
   overflow-x: auto;
@@ -1964,7 +1967,7 @@ th.k-data-raw {
   flex-direction: column;
   gap: var(--space-3);
   min-height: 12rem;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   border-radius: var(--radius);
   transition: background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
@@ -2004,7 +2007,12 @@ th.k-data-raw {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface-raised);
-  overflow: hidden;
+  /* As tall as its files and no taller than the room left: then it scrolls inside itself, as the
+     records table does (.k-data-scroll). */
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .k-files-row {
   display: flex;
@@ -13773,6 +13781,9 @@ input.k-switch:disabled {
    opens — transforms and opacity only, and none of it under reduced motion. */
 /* tokens-only: start — start screen */
 .k-metro {
+  /* Tiles wear the app's traço (metro-tile.tsx); graphite reads on every hour of it (§3.1). */
+  --tile-ink: var(--ink-on-traco);
+  --tile-ink-soft: color-mix(in oklab, var(--ink-on-traco) 80%, transparent);
   --metro-side: 12px;
   /* The app bar's height, so the last row of tiles can scroll clear of it. */
   --metro-bar: calc(4.25rem + var(--k-safe-bottom));
@@ -13800,9 +13811,7 @@ input.k-switch:disabled {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  min-height: 44px;
   color: var(--ink-soft);
 }
 .k-metro-brand strong {
@@ -13822,13 +13831,12 @@ input.k-switch:disabled {
   padding: 0.1rem 0;
   min-height: 2.75rem;
   background: none;
-  font: inherit;
-  font-size: clamp(2.1rem, 1.6rem + 2.2vw, 3.1rem);
-  font-weight: 300;
-  letter-spacing: -0.02em;
-  line-height: 1.05;
-  text-transform: lowercase;
-  color: var(--ink-faint);
+  font-family: var(--font-display);
+  font-size: var(--text-h1);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--muted);
   cursor: pointer;
   transition: color var(--dur-fast) var(--ease);
 }
@@ -13837,6 +13845,9 @@ input.k-switch:disabled {
 }
 .k-metro-pivot [role="tab"]:hover {
   color: var(--ink-soft);
+}
+.k-metro-pivot [role="tab"][aria-selected="true"] {
+  box-shadow: inset 0 -3px 0 var(--accent);
 }
 .k-metro-pivot [role="tab"][aria-selected="true"]:hover {
   color: var(--ink);
@@ -13866,21 +13877,9 @@ input.k-switch:disabled {
     transform: translateX(-28px);
   }
 }
+/* The hero is Home's own (#431): the same prompt box, title and chips. */
 .k-metro .k-welcome {
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  background: var(--surface-sunken);
-  padding: var(--space-4);
-}
-.k-metro .k-welcome h2 {
-  font-family: var(--font-ui);
-  font-weight: 300;
-  font-size: 1.6rem;
-  letter-spacing: -0.01em;
-}
-.k-metro .k-welcome .k-add {
-  border-radius: 0;
+  max-width: 44rem;
 }
 
 /* The wall. Blocks stack on a phone, flow side by side on a desk; inside each, the tiles sit on an
@@ -13923,7 +13922,7 @@ input.k-switch:disabled {
      loose tiles above and below it. */
   margin: calc(-1 * var(--metro-gap));
   padding: var(--metro-gap);
-  background: color-mix(in oklab, var(--group-tint, var(--ink)) 6%, transparent);
+  border-radius: var(--radius-md);
   transition: background var(--dur-fast) var(--ease), outline-color var(--dur-fast) var(--ease);
   outline: 2px solid transparent;
   outline-offset: 0;
@@ -13946,10 +13945,11 @@ input.k-switch:disabled {
   padding: 0;
   background: none;
   font: inherit;
-  font-size: 0.95rem;
-  font-weight: 400;
-  letter-spacing: 0.01em;
-  color: var(--ink);
+  font-size: var(--text-micro);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
 }
 button.k-metro-group-name {
   min-height: 2.75rem;
@@ -13993,7 +13993,7 @@ button.k-metro-group-name {
   height: 100%;
   padding: 0;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--tile-bg);
   color: var(--tile-ink);
   box-shadow: none;
@@ -14053,10 +14053,10 @@ button.k-metro-group-name {
   border-radius: 0;
   background: none;
   color: var(--tile-ink);
-  font-family: var(--font-ui);
+  font-family: var(--font-display);
   line-height: 1;
   font-size: calc(var(--metro-unit) * 0.42);
-  font-weight: 400;
+  font-weight: 700;
 }
 .k-metro-tile[data-size="small"] .k-metro-glyph {
   top: 50%;
@@ -14067,7 +14067,7 @@ button.k-metro-group-name {
   font-size: calc(var(--metro-unit) * 0.62);
 }
 .k-metro .k-metro-glyph[data-kind="monogram"] {
-  font-weight: 300;
+  font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
@@ -14082,9 +14082,9 @@ button.k-metro-group-name {
   position: absolute;
   left: 0.6rem;
   right: 2.4rem;
-  bottom: 0.45rem;
-  font-size: 0.8rem;
-  font-weight: 400;
+  bottom: 0.5rem;
+  font-size: var(--text-small);
+  font-weight: 600;
   line-height: 1.2;
   color: var(--tile-ink);
   white-space: nowrap;
@@ -14181,7 +14181,22 @@ button.k-metro-group-name {
 .k-metro-photo + .k-metro-live-text {
   inset: auto 0 0;
   padding: 2.4rem 0.6rem 1.9rem;
-  background: linear-gradient(to top, var(--tile-shade), transparent);
+}
+/* Over a photo the words are white, on a shade from the bottom that the name and count sit on too. */
+.k-metro-face:has(> .k-metro-photo) {
+  --tile-ink: oklch(100% 0 0);
+  --tile-ink-soft: oklch(100% 0 0 / 0.86);
+  color: var(--tile-ink);
+}
+.k-metro-face:has(> .k-metro-photo)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, var(--tile-shade) 0%, color-mix(in oklab, var(--tile-shade) 75%, transparent) 55%, color-mix(in oklab, var(--tile-shade) 45%, transparent) 100%);
+  pointer-events: none;
+}
+.k-metro-face:has(> .k-metro-photo) > :not(.k-metro-photo) {
+  z-index: 1;
 }
 
 /* A folded group: one medium tile holding a mosaic of its apps (a Windows Phone live folder). */
@@ -14315,9 +14330,9 @@ button.k-metro-group-name {
   align-items: flex-start;
   justify-content: center;
   gap: 0.15rem;
-  padding: 0.35rem var(--metro-side) calc(0.35rem + var(--k-safe-bottom));
-  background: var(--surface-sunken);
-  border-top: 1px solid var(--line);
+  padding: 0.4rem var(--metro-side) calc(0.4rem + var(--k-safe-bottom));
+  background: var(--bg);
+  border-top: var(--stroke) solid var(--line);
 }
 .k-metro-bar-btn,
 .k-metro .k-metro-bar .k-add {
@@ -14345,10 +14360,11 @@ button.k-metro-group-name {
 .k-metro-bar-icon {
   display: grid;
   place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border: 2px solid var(--ink);
+  width: 2.5rem;
+  height: 2.5rem;
+  border: var(--stroke) solid var(--line-strong);
   border-radius: 999px;
+  color: var(--ink-soft);
   font-size: 1.05rem;
   line-height: 1;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
@@ -14363,8 +14379,13 @@ button.k-metro-group-name {
 .k-metro-bar-btn:focus-visible .k-metro-bar-icon,
 .k-metro-bar-btn[aria-pressed="true"] .k-metro-bar-icon,
 .k-metro-bar-btn[aria-checked="true"] .k-metro-bar-icon {
-  background: var(--ink);
-  color: var(--paper);
+  border-color: var(--ink);
+  background: var(--surface);
+  color: var(--ink);
+}
+.k-metro-bar-btn:focus-visible .k-metro-bar-icon {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 .k-metro-bar-btn:focus-visible {
   outline: none;
@@ -14377,10 +14398,10 @@ button.k-metro-group-name {
   cursor: default;
 }
 .k-metro-bar-word {
-  font-size: 0.68rem;
+  font-size: var(--text-micro);
+  font-weight: 600;
   line-height: 1.1;
   color: var(--ink-soft);
-  text-transform: lowercase;
   white-space: nowrap;
 }
 /* The primary action keeps the accent, the way Start's app bar has one filled button. */
