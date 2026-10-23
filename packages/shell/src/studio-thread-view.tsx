@@ -6,6 +6,7 @@
 // held back (it has problems, or it rewrote the app) is a card too, marked as not saved, with what
 // can be done about it.
 
+import { Mascot } from "@potyro/views";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { tileIdentity } from "./tile-identity.js";
@@ -198,6 +199,8 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
             <article className="k-card" data-current={item.current || undefined} aria-label={seq ? t({ message: `${name}, version ${seq}`, comment: "A card in the Studio conversation: the app and which version it is" }) : name}>
               <Mark app={app} name={name} />
               <div className="k-card-body">
+                {/* A first app made (DESIGN.md §4.2): the mascot comes in, once, on its first version. */}
+                {item.current && seq === 1 ? <Mascot mode="enter" size={28} className="k-card-mascot" /> : null}
                 <p className="k-card-name">
                   {name}
                   {item.seq ? <span className="k-thread-seq k-card-seq">v{item.seq}</span> : null}
@@ -250,12 +253,11 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
       ) : null}
       {working !== null ? (
         <li className="k-thread-turn k-thread-theirs">
-          <p className="k-thread-answer k-thread-working" aria-live="polite">
-            <span className="k-dots" aria-hidden>
-              <i />
-              <i />
-              <i />
-            </span>
+          {/* A long wait (DESIGN.md §4.2): the mascot draws its stroke while the app is made; under
+              reduced motion the stroke is there and a bar moves instead (mascot.tsx). */}
+          <p className="k-thread-answer k-thread-working k-waiting" aria-live="polite">
+            <Mascot mode="drawing" size={26} />
+            <span className="k-waiting-bar" aria-hidden />
             {working || t`Working…`}
           </p>
         </li>
