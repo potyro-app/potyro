@@ -1531,6 +1531,11 @@ msgstr "Tudo o que você fizer depois também vai. O relay só vê dados criptog
 msgid "API address"
 msgstr "Endereço da API"
 
+#. Studio tab on a phone: the app being made
+#: ../shell/src/studio.tsx
+msgid "App"
+msgstr "App"
+
 #: ../shell/src/studio-tools.tsx
 msgid "App history"
 msgstr "Histórico do app"
@@ -1768,6 +1773,11 @@ msgstr "Melhor opção"
 #: ../shell/src/engine-settings.tsx
 msgid "Best quality; larger download · non-commercial license"
 msgstr "Melhor qualidade; download maior · licença não comercial"
+
+#. An hour of the colour clock
+#: ../shell/src/studio.tsx
+msgid "Blue"
+msgstr "Azul"
 
 #. Point chip: a kind of view, lower case
 #: ../shell/src/point-target.ts
@@ -2287,7 +2297,9 @@ msgid "Coder-tuned — the output is a structured .app.ts"
 msgstr "Ajustado para código: o resultado é um .app.ts estruturado"
 
 #. Change the tint of a tile group
+#. The app's colour, chosen on the clock
 #: ../shell/src/launcher-metro.tsx
+#: ../shell/src/studio.tsx
 #: ../shell/src/tile-editor.tsx
 msgid "Colour"
 msgstr "Cor"
@@ -2337,6 +2349,11 @@ msgstr "Continuar"
 #: ../shell/src/draft-strip.tsx
 msgid "Continue “{0}”"
 msgstr "Continuar “{0}”"
+
+#. Studio tab on a phone: the conversation
+#: ../shell/src/studio.tsx
+msgid "Conversation"
+msgstr "Conversa"
 
 #: ../shell/src/realm-probe-screen.tsx
 #: ../shell/src/share-body.tsx
@@ -2529,6 +2546,11 @@ msgstr "Criar e modificar usam <0>{label}</0>."
 #: ../shell/src/point-target.ts
 msgid "custom view"
 msgstr "visualização própria"
+
+#. An hour of the colour clock
+#: ../shell/src/studio.tsx
+msgid "Cyan"
+msgstr "Ciano"
 
 #. Appearance
 #: ../shell/src/look-panel.tsx
@@ -3271,6 +3293,11 @@ msgstr "Ir para seus apps"
 msgid "going online on its own"
 msgstr "acessar a internet sozinho"
 
+#. An hour of the colour clock
+#: ../shell/src/studio.tsx
+msgid "Green"
+msgstr "Verde"
+
 #. A launcher tile group the person made and has not named yet
 #. Put this tile in a group with the next one
 #: ../shell/src/launcher-groups.ts
@@ -3546,6 +3573,11 @@ msgstr "Aumentar {label}"
 #: ../shell/src/storage-report.tsx
 msgid "IndexedDB, rewritten whole on every save (slow)"
 msgstr "IndexedDB, regravado inteiro a cada salvamento (lento)"
+
+#. An hour of the colour clock
+#: ../shell/src/studio.tsx
+msgid "Indigo"
+msgstr "Anil"
 
 #: ../shell/src/studio.tsx
 #: ../shell/src/studio.tsx
@@ -3931,6 +3963,11 @@ msgstr "Bibliotecas"
 msgid "Light"
 msgstr "Claro"
 
+#. An hour of the colour clock
+#: ../shell/src/studio.tsx
+msgid "Lime"
+msgstr "Lima"
+
 #. Point chip: a thing inside an app's screen, lower case
 #: ../shell/src/point-target.ts
 msgid "link"
@@ -4063,6 +4100,11 @@ msgstr "criado pelo app"
 msgid "Made with Potyro"
 msgstr "Feito com Potyro"
 
+#. An hour of the colour clock
+#: ../shell/src/studio.tsx
+msgid "Magenta"
+msgstr "Magenta"
+
 #. Add-an-app card button, opened from Make it mine: your own copy of an app to change
 #. App menu: your own copy of this app, to change in the Studio
 #. Demo bar: make your own copy of this app, to change in the Studio
@@ -4151,6 +4193,11 @@ msgstr "As mensagens chegam quando a outra pessoa abrir este app de novo; nada �
 #: ../views/src/number-input.tsx
 msgid "min"
 msgstr "min"
+
+#. An hour of the colour clock
+#: ../shell/src/studio.tsx
+msgid "Mint"
+msgstr "Menta"
 
 #: ../views/src/number-input.tsx
 msgid "minutes"
@@ -4941,6 +4988,11 @@ msgstr "Chave de API do OpenRouter"
 msgid "OpenRouter model"
 msgstr "Modelo do OpenRouter"
 
+#. An hour of the colour clock
+#: ../shell/src/studio.tsx
+msgid "Orange"
+msgstr "Laranja"
+
 #: ../shell/src/people-panel.tsx
 msgid "Owner · can invite and remove people"
 msgstr "Dono · pode convidar e remover pessoas"
@@ -5149,6 +5201,16 @@ msgstr "Geração anterior, para um teste de regressão"
 msgid "Previous month"
 msgstr "Mês anterior"
 
+#. Studio: share the app by a link
+#: ../shell/src/studio.tsx
+msgid "Publish"
+msgstr "Publicar"
+
+#. An hour of the colour clock
+#: ../shell/src/studio.tsx
+msgid "Purple"
+msgstr "Roxo"
+
 #: ../views/src/checklist.tsx
 msgid "Put {pendingName} in {heading}"
 msgstr "Colocar {pendingName} em {heading}"
@@ -5233,6 +5295,11 @@ msgstr "Gravando"
 #: ../shell/src/share-sheet.tsx
 msgid "Recording · {left} s"
 msgstr "Gravando · {left} s"
+
+#. An hour of the colour clock
+#: ../shell/src/studio.tsx
+msgid "Red"
+msgstr "Vermelho"
 
 #: ../shell/src/main.tsx
 msgid "Reinstall its files"
@@ -5343,6 +5410,7 @@ msgstr "{name} removido"
 #: ../shell/src/identity-panel.tsx
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
+#: ../shell/src/studio.tsx
 #: ../shell/src/studio.tsx
 msgid "Rename"
 msgstr "Renomear"
@@ -6103,6 +6171,7 @@ msgstr "Irmão mais forte, ainda ~50× mais barato que um modelo de ponta"
 
 #. The Studio's name, above the app's: where apps are made by talking
 #: ../shell/src/studio.tsx
+#: ../shell/src/studio.tsx
 msgid "Studio"
 msgstr "Studio"
 
@@ -6365,6 +6434,7 @@ msgstr "O app vai pedir o endereço de novo."
 msgid "the app, not its data"
 msgstr "o app, não os dados dele"
 
+#: ../shell/src/studio.tsx
 #: ../shell/src/tile-editor.tsx
 #: ../shell/src/tile-editor.tsx
 msgid "The app's own colour"
@@ -7523,6 +7593,11 @@ msgstr "Escreve e edita apps; não consegue investigar um problema relatado pass
 #: ../shell/src/voice-input.tsx
 msgid "Writing down what you said…"
 msgstr "Transcrevendo o que você disse…"
+
+#. An hour of the colour clock
+#: ../shell/src/studio.tsx
+msgid "Yellow"
+msgstr "Amarelo"
 
 #. Activity feed: a ticked box
 #: ../shell/src/activity-panel.tsx

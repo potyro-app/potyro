@@ -38,6 +38,8 @@ const INLINE = new Set([
   "--accent-d",
   "--on-accent-l",
   "--on-accent-d",
+  // The Studio's colour clock: a dot's hour, 1–11, for its place on the dial.
+  "--hora",
   // The Start screen (#96): each tile's colour (contrast-checked in tile-colour.ts), its press tilt
   // and size, a group's tint, and the wall's measured grid and turnstile delay (launcher-metro.tsx).
   "--tile-bg",
