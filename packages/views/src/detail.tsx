@@ -179,7 +179,11 @@ export function DetailView(props: BuiltinViewProps) {
             onClick={() => runDetailAction(a)}
             data-k-wording={typeof a === "string" ? undefined : true}
           >
-            {actionGlyph(a) ? <span aria-hidden>{actionGlyph(a)} </span> : null}
+            {actionGlyph(a) ? (
+              <>
+                <Glyph icon={actionGlyph(a)} size={16} />{" "}
+              </>
+            ) : null}
             {actionLabel(a)}
           </button>
         ))}
@@ -206,9 +210,9 @@ export function DetailView(props: BuiltinViewProps) {
             label={t`More actions`}
             title={label}
             entries={[
-              ...(actions.length && onEdit ? [{ key: "edit", label: t`Edit`, icon: "✎", onSelect: () => onEdit(view.entity, id) } as MenuEntry] : []),
+              ...(actions.length && onEdit ? [{ key: "edit", label: t`Edit`, icon: "pencil", onSelect: () => onEdit(view.entity, id) } as MenuEntry] : []),
               ...(actions.length && onEdit ? ["separator" as const] : []),
-              { key: "delete", label: t`Delete`, icon: "🗑", danger: true, onSelect: () => void onDelete() },
+              { key: "delete", label: t`Delete`, icon: "trash-2", danger: true, onSelect: () => void onDelete() },
             ]}
           />
         )}
@@ -277,7 +281,7 @@ export function DetailView(props: BuiltinViewProps) {
           <button type="button" className="k-cta" onClick={() => runDetailAction(view.primaryAction!)} data-k-wording={typeof view.primaryAction === "string" ? undefined : true}>
             {actionGlyph(view.primaryAction) ? (
               <span className="k-cta-icon" aria-hidden>
-                {actionGlyph(view.primaryAction)}
+                <Glyph icon={actionGlyph(view.primaryAction)} size={20} />
               </span>
             ) : null}
             <span>{actionLabel(view.primaryAction)}</span>
