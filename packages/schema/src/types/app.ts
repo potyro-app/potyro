@@ -611,7 +611,7 @@ export interface Page {
   id: string;
   /** The tab label; a function of ctx may name the selection. */
   title: Dynamic<Words>;
-  /** What the page is for, in a sentence: shown where pages are listed, not on the page. */
+  /** What the page is for, in a sentence: shown where pages are listed, and under an empty page's heading. */
   description?: Words;
   /** The page's frequent action ("Done shopping"), a bottom bar: a quick action's `id` or an `actions` index. */
   primaryAction?: string | number;

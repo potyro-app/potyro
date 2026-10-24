@@ -217,7 +217,7 @@ function AddButton({ onAdd, first }: { onAdd: () => void; first: boolean }) {
   return (
     <button type="button" className="k-add-row-btn k-rel-add" onClick={onAdd}>
       <span className="k-lead k-add-row-mark" aria-hidden>
-        ＋
+        <Glyph icon="plus" size={16} />
       </span>
       <span>{first ? t({ message: "Add the first one", comment: "Button on an empty page: make its first record" }) : t({ message: "Add another", comment: "Under a short list: make one more record like these" })}</span>
     </button>

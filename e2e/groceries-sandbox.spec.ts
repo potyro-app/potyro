@@ -20,5 +20,5 @@ test("groceries runs sealed: the list, a tick folding into the basket, Done shop
   await expect(page.locator(".k-primary-bar").getByRole("button", { name: /Done shopping/ })).toBeVisible();
   // And its `usuals` are offered by the empty box.
   await page.getByRole("textbox", { name: "Add an item" }).click();
-  await expect(page.getByRole("list", { name: "Usual items" }).getByRole("button").first()).toHaveText("＋ Coffee beans");
+  await expect(page.getByRole("list", { name: "Usual items" }).getByRole("button").first()).toHaveText("Coffee beans");
 });

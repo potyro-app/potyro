@@ -16,6 +16,7 @@ import { displayFieldFor } from "./format.js";
 import { PickList } from "./pick-list.js";
 import { RecordForm } from "./record-form.js";
 import { byPeople } from "./edit-lock.js";
+import { Glyph } from "./glyph.js";
 
 export interface RelationInputProps {
   runtime: PotyroRuntime;
@@ -123,7 +124,7 @@ export function RelationInput({ runtime, field, value, onChange, label }: Relati
           aria-label={t({ message: `${title}: add`, comment: "A field that links several records: the field's name, then what the button does" })}
           onClick={() => setOpen(true)}
         >
-          ＋ <Trans comment="Link another record">Add</Trans>
+          <Glyph icon="plus" size={16} /> <Trans comment="Link another record">Add</Trans>
         </button>
         {list}
         {inlineForm}

@@ -72,7 +72,7 @@ describe("the cards", () => {
     expect((within(cards[0] as HTMLElement).getByRole("textbox") as HTMLInputElement).value).toBe("Heat the pan");
     // The second field is labelled inside the card, not left as a bare box.
     expect(within(cards[0] as HTMLElement).getByText("Minutes")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "＋ Add: step" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add: step" })).toBeTruthy();
   });
 
   it("names each card's line field for a screen reader, not by its placeholder", async () => {
@@ -97,7 +97,7 @@ describe("the cards", () => {
     const runtime = await makeRuntime();
     const onChange = vi.fn();
     render(<FieldInput runtime={runtime} field={steps} value={rows} onChange={onChange} label="Steps" />);
-    fireEvent.click(screen.getByRole("button", { name: "＋ Add: step" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add: step" }));
     expect(onChange).toHaveBeenCalledWith([...rows, {}]);
   });
 });

@@ -62,7 +62,7 @@ test.describe("desktop", () => {
 
   test("the button names what it adds, and a new row takes the focus", async ({ page }) => {
     await openRecipeForm(page);
-    const add = page.getByRole("button", { name: "＋ Add: step" });
+    const add = page.getByRole("button", { name: "Add: step" });
     await expect(add).toBeVisible();
     const n = await page.locator(".k-rows[data-ordered] .k-row-card").count();
     await add.click();

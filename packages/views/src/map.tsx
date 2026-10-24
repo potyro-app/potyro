@@ -782,7 +782,7 @@ export function MapView(props: BuiltinViewProps) {
             onClick={() => setPlacing(true)}
           >
             <span className="k-fab-plus" aria-hidden>
-              ＋
+              <Glyph icon="plus" size={16} />
             </span>
             {cards ? null : t({ message: `Add here: ${entityLabel}`, comment: "Map: add a new record at a point; entityLabel is the app's word for it" })}
           </button>
@@ -846,7 +846,7 @@ function MapList({
       {onCreate ? (
         <button type="button" className="k-map-add" onClick={onCreate}>
           <span className="k-fab-plus" aria-hidden>
-            ＋
+            <Glyph icon="plus" size={16} />
           </span>
           {t({ message: `Add: ${entityLabel}`, comment: "A map page where no map can be drawn: add a new record; entityLabel is the app's word for it" })}
         </button>

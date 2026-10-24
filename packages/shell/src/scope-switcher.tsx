@@ -158,7 +158,7 @@ export function ScopeEmpty({ runtime, onNew }: { runtime: PotyroRuntime; onNew: 
   const { t } = useLingui();
   const def = runtime.definition.scope!;
   const kind = def.label ?? runtime.definition.entities[def.entity]?.label ?? def.entity;
-  const icon = runtime.definition.entities[def.entity]?.icon ?? "＋";
+  const icon = runtime.definition.entities[def.entity]?.icon ?? "plus";
   return (
     <section className="k-scope-empty">
       <span className="k-scope-empty-icon" aria-hidden>
@@ -168,7 +168,7 @@ export function ScopeEmpty({ runtime, onNew }: { runtime: PotyroRuntime; onNew: 
       {byPeople(runtime, def.entity) ? (
         <button type="button" className="k-cta" onClick={onNew}>
           <span className="k-cta-icon" aria-hidden>
-            ＋
+            <Glyph icon="plus" size={16} />
           </span>
           <span>{t({ message: `New ${kind}`, comment: "Scope menu: start a new list/trip/group; the app's word for it" })}</span>
         </button>
