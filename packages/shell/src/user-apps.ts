@@ -129,6 +129,9 @@ export function listUserApps(): UserApp[] {
   return read().slice().sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
 }
 
+/** Whether an app's code includes modules of its own (`src/<path>` in its lock), beyond its source. */
+export const hasOwnModules = (lock: AppLock | undefined): boolean => Object.keys(lock ?? {}).some((key) => key.startsWith("src/"));
+
 export function getUserApp(id: string): UserApp | undefined {
   return read().find((a) => a.id === id);
 }
@@ -158,6 +161,11 @@ export async function saveUserApp(
     origin?: VersionOrigin;
     note?: string;
     rationale?: string;
+    /**
+     * The app's own modules as text, when the caller has them and they are not on this device yet (a
+     * package being installed). Left out, they are read from this device as the saved lock names them.
+     */
+    modules?: Record<string, string>;
   },
   now: string,
 ): Promise<UserApp> {
@@ -188,6 +196,12 @@ export async function saveUserApp(
   // what existed when it was flipped would quietly stop being true, and the app you write tomorrow
   // is exactly the one you would miss when the laptop dies.
   const backedUpByDefault = !prev && backupEnabled();
+  // History keeps the app's own modules with each version (#448): the device holds only the current
+  // ones. Read here, before the record changes, the modules the app had: the "before" when history is
+  // empty. `app-modules` imports this file, so it is loaded when an app has modules, not at the top.
+  const ownModules = async (lock: AppLock | undefined) =>
+    hasOwnModules(lock) ? (await import("./app-modules.js")).ownModuleTexts(id!, lock) : undefined;
+  const baselineModules = await ownModules(prev?.lock);
   const record: UserApp = {
     id,
     name,
@@ -215,6 +229,7 @@ export async function saveUserApp(
     seed: input.seed ?? prev?.seed,
   };
   write([record, ...apps.filter((a) => a.id !== id)]);
+  const modules = hasOwnModules(record.lock) ? (input.modules ?? (await ownModules(record.lock))) : undefined;
   // `prev?.source` is the baseline: for an app that predates history, it becomes the "before" the
   // first diff needs. A brand-new app has none — its first version IS the creation.
   await recordVersion(
@@ -228,6 +243,8 @@ export async function saveUserApp(
       // Which bytes its libraries are: an upgrade is a version even when no line of source changed.
       lock: lockJson(record.lock),
       baselineLock: lockJson(prev?.lock),
+      modules,
+      baselineModules,
     },
     now,
   );

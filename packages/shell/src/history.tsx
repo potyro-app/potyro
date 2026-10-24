@@ -32,7 +32,8 @@ import { diffLines, diffStat, toHunks, type DiffLine } from "./diff.js";
 import { listVersions, type AppVersion } from "./app-history.js";
 import { listDiagnoses, type AppDiagnosis } from "./app-diagnoses.js";
 import { highlightLines, type CodeRun } from "./highlight.js";
-import { saveUserApp, getUserApp, lockToRestore } from "./user-apps.js";
+import { getUserApp } from "./user-apps.js";
+import { restoreVersion } from "./restore-version.js";
 
 const ORIGIN_LABEL: Record<AppVersion["origin"], MessageDescriptor> = {
   created: msg({ message: "created", comment: "History: how a version came about, lower case" }),
@@ -160,7 +161,16 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
   const lines = current && before ? diffLines(before.source, current.source) : [];
   // A library upgrade (#266) is a change to lock.json, often with no line of source changed.
   const lockLines = current && before && (before.lock ?? "") !== (current.lock ?? "") ? diffLines(before.lock ?? "", current.lock ?? "") : [];
-  const stat = diffStat([...lines, ...lockLines]);
+  // The app's own modules (#448), file by file — only when both versions kept theirs: a version from
+  // before History kept modules would otherwise show every module as added.
+  const moduleDiffs =
+    current?.modules && before?.modules
+      ? [...new Set([...Object.keys(before.modules), ...Object.keys(current.modules)])]
+          .sort()
+          .filter((path) => (before.modules![path] ?? "") !== (current.modules![path] ?? ""))
+          .map((path) => ({ path, lines: diffLines(before.modules![path] ?? "", current.modules![path] ?? "") }))
+      : [];
+  const stat = diffStat([...lines, ...lockLines, ...moduleDiffs.flatMap((d) => d.lines)]);
   const seq = current?.seq;
   const beforeSeq = before?.seq;
 
@@ -190,10 +200,7 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
     setBusy(true);
     setError(null);
     try {
-      await saveUserApp(
-        { id: appId, name: app.name, source: v.source, lock: lockToRestore(v, app), origin: "restored", note: `rolled back to version ${v.seq}` },
-        new Date().toISOString(),
-      );
+      await restoreVersion(app, v, `rolled back to version ${v.seq}`, new Date().toISOString());
       onRestored?.(v.source);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -311,7 +318,15 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
                         </div>
                       </div>
                       {error ? <p className="k-form-error">{error}</p> : null}
-                      {lockLines.length && !toHunks(lines).length ? null : <Diff lines={lines} painted={painted} />}
+                      {(lockLines.length || moduleDiffs.length) && !toHunks(lines).length ? null : <Diff lines={lines} painted={painted} />}
+                      {moduleDiffs.map((d) => (
+                        <div key={d.path} className="k-history-lock">
+                          <p className="k-muted">
+                            <code>{d.path}</code>
+                          </p>
+                          <Diff lines={d.lines} painted={null} />
+                        </div>
+                      ))}
                       {lockLines.length ? (
                         <div className="k-history-lock">
                           <p className="k-muted">

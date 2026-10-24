@@ -441,6 +441,8 @@ export async function installPackage(pkg: AppPackage, inspected: Inspected, opts
       trusted: runsAsMine,
       link: opts.source === "link" ? opts.link : undefined,
       lock: code.lock,
+      // Its own modules, for History (#448): they reach this device only after the save, below.
+      ...(pkg.modules.length ? { modules: Object.fromEntries(pkg.modules.map((m) => [m.path, new TextDecoder().decode(m.data)])) } : {}),
       origin: "imported",
       // The sample records it came with, kept for a demo link of it (docs/24 §3) — never the
       // person's own: these are the package's, not what they have added since.
