@@ -8,6 +8,7 @@
 // After the new site says it is all in, the banner says so — and stays able to do it again, because a
 // second move is a merge (move-plan.ts) and brings only what changed.
 
+import { Glyph } from "@potyro/views";
 import { useEffect, useRef, useState } from "react";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -170,7 +171,7 @@ function Banner({ newHome }: { newHome: string }) {
   return (
     <section className="k-move" data-state={done && phase.kind === "idle" ? "done" : phase.kind} aria-labelledby="k-move-h" aria-live="polite">
       <div className="k-move-mark" aria-hidden>
-        <span>➜</span>
+        <span aria-hidden><Glyph icon="arrow-right" size={20} /></span>
       </div>
       <div className="k-move-body">
         {done && phase.kind === "idle" ? (

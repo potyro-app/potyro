@@ -8,7 +8,7 @@
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { formatSize } from "@potyro/views";
+import { formatSize, Glyph } from "@potyro/views";
 import { AddAppDialog } from "./add-app-dialog.js";
 import { fitsFor, isAppArrival, landFiles, offerFiles, onOffer, takeOffer } from "./incoming-files.js";
 import { useInstalledApps, type InstalledApp } from "./launcher-store.js";
@@ -92,7 +92,7 @@ function DropCover() {
   return (
     <div className="k-dropcover" aria-hidden>
       <div className="k-dropcover-card">
-        <span className="k-dropcover-mark">⤓</span>
+        <span className="k-dropcover-mark" aria-hidden><Glyph icon="download" size={48} /></span>
         <strong>
           <Trans>Drop to add to Potyro</Trans>
         </strong>

@@ -13,6 +13,7 @@ import { fmt } from "@potyro/i18n";
 import type { DateTimeField } from "potyro";
 import { buildMonthGrid, sameDay } from "./calendar.js";
 import { usePhone } from "./media.js";
+import { Glyph } from "./glyph.js";
 import { addDays, formatDateForInput, parseTypedDay, precisionOf, startOfDay, toDate, toIsoTime, withTime } from "./dates.js";
 import { placeUnder, type Placement } from "./popover.js";
 
@@ -204,11 +205,11 @@ function DatePicker({ title, value, anchor, onPick, onClose }: { title: string; 
         </div>
         <div className="k-date-month">
           <button type="button" className="k-date-nav" aria-label={t`Previous month`} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>
-            ‹
+            <Glyph icon="chevron-left" size={18} />
           </button>
           <strong aria-live="polite">{monthTitle(month)}</strong>
           <button type="button" className="k-date-nav" aria-label={t`Next month`} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>
-            ›
+            <Glyph icon="chevron-right" size={18} />
           </button>
         </div>
         <div className="k-date-grid" role="grid" aria-label={monthTitle(month)}>

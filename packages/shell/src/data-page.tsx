@@ -20,6 +20,7 @@ import type { Store } from "@potyro/store";
 import { useInstalledApps, type InstalledApp } from "./launcher-store.js";
 import { tileIdentity } from "./tile-identity.js";
 import { TileGlyph } from "./tile-glyph.js";
+import { Glyph } from "@potyro/views";
 import { openDataSession, type DataSession } from "./data-runtime.js";
 import { shellCaps } from "./shell-caps.js";
 import { canGoBack, navigateTo, urlFor } from "./router.js";
@@ -53,7 +54,7 @@ export function DataPage({ initialAppId, initialFiles }: { initialAppId?: string
     <div className="k-datapage">
       <header className="k-datapage-bar">
         <button type="button" className="k-add k-datapage-back" onClick={back}>
-          <span aria-hidden>‹</span> <Trans comment="Data page: leave the page">Back</Trans>
+          <Glyph icon="chevron-left" size={16} /> <Trans comment="Data page: leave the page">Back</Trans>
         </button>
         <h1 className="k-datapage-title">
           <DatabaseIcon /> <Trans comment="Data page title: every app's records">Data</Trans>
@@ -160,7 +161,7 @@ function AppData({ app, files, onFiles }: { app: InstalledApp; files: boolean; o
     <header className="k-datapage-apphead">
       <h2>{app.name}</h2>
       <button type="button" className="k-add" onClick={() => navigateTo({ kind: "user", id: app.id })}>
-        <Trans>Open app</Trans> <span aria-hidden>›</span>
+        <Trans>Open app</Trans> <Glyph icon="chevron-right" size={16} />
       </button>
     </header>
   );

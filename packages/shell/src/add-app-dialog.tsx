@@ -201,7 +201,7 @@ export function AddAppDialog({
           <>
             <div className="k-add-app-sources" role="group" aria-label={t`Where it comes from`}>
               <button type="button" className="k-add-app-source" onClick={() => void fromDevice()}>
-                <span className="k-add-app-source-glyph" aria-hidden>⤓</span>
+                <span className="k-add-app-source-glyph" aria-hidden><Glyph icon="download" size={24} /></span>
                 <span className="k-add-app-source-title">
                   <Trans>From this device</Trans>
                 </span>
@@ -210,7 +210,7 @@ export function AddAppDialog({
                 </span>
               </button>
               <button type="button" className="k-add-app-source" aria-pressed={step.tab === "link"} onClick={() => setStep({ kind: "choose", tab: "link" })}>
-                <span className="k-add-app-source-glyph" aria-hidden>🔗</span>
+                <span className="k-add-app-source-glyph" aria-hidden><Glyph icon="link" size={24} /></span>
                 <span className="k-add-app-source-title">
                   <Trans>From a link</Trans>
                 </span>
@@ -219,7 +219,7 @@ export function AddAppDialog({
                 </span>
               </button>
               <button type="button" className="k-add-app-source" aria-pressed={step.tab === "paste"} onClick={() => setStep({ kind: "choose", tab: "paste" })}>
-                <span className="k-add-app-source-glyph" aria-hidden>✎</span>
+                <span className="k-add-app-source-glyph" aria-hidden><Glyph icon="clipboard-paste" size={24} /></span>
                 <span className="k-add-app-source-title">
                   <Trans>Paste the source</Trans>
                 </span>
@@ -229,7 +229,7 @@ export function AddAppDialog({
               </button>
               {/* Not a source of its own: the gallery's apps are demo links, which open here as any link does. */}
               <a className="k-add-app-source k-add-app-gallery" href={galleryUrl()} target="_blank" rel="noopener">
-                <span className="k-add-app-source-glyph" aria-hidden>▦</span>
+                <span className="k-add-app-source-glyph" aria-hidden><Glyph icon="images" size={24} /></span>
                 <span className="k-add-app-source-title">
                   <Trans comment="Add an app: Potyro's gallery of apps">From the gallery</Trans>
                 </span>
@@ -473,14 +473,14 @@ function Card({
       ) : null}
       {app.sealedProblem ? (
         <p className="k-add-app-sealed" role="note">
-          <span aria-hidden>⚠</span> {app.sealedProblem}
+          <span aria-hidden><Glyph icon="triangle-alert" size={16} /></span> {app.sealedProblem}
           {sealed ? " " : null}
           {sealed ? (source === "link" ? t`In the sealed box it will not open. Once it is added you can let it run as yours — only do that if you know who made it.` : t`In the sealed box it will not open: tick “I wrote this” below to run it as yours.`) : null}
         </p>
       ) : sealed && app.missing.length ? (
         <div className="k-add-app-sealed k-add-app-missing" role="note">
           <p>
-            <span aria-hidden>⚠</span> {describeMissing(app.missing)}{" "}
+            <span aria-hidden><Glyph icon="triangle-alert" size={16} /></span> {describeMissing(app.missing)}{" "}
             {app.failsToOpenSealed
               ? t`In the sealed box it will not open.`
               : plural(app.missing.length, {
@@ -500,7 +500,7 @@ function Card({
         </div>
       ) : sealed && app.trialProblem ? (
         <p className="k-add-app-sealed" role="note">
-          <span aria-hidden>⚠</span> <Trans>It could not be tried in the sealed box: {trialProblem}</Trans>
+          <span aria-hidden><Glyph icon="triangle-alert" size={16} /></span> <Trans>It could not be tried in the sealed box: {trialProblem}</Trans>
         </p>
       ) : fetches && sealed ? (
         <p className="k-muted k-add-app-note">
@@ -568,12 +568,12 @@ function Card({
 
       {source === "link" ? (
         <p className="k-add-app-trust">
-          <span aria-hidden>🛡</span>{" "}
+          <span aria-hidden><Glyph icon="shield" size={16} /></span>{" "}
           <Trans>It runs in the sealed box: it can only reach what you allow, when it asks. If you know who made it, you can let it run as yours once it is added — from the app, or from its ⋯ menu on your apps.</Trans>
         </p>
       ) : app.installed?.trusted && mode === "replace" ? (
         <p className="k-add-app-trust">
-          <span aria-hidden>✓</span> <Trans>It runs as yours, as it did before.</Trans>
+          <span aria-hidden><Glyph icon="check" size={16} /></span> <Trans>It runs as yours, as it did before.</Trans>
         </p>
       ) : (
         <label className="k-add-app-trust k-add-app-mine">
@@ -598,14 +598,14 @@ function RunsAsYours({ done, sealed }: { done: Installed; sealed: SealedAfter })
     <div className="k-add-app-sealed k-add-app-runs-as-yours" role="alert">
       {sealed.failsToOpen ? (
         <p>
-          <span aria-hidden>⚠</span>{" "}
+          <span aria-hidden><Glyph icon="triangle-alert" size={16} /></span>{" "}
           <Trans>
             <strong>It only works when it runs as yours.</strong> Only let it if you know who made it. Otherwise it stays sealed, and it will not open.
           </Trans>
         </p>
       ) : (
         <p>
-          <span aria-hidden>⚠</span>{" "}
+          <span aria-hidden><Glyph icon="triangle-alert" size={16} /></span>{" "}
           {sealed.missing.length === 1 ? (
             <Trans>
               <strong>Parts of it only work when it runs as yours.</strong> Only let it if you know who made it. Otherwise it stays sealed, and the parts that use it will not work.

@@ -1218,7 +1218,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
             <div className="k-page-hero-body">
               <div className="k-page-hero-top">
                 <span className="k-page-hero-icon k-home-icon" aria-hidden>
-                  <Glyph icon={def.icon} size={28} fallback="◆" />
+                  <Glyph icon={def.icon || "layout-grid"} size={28} />
                 </span>
                 <h2 className="k-page-title">{appLabel}</h2>
               </div>
@@ -1234,7 +1234,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
                   runtime={runtime}
                   pageId={lp.id}
                   label={entityLabel(e)}
-                  icon={def.entities[e]?.icon ?? "◇"}
+                  icon={def.entities[e]?.icon ?? "shapes"}
                   onOpen={() => navigate(lp.id)}
                 />
               );
@@ -1258,7 +1258,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
                       {(p as { description?: string }).description ? <span className="k-secondary">{(p as { description?: string }).description}</span> : null}
                     </span>
                     <span className="k-row-chevron" aria-hidden>
-                      ›
+                      <Glyph icon="chevron-right" size={18} />
                     </span>
                   </li>
                 ))}

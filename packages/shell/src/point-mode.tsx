@@ -10,6 +10,7 @@
 // a finger has no hover, so a tap chooses and the outline shows what was chosen — and a drag scrolls
 // the app, so a long page can still be pointed at all the way down. A wheel scrolls it too.
 
+import { Glyph } from "@potyro/views";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { AppDefinition } from "potyro";
@@ -217,7 +218,7 @@ export function PointMode({ screen, def, onPick, onCancel }: PointModeProps) {
               <Trans>Point again</Trans>
             </button>
             <button type="button" className="k-point-ask" onClick={() => onPick(levels[chosen.at]!)}>
-              <Trans>Ask about this</Trans> <span aria-hidden>→</span>
+              <Trans>Ask about this</Trans> <span aria-hidden><Glyph icon="arrow-right" size={16} /></span>
             </button>
           </div>
         </div>

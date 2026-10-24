@@ -17,7 +17,7 @@ import { useRef, useState, useEffect, type ReactNode } from "react";
 import { MemoryStore, type Store } from "@potyro/store";
 import { createWebCapabilities } from "@potyro/capabilities";
 import { capsForApp } from "./app-ai-caps.js";
-import { PortalRootContext } from "@potyro/views";
+import { PortalRootContext, Glyph } from "@potyro/views";
 import type { Provenance } from "@potyro/host";
 import { createAppBundler } from "./app-bundler.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
@@ -206,7 +206,7 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
           {tabs ?? (
           <button type="button" className="k-preview-back" aria-label={t`Back to the chat`} onClick={onBack}>
             {/* Beside the conversation the chat is already there, so this closes the app instead. */}
-            <span aria-hidden>←</span> <span className="k-preview-back-word">
+            <span aria-hidden><Glyph icon="arrow-left" size={16} /></span> <span className="k-preview-back-word">
               <Trans comment="Preview bar: back to the Studio conversation">Chat</Trans>
             </span>
             <span className="k-preview-hide-word">

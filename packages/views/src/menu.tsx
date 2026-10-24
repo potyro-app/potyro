@@ -6,7 +6,7 @@
 import { useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { useAppColour } from "./portal-root.js";
-import { glyphOf } from "./glyph.js";
+import { Glyph, glyphOf } from "./glyph.js";
 import { createPortal } from "react-dom";
 
 export interface MenuItem {
@@ -97,7 +97,7 @@ export function ActionMenu({ label, trigger, title, entries, className, buttonCl
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        {busy ? "…" : (trigger ?? "⋯")}
+        {busy ? "…" : (trigger ?? <Glyph icon="ellipsis" size={20} />)}
       </button>
       {open
         ? createPortal(

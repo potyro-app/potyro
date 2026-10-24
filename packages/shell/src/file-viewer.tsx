@@ -13,7 +13,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FileInfo } from "potyro";
 import type { EarlierCopy, Store } from "@potyro/store";
-import { formatSize } from "@potyro/views";
+import { formatSize, Glyph } from "@potyro/views";
 import { earlierCopies, isCatalogFile, readForView, restoreCopy, saveCatalogText, watchArrival, type FileView } from "./app-folder.js";
 import { shellDialogs } from "./dialog.js";
 
@@ -151,11 +151,11 @@ export function FileViewer({ store, file, onSave, onChanged, onClose }: FileView
                 setSaved(false);
               }}
             >
-              <span aria-hidden>✎</span> <Trans comment="Files viewer: change the words of an app's translation file">Edit</Trans>
+              <span aria-hidden><Glyph icon="pencil" size={16} /></span> <Trans comment="Files viewer: change the words of an app's translation file">Edit</Trans>
             </button>
           ) : null}
           <button type="button" className="k-add" onClick={onSave} disabled={view?.kind === "missing"}>
-            <span aria-hidden>⤓</span> <Trans>Save a copy</Trans>
+            <span aria-hidden><Glyph icon="download" size={16} /></span> <Trans>Save a copy</Trans>
           </button>
           <button ref={closeRef} type="button" className="k-tools-close" aria-label={t`Close ${name}`} onClick={onClose}>
             ✕
