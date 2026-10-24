@@ -23,6 +23,7 @@ import { canInvestigate, isCloud, keyFor, openRouterOptions, thinkingFor, type E
 import { buildAndValidate, loadDefinition } from "./validate-app.js";
 import { runCandidate } from "./run-candidate.js";
 import { withLibrariesStoodIn, type ModuleSource } from "./package-modules.js";
+import { unpackCandidate, unpackOrThrow, type JoinedApp } from "./joined-app.js";
 
 export interface StartModifyOpts {
   /** The app as the person has it. */
@@ -39,6 +40,11 @@ export interface StartModifyOpts {
   resumeFrom?: ModifyLoopDeps["resumeFrom"];
   /** The app's libraries and own modules (#266, #258): a candidate is checked with them. */
   modules?: ModuleSource;
+  /**
+   * The app as its files joined into one text (#448), when it has modules of its own: then `source` is
+   * that text, and every gate splits a candidate back into its files before bundling it.
+   */
+  joined?: JoinedApp | null;
   /** The person's language (#301): the model's reply and questions come back in it. English when absent. */
   language?: Language;
   /** What was said about earlier versions (#279), oldest first: the loop's recap and `read_conversation`. */
@@ -61,10 +67,18 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
   // the app as the person has it failed the check too — so no change to it could ever pass. Its own
   // modules stay real; opening the app still runs, and checks, the real libraries.
   const modules = withLibrariesStoodIn(opts.modules);
-  const check = (source: string): Promise<string[]> => buildAndValidate(source, modules);
+  const joined = opts.joined ?? null;
+  // A candidate of a joined app is split into its files first; marker lines it broke are its problem.
+  const check = async (text: string): Promise<string[]> => {
+    const u = await unpackCandidate(text, joined, modules);
+    return u.ok ? buildAndValidate(u.source, u.modules) : [u.problem];
+  };
   // A regression gate: the app as the person has it is run once, and a candidate is held back only
   // by what IT breaks — never by what was already failing (#262).
-  const run = regressionGate((source) => runCandidate(source, { modules }), opts.source);
+  const run = regressionGate(async (text) => {
+    const u = await unpackOrThrow(text, joined, modules);
+    return runCandidate(u.source, { modules: u.modules });
+  }, opts.source);
   // What `translate` writes a language into, and what the loop's edits then apply to (#302).
   const draft = createDraft(opts.source);
   return runModifyLoop({
@@ -84,7 +98,10 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
     ...(opts.conversation?.length ? { conversation: opts.conversation } : {}),
     check,
     run,
-    shapeOf: (source) => loadDefinition(source, modules),
+    shapeOf: async (text) => {
+      const u = await unpackOrThrow(text, joined, modules);
+      return loadDefinition(u.source, u.modules);
+    },
     before: opts.before,
     onStep: opts.onStep,
     signal: opts.signal,

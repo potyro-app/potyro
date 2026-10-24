@@ -151,7 +151,12 @@ interface Held {
   loss: string | null;
   /** Its libraries, already fetched with the person's say-so (#266). */
   libraries: StudioLibraries | null;
+  /** The modules it edited (#448), kept with it if it is kept. */
+  own?: OwnEdit;
 }
+
+/** Modules a version edited (#448): every module's text, and the files and lock entries they make. */
+type OwnEdit = { texts: Record<string, string>; code: { lock: AppLock; files: PackagedFile[] } };
 
 export interface StudioProps {
   onClose: () => void;
@@ -341,7 +346,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     libraries?: StudioLibraries | null,
     extra: Pick<NewMessage, "platform"> = {},
     /** Modules edited by hand (#448): their files go on this device first, and their lock with the version. */
-    own?: { texts: Record<string, string>; code: { lock: AppLock; files: PackagedFile[] } },
+    own?: OwnEdit,
   ): Promise<void> => {
     const existing = appRef.current ? getUserApp(appRef.current) : undefined;
     // Saved in the app's OWN language: a translated app keeps one stored name, and each device shows
@@ -423,31 +428,41 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   };
 
   /** A source arrived: check it, repair it once if its structure is wrong, then keep it or hold it. */
-  const land = async (next: string, summary: string, note: string, loss: string | null, extra: Pick<NewMessage, "platform"> = {}): Promise<void> => {
+  const land = async (
+    next: string,
+    summary: string,
+    note: string,
+    loss: string | null,
+    extra: Pick<NewMessage, "platform"> = {},
+    /** The app's own modules, when the change edited any (#448): checked and kept with it. */
+    modules?: Record<string, string>,
+  ): Promise<void> => {
     setWorking(t`Checking it`);
     let src = next;
     let said = summary;
     let lost = loss;
-    const first = await librariesFor(src);
+    const own: OwnEdit | undefined = modules ? { texts: modules, code: await ownModuleCode(modules) } : undefined;
+    const edited = own ? withEditedModules(await modulesOf(appRef.current ?? undefined), own.code) : undefined;
+    const first = await librariesFor(src, edited);
     if (typeof first === "string") return say({ kind: "failure", text: first });
     let libraries = first;
-    let { preview: built, issues } = await buildPreview(src, appRef.current, libraries?.modules);
+    let { preview: built, issues } = await buildPreview(src, appRef.current, libraries?.modules ?? edited);
     if (issues.length && ready) {
       try {
         const fixed = await (await engine()).repair(src, issues);
         src = fixed.source;
         said = `${said} ${fixed.summary}`.trim();
         lost = lost ?? fixed.loss;
-        const again = await librariesFor(src);
+        const again = await librariesFor(src, edited);
         if (typeof again === "string") return say({ kind: "failure", text: again });
         libraries = again;
-        ({ preview: built, issues } = await buildPreview(src, appRef.current, libraries?.modules));
+        ({ preview: built, issues } = await buildPreview(src, appRef.current, libraries?.modules ?? edited));
       } catch {
         // The problems stand, and are said below.
       }
     }
     if (issues.length || lost) {
-      setHeld({ source: src, summary: said, note, issues, loss: lost, libraries });
+      setHeld({ source: src, summary: said, note, issues, loss: lost, libraries, ...(own ? { own } : {}) });
       setPreview(built ?? preview);
       const problems = issues.join("\n- ");
       await say({
@@ -459,7 +474,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       });
       return;
     }
-    await keep(src, built, said, note, undefined, libraries, extra);
+    await keep(src, built, said, note, undefined, libraries, extra, own);
   };
 
   const answer = async (outcome: Outcome, note: string): Promise<void> => {
@@ -474,7 +489,14 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       const now = new Date().toISOString();
       for (const part of outcome.notDone) void recordDiagnosis(appRef.current, { complaint: note, text: part }, now);
     }
-    await land(outcome.source, outcome.summary, note, outcome.kind === "loss" ? outcome.loss : null, outcome.kind === "source" ? platformAsk(outcome.platformRequest) : {});
+    await land(
+      outcome.source,
+      outcome.summary,
+      note,
+      outcome.kind === "loss" ? outcome.loss : null,
+      outcome.kind === "source" ? platformAsk(outcome.platformRequest) : {},
+      outcome.modules,
+    );
   };
 
   /** One turn: what was asked joins the conversation, the box empties, and the answer lands under it. */
@@ -513,7 +535,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     setWorking("");
     try {
       const fixed = await (await engine()).repair(held.source, held.issues);
-      await land(fixed.source, `${held.summary} ${fixed.summary}`.trim(), held.note, fixed.loss);
+      await land(fixed.source, `${held.summary} ${fixed.summary}`.trim(), held.note, fixed.loss, {}, held.own?.texts);
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
       await say({ kind: "failure", text: t`Could not fix it: ${reason}` });
@@ -532,7 +554,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     );
     if (!go) return;
     const kept = t`Kept with problems.`;
-    await keep(h.source, preview, `${h.summary} ${kept}`.trim(), h.note, undefined, h.libraries);
+    await keep(h.source, preview, `${h.summary} ${kept}`.trim(), h.note, undefined, h.libraries, {}, h.own);
   };
 
   /** An older card: put that version back, as a new version — nothing after it is lost. */

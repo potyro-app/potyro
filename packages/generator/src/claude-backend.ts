@@ -82,7 +82,7 @@ export class ClaudeBackend implements ModelBackend {
       system: SYSTEM_PROMPT,
       thinking: { type: "adaptive" },
       messages: [
-        { role: "user", content: buildModifyOpener() },
+        { role: "user", content: buildModifyOpener(source) },
         { role: "assistant", content: "```ts\n" + source + "\n```" },
         { role: "user", content: buildModifyMessage(instruction, ctx, { source }) },
       ],
