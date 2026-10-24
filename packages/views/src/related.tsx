@@ -201,7 +201,7 @@ export function RelatedRecords({ runtime, pageId, index, recordId, spec, navigat
                 ) : null}
               </span>
               <span className="k-row-chevron" aria-hidden>
-                ›
+                <Glyph icon="chevron-right" size={18} />
               </span>
             </li>
           );

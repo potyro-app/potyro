@@ -153,7 +153,7 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
           aria-haspopup="dialog"
           onClick={() => setOpen(true)}
         >
-          <span aria-hidden>⚟</span> <Trans comment="Button that opens the filter options of a page">Filter</Trans>
+          <span aria-hidden><Glyph icon="sliders-horizontal" size={16} /></span> <Trans comment="Button that opens the filter options of a page">Filter</Trans>
           {picked.length ? <span className="k-filter-count">{fmt.number(picked.length)}</span> : null}
         </button>
       ) : null}

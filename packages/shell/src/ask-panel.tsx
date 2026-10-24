@@ -14,7 +14,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { AskContext, AskStep, ChatMessage, Citation, Proposal } from "@potyro/generator/agent";
-import { mapArea, subscribeMapArea } from "@potyro/views";
+import { mapArea, subscribeMapArea, Glyph } from "@potyro/views";
 import { ApplyError, applyEdits, applyProposal, entitiesToLoad, prepareReview, runActions, type Review, type ReviewRow } from "./ask-apply.js";
 import { doneText, ReviewPanel, type AcceptedEdit, type AcceptedRun } from "./ask-review.js";
 import { placeByAddress } from "./ask-geocode.js";
@@ -378,7 +378,7 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
             <div className="k-ask-context" aria-label={t`Sent with your request`}>
               {area && sendArea ? (
                 <span className="k-ask-chip">
-                  <span aria-hidden>📍</span> {mapChip(area)}
+                  <span aria-hidden><Glyph icon="map-pin" size={16} /></span> {mapChip(area)}
                   <button type="button" className="k-ask-chip-x" aria-label={t`Don’t send the map area`} onClick={() => setSendArea(false)}>
                     ✕
                   </button>
@@ -393,7 +393,7 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
                     rememberWeb(e.target.checked);
                   }}
                 />
-                <span aria-hidden>🔎</span> <Trans>Search the web when needed · about 2¢</Trans>
+                <span aria-hidden><Glyph icon="search" size={16} /></span> <Trans>Search the web when needed · about 2¢</Trans>
               </label>
             </div>
             <SourcesSection state={sources} keys={keys} onChange={loadSources} />

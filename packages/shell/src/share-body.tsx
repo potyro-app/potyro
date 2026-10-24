@@ -11,6 +11,7 @@
 // The share sheet takes them where the device can share files (`ShareCap.canShare`: Android, iOS,
 // Safari, Chromium on Windows/macOS/ChromeOS, the phone app); everywhere else Save a copy is the way.
 
+import { Glyph } from "@potyro/views";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { webShare, type ShareCap } from "@potyro/capabilities";
@@ -229,7 +230,7 @@ function SharedFiles({ files }: { files: File[] }) {
             <span className="k-share-file-picture k-share-file-waiting" aria-hidden />
           ) : (
             <span className="k-share-file-glyph" aria-hidden>
-              {extOf(f.name) || "📄"}
+              {extOf(f.name) || <Glyph icon="file" size={16} />}
             </span>
           )}
           <span className="k-share-file-name">{f.name}</span>

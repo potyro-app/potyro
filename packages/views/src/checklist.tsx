@@ -715,7 +715,7 @@ export function ChecklistView(props: BuiltinViewProps) {
         <RowActions runtime={runtime} entity={view.entity} actions={view.rowActions} id={id} label={rt.text || t`this item`} />
         {view.onOpen ? (
           <button type="button" className="k-check-open" aria-label={t`Open ${name}`} onClick={() => rowOpener(runtime, pageId, view.onOpen, navigate)?.(r)}>
-            ›
+            <Glyph icon="chevron-right" size={18} />
           </button>
         ) : null}
       </li>
@@ -883,7 +883,7 @@ export function ChecklistView(props: BuiltinViewProps) {
               {suggestions.map((sug) => (
                 <li key={sug.text}>
                   <button type="button" className="k-chip k-check-suggestion" onClick={() => void pickSuggestion(sug)}>
-                    {sug.again ? <span aria-hidden>↺ </span> : null}
+                    {sug.again ? <span aria-hidden><Glyph icon="rotate-ccw" size={16} /> </span> : null}
                     {sug.text}
                   </button>
                 </li>

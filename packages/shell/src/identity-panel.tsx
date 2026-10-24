@@ -14,6 +14,7 @@
 // Always reachable here regardless, because the honest version of "we won't nag you" is "and you can
 // find it whenever you want".
 
+import { Glyph } from "@potyro/views";
 import { useRef, useState, type ComponentType } from "react";
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -248,7 +249,7 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
             <Trans>Your devices</Trans>
           </h3>
           <div className="k-identity-device">
-            <span aria-hidden>💻</span>
+            <span aria-hidden><Glyph icon="laptop" size={20} /></span>
             <div>
               <Trans>This device</Trans>
               <small className="k-muted">

@@ -7,6 +7,7 @@
 // A page that draws a countdown itself says so (`ctx.ui.drawsTimer`), and while it is on screen that
 // timer's chip is left out: the rest is not shown twice, a line apart (timer-hub.ts `chips`).
 
+import { Glyph } from "@potyro/views";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { useLingui } from "@lingui/react/macro";
 import { secondsLeft } from "@potyro/host";
@@ -167,7 +168,7 @@ function TimerChip({ k, here, onOpenApp }: { k: KeptTimer; here: boolean; onOpen
         aria-label={paused ? t({ message: "Resume", comment: "Button: let a paused timer count down again" }) : t({ message: "Pause", comment: "Button: stop a timer counting down for now" })}
         onClick={() => timerHub.control(k.app, k.id, paused ? "resume" : "pause")}
       >
-        {paused ? "▶" : "❚❚"}
+        <Glyph icon={paused ? "play" : "pause"} size={20} />
       </button>
       <button type="button" className="k-timer-btn" aria-label={t({ message: "Stop timer", comment: "Button: cancel a running countdown" })} onClick={() => timerHub.control(k.app, k.id, "cancel")}>
         ✕
