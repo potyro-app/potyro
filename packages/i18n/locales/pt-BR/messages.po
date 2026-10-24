@@ -2037,6 +2037,13 @@ msgstr "mudar este app"
 msgid "Change this app"
 msgstr "Mudar este app"
 
+#. The Studio's code: a file edited but not saved yet
+#. The Studio's code: a file edited but not saved yet
+#: ../shell/src/studio-tools.tsx
+#: ../shell/src/studio-tools.tsx
+msgid "changed"
+msgstr "alterado"
+
 #. Data table column: when the record was last changed
 #: ../shell/src/data-table.tsx
 msgid "Changed"
@@ -6405,6 +6412,11 @@ msgstr "O serviço de IA está ocupado. Tenta de novo daqui a um minuto."
 msgid "The AI service took too long to answer. Try again."
 msgstr "O serviço de IA demorou demais. Tenta de novo."
 
+#. The Studio's code: the app's main file, beside the modules it imports
+#: ../shell/src/studio-tools.tsx
+msgid "The app"
+msgstr "O app"
+
 #: ../shell/src/studio-files.tsx
 msgid "The app and the files it comes with, as one file"
 msgstr "O app e os arquivos que vêm com ele, num único arquivo"
@@ -6424,6 +6436,11 @@ msgstr "O app vai pedir o endereço de novo."
 #: ../shell/src/studio.tsx
 msgid "the app, not its data"
 msgstr "o app, não os dados dele"
+
+#. The Studio's code: the list of files the app's code is made of
+#: ../shell/src/studio-tools.tsx
+msgid "The app's files"
+msgstr "Os arquivos do app"
 
 #: ../shell/src/studio.tsx
 #: ../shell/src/tile-editor.tsx
