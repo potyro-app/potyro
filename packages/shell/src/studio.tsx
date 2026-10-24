@@ -24,7 +24,8 @@ import { hasBuiltInAI } from "@potyro/generator/backends";
 import { listCases } from "./app-cases.js";
 import { recordDiagnosis } from "./app-diagnoses.js";
 import { CaseReport } from "./case-report.js";
-import { getUserApp, lockToRestore, renameUserApp, saveUserApp, setUserAppTrusted, type UserApp } from "./user-apps.js";
+import { getUserApp, renameUserApp, saveUserApp, setUserAppTrusted, type UserApp } from "./user-apps.js";
+import { restoreVersion } from "./restore-version.js";
 import { newLine } from "./app-line.js";
 import { loadTrustedModule } from "./trusted-loader.js";
 import { confirmAndRemoveApp } from "./remove-app.js";
@@ -504,7 +505,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     if (!(await shellDialogs.confirm(t`Go back to version ${seq}?`, { detail: t`The versions after it stay in History.`, ok: t`Go back` }))) return;
     // The note is what History and the conversation show for this version; nothing parses it.
     const note = `went back to version ${seq}`; // stored in English; shownNote (version-notes.ts) translates it where it is read
-    await saveUserApp({ id, name: app.name, source: version.source, lock: lockToRestore(version, app), origin: "restored", note }, new Date().toISOString());
+    await restoreVersion(app, version, note, new Date().toISOString());
     await afterRestore(version.source);
   };
 

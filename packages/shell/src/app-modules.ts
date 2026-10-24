@@ -14,7 +14,7 @@
 // of your devices keeps what it fetched in. Either way a library's bytes never ride the shared space:
 // they are megabytes, and every device can fetch them from where the lock says, once, and check them.
 // An app whose code reached its space before this is still read from there, after this device's copy.
-import { carriedModuleFiles, carryCode, fileSpace, type AppLock, type CarriedCode, type PackagedFile, type Store } from "@potyro/store";
+import { carriedModuleFiles, carryCode, fileSpace, lockEntryFor, matchesLock, srcKey, SRC_DIR, type AppLock, type CarriedCode, type PackagedFile, type Store } from "@potyro/store";
 import { memoryModules, type ModuleSource } from "./package-modules.js";
 import { duplicateUserApp, getUserApp, type UserApp } from "./user-apps.js";
 
@@ -217,4 +217,64 @@ export async function duplicateApp(id: string, now: string): Promise<UserApp | n
     await store.close();
   }
   return copy;
+}
+
+// ---- the app's own modules as text (#448) -------------------------------------------------------
+
+/** The lock entries that are the app's own modules (`src/<path>`), not its libraries. */
+export function ownEntries(lock: AppLock | undefined): Array<[string, AppLock[string]]> {
+  return Object.entries(lock ?? {}).filter(([key]) => key.startsWith(srcKey("")));
+}
+
+/**
+ * The app's own modules as text, by their path in `src/` ("card.ts"), as `lock` names them: what
+ * History keeps with a version, and what the Studio shows and edits. Read from what an open app or a
+ * check already holds when it is the same lock, else from this device's copy of the code (#281) —
+ * never by opening the app's space. Undefined for an app with no modules of its own, and when one is
+ * not on this device as the lock says: a package being installed has not written them yet, and passes
+ * them itself.
+ */
+export async function ownModuleTexts(appId: string, lock: AppLock | undefined, open: OpenLocal = openLocal): Promise<Record<string, string> | undefined> {
+  const own = ownEntries(lock);
+  if (!own.length) return undefined;
+  try {
+    const hit = cache.get(appId);
+    const read: Reader =
+      hit && JSON.stringify(hit.lock) === JSON.stringify(lock)
+        ? async (file) => (await hit.modules).read(file)
+        : (await withLocal(appId, open, (local) => snapshotOf(Object.fromEntries(own), (file) => readFile(local, file)))).read;
+    const texts: Record<string, string> = {};
+    for (const [key, entry] of own) {
+      const bytes = await read(entry.file);
+      if (!bytes || !(await matchesLock(entry, bytes))) return undefined;
+      texts[key.slice(srcKey("").length)] = new TextDecoder().decode(bytes);
+    }
+    return texts;
+  } catch (e) {
+    console.warn("[potyro] could not read the app's modules:", e);
+    return undefined;
+  }
+}
+
+/** Modules given as text, as the files for `.src/` and their lock entries: what saving them takes. */
+export async function ownModuleCode(texts: Record<string, string>): Promise<{ lock: AppLock; files: PackagedFile[] }> {
+  const lock: AppLock = {};
+  const files: PackagedFile[] = [];
+  for (const path of Object.keys(texts).sort()) {
+    const data = new TextEncoder().encode(texts[path]!);
+    const file = SRC_DIR + path;
+    lock[srcKey(path)] = await lockEntryFor(file, data);
+    files.push({ path: file, data, mime: "text/plain" });
+  }
+  return { lock, files };
+}
+
+/**
+ * `lock` with its own modules replaced by these: its libraries stay as they are. What a restore and a
+ * Studio edit of a module save, after `keepCode` has put the files on this device.
+ */
+export function withOwnModules(lock: AppLock | undefined, own: AppLock): AppLock | undefined {
+  const libraries = Object.fromEntries(Object.entries(lock ?? {}).filter(([key]) => !key.startsWith(srcKey(""))));
+  const next = { ...libraries, ...own };
+  return Object.keys(next).length ? next : lock && Object.keys(lock).length ? {} : undefined;
 }

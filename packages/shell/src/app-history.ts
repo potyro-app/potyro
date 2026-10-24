@@ -58,6 +58,33 @@ export interface AppVersion {
    * would be no version at all. Absent for an app with no libraries.
    */
   lock?: string;
+  /**
+   * The app's own modules as they were for this version (#258, #448), by their path in the package's
+   * `src/` ("card.ts" → its text). The device keeps only the CURRENT modules, in `.src/`, overwritten
+   * by every update, so without this a restored version would run its old entry file against
+   * today's modules. Absent for an app that is one file, and for versions kept before #448.
+   */
+  modules?: Record<string, string>;
+}
+
+/** The modules as stored: one JSON text, so a record holds only plain values. */
+function readModules(raw: unknown): Record<string, string> | undefined {
+  if (typeof raw !== "string" || !raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
+    const entries = Object.entries(parsed as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === "string");
+    return entries.length ? Object.fromEntries(entries) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The same modules as text, in path order, so the same set is always the same text. */
+function modulesText(modules: Record<string, string> | undefined): string {
+  if (!modules) return "";
+  const paths = Object.keys(modules).sort();
+  return paths.length ? JSON.stringify(Object.fromEntries(paths.map((p) => [p, modules[p]]))) : "";
 }
 
 let handle: Promise<Store> | null = null;
@@ -80,6 +107,7 @@ export function resetHistoryStore(): void {
 
 function toVersion(record: Record<string, unknown>): AppVersion | null {
   const { id, appId, seq, source, createdAt, origin, note, rationale, lock } = record as Partial<AppVersion>;
+  const modules = readModules((record as { modules?: unknown }).modules);
   if (typeof id !== "string" || typeof appId !== "string" || typeof seq !== "number" || typeof source !== "string") {
     return null;
   }
@@ -93,6 +121,7 @@ function toVersion(record: Record<string, unknown>): AppVersion | null {
     note,
     rationale,
     ...(typeof lock === "string" && lock ? { lock } : {}),
+    ...(modules ? { modules } : {}),
   };
 }
 
@@ -122,26 +151,45 @@ export async function listVersions(appId: string): Promise<AppVersion[]> {
  *
  * `baseline` is the source the app held BEFORE this change. When history is empty it is recorded
  * first, so apps that predate history still get a "before" to diff against on their next edit.
- * `baselineLock` is its `lock.json` then.
+ * `baselineLock` is its `lock.json` then, and `baselineModules` its own modules.
+ *
+ * `modules` are the app's own modules for this version (`AppVersion.modules`), absent for an app
+ * that is one file. A change to a module alone is a version, as a library upgrade is.
  */
 export async function recordVersion(
   appId: string,
-  input: { source: string; origin: VersionOrigin; note?: string; rationale?: string; baseline?: string; lock?: string; baselineLock?: string },
+  input: {
+    source: string;
+    origin: VersionOrigin;
+    note?: string;
+    rationale?: string;
+    baseline?: string;
+    lock?: string;
+    baselineLock?: string;
+    modules?: Record<string, string>;
+    baselineModules?: Record<string, string>;
+  },
   now: string,
 ): Promise<AppVersion | undefined> {
   try {
     const s = await store();
     const versions = await readAll(appId);
     const newest = versions[0];
-    if (newest && newest.source === input.source && (newest.lock ?? "") === (input.lock ?? "")) return undefined;
+    const modules = input.modules;
+    if (newest && newest.source === input.source && (newest.lock ?? "") === (input.lock ?? "") && modulesText(newest.modules) === modulesText(modules)) return undefined;
 
     let seq = (newest?.seq ?? 0) + 1;
-    if (!newest && input.baseline !== undefined && (input.baseline !== input.source || (input.baselineLock ?? "") !== (input.lock ?? ""))) {
+    if (
+      !newest &&
+      input.baseline !== undefined &&
+      (input.baseline !== input.source || (input.baselineLock ?? "") !== (input.lock ?? "") || modulesText(input.baselineModules) !== modulesText(modules))
+    ) {
       await s.insert(ENTITY, {
         appId,
         seq,
         source: input.baseline,
         ...(input.baselineLock ? { lock: input.baselineLock } : {}),
+        ...(modulesText(input.baselineModules) ? { modules: modulesText(input.baselineModules) } : {}),
         createdAt: now,
         origin: "created",
         note: "the source before history was kept",
@@ -158,6 +206,7 @@ export async function recordVersion(
       ...(input.note ? { note: input.note } : {}),
       ...(input.rationale ? { rationale: input.rationale } : {}),
       ...(input.lock ? { lock: input.lock } : {}),
+      ...(modulesText(modules) ? { modules: modulesText(modules) } : {}),
     });
 
     const stale = [...versions].slice(MAX_VERSIONS - 1);

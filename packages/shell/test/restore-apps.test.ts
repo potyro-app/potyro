@@ -19,6 +19,8 @@ vi.mock("../src/app-modules.js", () => ({
   receiveCode: async (appId: string, code: { lock?: unknown; modules?: unknown }) => {
     if (code.lock) received.push({ appId, code: { lock: code.lock, modules: code.modules } });
   },
+  // What History reads to keep with the version (#448): not what this test is about.
+  ownModuleTexts: async () => undefined,
 }));
 
 const NOW = "2026-09-18T12:00:00.000Z";
