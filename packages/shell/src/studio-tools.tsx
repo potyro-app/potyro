@@ -38,10 +38,22 @@ export interface StudioToolsProps {
   onClose: () => void;
   /** The app as the preview loaded it: what a package says it is (#271). */
   definition?: unknown;
+  /**
+   * The app's own modules (#258, #448), by their path in `src/`, as they are in the editor: listed
+   * beside the entry file, each one editable. Absent for an app that is one file.
+   */
+  modules?: Record<string, string>;
+  onModuleChange?: (path: string, next: string) => void;
+  /** Modules whose text differs from the saved app's: marked in the list until saved. */
+  changed?: ReadonlySet<string>;
 }
 
-export function StudioTools({ initialTab, source, onSourceChange, onRun, onSave, error, busy, app, cases, onReplay, onRestored, onClose, definition }: StudioToolsProps) {
+export function StudioTools({ initialTab, source, onSourceChange, onRun, onSave, error, busy, app, cases, onReplay, onRestored, onClose, definition, modules, onModuleChange, changed }: StudioToolsProps) {
   const { t } = useLingui();
+  // Which file the editor shows: the entry (null), or one of the app's own modules.
+  const [file, setFile] = useState<string | null>(null);
+  const paths = Object.keys(modules ?? {}).sort();
+  const shown = file !== null && modules && file in modules ? file : null;
   // Files belong to a saved app: before there is one, the tab is not offered.
   const [tab, setTab] = useState<ToolsTab>(initialTab === "files" && !app ? "source" : initialTab);
   return (
@@ -88,7 +100,24 @@ export function StudioTools({ initialTab, source, onSourceChange, onRun, onSave,
         {tab === "source" ? (
           <div className="k-tools-body">
             {error ? <p className="k-form-error k-studio-error">{error}</p> : null}
-            <CodeEditor className="k-studio-source" label={t`App source`} value={source} onChange={onSourceChange} />
+            {paths.length ? (
+              <div className="k-chips k-tools-files" role="group" aria-label={t({ message: "The app's files", comment: "The Studio's code: the list of files the app's code is made of" })}>
+                <button type="button" className="k-chip" data-on={shown === null} aria-pressed={shown === null} onClick={() => setFile(null)}>
+                  <Trans comment="The Studio's code: the app's main file, beside the modules it imports">The app</Trans>
+                </button>
+                {paths.map((path) => (
+                  <button key={path} type="button" className="k-chip" data-on={shown === path} aria-pressed={shown === path} data-changed={changed?.has(path) || undefined} onClick={() => setFile(path)}>
+                    <code>{path}</code>
+                    {changed?.has(path) ? <span className="k-tools-file-changed" aria-label={t({ message: "changed", comment: "The Studio's code: a file edited but not saved yet" })} title={t({ message: "changed", comment: "The Studio's code: a file edited but not saved yet" })} /> : null}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {shown === null ? (
+              <CodeEditor key="app" className="k-studio-source" label={t`App source`} value={source} onChange={onSourceChange} />
+            ) : (
+              <CodeEditor key={shown} className="k-studio-source" label={shown} value={modules![shown]!} onChange={(next) => onModuleChange?.(shown, next)} />
+            )}
           </div>
         ) : tab === "files" && app ? (
           <StudioFiles app={app} definition={definition} />

@@ -278,3 +278,36 @@ export function withOwnModules(lock: AppLock | undefined, own: AppLock): AppLock
   const next = { ...libraries, ...own };
   return Object.keys(next).length ? next : lock && Object.keys(lock).length ? {} : undefined;
 }
+
+/**
+ * The app's own modules as text for the Studio's code (#448), read the way the app opens them — this
+ * device's copy, then its space for code from before #281. Undefined for an app with none, or when one
+ * is not on this device: the Studio then shows only the entry file, as before.
+ */
+export async function moduleTextsFor(appId: string): Promise<Record<string, string> | undefined> {
+  const app = getUserApp(appId);
+  const own = ownEntries(app?.lock);
+  if (!own.length) return undefined;
+  const modules = await modulesOf(appId);
+  if (!modules) return undefined;
+  const texts: Record<string, string> = {};
+  for (const [key, entry] of own) {
+    const bytes = await modules.read(entry.file);
+    if (!bytes) return undefined;
+    texts[key.slice(srcKey("").length)] = new TextDecoder().decode(bytes);
+  }
+  return texts;
+}
+
+/**
+ * `have` with its own modules replaced by edited ones, before they are saved: what the Studio runs and
+ * checks an edit to a module against. Its libraries are read as before.
+ */
+export function withEditedModules(have: ModuleSource | undefined, code: { lock: AppLock; files: PackagedFile[] }): ModuleSource {
+  const edited = new Map(code.files.map((f) => [f.path, f.data] as const));
+  return {
+    ...(have ?? {}),
+    lock: withOwnModules(have?.lock, code.lock) ?? {},
+    read: async (file) => edited.get(file) ?? (have && !file.startsWith(SRC_DIR) ? have.read(file) : null),
+  };
+}
