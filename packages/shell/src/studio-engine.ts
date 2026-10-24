@@ -6,6 +6,7 @@
 // goes through the same contract, so changing engine changes the model and nothing else.
 
 import { joinForModel, unpackCandidate, unpackOrThrow } from "./joined-app.js";
+import { ownModuleCode, withEditedModules } from "./app-modules.js";
 import { plural, t } from "@lingui/core/macro";
 import type { AppShape } from "@potyro/runtime";
 import { fmt } from "@potyro/i18n";
@@ -91,8 +92,12 @@ export interface StudioEngine {
    * `earlier`: what was said before this request (#279) — the loop's recap and `read_conversation`.
    */
   modify(source: string, before: AppShape, instruction: string, context?: ModifyContext, earlier?: readonly ConversationEntry[]): Promise<Outcome>;
-  /** Repair from the validator's own words, through the same gate as a modify. */
-  repair(source: string, issues: string[]): Promise<{ source: string; summary: string; loss: string | null }>;
+  /**
+   * Repair from the validator's own words, through the same gate as a modify. `modules`: the app's
+   * own modules as the version being landed has them, when it edited any (#448) — the repair sees
+   * every file, and its result says which modules it changed.
+   */
+  repair(source: string, issues: string[], modules?: Record<string, string>): Promise<{ source: string; summary: string; loss: string | null; modules?: Record<string, string> }>;
 }
 
 /** What a turn that changed the app says it did. */
@@ -342,14 +347,25 @@ export function studioEngine(
     }
   };
 
-  const repair = (source: string, issues: string[]): Promise<{ source: string; summary: string; loss: string | null }> =>
+  const repair = (
+    source: string,
+    issues: string[],
+    edits?: Record<string, string>,
+  ): Promise<{ source: string; summary: string; loss: string | null; modules?: Record<string, string> }> =>
     ticking((elapsed) => t`Fixing it via ${label} · ${elapsed}`, async () => {
+      // The files as the version being repaired has them (#448): its module edits in place of the saved
+      // ones, shown to the model joined, as a modify shows them — a problem may be in a module.
+      const files = edits ? withEditedModules(modules, await ownModuleCode(edits)) : modules;
+      const joined = await joinForModel(source, files);
       const result = await guardedModify({
-        attempt: (instr) => attempt(source, instr),
-        shapeOf: (src) => shapeOrEmpty(src, modules),
-        before: await shapeOrEmpty(source, modules),
+        attempt: (instr) => attempt(joined?.text ?? source, instr),
+        shapeOf: async (text) => {
+          const u = await unpackOrThrow(text, joined, files);
+          return shapeOrEmpty(u.source, u.modules);
+        },
+        before: await shapeOrEmpty(source, files),
         instruction: buildRepairInstruction(issues),
-        source,
+        source: joined?.text ?? source,
       });
       // These reach the conversation after "Could not fix it:".
       if (result.kind === "diagnosis") {
@@ -362,7 +378,9 @@ export function studioEngine(
       }
       const summary =
         result.via === "edits" ? plural(result.applied, { one: "Repaired with # edit.", other: "Repaired with # edits." }) : t`Repaired with the whole file.`;
-      return { source: result.source, summary, loss: result.loss };
+      const u = await unpackOrThrow(result.source, joined, files);
+      const changed = u.changed ?? edits;
+      return { source: u.source, summary, loss: result.loss, ...(changed ? { modules: changed } : {}) };
     });
 
   return { create, modify, repair };

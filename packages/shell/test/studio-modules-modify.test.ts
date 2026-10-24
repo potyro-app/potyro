@@ -18,13 +18,15 @@ import type { EsbuildLike } from "../src/app-bundler.js";
 import { memoryModules, type ModuleSource } from "../src/package-modules.js";
 import { DEFAULT_ENGINE_CONFIG, type EngineConfig } from "../src/engines.js";
 
-const mocks = vi.hoisted(() => ({ chatCreate: vi.fn() }));
+const mocks = vi.hoisted(() => ({ chatCreate: vi.fn(), oneTurn: vi.fn() }));
 
 vi.mock("@potyro/generator/backends", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@potyro/generator/backends")>();
   return {
     ...actual,
     createOpenRouterEngine: () => ({ chat: { completions: { create: mocks.chatCreate } } }),
+    // The one-turn path (a repair): what it was shown, and what it says back.
+    createOpenRouterBackend: async () => ({ modify: mocks.oneTurn }),
     loadCorpus: async () => ({ files: [] }),
   };
 });
@@ -85,7 +87,10 @@ const edit = (search: string, replace: string) =>
   ["Stars around every shelf's name.", "```ts", "<<<<<<< SEARCH", search, "=======", replace, ">>>>>>> REPLACE", "```"].join("\n");
 
 describe("the Studio changing an app made of several files", () => {
-  beforeEach(() => mocks.chatCreate.mockReset());
+  beforeEach(() => {
+    mocks.chatCreate.mockReset();
+    mocks.oneTurn.mockReset();
+  });
 
   it("shows the model every file, and an edit to a module comes back as that module", async () => {
     mocks.chatCreate.mockResolvedValue(reply(edit(SHELF.trimEnd(), SHELF_STARRED.trimEnd())));
@@ -132,5 +137,19 @@ describe("the Studio changing an app made of several files", () => {
     expect(opening).not.toMatch(/This app is \d+ files/);
     expect(out.kind === "failed" ? `${out.text} ${out.detail}` : out.kind).toBe("source");
     expect(out.kind === "source" ? out.modules : "not a source").toBeUndefined();
+  }, 60_000);
+
+  it("a repair sees the version's edited modules, and can fix a problem in one", async () => {
+    // The version being landed edited shelf.ts so it no longer exports what the entry imports.
+    const broken = "export const shelfTitle = (s: string): string => s;\n";
+    mocks.oneTurn.mockResolvedValue(edit(broken.trimEnd(), SHELF_STARRED.trimEnd()));
+    const fixed = await studioEngine(engine, () => {}, await ownModules({ "shelf.ts": SHELF })).repair(APP, ["shelfName is not exported by shelf.ts"], { "shelf.ts": broken });
+
+    const shown = mocks.oneTurn.mock.calls[0]![0] as string;
+    expect(shown).toContain("//// FILE: shelf.ts");
+    expect(shown).toContain(broken.trimEnd());
+    expect(shown).not.toContain(SHELF.trimEnd());
+    expect(fixed.source).toBe(APP);
+    expect(fixed.modules).toEqual({ "shelf.ts": SHELF_STARRED });
   }, 60_000);
 });

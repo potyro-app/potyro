@@ -233,6 +233,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   // the app or its saved source changes (a save, a restore, a change from the conversation).
   const [savedModules, setSavedModules] = useState<Record<string, string> | undefined>(undefined);
   const [draftModules, setDraftModules] = useState<Record<string, string> | undefined>(undefined);
+  const savedModulesRef = useRef<Record<string, string> | undefined>(undefined);
+  const modulesOfApp = useRef<string | null>(null);
   const [cases, setCases] = useState<Case[]>([]);
   const [caseReport, setCaseReport] = useState<ReplayReport | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -315,6 +317,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
 
   useEffect(() => {
     if (!appId) {
+      savedModulesRef.current = undefined;
       setSavedModules(undefined);
       setDraftModules(undefined);
       return;
@@ -322,8 +325,14 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     let live = true;
     void moduleTextsFor(appId).then((m) => {
       if (!live) return;
+      // A module edited and not saved yet stays as it is in the editor — a restore or a change from the
+      // conversation must not throw away what someone typed. It then shows as changed against the new one.
+      // Another app's draft never carries over.
+      const saved = modulesOfApp.current === appId ? savedModulesRef.current : undefined;
+      setDraftModules((draft) => (draft && saved && Object.keys(draft).some((p) => draft[p] !== saved[p]) ? draft : m));
+      modulesOfApp.current = appId;
+      savedModulesRef.current = m;
       setSavedModules(m);
-      setDraftModules(m);
     });
     return () => {
       live = false;
@@ -386,7 +395,10 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     }
     setSource(next);
     setDraftSource(next);
-    if (own) setSavedModules(own.texts);
+    if (own) {
+      savedModulesRef.current = own.texts;
+      setSavedModules(own.texts);
+    }
     setHeld(null);
     await say({ kind: "version", text: summary || (existing ? t`Changed.` : t`Made “${name}”.`), seq, name, ...extra });
     if (wide) setPreviewOpen(true);
@@ -441,15 +453,19 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     let src = next;
     let said = summary;
     let lost = loss;
-    const own: OwnEdit | undefined = modules ? { texts: modules, code: await ownModuleCode(modules) } : undefined;
-    const edited = own ? withEditedModules(await modulesOf(appRef.current ?? undefined), own.code) : undefined;
+    let own: OwnEdit | undefined = modules ? { texts: modules, code: await ownModuleCode(modules) } : undefined;
+    let edited = own ? withEditedModules(await modulesOf(appRef.current ?? undefined), own.code) : undefined;
     const first = await librariesFor(src, edited);
     if (typeof first === "string") return say({ kind: "failure", text: first });
     let libraries = first;
     let { preview: built, issues } = await buildPreview(src, appRef.current, libraries?.modules ?? edited);
     if (issues.length && ready) {
       try {
-        const fixed = await (await engine()).repair(src, issues);
+        const fixed = await (await engine()).repair(src, issues, own?.texts);
+        if (fixed.modules) {
+          own = { texts: fixed.modules, code: await ownModuleCode(fixed.modules) };
+          edited = withEditedModules(await modulesOf(appRef.current ?? undefined), own.code);
+        }
         src = fixed.source;
         said = `${said} ${fixed.summary}`.trim();
         lost = lost ?? fixed.loss;
@@ -534,8 +550,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     if (!held || busy) return;
     setWorking("");
     try {
-      const fixed = await (await engine()).repair(held.source, held.issues);
-      await land(fixed.source, `${held.summary} ${fixed.summary}`.trim(), held.note, fixed.loss, {}, held.own?.texts);
+      const fixed = await (await engine()).repair(held.source, held.issues, held.own?.texts);
+      await land(fixed.source, `${held.summary} ${fixed.summary}`.trim(), held.note, fixed.loss, {}, fixed.modules ?? held.own?.texts);
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
       await say({ kind: "failure", text: t`Could not fix it: ${reason}` });

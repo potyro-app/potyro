@@ -5,7 +5,7 @@
 // candidate splits it back first (`unpackCandidate`), so a candidate is always bundled as the files it
 // names. An app that is one file — or whose modules are too big to send — is not joined, and is
 // changed exactly as before.
-import { joinAppFiles, splitAppFiles } from "@potyro/generator/backends";
+import { canJoinAppFiles, joinAppFiles, splitAppFiles } from "@potyro/generator/backends";
 import { srcKey } from "@potyro/store";
 import { ownModuleCode, withEditedModules } from "./app-modules.js";
 import type { ModuleSource } from "./package-modules.js";
@@ -39,12 +39,12 @@ export async function ownTextsOf(modules: ModuleSource | undefined): Promise<Rec
   return texts;
 }
 
-/** The app as the model is shown it, or null when it is shown as one file. */
+/** The app as the model is shown it, or null when it is shown as one file (too big, or a file of its own reads as a marker). */
 export async function joinForModel(source: string, modules: ModuleSource | undefined): Promise<JoinedApp | null> {
   const texts = await ownTextsOf(modules);
   if (!texts) return null;
   const size = Object.values(texts).reduce((n, t) => n + t.length, 0);
-  if (size > JOINED_MAX) return null;
+  if (size > JOINED_MAX || !canJoinAppFiles(source, texts)) return null;
   return { text: joinAppFiles(source, texts), entry: source, texts };
 }
 

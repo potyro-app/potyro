@@ -20,6 +20,14 @@ export function joinAppFiles(entry: string, modules: Readonly<Record<string, str
   return [section(ENTRY_FILE, entry), ...Object.keys(modules).sort().map((path) => section(path, modules[path]!))].join("");
 }
 
+/**
+ * Whether the files can be joined: none of them has a line of its own that reads as a marker — the
+ * split could not tell it from one. Such an app is shown as its entry alone, as before #448.
+ */
+export function canJoinAppFiles(entry: string, modules: Readonly<Record<string, string>>): boolean {
+  return [entry, ...Object.values(modules)].every((text) => !text.split("\n").some((line) => MARK_LINE.test(line)));
+}
+
 /** Whether a text is a joined app: it starts with the entry's marker. */
 export function isJoinedApp(text: string): boolean {
   return text.startsWith(`${FILE_MARK}${ENTRY_FILE}\n`);
