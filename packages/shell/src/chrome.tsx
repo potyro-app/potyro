@@ -414,7 +414,7 @@ function WideChrome({ name, icon, scope, status, pages, quick, quietQuick, curre
           <div className="k-page-head">
             {onBack ? (
               <button type="button" className="k-topbar-btn k-topbar-back" aria-label={t`Back`} onClick={onBack}>
-                ‹
+                <Glyph icon="chevron-left" size={22} />
               </button>
             ) : null}
             <h2 className="k-page-title" data-k-page={pageKey}>

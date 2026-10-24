@@ -12,6 +12,7 @@
 // The live faces come from each app's own `tile` (docs/04 §Tile), run by `tile-runner.ts` after the
 // wall has painted, never before it.
 
+import { Glyph } from "@potyro/views";
 import { openGallery } from "./gallery-link.js";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject, type MutableRefObject } from "react";
 import { plural } from "@lingui/core/macro";
@@ -266,7 +267,7 @@ function YouMark() {
   const named = Boolean(me && me.name && me.name !== DEFAULT_NAME);
   return (
     <span className="k-launch-you k-metro-bar-icon" aria-hidden style={{ ["--k-hue" as string]: me ? personHue(me.id) : 60 }}>
-      {me && named ? personInitials(me.name, me.id) : "⌾"}
+      {me && named ? personInitials(me.name, me.id) : <Glyph icon="circle-user" size={20} />}
     </span>
   );
 }
@@ -856,7 +857,7 @@ function AllApps(p: MetroHomeProps & { query: string; setQuery: (q: string) => v
         </button>
         {on ? null : (
           <button type="button" className="k-metro-pin" aria-label={t`Pin ${appName} to Start`} title={t`Pin to Start`} onClick={() => saveWall(pin(getWall(), a.key))}>
-            <span aria-hidden>⊕</span>
+            <span aria-hidden><Glyph icon="circle-plus" size={20} /></span>
           </button>
         )}
         {p.menuFor(a)}

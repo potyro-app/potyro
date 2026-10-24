@@ -8,6 +8,7 @@
 // The chip shows the name the field remembered, and then the file's CURRENT name once the folder
 // answers: a file renamed since the field was set should not be shown under its old name.
 
+import { Glyph } from "./glyph.js";
 import { fmt } from "@potyro/i18n";
 import { t as tr } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -67,13 +68,13 @@ function useFileInfo(runtime: PotyroRuntime, ref: FileRef | null): FileInfo | nu
   return info;
 }
 
-function glyphOf(mime: string): string {
-  if (mime.startsWith("image/")) return "🖼";
-  if (mime.startsWith("audio/")) return "🎵";
-  if (mime.startsWith("video/")) return "🎬";
-  if (mime === "application/pdf") return "📕";
-  if (mime.startsWith("text/") || mime.includes("json")) return "📄";
-  return "📎";
+function mimeIcon(mime: string): string {
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("audio/")) return "music";
+  if (mime.startsWith("video/")) return "video";
+  if (mime === "application/pdf") return "file-text";
+  if (mime.startsWith("text/") || mime.includes("json")) return "file-text";
+  return "paperclip";
 }
 
 function FileChip({ runtime, value, info }: { runtime: PotyroRuntime; value: FileRef; info: FileInfo | null | undefined }) {
@@ -87,7 +88,7 @@ function FileChip({ runtime, value, info }: { runtime: PotyroRuntime; value: Fil
   return (
     <span className="k-file-chip" data-gone={gone || undefined}>
       <span className="k-file-glyph" aria-hidden>
-        {glyphOf(mime)}
+        <Glyph icon={mimeIcon(mime)} size={20} />
       </span>
       {gone ? (
         <span className="k-file-name">
@@ -153,12 +154,12 @@ export function FileInput({ runtime, field, value, onChange, label }: FileInputP
 
   const others = choices.filter((f) => f.id !== value?.id);
   const entries: MenuEntry[] = [
-    { key: "import", label: t`From this device`, icon: "⤓", onSelect: () => void bringIn() },
+    { key: "import", label: t`From this device`, icon: "download", onSelect: () => void bringIn() },
     ...(others.length ? (["separator"] as MenuEntry[]) : []),
     ...others.map<MenuEntry>((f) => ({
       key: f.id,
       label: f.path,
-      icon: glyphOf(f.mime),
+      icon: mimeIcon(f.mime),
       hint: formatSize(f.size),
       onSelect: () => onChange(refOf(f)),
     })),

@@ -28,6 +28,7 @@ import { actionInfo, type AggregateRow, type Resolved } from "potyro";
 import { getView, humanizeKey } from "./format.js";
 import { useWriteTick } from "./write-tick.js";
 import type { BuiltinViewProps } from "./types.js";
+import { Glyph } from "./glyph.js";
 import { useDynamicText } from "./dynamic.js";
 
 /** Coerce whatever the app returned into rows we can render, dropping anything unusable. */
@@ -197,7 +198,7 @@ function AggregateRowItem({ row, runtime, navigate }: { row: AggregateRow; runti
       ) : null}
       {go ? (
         <span className="k-row-chevron" aria-hidden>
-          ›
+          <Glyph icon="chevron-right" size={18} />
         </span>
       ) : null}
     </li>

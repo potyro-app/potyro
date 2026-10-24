@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { Resolved } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
+import { Glyph } from "./glyph.js";
 
 /** Sunday first, as the grid is: each day's short name in the active language (1 January 2023 was a Sunday). */
 const weekdays = (): string[] => Array.from({ length: 7 }, (_, i) => fmt.date(new Date(2023, 0, 1 + i), { weekday: "short" }));
@@ -102,11 +103,11 @@ export function CalendarView(props: BuiltinViewProps) {
     <section className="k-calendar" aria-label={t`Calendar — ${monthLabel}`}>
       <header className="k-cal-header">
         <button type="button" className="k-action" onClick={() => setMonthOffset((n) => n - 1)} aria-label={t`Previous month`}>
-          ‹
+          <Glyph icon="chevron-left" size={18} />
         </button>
         <h2 className="k-cal-title">{monthLabel}</h2>
         <button type="button" className="k-action" onClick={() => setMonthOffset((n) => n + 1)} aria-label={t`Next month`}>
-          ›
+          <Glyph icon="chevron-right" size={18} />
         </button>
       </header>
 

@@ -73,7 +73,7 @@ export function RestoreApps({ apps, ticked, onRestore, onClose }: RestoreAppsPro
                 <label className="k-restore-row">
                   <input type="checkbox" checked={chosen.has(app.id)} onChange={() => toggle(app.id)} />
                   <span className="k-restore-icon" aria-hidden>
-                    <Glyph icon={app.icon} size={20} fallback="◇" />
+                    <Glyph icon={app.icon || "layout-grid"} size={20} />
                   </span>
                   <span className="k-restore-name">{app.name}</span>
                   {size ? <span className="k-restore-size">{size}</span> : null}

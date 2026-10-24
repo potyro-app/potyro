@@ -4077,7 +4077,8 @@ details.k-form-group > summary:focus-visible {
 }
 .k-input:focus-visible {
   /* In focus the outline takes the app's colour at the level that reads (DESIGN.md §6). */
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
   border-color: var(--tinta);
 }
 .k-form-actions {
@@ -4709,7 +4710,8 @@ button.k-prov:focus-visible {
 .k-menu-item:hover,
 .k-menu-item:focus-visible {
   background: var(--accent-tint);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-menu-item:disabled {
   color: var(--ink-faint);
@@ -6440,7 +6442,8 @@ button.k-file-name:focus-visible {
 .k-enum-option:hover,
 .k-enum-option:focus-visible {
   background: var(--surface-sunken);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-enum-option[data-on] {
   font-weight: 600;
@@ -6553,7 +6556,8 @@ button.k-file-name:focus-visible {
 .k-pick-create:hover,
 .k-pick-create:focus-visible {
   background: var(--surface-sunken);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 @media (pointer: coarse) {
   .k-selchip {
@@ -7484,7 +7488,8 @@ body:has(.k-tabbar) .k-toasts {
   background: var(--surface-sunken);
   border-color: var(--line);
   color: var(--ink);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-studio-title {
   flex: 1 1 auto;
@@ -7528,7 +7533,8 @@ body:has(.k-tabbar) .k-toasts {
   color: var(--on-accent);
   box-shadow: var(--shadow);
   transform: translateY(-1px);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-studio-scroll {
   flex: 1 1 auto;
@@ -7598,7 +7604,8 @@ body:has(.k-tabbar) .k-toasts {
   border-color: var(--accent);
   box-shadow: var(--shadow);
   transform: translateY(-1px);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 
 /* The thread. Each turn arrives with a short rise, so a new message reads as arriving. */
@@ -7816,7 +7823,8 @@ body:has(.k-tabbar) .k-toasts {
   transform: translateY(-1px);
   box-shadow: var(--shadow);
   border-color: var(--accent);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-card-open:active,
 .k-card-back:active {
@@ -8013,7 +8021,8 @@ body:has(.k-tabbar) .k-toasts {
 .k-composer-engine:focus-visible {
   color: var(--ink);
   background: var(--surface-sunken);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-composer-warn {
   font-size: 0.78rem;
@@ -8297,7 +8306,8 @@ body:has(.k-tabbar) .k-toasts {
 .k-preview-code:focus-visible {
   border-color: var(--accent);
   transform: translateY(-1px);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-preview-title {
   flex: 1 1 auto;
@@ -8385,7 +8395,8 @@ body:has(.k-tabbar) .k-toasts {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-tint);
   transform: translateY(-1px);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-preview-point:active {
   transform: translateY(0);
@@ -8459,7 +8470,8 @@ body:has(.k-tabbar) .k-toasts {
 .k-point-cancel:hover,
 .k-point-cancel:focus-visible {
   background: color-mix(in oklab, var(--on-accent) 18%, transparent);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-point-cancel:active {
   transform: scale(0.97);
@@ -8621,7 +8633,8 @@ body:has(.k-tabbar) .k-toasts {
 .k-point-level:focus-visible {
   border-color: var(--accent);
   color: var(--ink);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-point-level[aria-checked="true"] {
   border-color: var(--accent);
@@ -8651,7 +8664,8 @@ body:has(.k-tabbar) .k-toasts {
   color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 3px;
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-point-ask {
   padding: 0.6rem 1.15rem;
@@ -8669,7 +8683,8 @@ body:has(.k-tabbar) .k-toasts {
 .k-point-ask:focus-visible {
   transform: translateY(-1px);
   box-shadow: 0 0 0 3px var(--accent-tint), var(--shadow);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-point-ask:active {
   transform: translateY(0);
@@ -8729,7 +8744,8 @@ body:has(.k-tabbar) .k-toasts {
 .k-point-chip-x:focus-visible {
   background: color-mix(in oklab, var(--accent) 30%, transparent);
   color: var(--ink);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-thread-point {
   margin-bottom: var(--space-1);
@@ -8756,7 +8772,8 @@ body:has(.k-tabbar) .k-toasts {
 .k-composer-point-btn:focus-visible {
   color: var(--ink);
   background: var(--accent-tint);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 @media (max-width: 420px) {
   .k-preview-point-word {
@@ -8885,7 +8902,8 @@ body:has(.k-tabbar) .k-toasts {
 .k-draft-open:hover,
 .k-draft-open:focus-visible {
   background: var(--accent-tint);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-draft-mark {
   grid-row: 1 / 3;
@@ -8914,7 +8932,8 @@ body:has(.k-tabbar) .k-toasts {
 .k-draft-del:focus-visible {
   color: var(--danger);
   background: var(--danger-tint);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 
 .k-field-label {
@@ -10874,7 +10893,8 @@ body:has(.k-tabbar) .k-toasts {
 .k-identity-path:hover,
 .k-identity-path:focus-visible {
   border-color: var(--accent-line);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-identity-path b {
   font-weight: 600;
@@ -11049,7 +11069,8 @@ body:has(.k-tabbar) .k-toasts {
 .k-wording-pick:hover,
 .k-wording-pick:focus-visible {
   border-color: var(--accent-line);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-wording-now {
   margin: 0;
@@ -11527,7 +11548,7 @@ body:has(.k-tabbar) .k-toasts {
   color: inherit;
   font: inherit;
 }
-.k-chat-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.k-chat-input:focus-visible { outline: var(--stroke) solid var(--focus); outline-offset: 2px; }
 .k-chat-send:disabled { opacity: 0.45; cursor: default; }
 /* Permanent, never dismissible: delivery is store-and-forward, and a box that hides that is one
    people read silence into (KA-35 acceptance). */
@@ -14392,7 +14413,8 @@ button.k-metro-group-name {
   outline-offset: 2px;
 }
 .k-metro-bar-btn:focus-visible {
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-metro-bar-btn:active .k-metro-bar-icon {
   transform: scale(0.92);
@@ -14531,7 +14553,8 @@ button.k-metro-group-name {
 .k-metro-letter:focus-visible {
   background: var(--ink);
   color: var(--paper);
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
 }
 .k-metro-row {
   position: relative;
@@ -16075,7 +16098,8 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   color: var(--muted);
 }
 .k-prompt-box:focus-visible {
-  outline: none;
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
   border-color: var(--tinta);
 }
 .k-prompt-send {
@@ -17129,11 +17153,18 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   .k-preview-adjust-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    width: min(412px + 2 * var(--space-5), 100%);
+    justify-content: center;
+    /* A long name takes its own line rather than running under the clock (owner, 2026-10-24). */
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    width: min(720px, 100%);
     margin: 0 auto;
     padding: var(--space-2) var(--space-5) 0;
+  }
+  .k-preview-adjust-row .k-preview-adjust-name {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    text-align: left;
   }
   .k-studio[data-preview] .k-preview-frame {
     align-items: center;
@@ -17464,4 +17495,100 @@ img.k-glyph-image {
 }
 .k-splash-mascot {
   margin: 0 auto;
+}
+
+/* A field inside a box draws the focus ring on the box (DESIGN.md §11: 2px --focus, 2px offset). */
+.k-composer-box:has(:focus-visible),
+.k-code:has(:focus-visible),
+.k-value-chip:has(.k-chip-input:focus-visible) {
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* #428: every touch target is at least 44×44px, with 8px between neighbours (DESIGN.md §11.4).
+   A chip still looks 32px tall (§6); only its hit area reaches 44px. */
+.k-prompt-example,
+.k-launch-sort-btn {
+  position: relative;
+}
+.k-prompt-example::after,
+.k-launch-sort-btn::after {
+  content: "";
+  position: absolute;
+  inset: min(0px, calc(50% - 22px)) 0;
+}
+.k-prompt-examples {
+  row-gap: calc(44px - 32px + var(--space-2));
+}
+.k-scope,
+.k-topbar .k-scope,
+.k-datapage-app {
+  min-height: 44px;
+}
+.k-data-tab {
+  min-width: 44px;
+  justify-content: center;
+}
+.k-files-more {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+}
+/* A chip is filled or outlined, never both (§6): the phone's app picker drops its hairline. */
+@media (max-width: 720px) {
+  .k-datapage-app {
+    border-color: transparent;
+  }
+}
+
+/* #428: at 200% text on a 320px screen nothing scrolls sideways (DESIGN.md §11.5): headers wrap, a
+   tab keeps its own width inside its scroller instead of being squeezed under its neighbour. */
+.k-launcher-head,
+.k-launcher-head-actions,
+.k-datapage-bar,
+.k-datapage-apphead,
+.k-launch-sort {
+  flex-wrap: wrap;
+}
+.k-datapage-bar > *,
+.k-datapage-apphead > * {
+  min-width: 0;
+}
+.k-datapage-title {
+  overflow-wrap: anywhere;
+}
+.k-data-tab {
+  flex: none;
+}
+.k-datapage-back,
+.k-datapage-apphead .k-add {
+  white-space: nowrap;
+}
+.k-files-origin,
+.k-files-origin[data-origin] {
+  max-width: 100%;
+  white-space: normal;
+  border-color: transparent;
+}
+/* The row's ⋯ was the browser's own grey button: an icon button like the rest (§6). */
+.k-files-more {
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-soft);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.k-files-more:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.k-files-more:active {
+  background: var(--line);
+}
+.k-datapage-back,
+.k-datapage-apphead .k-add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }

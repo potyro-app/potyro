@@ -4,6 +4,7 @@
 // a dead one look identical, and the only way to tell them apart was the network tab. This watches
 // the relay socket directly, so it reports the transport rather than a guess.
 
+import { Glyph } from "@potyro/views";
 import { useEffect, useState } from "react";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -77,7 +78,7 @@ export function SyncStatus({ sync }: { sync?: boolean }) {
   return (
     <span className="k-sync-status" data-state={state} title={label} aria-live="polite">
       <span className="k-sync-icon" aria-hidden>
-        {state === "synced" ? "⇄" : state === "connecting" ? "◌" : "⇄̸"}
+        <Glyph icon={state === "synced" ? "refresh-cw" : state === "connecting" ? "loader-circle" : "refresh-cw-off"} size={16} />
       </span>
       {/* Its own element so a phone's top bar can show the icon alone and keep the words for a
           screen reader and the tooltip: "Offline · changes saved here" beside an app's name and the

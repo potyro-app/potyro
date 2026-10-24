@@ -1,6 +1,7 @@
 // What the replay found, in the user's terms. Their expectation leads, because that is the question
 // being answered — the steps are the evidence, not the headline.
 
+import { Glyph } from "@potyro/views";
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import type { ReplayReport } from "@potyro/runtime";
 
@@ -45,7 +46,7 @@ export function CaseReport({
             </li>
           ) : (
             <li key={i} className="k-case-step" data-ok={o.ok}>
-              {o.ok ? "✓" : "✗"} {o.detail}
+              <Glyph icon={o.ok ? "check" : "x"} size={16} /> {o.detail}
             </li>
           ),
         )}
