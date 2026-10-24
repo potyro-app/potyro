@@ -14,6 +14,7 @@
 // someone an unverified fix — exactly what the verify-before-claiming-fixed loop exists to prevent.
 // `unverifiedAttempt` below is the ONLY place `lastAttempt` is rendered, and it renders no button.
 
+import { Glyph } from "@potyro/views";
 import { useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { LoopOutcome, LoopStep } from "@potyro/generator/agent";
@@ -43,7 +44,7 @@ function stepLine(step: LoopStep, i: number) {
   if (step.kind === "tool") {
     return (
       <li key={i} className="k-fix-step" data-kind="tool" data-ok={step.ok}>
-        {step.ok ? "✓" : "✗"} {step.name} — {step.detail}
+        <Glyph icon={step.ok ? "check" : "x"} size={16} /> {step.name} — {step.detail}
       </li>
     );
   }
@@ -51,7 +52,7 @@ function stepLine(step: LoopStep, i: number) {
     const detail = step.detail;
     return (
       <li key={i} className="k-fix-step" data-kind="candidate" data-ok={step.passed}>
-        {step.passed ? "✓" : "✗"}{" "}
+        <Glyph icon={step.passed ? "check" : "x"} size={16} />{" "}
         {step.passed ? <Trans>candidate passed replay — {detail}</Trans> : <Trans>candidate failed replay — {detail}</Trans>}
       </li>
     );

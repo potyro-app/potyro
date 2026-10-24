@@ -195,7 +195,7 @@ export function DetailView(props: BuiltinViewProps) {
             aria-disabled={locked ? true : undefined}
             onClick={() => (locked ? explain() : onEdit(view.entity, id))}
           >
-            <span aria-hidden>✎ </span>
+            <span aria-hidden><Glyph icon="pencil" size={16} /> </span>
             <Trans>Edit</Trans>
           </button>
         ) : null}

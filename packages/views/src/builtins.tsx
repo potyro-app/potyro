@@ -131,7 +131,7 @@ export function RowActions({
       })}
       {onEdit ? (
         <button type="button" className="k-action k-icon-action" aria-label={t`Edit`} title={t`Edit`} aria-disabled={locked ? true : undefined} onClick={() => (locked ? explain() : onEdit(entity, id))}>
-          <span aria-hidden>✎</span>
+          <span aria-hidden><Glyph icon="pencil" size={16} /></span>
         </button>
       ) : null}
       {onDelete ? (
@@ -143,7 +143,7 @@ export function RowActions({
           aria-disabled={locked ? true : undefined}
           onClick={() => (locked ? explain() : void onDelete())}
         >
-          <span aria-hidden>🗑</span>
+          <span aria-hidden><Glyph icon="trash-2" size={16} /></span>
         </button>
       ) : null}
     </span>
@@ -308,7 +308,7 @@ export function ListView(props: BuiltinViewProps) {
             />
             {openRow ? (
               <span className="k-row-chevron" aria-hidden>
-                ›
+                <Glyph icon="chevron-right" size={18} />
               </span>
             ) : null}
           </li>
@@ -504,7 +504,7 @@ export function TableView(props: BuiltinViewProps) {
                       onEdit(view.entity, String(row.id));
                     }}
                   >
-                    <span aria-hidden>✎</span>
+                    <span aria-hidden><Glyph icon="pencil" size={16} /></span>
                   </button>
                 </td>
               ) : null}

@@ -10,6 +10,7 @@
 // Adding is never silent: a tile that is being added says so, and one that failed says that too and
 // offers to try again, rather than leaving an empty field and no reason.
 
+import { Glyph } from "./glyph.js";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -42,7 +43,7 @@ const ADD_AFTER: Record<Kind, MessageDescriptor> = {
 const TAKE: Record<Kind, MessageDescriptor> = { image: msg`Take a photo`, video: msg`Take a video`, audio: msg`Record audio`, any: msg`Take a file` };
 const REMOVE: Record<Kind, MessageDescriptor> = { image: msg`Remove photo`, video: msg`Remove video`, audio: msg`Remove audio`, any: msg`Remove file` };
 const ACCEPT: Record<Kind, string> = { image: "image/*", video: "video/*", audio: "audio/*", any: "" };
-const GLYPH: Record<Kind, string> = { image: "📷", video: "🎬", audio: "🎙", any: "📎" };
+const GLYPH: Record<Kind, string> = { image: "camera", video: "video", audio: "mic", any: "paperclip" };
 
 export const mediaKind = (field: Pick<MediaField, "accept">): Kind => field.accept ?? "image";
 
@@ -95,8 +96,8 @@ export function MediaInput({ runtime, field, value, onChange, label }: MediaInpu
   // On a phone the two sources are different acts, so they are two entries. On a desktop "camera"
   // means the same file dialog, so there is nothing to choose between.
   const sources: MenuEntry[] = [
-    { key: "camera", label: t(TAKE[kind]), icon: "📷", onSelect: () => capture("camera") },
-    { key: "library", label: t`Choose from library`, icon: "🖼", onSelect: () => capture("library") },
+    { key: "camera", label: t(TAKE[kind]), icon: "camera", onSelect: () => capture("camera") },
+    { key: "library", label: t`Choose from library`, icon: "images", onSelect: () => capture("library") },
   ];
 
   const addLabel = refs.length && many ? t({ message: "Add", comment: "Add one more photo or file to a field that holds several" }) : t(ADD[kind]);
@@ -105,7 +106,7 @@ export function MediaInput({ runtime, field, value, onChange, label }: MediaInpu
   const glyphAndWord = (
     <>
       <span className="k-media-add-glyph" aria-hidden>
-        {GLYPH[kind]}
+        <Glyph icon={GLYPH[kind]} size={20} />
       </span>
       {addLabel}
     </>
@@ -218,13 +219,13 @@ export function MediaTile({
       {url && isVideo ? <video src={url} muted playsInline /> : null}
       {pending === "waiting" ? (
         <span className="k-media-pending" data-state="waiting" role="status">
-          <span aria-hidden>🖼</span>
+          <span aria-hidden><Glyph icon="image" size={20} /></span>
           <span>{isVideo ? t`Getting the video` : t`Getting the photo`}</span>
         </span>
       ) : null}
       {pending === "absent" ? (
         <button type="button" className="k-media-pending" data-state="absent" onClick={retry}>
-          <span aria-hidden>⇣</span>
+          <span aria-hidden><Glyph icon="download" size={20} /></span>
           <span>
             <Trans>Not downloaded — tap to get it</Trans>
           </span>
@@ -232,7 +233,7 @@ export function MediaTile({
       ) : null}
       {!isImage && !isVideo ? (
         <span className="k-media-glyph" aria-hidden>
-          {mime.startsWith("audio/") ? "🎙" : "📎"}
+          <Glyph icon={mime.startsWith("audio/") ? "mic" : "paperclip"} size={20} />
         </span>
       ) : null}
       {isVideo ? (

@@ -6,6 +6,7 @@
 // — and "Save as a package" writes the zip that Add an app installs. What the person added and what
 // the app wrote stay out of it: those are someone's data, not part of the app.
 
+import { Glyph } from "@potyro/views";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 import { declareApp, type Store } from "@potyro/store";
@@ -98,7 +99,7 @@ export function StudioFiles({ app, definition }: StudioFilesProps) {
           caps={shellCaps()}
           extra={
             <button type="button" className="k-add" disabled={packing} onClick={() => void savePackage()} title={t`The app and the files it comes with, as one file`}>
-              <span aria-hidden>⤓</span> {packing ? t`Packing` : t({ message: "Save as a package", comment: "Studio Files tab: save the app and its files as one zip" })}
+              <span aria-hidden><Glyph icon="download" size={16} /></span> {packing ? t`Packing` : t({ message: "Save as a package", comment: "Studio Files tab: save the app and its files as one zip" })}
             </button>
           }
         />

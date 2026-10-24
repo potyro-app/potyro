@@ -95,7 +95,7 @@ export function ScopeSwitcher({ runtime, appName, appId, onNew }: ScopeSwitcherP
     ...all.map((r): MenuEntry => ({
       key: `s-${String(r.id)}`,
       label: nameOf(r),
-      icon: scoped && String(r.id) === String(scoped.id) ? "✓" : "",
+      icon: scoped && String(r.id) === String(scoped.id) ? "check" : "",
       className: "k-scope-choice",
       onSelect: () => void chooseScope(runtime, appId, String(r.id)),
     })),

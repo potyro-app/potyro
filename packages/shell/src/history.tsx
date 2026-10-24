@@ -21,6 +21,7 @@
 // opens when you click it. An accordion rather than a second pane deliberately — the timeline stays
 // the spine at every width, instead of being a sidebar that a narrow window turns back into a sliver.
 
+import { Glyph } from "@potyro/views";
 import { shownNote } from "./version-notes.js";
 import { fmt } from "@potyro/i18n";
 import type { MessageDescriptor } from "@lingui/core";
@@ -263,7 +264,7 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
                       </span>
                     </span>
                     <span className="k-timeline-chevron" aria-hidden>
-                      {open ? "▾" : "▸"}
+                      <Glyph icon={open ? "chevron-down" : "chevron-right"} size={16} />
                     </span>
                   </button>
 

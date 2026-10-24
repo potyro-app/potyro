@@ -8,6 +8,7 @@
 // returns a promise that settles when the user chooses or dismisses — so app code keeps awaiting a
 // value and never learns there is a React tree involved.
 
+import { Glyph } from "@potyro/views";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { fmt } from "@potyro/i18n";
@@ -134,7 +135,7 @@ export function Picker({ host }: { host: PickerHost }) {
                   onClick={() => choose(r.index)}
                 >
                   <span>{r.text}</span>
-                  {request.multi ? <span aria-hidden>{chosen.has(r.index) ? "✓" : ""}</span> : null}
+                  {request.multi ? <span aria-hidden>{chosen.has(r.index) ? <Glyph icon="check" size={16} /> : null}</span> : null}
                 </button>
               </li>
             ))

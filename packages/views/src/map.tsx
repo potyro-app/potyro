@@ -759,7 +759,7 @@ export function MapView(props: BuiltinViewProps) {
           disabled={locating}
           onClick={() => void centreOnMe()}
         >
-          <span aria-hidden>◎</span>
+          <span aria-hidden><Glyph icon="locate-fixed" size={20} /></span>
         </button>
       ) : null}
       {canPlace ? (
