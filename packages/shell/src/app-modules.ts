@@ -246,7 +246,12 @@ export async function ownModuleTexts(appId: string, lock: AppLock | undefined, o
     const texts: Record<string, string> = {};
     for (const [key, entry] of own) {
       const bytes = await read(entry.file);
-      if (!bytes || !(await matchesLock(entry, bytes))) return undefined;
+      if (!bytes || !(await matchesLock(entry, bytes))) {
+        // Not silent: this version is kept without its modules, and restoring it would put back only
+        // its entry file, as before #448.
+        console.warn(`[potyro] ${key.slice(srcKey("").length)} is not on this device as the app's lock says: this version is kept without its modules.`);
+        return undefined;
+      }
       texts[key.slice(srcKey("").length)] = new TextDecoder().decode(bytes);
     }
     return texts;

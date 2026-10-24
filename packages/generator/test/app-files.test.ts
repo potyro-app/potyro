@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ENTRY_FILE, FILE_MARK, appFilesNote, isJoinedApp, joinAppFiles, splitAppFiles } from "../src/app-files.js";
+import { ENTRY_FILE, FILE_MARK, appFilesNote, canJoinAppFiles, isJoinedApp, joinAppFiles, splitAppFiles } from "../src/app-files.js";
 import { buildModifyOpener } from "../src/prompt.js";
 import { applyEdits } from "../src/edits.js";
 
@@ -32,6 +32,12 @@ describe("an app of several files as one text", () => {
     const added = splitAppFiles(`${text}${FILE_MARK}new.ts\nexport const x = 1;\n`, Object.keys(MODULES));
     expect(added).toMatchObject({ ok: false, problem: expect.stringContaining("cannot be added") });
     expect(splitAppFiles(ENTRY, Object.keys(MODULES))).toMatchObject({ ok: false });
+  });
+
+  it("files with a line of their own that reads as a marker are not joined: the split could not tell them apart", () => {
+    expect(canJoinAppFiles(ENTRY, MODULES)).toBe(true);
+    expect(canJoinAppFiles(ENTRY, { ...MODULES, "doc.ts": `// how it is shown:\n${FILE_MARK}<name>\nexport const x = 1;\n` })).toBe(false);
+    expect(canJoinAppFiles(`${FILE_MARK}nope\n${ENTRY}`, MODULES)).toBe(false);
   });
 
   it("the opener names the files for a joined app, and is unchanged for an app of one file", () => {
