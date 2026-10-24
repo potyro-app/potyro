@@ -1,0 +1,14 @@
+// What `potyro` publishes (`pnpm pack`, publishConfig in package.json): the compiled sources and their
+// types. Inside this repo every consumer reads src/ directly.
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": [],
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist",
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  "include": ["src"]
+}

@@ -295,6 +295,15 @@ importers:
         specifier: ^10.7.18
         version: 10.7.18
 
+  docs/tutorials/code:
+    devDependencies:
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
+      potyro:
+        specifier: workspace:*
+        version: link:../../../packages/schema
+
   examples:
     dependencies:
       potyro:
@@ -327,6 +336,18 @@ importers:
       happy-dom:
         specifier: ^20.11.1
         version: 20.11.1
+
+  packages/create-potyro:
+    devDependencies:
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
+      potyro:
+        specifier: workspace:*
+        version: link:../schema
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
 
   packages/design:
     devDependencies:
@@ -597,6 +618,12 @@ importers:
 
   packages/schema:
     dependencies:
+      esbuild:
+        specifier: ^0.24.2
+        version: 0.24.2
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       zod:
         specifier: ^3.23.8
         version: 3.25.76
