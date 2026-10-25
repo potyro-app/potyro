@@ -10632,10 +10632,12 @@ body:has(.k-tabbar) .k-toasts {
   margin: 0;
 }
 /* A library upgrade (#266): the change to lock.json, under the source's own diff. */
-.k-history-lock {
+.k-history-lock,
+.k-history-module {
   margin-top: var(--space-3);
 }
-.k-history-lock > p {
+.k-history-lock > p,
+.k-history-module > p {
   margin: 0 0 var(--space-2);
   font-size: 0.86rem;
 }
