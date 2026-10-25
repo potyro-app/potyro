@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import { usePhone } from "./media.js";
 import { filterOptions, type Swatch } from "./enum.js";
 import { placeUnder, type Placement } from "./popover.js";
+import { Glyph } from "./glyph.js";
 
 export interface PickItem {
   id: string;
@@ -144,7 +145,7 @@ export function PickList({ title, items, selected, multi = false, anchor, onTogg
         </div>
         {onCreate ? (
           <button type="button" className="k-pick-create" onClick={create}>
-            ＋ {trimmed ? t({ message: `Add: ${noun} “${trimmed}”`, comment: "Make a new record named with what was typed; noun is the app's word for it" }) : t({ message: `Add: ${noun}`, comment: "Make a new record; noun is the app's word for it" })}
+            <Glyph icon="plus" size={16} /> {trimmed ? t({ message: `Add: ${noun} “${trimmed}”`, comment: "Make a new record named with what was typed; noun is the app's word for it" }) : t({ message: `Add: ${noun}`, comment: "Make a new record; noun is the app's word for it" })}
           </button>
         ) : null}
         {multi ? (

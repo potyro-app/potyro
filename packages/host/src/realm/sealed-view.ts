@@ -193,9 +193,11 @@ export class SealedViewController implements SealedView {
     // `--k-chrome-bottom` is a calc() (the tab bar, a running timer's chips), so it is measured as a
     // length — a probe as tall as it — and measured again whenever it changes: a rest starting puts
     // the shell's timer above the bottom edge, and the view's own bottom bar must end above it.
+    // `--k-seal-room` is the "Made with Potyro" band under it, when the page has one: the view ends above
+    // that too, or the page would scroll as well as the view (#428).
     const probe = doc.createElement("div");
     probe.setAttribute("aria-hidden", "true");
-    probe.style.cssText = "position:absolute;top:0;left:0;visibility:hidden;pointer-events:none;width:0;height:var(--k-chrome-bottom, 0px)";
+    probe.style.cssText = "position:absolute;top:0;left:0;visibility:hidden;pointer-events:none;width:0;height:calc(var(--k-chrome-bottom, 0px) + var(--k-seal-room, 0px))";
     el.appendChild(probe);
     offs.push(() => probe.remove());
     const room = (): number => {

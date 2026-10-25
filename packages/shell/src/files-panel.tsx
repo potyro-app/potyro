@@ -20,7 +20,7 @@ import type { FileInfo, FileOrigin } from "potyro";
 import { SpaceFullError, type SpaceUsage, type Store } from "@potyro/store";
 import type { Capabilities } from "@potyro/capabilities";
 import { pickFilesFromInput } from "@potyro/capabilities";
-import { ActionMenu, formatSize, type MenuEntry } from "@potyro/views";
+import { ActionMenu, formatSize, type MenuEntry, Glyph } from "@potyro/views";
 import { bringIn, filesHere, largeForSharing, listFolder, readFile, removeFile, renameFile, replaceFile, spaceUsageOf, totalSize } from "./app-folder.js";
 import { FileViewer } from "./file-viewer.js";
 import { shellDialogs } from "./dialog.js";
@@ -267,7 +267,7 @@ export function FilesPanel({ store, appName, scope, caps, arrived, extra, shared
   const away = (files ?? []).filter((f) => here.get(f.id) === false).length;
   const addButton = (
     <button type="button" className="k-add k-primary-action k-files-add" onClick={() => void pick(true).then(add)}>
-      <span aria-hidden>＋</span> <Trans comment="Files: bring files from this device into the app">Add files</Trans>
+      <Glyph icon="plus" size={16} /> <Trans comment="Files: bring files from this device into the app">Add files</Trans>
     </button>
   );
 

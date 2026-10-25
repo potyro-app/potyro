@@ -11,6 +11,7 @@ import { msg, plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 import { myKeyId, removeMySource, saveMySource, type KeyPlace, type KeyStore, type PersonSource, type ResolvedSource, type SourceAuth } from "./ask-sources.js";
+import { Glyph } from "@potyro/views";
 
 export interface SourcesState {
   usable: ResolvedSource[];
@@ -219,7 +220,7 @@ export function SourcesSection({ state, keys, onChange }: { state: SourcesState;
         <AddSource keys={keys} onDone={() => (setAdding(false), onChange())} />
       ) : (
         <button type="button" className="k-add k-ask-add-btn" onClick={() => setAdding(true)}>
-          ＋ <Trans>Add a source</Trans>
+          <Glyph icon="plus" size={16} /> <Trans>Add a source</Trans>
         </button>
       )}
       <p className="k-ask-privacy">{t(KEEP[state.place])}</p>

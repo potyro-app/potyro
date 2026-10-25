@@ -11,7 +11,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { personHue, personInitials } from "@potyro/runtime";
 import type { GuestBook } from "@potyro/host";
 import type { Person } from "potyro";
-import { ActionMenu, type MenuEntry } from "@potyro/views";
+import { ActionMenu, type MenuEntry, Glyph } from "@potyro/views";
 import { shellDialogs } from "./dialog.js";
 import { I } from "./icons.js";
 
@@ -131,7 +131,7 @@ export function GuestsSection({ book, others, nameOf, appName, toast }: { book: 
       ) : null}
       {canWrite ? (
         <button type="button" className="k-add k-guest-add" disabled={busy} onClick={() => void add()}>
-          ＋ <Trans>Add someone who hasn’t joined</Trans>
+          <Glyph icon="plus" size={16} /> <Trans>Add someone who hasn’t joined</Trans>
         </button>
       ) : null}
     </section>

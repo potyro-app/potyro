@@ -21,6 +21,7 @@ import { humanizeKey } from "./format.js";
 import { ActionMenu } from "./menu.js";
 import { useReorder } from "./reorder.js";
 import { usePhone } from "./media.js";
+import { Glyph } from "./glyph.js";
 
 export interface ListInputProps {
   runtime: PotyroRuntime;
@@ -102,7 +103,7 @@ export function ListInput({ runtime, field, value, onChange, label }: ListInputP
         />
       ))}
       <button type="button" className="k-add k-row-add" onClick={addRow}>
-        ＋ {t({ message: `Add: ${noun}`, comment: "Add a row to a list field; noun is the field's word for one" })}
+        <Glyph icon="plus" size={16} /> {t({ message: `Add: ${noun}`, comment: "Add a row to a list field; noun is the field's word for one" })}
       </button>
       <span className="k-visually-hidden" aria-live="polite">
         {reorder.announcement}

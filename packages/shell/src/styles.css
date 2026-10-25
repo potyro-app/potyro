@@ -15825,7 +15825,10 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 /* The page's frequent action: a band above the tab bar and any timer, in the thumb's reach. Solid,
    so the list ends at its edge instead of showing through between it and the add box. */
 .k-app {
-  --k-primary-h: calc(3.6rem + 2 * var(--space-2));
+  /* One height for the band's button and for whatever stacks on the band (a checklist's add box):
+     the two used to disagree by 10px, and the list showed through the gap (#428). */
+  --k-cta-h: 48px;
+  --k-primary-h: calc(var(--k-cta-h) + 2 * var(--space-2));
 }
 .k-primary-bar {
   position: sticky;
@@ -15841,6 +15844,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   animation: k-rise var(--dur) var(--ease) both;
 }
 .k-primary-bar .k-cta {
+  min-height: var(--k-cta-h);
   margin: 0;
   justify-content: center;
   text-align: center;
@@ -17523,10 +17527,31 @@ img.k-glyph-image {
    made — the logo's symbol with its stroke in the app's colour, the words in --text-micro. */
 .k-seal-foot {
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding: var(--space-6) var(--space-4) var(--space-4);
+  /* A slim band, the same height everywhere: a sealed app's screen ends above it (sealed-view.ts
+     reads --k-seal-room), so the page never scrolls as well as the app's own screen (#428). */
+  box-sizing: border-box;
+  height: var(--k-seal-h);
+  padding: 0 var(--space-4);
+}
+.k-page,
+.k-content {
+  --k-seal-h: 48px;
+}
+.k-page:has(> .k-seal-foot),
+.k-content:has(> .k-seal-foot) {
+  /* The band and the page's gap above it. */
+  --k-seal-room: calc(var(--k-seal-h) + var(--space-3));
+}
+/* A sealed app's own screen is as tall as the room down to the bottom bar (sealed-view.ts), so its page
+   keeps only that bar's height under it, not the 7.5rem a list keeps for its floating button. */
+.k-page:has(.k-sealed-view),
+.k-content:has(.k-sealed-view) {
+  padding-bottom: var(--k-chrome-bottom, 0px);
 }
 .k-seal {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -17540,6 +17565,12 @@ img.k-glyph-image {
   letter-spacing: 0.01em;
   text-decoration: none;
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+/* The pill looks 32px; its tap reaches 44px (DESIGN.md §11.4). */
+.k-seal::after {
+  content: "";
+  position: absolute;
+  inset: -6px 0;
 }
 .k-seal:hover {
   background: var(--surface-2);
@@ -17819,4 +17850,52 @@ img.k-glyph-image {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+/* #428: the rows under a checklist's add box. The box is solid down to the band (a wrapped button
+   label can make the band taller than --k-primary-h), and a row reached with Tab scrolls clear of
+   the add box, the band and a tab bar (DESIGN.md §11: focus never hidden). */
+.k-app:has(.k-primary-bar) .k-check-add {
+  box-shadow: 0 var(--space-3) 0 0 var(--bg);
+}
+html:has(.k-check-add) {
+  scroll-padding-bottom: calc(2 * var(--k-cta-h, 48px) + 4 * var(--space-2) + 4.75rem);
+}
+
+/* #428: on a phone a sheet shows its handle, 36×4 (DESIGN.md §6). A swipe down on the header closes
+   it (form-sheet.tsx), and the handle is what says so. A sheet stacked on another rises from the
+   bottom with the large radius on top. */
+@media (max-width: 640px) {
+  .k-sheet {
+    position: relative;
+  }
+  .k-sheet::before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: calc(var(--k-safe-top) + 6px);
+    left: 50%;
+    width: 36px;
+    height: 4px;
+    margin-left: -18px;
+    border-radius: var(--radius-pill);
+    background: var(--line-strong);
+    pointer-events: none;
+  }
+  .k-sheet-stacked {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  .k-sheet-stacked::before {
+    top: 6px;
+  }
+}
+/* The empty state's supporting line (DESIGN.md §6): what the page is for, muted, under the heading. */
+.k-empty-state .k-empty-support {
+  margin: calc(-1 * var(--space-2)) 0 0;
+  max-width: 32rem;
+  color: var(--muted);
+}
+/* On a wide screen the content's gap is --space-4. */
+.k-content:has(> .k-seal-foot) {
+  --k-seal-room: calc(var(--k-seal-h) + var(--space-4));
 }
