@@ -209,10 +209,11 @@ msgstr "{0, plural, one {# fällig} other {# fällig}}"
 
 #. placeholder {0}: done.files
 #. placeholder {0}: p.app.files
-#. placeholder {0}: result.files
+#. placeholder {0}: paths.length + 1
 #: ../shell/src/move-banner.tsx
 #: ../shell/src/move-page.tsx
 #: ../shell/src/move-page.tsx
+#: ../shell/src/studio-tools.tsx
 msgid "{0, plural, one {# file} other {# files}}"
 msgstr "{0, plural, one {# Datei} other {# Dateien}}"
 
@@ -1046,6 +1047,16 @@ msgstr "Eine Datei, die du hier hinzufügst, geht überallhin mit, wo die App hi
 #: ../shell/src/app-folder.ts
 msgid "A file needs a name"
 msgstr "Eine Datei braucht einen Namen"
+
+#. The Studio's code tree: a new file's name lacks a code extension
+#: ../shell/src/code-tree.tsx
+msgid "A file of code ends in .ts, .tsx, .js or .jsx"
+msgstr "Eine Code-Datei endet auf .ts, .tsx, .js oder .jsx"
+
+#. The Studio's code tree: a new folder's name looks like a file's
+#: ../shell/src/code-tree.tsx
+msgid "A folder's name has no .ts at the end"
+msgstr "Ein Ordnername endet nicht auf .ts"
 
 #: ../shell/src/missing-features.ts
 msgid "a full web page"
@@ -2039,8 +2050,8 @@ msgstr "Diese App ändern"
 
 #. The Studio's code: a file edited but not saved yet
 #. The Studio's code: a file edited but not saved yet
-#: ../shell/src/studio-tools.tsx
-#: ../shell/src/studio-tools.tsx
+#: ../shell/src/code-tree.tsx
+#: ../shell/src/code-tree.tsx
 msgid "changed"
 msgstr "geändert"
 
@@ -2607,6 +2618,7 @@ msgstr "{label} verringern"
 #: ../shell/src/scope-switcher.tsx
 #: ../shell/src/scope-switcher.tsx
 #: ../shell/src/studio.tsx
+#: ../shell/src/studio.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/builtins.tsx
 #: ../views/src/checklist.tsx
@@ -2641,6 +2653,13 @@ msgstr "„{name}“ löschen?"
 msgid "Delete “{title}”?"
 msgstr "„{title}“ löschen?"
 
+#. The Studio's code tree: delete this file
+#. placeholder {0}: n.path
+#: ../shell/src/code-tree.tsx
+#: ../shell/src/code-tree.tsx
+msgid "Delete {0}"
+msgstr "{0} löschen"
+
 #: ../shell/src/studio.tsx
 msgid "Delete {appName}"
 msgstr "{appName} löschen"
@@ -2656,6 +2675,11 @@ msgstr "{label} löschen?"
 #: ../shell/src/files-panel.tsx
 msgid "Delete {name}?"
 msgstr "{name} löschen?"
+
+#. The Studio's code tree: asked before a file of code is taken out
+#: ../shell/src/studio.tsx
+msgid "Delete {path}?"
+msgstr "{path} löschen?"
 
 #: ../shell/src/data-table.tsx
 msgid "Delete {record}"
@@ -3040,7 +3064,9 @@ msgstr "Zu übernehmende Datei"
 
 #. Data page: the tab with the app's files, beside its kinds of record
 #. Tab: the files an app ships with
+#. The Studio's code tree: its heading
 #. Tile menu: this app's files, on the Data page
+#: ../shell/src/code-tree.tsx
 #: ../shell/src/data-page.tsx
 #: ../shell/src/incoming-files-host.tsx
 #: ../shell/src/launcher.tsx
@@ -3647,6 +3673,10 @@ msgstr "Sie verschwindet endgültig aus {appName}. Was in der App sie nutzt, fin
 msgid "It goes on a public list of requests the Potyro team reads, without your name. No account needed."
 msgstr "Es kommt auf eine öffentliche Liste mit Wünschen, die das Potyro-Team liest, ohne deinen Namen. Kein Konto nötig."
 
+#: ../shell/src/studio.tsx
+msgid "It goes when you save the code. Anything that imports it stops working until that import goes too."
+msgstr "Sie verschwindet, wenn du den Code speicherst. Was sie importiert, funktioniert erst wieder, wenn dieser Import auch weg ist."
+
 #: ../shell/src/fix-panel.tsx
 msgid "It has a question"
 msgstr "Es hat eine Frage"
@@ -3951,6 +3981,11 @@ msgstr "Bei jedem Eintrag „{label}“ sagen können, für wen er ist"
 msgid "Let this app send what it asks about — a photo, some text — to an AI service."
 msgstr "Diese App darf das, wonach sie fragt – ein Foto, einen Text –, an einen KI-Dienst senden."
 
+#. The Studio's code tree: a new file's name has characters it may not
+#: ../shell/src/code-tree.tsx
+msgid "Letters, digits, - _ and . only, no spaces"
+msgstr "Nur Buchstaben, Ziffern, - _ und ., keine Leerzeichen"
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "Libraries"
 msgstr "Bibliotheken"
@@ -4104,6 +4139,11 @@ msgstr "Gemacht mit Potyro"
 #: ../shell/src/studio.tsx
 msgid "Magenta"
 msgstr "Magenta"
+
+#. The Studio's code tree: the app's main file, the one with defineApp
+#: ../shell/src/code-tree.tsx
+msgid "main"
+msgstr "Haupt"
 
 #. Add-an-app card button, opened from Make it mine: your own copy of an app to change
 #. App menu: your own copy of this app, to change in the Studio
@@ -4328,6 +4368,16 @@ msgstr "Meine Pflanzen und wann jede Wasser braucht"
 msgid "Name"
 msgstr "Name"
 
+#. The Studio's code tree
+#: ../shell/src/code-tree.tsx
+msgid "Name of the new file"
+msgstr "Name der neuen Datei"
+
+#. The Studio's code tree
+#: ../shell/src/code-tree.tsx
+msgid "Name of the new folder"
+msgstr "Name des neuen Ordners"
+
 #. Scope menu: duplicating a list; asks for the copy's name
 #: ../shell/src/scope-switcher.tsx
 msgid "Name the copy of “{current}”"
@@ -4380,6 +4430,25 @@ msgstr "{kind} anlegen"
 #: ../shell/src/studio.tsx
 msgid "New app"
 msgstr "Neue App"
+
+#. The Studio's code tree: make a file of code
+#: ../shell/src/code-tree.tsx
+#: ../shell/src/code-tree.tsx
+msgid "New file"
+msgstr "Neue Datei"
+
+#. The Studio's code tree: make a file inside this folder
+#. placeholder {0}: n.name
+#: ../shell/src/code-tree.tsx
+#: ../shell/src/code-tree.tsx
+msgid "New file in {0}"
+msgstr "Neue Datei in {0}"
+
+#. The Studio's code tree: make a folder
+#: ../shell/src/code-tree.tsx
+#: ../shell/src/code-tree.tsx
+msgid "New folder"
+msgstr "Neuer Ordner"
 
 #: ../views/src/checklist.tsx
 msgid "New group name"
@@ -5675,6 +5744,12 @@ msgstr "Notiz speichern"
 msgid "Save one thing"
 msgstr "Eine Sache speichern"
 
+#. The Studio's code tree: why New file is not available yet
+#: ../shell/src/code-tree.tsx
+#: ../shell/src/code-tree.tsx
+msgid "Save the app once to add files to it"
+msgstr "Speichere die App einmal, um Dateien hinzuzufügen"
+
 #: ../shell/src/share-sheet.tsx
 msgid "Save the clip"
 msgstr "Clip speichern"
@@ -6413,6 +6488,8 @@ msgid "The AI service took too long to answer. Try again."
 msgstr "Der KI-Dienst hat zu lange für die Antwort gebraucht. Versuche es noch einmal."
 
 #. The Studio's code: the app's main file, beside the modules it imports
+#. The Studio's code: the app's main file, beside the modules it imports
+#: ../shell/src/code-tree.tsx
 #: ../shell/src/studio-tools.tsx
 msgid "The app"
 msgstr "Die App"
@@ -6438,7 +6515,7 @@ msgid "the app, not its data"
 msgstr "die App, nicht ihre Daten"
 
 #. The Studio's code: the list of files the app's code is made of
-#: ../shell/src/studio-tools.tsx
+#: ../shell/src/code-tree.tsx
 msgid "The app's files"
 msgstr "Die Dateien der App"
 
@@ -6665,6 +6742,11 @@ msgstr "Es gibt schon eine Datei namens {path}"
 #: ../shell/src/app-source.ts
 msgid "there is nothing to change"
 msgstr "es gibt nichts zu ändern"
+
+#. The Studio's code tree: a new name that is already used
+#: ../shell/src/code-tree.tsx
+msgid "There is one with that name already"
+msgstr "Es gibt schon eine mit diesem Namen"
 
 #: ../shell/src/start-fix.ts
 msgid "There's nothing to investigate: this recording has no title and no note about what you expected. Add a note when you record the case — \"What did you expect?\" — or give the case a title, and try again."

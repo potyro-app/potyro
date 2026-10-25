@@ -27,6 +27,7 @@ import { recordDiagnosis } from "./app-diagnoses.js";
 import { CaseReport } from "./case-report.js";
 import { getUserApp, renameUserApp, saveUserApp, setUserAppTrusted, type UserApp } from "./user-apps.js";
 import { restoreVersion } from "./restore-version.js";
+import { NEW_MODULE } from "./code-files.js";
 import { newLine } from "./app-line.js";
 import { loadTrustedModule } from "./trusted-loader.js";
 import { confirmAndRemoveApp } from "./remove-app.js";
@@ -140,6 +141,15 @@ async function nameAfter(app: UserApp, nextDefined: string | undefined): Promise
   }
   return before === undefined || before === app.name ? nextDefined : app.name;
 }
+
+/** The modules whose text differs between two sets, made and deleted ones included. */
+function changedPaths(a: Record<string, string> | undefined, b: Record<string, string> | undefined): Set<string> {
+  const paths = new Set([...Object.keys(a ?? {}), ...Object.keys(b ?? {})]);
+  return new Set([...paths].filter((p) => a?.[p] !== b?.[p]));
+}
+
+/** Whether `draft` holds anything `saved` does not: an edit, a new file, a deleted one. */
+const modulesDiffer = (draft: Record<string, string>, saved: Record<string, string> | undefined): boolean => changedPaths(draft, saved).size > 0;
 
 /** A version that was made and failed a gate, so it was not saved. */
 interface Held {
@@ -328,8 +338,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       // A module edited and not saved yet stays as it is in the editor — a restore or a change from the
       // conversation must not throw away what someone typed. It then shows as changed against the new one.
       // Another app's draft never carries over.
-      const saved = modulesOfApp.current === appId ? savedModulesRef.current : undefined;
-      setDraftModules((draft) => (draft && saved && Object.keys(draft).some((p) => draft[p] !== saved[p]) ? draft : m));
+      const sameApp = modulesOfApp.current === appId;
+      const saved = savedModulesRef.current;
+      setDraftModules((draft) => (sameApp && draft && modulesDiffer(draft, saved) ? draft : m));
       modulesOfApp.current = appId;
       savedModulesRef.current = m;
       setSavedModules(m);
@@ -338,7 +349,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       live = false;
     };
   }, [appId, source]);
-  const changedModules = new Set(Object.keys(draftModules ?? {}).filter((p) => draftModules![p] !== savedModules?.[p]));
+  // Edited, made or deleted since the last save: each is a change Save keeps.
+  const changedModules = changedPaths(draftModules, savedModules);
 
   const engine = async () => studioEngine(engineCfg, (text) => setWorking(text ?? ""), await modulesOf(appRef.current ?? undefined));
 
@@ -1012,6 +1024,18 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           definition={preview?.composed.runtime.definition}
           modules={draftModules}
           onModuleChange={(path, next) => setDraftModules((m) => ({ ...(m ?? {}), [path]: next }))}
+          onCreateModule={(path) => setDraftModules((m) => ({ ...(m ?? {}), [path]: NEW_MODULE }))}
+          onDeleteModule={(path) =>
+            void shellDialogs
+              .confirm(t({ message: `Delete ${path}?`, comment: "The Studio's code tree: asked before a file of code is taken out" }), {
+                detail: t`It goes when you save the code. Anything that imports it stops working until that import goes too.`,
+                ok: t`Delete`,
+                destructive: true,
+              })
+              .then((go) => {
+                if (go) setDraftModules((m) => Object.fromEntries(Object.entries(m ?? {}).filter(([p]) => p !== path)));
+              })
+          }
           changed={changedModules}
         />
       ) : null}
