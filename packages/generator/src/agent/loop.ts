@@ -15,6 +15,7 @@
 // passes, no candidate can prove more than the baseline already did, so the loop refuses to start
 // and says so. This is not a failure of the agent and not a fix; a UI must render it as neither.
 
+import { appFilesNote, isJoinedApp, joinedModules } from "../app-files.js";
 import type { ChatEngine, ChatMessage } from "../chat-backend.js";
 import { describeEditFailures } from "../edits.js";
 import { readEditsOrFile } from "../guarded-modify.js";
@@ -155,7 +156,9 @@ const NOT_IN_APP = "NOT-IN-APP:";
  */
 function openingTask(deps: LoopDeps): string {
   const language = changeLanguageInstruction({ person: deps.language, app: deps.appLanguage ?? appLanguage(deps.source) });
-  return `${deps.task}${language ? `\n\n${language}` : ""}\n\nThe app as it is:\n\`\`\`ts\n${deps.source}\n\`\`\``;
+  // An app of several files (#448) says so; for an app that is one file this turn is unchanged.
+  const files = isJoinedApp(deps.source) ? `\n\n${appFilesNote(joinedModules(deps.source))}` : "";
+  return `${deps.task}${language ? `\n\n${language}` : ""}${files}\n\nThe app as it is:\n\`\`\`ts\n${deps.source}\n\`\`\``;
 }
 
 export async function runAgentLoop(deps: LoopDeps): Promise<LoopOutcome> {
