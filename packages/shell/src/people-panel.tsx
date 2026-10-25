@@ -14,6 +14,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { shellDialogs } from "./dialog.js";
 import type { GuestBook } from "@potyro/host";
 import { GuestsSection } from "./guests-panel.js";
+import { Glyph } from "@potyro/views";
 
 type Role = "admin" | "writer" | "reader";
 interface Member {
@@ -179,7 +180,7 @@ export function PeoplePanel({
             </div>
           ) : (
             <button type="button" className="k-add k-primary-action k-people-invite-btn" disabled={busy} onClick={() => setInviting(true)}>
-              ＋ <Trans>Invite someone</Trans>
+              <Glyph icon="plus" size={16} /> <Trans>Invite someone</Trans>
             </button>
           )
         ) : members ? (

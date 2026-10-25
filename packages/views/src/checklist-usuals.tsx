@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useLingui } from "@lingui/react/macro";
 import type { Resolved } from "potyro";
 import type { BuiltinViewProps } from "./types.js";
+import { Glyph } from "./glyph.js";
 
 /** At most this many usuals are offered at once. */
 const USUALS = 12;
@@ -57,7 +58,7 @@ export function UsualChips({ texts, onPick }: { texts: string[]; onPick: (text: 
       {texts.map((text) => (
         <li key={text}>
           <button type="button" className="k-chip k-check-suggestion" onPointerDown={(e) => e.preventDefault()} onMouseDown={(e) => e.preventDefault()} onClick={() => onPick(text)}>
-            ＋ {text}
+            <Glyph icon="plus" size={16} /> {text}
           </button>
         </li>
       ))}

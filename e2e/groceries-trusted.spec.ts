@@ -76,14 +76,14 @@ test.describe("phone", () => {
     await expect(page.getByRole("list", { name: "Usual items" })).toHaveCount(0);
     await input.tap();
     const usuals = page.getByRole("list", { name: "Usual items" });
-    await expect(usuals.getByRole("button").first()).toHaveText("＋ Coffee beans");
+    await expect(usuals.getByRole("button").first()).toHaveText("Coffee beans");
     // What is on the list already is not offered.
     await expect(usuals.getByRole("button", { name: /Milk/ })).toHaveCount(0);
-    await usuals.getByRole("button", { name: "＋ Lemons" }).tap();
+    await usuals.getByRole("button", { name: "Lemons" }).tap();
     const lemons = page.getByRole("checkbox", { name: "Lemons", exact: true });
     await expect(lemons).toHaveAttribute("aria-checked", "false");
     await expect(lemons.locator("xpath=ancestor::section")).toHaveAttribute("aria-label", "Produce");
-    await expect(usuals.getByRole("button", { name: "＋ Lemons" })).toHaveCount(0);
+    await expect(usuals.getByRole("button", { name: "Lemons" })).toHaveCount(0);
   });
 
   test("dragging and renaming wait behind Arrange", async ({ page }) => {

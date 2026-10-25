@@ -4,7 +4,7 @@
 import { t as tr } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { CSSProperties, ReactNode } from "react";
-import { actionInfo, type Resolved } from "potyro";
+import { actionInfo, basePageId, type Resolved } from "potyro";
 import { PartProblem } from "./part-failure.js";
 import type { BuiltinViewProps, DisplayCell } from "./types.js";
 import { displayFieldFor, fieldLabel, formatValue, getView, humanizeKey, shownValue } from "./format.js";
@@ -176,6 +176,10 @@ export function EmptyState({
 }) {
   const { t } = useLingui();
   const def = runtime.definition.entities[entity];
+  // DESIGN.md §6: a heading, one supporting line, one button. The supporting line is what the page
+  // is for, when the app says so and it is not the heading again.
+  const about = runtime.definition.pages.find((p) => p.id === basePageId(pageId))?.description;
+  const support = typeof about === "string" && about.trim() && about.trim() !== text.trim() ? about : null;
   return (
     <div className="k-empty-state" data-page={pageId}>
       <span className="k-empty-mark" aria-hidden>
@@ -184,6 +188,7 @@ export function EmptyState({
       <p className="k-empty k-empty-title" data-k-wording>
         {text}
       </p>
+      {support ? <p className="k-empty-support">{support}</p> : null}
       {onCreate ? (
         // Its own words, not the floating button's "Add: …": two buttons with one name are one too many
         // to tell apart by ear.
@@ -201,7 +206,7 @@ function AddRow({ onAdd, as = "li" }: { onAdd: () => void; as?: "li" | "div" }) 
   const body = (
     <button type="button" className="k-add-row-btn" onClick={onAdd}>
       <span className="k-lead k-add-row-mark" aria-hidden>
-        ＋
+        <Glyph icon="plus" size={16} />
       </span>
       <span>{t({ message: "Add another", comment: "Under a short list: make one more record like these" })}</span>
     </button>

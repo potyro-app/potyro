@@ -59,3 +59,90 @@ test("the fields show the focus ring when reached with Tab", async ({ page }) =>
     expect(await ring(sel)).toEqual({ style: "solid", width: "2px", offset: "2px" });
   }
 });
+
+// A checklist's add box floats over the rows, above the page's band ("Done shopping"). The two used
+// to sit 10px apart, so the list showed through between them, and a row reached with Tab could stop
+// under them (DESIGN.md §11: focus never hidden).
+test("a checklist's rows never show under its add box or hide focus behind it", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/?user=groceries");
+  const add = page.locator(".k-check-add");
+  const band = page.locator(".k-primary-bar");
+  await expect(add).toBeVisible({ timeout: 30_000 });
+  await expect(band).toBeVisible();
+  // The band rises in on arrival; measure once it has landed.
+  await band.evaluate((el) => Promise.all(el.getAnimations().map((x) => x.finished)));
+  const a = (await add.boundingBox())!;
+  const b = (await band.boundingBox())!;
+  expect(b.y - (a.y + a.height)).toBeLessThanOrEqual(0.5);
+
+  let checked = 0;
+  for (let i = 0; i < 60; i++) {
+    await page.keyboard.press("Tab");
+    const r = await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      if (!el?.closest(".k-check-row")) return null;
+      const rc = el.getBoundingClientRect();
+      const top = document.querySelector(".k-check-add")!.getBoundingClientRect().top;
+      return { bottom: rc.bottom, top, label: el.getAttribute("aria-label") ?? el.textContent };
+    });
+    if (!r) continue;
+    checked++;
+    expect(r.bottom, `${r.label} is under the add box`).toBeLessThanOrEqual(r.top + 0.5);
+  }
+  expect(checked).toBeGreaterThan(5);
+});
+
+const EMPTY_APP = `import { defineApp } from "potyro";
+export default defineApp({
+  id: "polish-empty",
+  name: "Reading list",
+  version: "1.0.0",
+  schemaVersion: 1,
+  entities: { book: { label: "Book", displayField: "title", fields: { title: { type: "text", required: true } } } },
+  pages: [
+    {
+      id: "books",
+      title: "Books",
+      description: "Books you want to read next, and the ones you finished.",
+      view: { type: "list", entity: "book", display: { primary: "title" }, emptyText: "No books yet" },
+    },
+  ],
+});`;
+
+test.describe("an empty page and its sheet", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript((source) => {
+      localStorage.setItem(
+        "potyro:user-apps",
+        JSON.stringify([{ id: "polish-empty", name: "Reading list", source, trusted: true, updatedAt: new Date().toISOString() }]),
+      );
+    }, EMPTY_APP);
+  });
+
+  // DESIGN.md §6: the mascot at 48px, a heading, one supporting line, one primary button.
+  test("an empty page has the mascot, a heading, what the page is for and one button", async ({ page }) => {
+    await page.goto("/?user=polish-empty");
+    const empty = page.locator(".k-empty-state");
+    await expect(empty).toBeVisible({ timeout: 30_000 });
+    const mark = (await empty.locator(".k-empty-mark").boundingBox())!;
+    expect(Math.round(mark.width)).toBe(48);
+    await expect(empty.locator(".k-empty-title")).toHaveText("No books yet");
+    await expect(empty.locator(".k-empty-support")).toHaveText("Books you want to read next, and the ones you finished.");
+    await expect(empty.getByRole("button")).toHaveCount(1);
+  });
+
+  // §6: on a phone a sheet rises with a 36×4 handle; swiping its header down closes it.
+  test("on a phone the record sheet shows its handle", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/?user=polish-empty");
+    await page.getByRole("button", { name: "Add the first one" }).click();
+    const sheet = page.locator(".k-sheet");
+    await expect(sheet).toBeVisible();
+    const handle = await sheet.evaluate((el) => {
+      const c = getComputedStyle(el, "::before");
+      return { content: c.content, width: c.width, height: c.height };
+    });
+    expect(handle).toEqual({ content: '""', width: "36px", height: "4px" });
+  });
+});
