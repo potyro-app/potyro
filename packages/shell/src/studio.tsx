@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
+import type { AppLock, PackagedFile } from "@potyro/store";
 import { fmt } from "@potyro/i18n";
 import { replayCase, type Case, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
 import { ActionMenu, type MenuEntry } from "@potyro/views";
@@ -24,7 +25,8 @@ import { hasBuiltInAI } from "@potyro/generator/backends";
 import { listCases } from "./app-cases.js";
 import { recordDiagnosis } from "./app-diagnoses.js";
 import { CaseReport } from "./case-report.js";
-import { getUserApp, lockToRestore, renameUserApp, saveUserApp, setUserAppTrusted, type UserApp } from "./user-apps.js";
+import { getUserApp, renameUserApp, saveUserApp, setUserAppTrusted, type UserApp } from "./user-apps.js";
+import { restoreVersion } from "./restore-version.js";
 import { newLine } from "./app-line.js";
 import { loadTrustedModule } from "./trusted-loader.js";
 import { confirmAndRemoveApp } from "./remove-app.js";
@@ -41,7 +43,8 @@ import { buildPreview, PreviewScreen, type Preview } from "./studio-preview.js";
 import { PointGlyph } from "./point-mode.js";
 import { pointContext, type Pointed } from "./point-target.js";
 import { ThreadView } from "./studio-thread-view.js";
-import { duplicateApp, modulesOf } from "./app-modules.js";
+import { duplicateApp, keepCode, modulesOf, moduleTextsFor, ownModuleCode, withEditedModules, withOwnModules } from "./app-modules.js";
+import type { ModuleSource } from "./package-modules.js";
 import { describeLibrary } from "./package-libraries.js";
 import { keepLibraryFiles, librariesToFetch, prepareStudioLibraries, type StudioLibraries } from "./studio-libraries.js";
 import { StudioTools, type ToolsTab } from "./studio-tools.js";
@@ -148,7 +151,12 @@ interface Held {
   loss: string | null;
   /** Its libraries, already fetched with the person's say-so (#266). */
   libraries: StudioLibraries | null;
+  /** The modules it edited (#448), kept with it if it is kept. */
+  own?: OwnEdit;
 }
+
+/** Modules a version edited (#448): every module's text, and the files and lock entries they make. */
+type OwnEdit = { texts: Record<string, string>; code: { lock: AppLock; files: PackagedFile[] } };
 
 export interface StudioProps {
   onClose: () => void;
@@ -221,6 +229,12 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const [draftSource, setDraftSource] = useState(opened?.source ?? STARTER);
   const [toolsError, setToolsError] = useState<string | null>(null);
   const [toolsBusy, setToolsBusy] = useState(false);
+  // The app's own modules in the code (#448): as saved, and as edited in the editor. Read again when
+  // the app or its saved source changes (a save, a restore, a change from the conversation).
+  const [savedModules, setSavedModules] = useState<Record<string, string> | undefined>(undefined);
+  const [draftModules, setDraftModules] = useState<Record<string, string> | undefined>(undefined);
+  const savedModulesRef = useRef<Record<string, string> | undefined>(undefined);
+  const modulesOfApp = useRef<string | null>(null);
   const [cases, setCases] = useState<Case[]>([]);
   const [caseReport, setCaseReport] = useState<ReplayReport | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -301,6 +315,31 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     };
   }, [appId]);
 
+  useEffect(() => {
+    if (!appId) {
+      savedModulesRef.current = undefined;
+      setSavedModules(undefined);
+      setDraftModules(undefined);
+      return;
+    }
+    let live = true;
+    void moduleTextsFor(appId).then((m) => {
+      if (!live) return;
+      // A module edited and not saved yet stays as it is in the editor — a restore or a change from the
+      // conversation must not throw away what someone typed. It then shows as changed against the new one.
+      // Another app's draft never carries over.
+      const saved = modulesOfApp.current === appId ? savedModulesRef.current : undefined;
+      setDraftModules((draft) => (draft && saved && Object.keys(draft).some((p) => draft[p] !== saved[p]) ? draft : m));
+      modulesOfApp.current = appId;
+      savedModulesRef.current = m;
+      setSavedModules(m);
+    });
+    return () => {
+      live = false;
+    };
+  }, [appId, source]);
+  const changedModules = new Set(Object.keys(draftModules ?? {}).filter((p) => draftModules![p] !== savedModules?.[p]));
+
   const engine = async () => studioEngine(engineCfg, (text) => setWorking(text ?? ""), await modulesOf(appRef.current ?? undefined));
 
   /**
@@ -315,6 +354,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     origin?: VersionOrigin,
     libraries?: StudioLibraries | null,
     extra: Pick<NewMessage, "platform"> = {},
+    /** Modules edited by hand (#448): their files go on this device first, and their lock with the version. */
+    own?: OwnEdit,
   ): Promise<void> => {
     const existing = appRef.current ? getUserApp(appRef.current) : undefined;
     // Saved in the app's OWN language: a translated app keeps one stored name, and each device shows
@@ -323,9 +364,22 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     const name = existing ? await nameAfter(existing, defined) : defined || note.split("\n")[0]!.slice(0, 40) || t`Untitled app`;
     // A library's bytes are in the app's folder before its record names them, so no open finds one missing.
     if (existing && libraries?.files.length) await keepLibraryFiles(existing, libraries.files);
+    if (existing && own) await keepCode(existing.id, own.code.files);
+    // An app with no libraries has no `libraries`: an edited module still changes its lock.
+    const lock = libraries?.lock ?? (existing && own ? withOwnModules(existing.lock, own.code.lock) : undefined);
     const record = await saveUserApp(
       // A new app is an app of its own (docs/24 §11): links to it open its copies, whatever it declares as its id.
-      { id: existing?.id, name, source: next, lock: libraries?.lock, note: note || undefined, rationale: summary || undefined, origin, ...(existing ? {} : { line: newLine() }) },
+      {
+        id: existing?.id,
+        name,
+        source: next,
+        lock,
+        ...(existing && own ? { modules: own.texts } : {}),
+        note: note || undefined,
+        rationale: summary || undefined,
+        origin,
+        ...(existing ? {} : { line: newLine() }),
+      },
       new Date().toISOString(),
     );
     if (!existing && libraries?.files.length) await keepLibraryFiles(record, libraries.files);
@@ -341,6 +395,10 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     }
     setSource(next);
     setDraftSource(next);
+    if (own) {
+      savedModulesRef.current = own.texts;
+      setSavedModules(own.texts);
+    }
     setHeld(null);
     await say({ kind: "version", text: summary || (existing ? t`Changed.` : t`Made “${name}”.`), seq, name, ...extra });
     if (wide) setPreviewOpen(true);
@@ -351,8 +409,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
    * first — "fetches chart.js 4.4.1 from esm.sh" — and fetched once, now, only if the person agrees.
    * Null for an app with none; a sentence when the version cannot be kept as it is.
    */
-  const librariesFor = async (src: string): Promise<StudioLibraries | null | string> => {
-    const have = await modulesOf(appRef.current ?? undefined);
+  const librariesFor = async (src: string, edited?: ModuleSource): Promise<StudioLibraries | null | string> => {
+    const have = edited ?? (await modulesOf(appRef.current ?? undefined));
     const { lines, issues } = await librariesToFetch(src, have);
     if (issues.length) {
       const issue = issues[0]!;
@@ -382,31 +440,45 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   };
 
   /** A source arrived: check it, repair it once if its structure is wrong, then keep it or hold it. */
-  const land = async (next: string, summary: string, note: string, loss: string | null, extra: Pick<NewMessage, "platform"> = {}): Promise<void> => {
+  const land = async (
+    next: string,
+    summary: string,
+    note: string,
+    loss: string | null,
+    extra: Pick<NewMessage, "platform"> = {},
+    /** The app's own modules, when the change edited any (#448): checked and kept with it. */
+    modules?: Record<string, string>,
+  ): Promise<void> => {
     setWorking(t`Checking it`);
     let src = next;
     let said = summary;
     let lost = loss;
-    const first = await librariesFor(src);
+    let own: OwnEdit | undefined = modules ? { texts: modules, code: await ownModuleCode(modules) } : undefined;
+    let edited = own ? withEditedModules(await modulesOf(appRef.current ?? undefined), own.code) : undefined;
+    const first = await librariesFor(src, edited);
     if (typeof first === "string") return say({ kind: "failure", text: first });
     let libraries = first;
-    let { preview: built, issues } = await buildPreview(src, appRef.current, libraries?.modules);
+    let { preview: built, issues } = await buildPreview(src, appRef.current, libraries?.modules ?? edited);
     if (issues.length && ready) {
       try {
-        const fixed = await (await engine()).repair(src, issues);
+        const fixed = await (await engine()).repair(src, issues, own?.texts);
+        if (fixed.modules) {
+          own = { texts: fixed.modules, code: await ownModuleCode(fixed.modules) };
+          edited = withEditedModules(await modulesOf(appRef.current ?? undefined), own.code);
+        }
         src = fixed.source;
         said = `${said} ${fixed.summary}`.trim();
         lost = lost ?? fixed.loss;
-        const again = await librariesFor(src);
+        const again = await librariesFor(src, edited);
         if (typeof again === "string") return say({ kind: "failure", text: again });
         libraries = again;
-        ({ preview: built, issues } = await buildPreview(src, appRef.current, libraries?.modules));
+        ({ preview: built, issues } = await buildPreview(src, appRef.current, libraries?.modules ?? edited));
       } catch {
         // The problems stand, and are said below.
       }
     }
     if (issues.length || lost) {
-      setHeld({ source: src, summary: said, note, issues, loss: lost, libraries });
+      setHeld({ source: src, summary: said, note, issues, loss: lost, libraries, ...(own ? { own } : {}) });
       setPreview(built ?? preview);
       const problems = issues.join("\n- ");
       await say({
@@ -418,7 +490,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       });
       return;
     }
-    await keep(src, built, said, note, undefined, libraries, extra);
+    await keep(src, built, said, note, undefined, libraries, extra, own);
   };
 
   const answer = async (outcome: Outcome, note: string): Promise<void> => {
@@ -433,7 +505,14 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       const now = new Date().toISOString();
       for (const part of outcome.notDone) void recordDiagnosis(appRef.current, { complaint: note, text: part }, now);
     }
-    await land(outcome.source, outcome.summary, note, outcome.kind === "loss" ? outcome.loss : null, outcome.kind === "source" ? platformAsk(outcome.platformRequest) : {});
+    await land(
+      outcome.source,
+      outcome.summary,
+      note,
+      outcome.kind === "loss" ? outcome.loss : null,
+      outcome.kind === "source" ? platformAsk(outcome.platformRequest) : {},
+      outcome.modules,
+    );
   };
 
   /** One turn: what was asked joins the conversation, the box empties, and the answer lands under it. */
@@ -471,8 +550,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     if (!held || busy) return;
     setWorking("");
     try {
-      const fixed = await (await engine()).repair(held.source, held.issues);
-      await land(fixed.source, `${held.summary} ${fixed.summary}`.trim(), held.note, fixed.loss);
+      const fixed = await (await engine()).repair(held.source, held.issues, held.own?.texts);
+      await land(fixed.source, `${held.summary} ${fixed.summary}`.trim(), held.note, fixed.loss, {}, fixed.modules ?? held.own?.texts);
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
       await say({ kind: "failure", text: t`Could not fix it: ${reason}` });
@@ -491,7 +570,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     );
     if (!go) return;
     const kept = t`Kept with problems.`;
-    await keep(h.source, preview, `${h.summary} ${kept}`.trim(), h.note, undefined, h.libraries);
+    await keep(h.source, preview, `${h.summary} ${kept}`.trim(), h.note, undefined, h.libraries, {}, h.own);
   };
 
   /** An older card: put that version back, as a new version — nothing after it is lost. */
@@ -504,7 +583,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     if (!(await shellDialogs.confirm(t`Go back to version ${seq}?`, { detail: t`The versions after it stay in History.`, ok: t`Go back` }))) return;
     // The note is what History and the conversation show for this version; nothing parses it.
     const note = `went back to version ${seq}`; // stored in English; shownNote (version-notes.ts) translates it where it is read
-    await saveUserApp({ id, name: app.name, source: version.source, lock: lockToRestore(version, app), origin: "restored", note }, new Date().toISOString());
+    await restoreVersion(app, version, note, new Date().toISOString());
     await afterRestore(version.source);
   };
 
@@ -518,23 +597,35 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
 
   // --- The code, by hand ------------------------------------------------------------------------
 
+  /**
+   * The modules edited by hand (#448), as files and lock entries, with what the app has otherwise.
+   * Null when no module was changed: then everything goes as it did before modules could be edited.
+   */
+  const editedModules = async (): Promise<{ texts: Record<string, string>; code: { lock: AppLock; files: PackagedFile[] }; have: ModuleSource } | null> => {
+    if (!draftModules || !changedModules.size) return null;
+    const code = await ownModuleCode(draftModules);
+    return { texts: draftModules, code, have: withEditedModules(await modulesOf(appRef.current ?? undefined), code) };
+  };
+
   /** The libraries the hand-written code imports, fetched for Run and reused by Save of the same code. */
-  const draftLibraries = useRef<{ source: string; libraries: StudioLibraries | null } | null>(null);
-  const librariesForDraft = async (): Promise<StudioLibraries | null | string> => {
-    if (draftLibraries.current?.source === draftSource) return draftLibraries.current.libraries;
-    const libraries = await librariesFor(draftSource);
-    if (typeof libraries !== "string") draftLibraries.current = { source: draftSource, libraries };
+  const draftLibraries = useRef<{ key: string; libraries: StudioLibraries | null } | null>(null);
+  const librariesForDraft = async (edited: ModuleSource | undefined): Promise<StudioLibraries | null | string> => {
+    const key = JSON.stringify([draftSource, edited ? draftModules : null]);
+    if (draftLibraries.current?.key === key) return draftLibraries.current.libraries;
+    const libraries = await librariesFor(draftSource, edited);
+    if (typeof libraries !== "string") draftLibraries.current = { key, libraries };
     return libraries;
   };
 
   const runDraft = async (): Promise<void> => {
     setToolsBusy(true);
-    const libraries = await librariesForDraft();
+    const own = await editedModules();
+    const libraries = await librariesForDraft(own?.have);
     if (typeof libraries === "string") {
       setToolsBusy(false);
       return setToolsError(libraries);
     }
-    const { preview: built, issues } = await buildPreview(draftSource, appRef.current, libraries?.modules);
+    const { preview: built, issues } = await buildPreview(draftSource, appRef.current, libraries?.modules ?? own?.have);
     setToolsBusy(false);
     if (built) setPreview(built);
     const problems = issues.join("\n- ");
@@ -547,12 +638,13 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
 
   const saveDraft = async (): Promise<void> => {
     setToolsBusy(true);
-    const libraries = await librariesForDraft();
+    const own = await editedModules();
+    const libraries = await librariesForDraft(own?.have);
     if (typeof libraries === "string") {
       setToolsBusy(false);
       return setToolsError(libraries);
     }
-    const { preview: built, issues } = await buildPreview(draftSource, appRef.current, libraries?.modules);
+    const { preview: built, issues } = await buildPreview(draftSource, appRef.current, libraries?.modules ?? own?.have);
     setToolsBusy(false);
     if (issues.length) {
       const problems = issues.join("\n- ");
@@ -569,6 +661,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       t({ message: "edited the code by hand", comment: "A version's note in History, lower case" }),
       "edited",
       libraries,
+      {},
+      own ?? undefined,
     );
   };
 
@@ -916,6 +1010,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           }}
           onClose={() => setTools(null)}
           definition={preview?.composed.runtime.definition}
+          modules={draftModules}
+          onModuleChange={(path, next) => setDraftModules((m) => ({ ...(m ?? {}), [path]: next }))}
+          changed={changedModules}
         />
       ) : null}
       {caseReport ? <CaseReport report={caseReport} onClose={() => setCaseReport(null)} /> : null}

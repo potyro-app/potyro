@@ -200,7 +200,7 @@ async function firstMessage(deps: ModifyLoopDeps, tool: boolean): Promise<string
   // this one opening message, which a fresh start reuses and a rollback keeps.
   const parts = [
     ...(recap ? [recap] : []),
-    buildModifyOpener(),
+    buildModifyOpener(deps.source),
     `\`\`\`ts\n${deps.source}\n\`\`\``,
     buildModifyMessage(deps.instruction, { ...deps.context, language }, { source: deps.source }),
   ];
