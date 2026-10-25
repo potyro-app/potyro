@@ -21,6 +21,13 @@ import { createOpenRouterEngine, type Language } from "@potyro/generator/backend
 import { canInvestigate, isCloud, keyFor, openRouterOptions, type EngineConfig } from "./engines.js";
 import { verifyCandidate } from "./verify-candidate.js";
 import type { ModuleSource } from "./package-modules.js";
+import { joinForModel, unpackCandidate } from "./joined-app.js";
+
+/**
+ * What a fix came to. A fix of an app with modules of its own (#448) carries `modules` — every
+ * module's text — when it changed any: applying it saves those with the entry.
+ */
+export type FixOutcome = LoopOutcome & { modules?: Record<string, string> };
 
 export interface StartFixOpts {
   /** The current app's source — what the agent starts from and, if it gives up, the last thing tried. */
@@ -88,17 +95,21 @@ function targetFor(runtime: PotyroRuntime): ReplayTarget {
  * Investigate a reported bug and, if the recording proves it, produce a fix. This is the only
  * place that constructs a `LoopDeps` for real.
  */
-export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
+export async function startFix(opts: StartFixOpts): Promise<FixOutcome> {
   const refused = refusal(opts.engine);
   if (refused) return refused;
+
+  // An app with modules of its own is shown as its files joined into one text (#448), as the Studio's
+  // modify shows it: a bug may well be in a module. Every candidate is split back before it is verified.
+  const joined = await joinForModel(opts.source, opts.modules);
+  const shown = joined?.text ?? opts.source;
 
   // Resuming after a question (#73): the agent reasons about the file it was SHOWN, but its edits
   // land on `opts.source`, read fresh now. If the app was saved in between, those are two files, and
   // the edits would be applied to one the model has never seen. Today both save paths reload the
   // page and destroy the question, but nothing enforced it — this does.
   if (opts.resumeFrom) {
-    const shown = sourceShownIn(opts.resumeFrom);
-    if (shown !== opts.source) {
+    if (sourceShownIn(opts.resumeFrom) !== shown) {
       return {
         kind: "refused",
         text: t`This app changed after the question was asked, so the answer would be applied to a version the agent never saw. Start the fix again.`,
@@ -140,7 +151,7 @@ export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
   }
 
   const tools = buildAppTools({
-    source: opts.source,
+    source: shown,
     target,
     theCase: opts.theCase,
     // Shapes and counts only — never the user's raw records. `access: { locality: "cloud" }` is the
@@ -170,27 +181,37 @@ export async function startFix(opts: StartFixOpts): Promise<LoopOutcome> {
     };
   }
 
-  return runAgentLoop({
+  const outcome = await runAgentLoop({
     engine: createOpenRouterEngine(openRouterOptions(opts.engine)),
     model: opts.engine.openrouterModel,
     tools,
     system: AGENT_SYSTEM_PROMPT,
     task,
-    source: opts.source,
+    source: shown,
     ...(opts.language ? { language: opts.language } : {}),
     // Closed over the case and the real store — never the candidate's own claim about itself.
-    verify: (source) =>
-      verifyCandidate({
-        source,
+    verify: async (text) => {
+      const u = await unpackCandidate(text, joined, opts.modules);
+      if (!u.ok) return { passed: false, detail: u.problem };
+      return verifyCandidate({
+        source: u.source,
         theCase: opts.theCase,
         appStore: opts.store,
-        modules: opts.modules,
+        modules: u.modules,
         // The app AS IT IS, so a candidate cannot pass by deleting the feature it was meant to fix.
         original: opts.runtime.definition,
-      }),
+      });
+    },
     baseline,
     onStep: opts.onStep,
     signal: opts.signal,
     resumeFrom: opts.resumeFrom,
   });
+  // What is applied is the entry and the modules it changed, never the joined text.
+  if ((outcome.kind === "fix" || outcome.kind === "unverified-fix") && joined) {
+    const u = await unpackCandidate(outcome.source, joined, opts.modules);
+    if (!u.ok) return { kind: "exhausted", reason: u.problem, lastAttempt: outcome.source };
+    return { ...outcome, source: u.source, ...(u.changed ? { modules: u.changed } : {}) };
+  }
+  return outcome;
 }
