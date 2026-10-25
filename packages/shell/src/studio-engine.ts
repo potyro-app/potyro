@@ -5,6 +5,8 @@
 // "something went wrong somewhere". Which model answers is the engine the person chose; every path
 // goes through the same contract, so changing engine changes the model and nothing else.
 
+import { joinForModel, unpackCandidate, unpackOrThrow } from "./joined-app.js";
+import { ownModuleCode, withEditedModules } from "./app-modules.js";
 import { plural, t } from "@lingui/core/macro";
 import type { AppShape } from "@potyro/runtime";
 import { fmt } from "@potyro/i18n";
@@ -22,9 +24,10 @@ import { currentLocale } from "./locale.js";
 /** What a turn came to. `summary` is what the conversation says happened. */
 export type Outcome =
   /** `platformRequest`: the rest needs something Potyro itself lacks — a request the person may send (#263). */
-  | { kind: "source"; source: string; summary: string; notDone?: string[]; platformRequest?: PlatformRequest }
+  /** `modules`: the app's own modules, every one, when the change edited any of them (#448). */
+  | { kind: "source"; source: string; summary: string; notDone?: string[]; platformRequest?: PlatformRequest; modules?: Record<string, string> }
   /** It was rewritten rather than edited, and lost what `loss` names. Never saved without asking. */
-  | { kind: "loss"; source: string; summary: string; loss: string }
+  | { kind: "loss"; source: string; summary: string; loss: string; modules?: Record<string, string> }
   | { kind: "question"; text: string }
   /** Not the app's to change — an answer, not a failure. */
   | { kind: "refusal"; text: string }
@@ -89,8 +92,12 @@ export interface StudioEngine {
    * `earlier`: what was said before this request (#279) — the loop's recap and `read_conversation`.
    */
   modify(source: string, before: AppShape, instruction: string, context?: ModifyContext, earlier?: readonly ConversationEntry[]): Promise<Outcome>;
-  /** Repair from the validator's own words, through the same gate as a modify. */
-  repair(source: string, issues: string[]): Promise<{ source: string; summary: string; loss: string | null }>;
+  /**
+   * Repair from the validator's own words, through the same gate as a modify. `modules`: the app's
+   * own modules as the version being landed has them, when it edited any (#448) — the repair sees
+   * every file, and its result says which modules it changed.
+   */
+  repair(source: string, issues: string[], modules?: Record<string, string>): Promise<{ source: string; summary: string; loss: string | null; modules?: Record<string, string> }>;
 }
 
 /** What a turn that changed the app says it did. */
@@ -258,15 +265,27 @@ export function studioEngine(
 
   const modify = async (source: string, before: AppShape, instruction: string, context?: ModifyContext, earlier?: readonly ConversationEntry[]): Promise<Outcome> => {
     try {
+      // An app with modules of its own is shown as its files, one text (#448); what comes back is split
+      // into them again. Lines pointed at are counted in the entry, one line below its marker there.
+      const joined = await joinForModel(source, modules);
+      const shown = joined?.text ?? source;
+      const aimed = joined && context?.pointedAt?.lines ? { ...context, pointedAt: { ...context.pointedAt, lines: [context.pointedAt.lines[0] + 1, context.pointedAt.lines[1] + 1] as const } } : context;
+      /** What came back, as the entry and the modules it changed; a broken text is a failure to say. */
+      const files = async (text: string): Promise<{ source: string; modules?: Record<string, string> } | Outcome> => {
+        const u = await unpackCandidate(text, joined, modules);
+        if (!u.ok) return notChanged({ kind: "error", error: new Error(u.problem) });
+        return { source: u.source, ...(u.changed ? { modules: u.changed } : {}) };
+      };
       // A chat engine drives the modify LOOP (#131): the model looks declarations up and checks a
       // candidate before sending it, and every candidate must compile, validate and keep the app's
       // shape. Other engines keep the one-turn guard.
       if (!modifyLoopRefusal(engine)) {
         const result = await startModify({
           modules,
-          source,
+          joined,
+          source: shown,
           instruction,
-          context,
+          context: aimed,
           before,
           engine,
           language,
@@ -288,9 +307,11 @@ export function studioEngine(
         if (result.kind === "failed") return { ...notChanged(result), ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}) };
         if (result.kind === "stopped") return notChanged(result);
         const applied = result.via === "edits" ? appliedEdits(result.applied) : t`The model sent the whole file back instead of edits.`;
+        const got = await files(result.source);
+        if ("kind" in got) return got;
         return {
           kind: "source",
-          source: result.source,
+          ...got,
           summary: describeNotDone(applied, result.notDone),
           notDone: result.notDone,
           ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}),
@@ -298,14 +319,15 @@ export function studioEngine(
       }
       const result = await ticking((elapsed) => t`Changing it via ${label} · ${elapsed}`, () =>
         guardedModify({
-          attempt: (instr) => attempt(source, instr, context),
-          shapeOf: async (src) => {
-            const app = await loadTrustedModule(src, modules);
+          attempt: (instr) => attempt(shown, instr, aimed),
+          shapeOf: async (text) => {
+            const u = await unpackOrThrow(text, joined, modules);
+            const app = await loadTrustedModule(u.source, u.modules);
             return { pages: app.pages, entities: app.entities };
           },
           before,
           instruction,
-          source,
+          source: shown,
         }),
       );
       // An answer, not a failure: red reads as "retry me", which is how the same wrong edit gets
@@ -315,22 +337,35 @@ export function studioEngine(
       const applied =
         result.via === "edits" ? appliedEdits(result.applied) : t`The model sent the whole file back instead of edits. Check that nothing else changed.`;
       const summary = describeNotDone(applied, result.notDone);
-      if (result.loss !== null) return { kind: "loss", source: result.source, summary, loss: result.loss };
-      return { kind: "source", source: result.source, summary, notDone: result.notDone };
+      const got = await files(result.source);
+      if ("kind" in got) return got;
+      if (result.loss !== null) return { kind: "loss", ...got, summary, loss: result.loss };
+      return { kind: "source", ...got, summary, notDone: result.notDone };
     } catch (e) {
       if (e instanceof Asked) return { kind: "question", text: e.question };
       return notChanged({ kind: "error", error: e });
     }
   };
 
-  const repair = (source: string, issues: string[]): Promise<{ source: string; summary: string; loss: string | null }> =>
+  const repair = (
+    source: string,
+    issues: string[],
+    edits?: Record<string, string>,
+  ): Promise<{ source: string; summary: string; loss: string | null; modules?: Record<string, string> }> =>
     ticking((elapsed) => t`Fixing it via ${label} · ${elapsed}`, async () => {
+      // The files as the version being repaired has them (#448): its module edits in place of the saved
+      // ones, shown to the model joined, as a modify shows them — a problem may be in a module.
+      const files = edits ? withEditedModules(modules, await ownModuleCode(edits)) : modules;
+      const joined = await joinForModel(source, files);
       const result = await guardedModify({
-        attempt: (instr) => attempt(source, instr),
-        shapeOf: (src) => shapeOrEmpty(src, modules),
-        before: await shapeOrEmpty(source, modules),
+        attempt: (instr) => attempt(joined?.text ?? source, instr),
+        shapeOf: async (text) => {
+          const u = await unpackOrThrow(text, joined, files);
+          return shapeOrEmpty(u.source, u.modules);
+        },
+        before: await shapeOrEmpty(source, files),
         instruction: buildRepairInstruction(issues),
-        source,
+        source: joined?.text ?? source,
       });
       // These reach the conversation after "Could not fix it:".
       if (result.kind === "diagnosis") {
@@ -343,7 +378,9 @@ export function studioEngine(
       }
       const summary =
         result.via === "edits" ? plural(result.applied, { one: "Repaired with # edit.", other: "Repaired with # edits." }) : t`Repaired with the whole file.`;
-      return { source: result.source, summary, loss: result.loss };
+      const u = await unpackOrThrow(result.source, joined, files);
+      const changed = u.changed ?? edits;
+      return { source: u.source, summary, loss: result.loss, ...(changed ? { modules: changed } : {}) };
     });
 
   return { create, modify, repair };

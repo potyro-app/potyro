@@ -119,15 +119,15 @@ test("a library upgrade is a version in History, with the lock.json change besid
   await expect(history.locator(".k-history-lock .k-diff-add").first()).toContainText("tally-stats@1.2.1");
   await expect(history.locator(".k-diff").first().locator(".k-diff-del")).toContainText("tally-stats@1.2.0?bundle");
 
-  // Back to v1, with no network: its library's bytes are still on the device. History keeps the main
-  // file, not the module (#258), so the module the app has now still imports 1.2.1 — which has to
-  // stay, or the restored app would not open.
+  // Back to v1, with no network: its library's bytes are still on the device. History keeps the
+  // module with the main file (#448), so v1 comes back whole — both on 1.2.0, as it first ran.
   await cutTheNetwork(context);
   await entry("v1").getByRole("button").first().click();
   await history.getByRole("button", { name: "Restore v1" }).click();
-  await expect(history.locator(".k-history-now")).toHaveCount(1);
+  // Done when the Studio closes the sheet: the version's module is written back before it saves.
+  await expect(tools).toBeHidden({ timeout: 30_000 });
   await page.goto("/?user=tally-upgrade");
-  await expect(page.getByRole("listitem").filter({ hasText: "Scales" })).toContainText(`average 3 | ${RENDERED}`, { timeout: 30_000 });
+  await expect(page.getByRole("listitem").filter({ hasText: "Scales" })).toContainText(`${RENDERED} | ${RENDERED}`, { timeout: 30_000 });
 });
 
 test("the piano package installs with its helpers as modules, no build step, and runs", async ({ page }) => {

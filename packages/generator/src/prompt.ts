@@ -2,6 +2,7 @@
 // contract with a couple of few-shot examples, and the user/repair messages frame each request.
 // Kept pure + exported so the assembly is unit-testable without any model call.
 
+import { ENTRY_FILE, FILE_MARK, appFilesNote, isJoinedApp } from "./app-files.js";
 import type { GenPrompt } from "./backend.js";
 import { EDIT_FORMAT } from "./edits.js";
 import { changeLanguageInstruction, createLanguageInstruction, type TurnLanguage } from "./language.js";
@@ -442,11 +443,23 @@ export function buildUserMessage(prompt: GenPrompt, opts: TurnOptions = {}): str
  * the next turn read as a wrong answer to be replaced — and a model that follows instructions
  * literally does exactly that, returning a brand-new app instead of an edited one.
  */
-export function buildModifyOpener(): string {
+export function buildModifyOpener(source?: string): string {
+  const files = source && isJoinedApp(source) ? joinedFiles(source) : null;
   return [
     "Here is the current Potyro app. It is the app the user already has and wants to keep.",
     "You will be asked to change it — edit this source, do not replace it with a different app.",
+    // An app of several files (#448) says so; for an app that is one file this message is unchanged.
+    ...(files ? [appFilesNote(files)] : []),
   ].join("\n");
+}
+
+/** The modules a joined app shows, by name, in order. */
+function joinedFiles(source: string): string[] {
+  return source
+    .split("\n")
+    .filter((line) => line.startsWith(FILE_MARK))
+    .map((line) => line.slice(FILE_MARK.length).trim())
+    .filter((name) => name !== ENTRY_FILE);
 }
 
 /**

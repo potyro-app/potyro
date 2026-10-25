@@ -136,7 +136,7 @@ export abstract class ChatBackend implements ModelBackend {
     return this.ask(
       [
         { role: "system", content: this.systemPrompt },
-        { role: "user", content: buildModifyOpener() },
+        { role: "user", content: buildModifyOpener(source) },
         priorTurn(source),
         { role: "user", content: buildModifyMessage(instruction, ctx, { ...this.turnOptions, source }) },
       ],

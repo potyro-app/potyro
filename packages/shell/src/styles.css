@@ -8854,6 +8854,37 @@ body:has(.k-tabbar) .k-toasts {
   padding: var(--space-3);
   overflow: auto;
 }
+/* The app's files, above the editor (#448): the entry and its own modules, one shown at a time. A
+   file edited but not saved yet carries a dot. On a phone the row scrolls rather than wrapping into
+   a block that pushes the code off the screen. */
+.k-tools-files {
+  flex: 0 0 auto;
+}
+.k-tools-files .k-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.75rem;
+}
+.k-tools-files code {
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+}
+.k-tools-file-changed {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+@media (max-width: 760px) {
+  .k-tools-files {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .k-tools-files .k-chip {
+    flex: 0 0 auto;
+  }
+}
 @media (max-width: 760px) {
   .k-tools-scrim {
     padding: 0;
@@ -10601,10 +10632,12 @@ body:has(.k-tabbar) .k-toasts {
   margin: 0;
 }
 /* A library upgrade (#266): the change to lock.json, under the source's own diff. */
-.k-history-lock {
+.k-history-lock,
+.k-history-module {
   margin-top: var(--space-3);
 }
-.k-history-lock > p {
+.k-history-lock > p,
+.k-history-module > p {
   margin: 0 0 var(--space-2);
   font-size: 0.86rem;
 }
