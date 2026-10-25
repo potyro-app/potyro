@@ -65,6 +65,14 @@ export function splitAppFiles(text: string, expected: readonly string[]): SplitR
   return { ok: true, entry: body(files.get(ENTRY_FILE)!), modules };
 }
 
+/** The modules a joined text holds, by name, in order (the entry left out). */
+export function joinedModules(text: string): string[] {
+  return text
+    .split("\n")
+    .map((line) => MARK_LINE.exec(line)?.[1])
+    .filter((name): name is string => !!name && name !== ENTRY_FILE);
+}
+
 /** What the model is told when it is shown a joined app: once, beside the app. */
 export function appFilesNote(modules: readonly string[]): string {
   return [

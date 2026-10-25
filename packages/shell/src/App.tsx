@@ -19,7 +19,7 @@ import { CaseRecorder } from "./case-recorder.js";
 import { saveCase, hasRecordedActivity, caseLabel } from "./app-cases.js";
 import { CaseReport } from "./case-report.js";
 import { FixPanel } from "./fix-panel.js";
-import { startFix } from "./start-fix.js";
+import { startFix, type FixOutcome } from "./start-fix.js";
 import { currentLocale } from "./locale.js";
 import { canInvestigate, engineLabel } from "./engines.js";
 import { useEngineConfig } from "./engine-store.js";
@@ -37,7 +37,7 @@ import type { Resolved } from "potyro";
 import { InlineEdit } from "./inline-edit.js";
 import { describePoint, type Pointed, type PointRef } from "./point-target.js";
 import { buildAndValidate } from "./validate-app.js";
-import { modulesOf } from "./app-modules.js";
+import { keepCode, modulesOf, ownModuleCode, withOwnModules } from "./app-modules.js";
 import { withLibrariesStoodIn } from "./package-modules.js";
 import { AskPanel } from "./ask-panel.js";
 import { useAskEnabled } from "./ask-setting.js";
@@ -389,7 +389,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
   const [engineCfg] = useEngineConfig();
   const [fixOpen, setFixOpen] = useState(false);
   const [fixSteps, setFixSteps] = useState<LoopStep[]>([]);
-  const [fixOutcome, setFixOutcome] = useState<LoopOutcome | undefined>(undefined);
+  const [fixOutcome, setFixOutcome] = useState<FixOutcome | undefined>(undefined);
   const fixAbort = useRef<AbortController | null>(null);
   // Bumped by `openFix` (and on unmount, below). `runFix` captures the value current at call time and
   // every write it schedules — `onStep` and the `.then(setFixOutcome)` — compares against it first.
@@ -467,10 +467,25 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
     const app = getUserApp(appId);
     if (!app) return;
     const rationale = fixOutcome?.kind === "fix" ? fixOutcome.rationale : undefined;
-    void saveUserApp(
-      { id: appId, name: app.name, source, origin: "edited", note: caseLabel(caseReport.theCase), rationale },
-      new Date().toISOString(),
-    ).then(() => location.reload());
+    // A fix that changed the app's own modules (#448): they go on this device first, then the app is
+    // saved with their lock, so the reload opens the code the fix was verified with.
+    const modules = fixOutcome?.modules;
+    void (async () => {
+      const own = modules ? await ownModuleCode(modules) : null;
+      if (own) await keepCode(appId, own.files);
+      await saveUserApp(
+        {
+          id: appId,
+          name: app.name,
+          source,
+          ...(own ? { lock: withOwnModules(app.lock, own.lock), modules } : {}),
+          origin: "edited",
+          note: caseLabel(caseReport.theCase),
+          rationale,
+        },
+        new Date().toISOString(),
+      );
+    })().then(() => location.reload());
   };
 
   const closeFix = (): void => {
