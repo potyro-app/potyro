@@ -60,6 +60,12 @@ export function parseDay(s: string): Date {
 
 export const startOfDay = (d: Date): Date => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
+/**
+ * `n` calendar days after `d`, at its midnight. Never `+ n * DAY_MS`: across a clock change a day is
+ * 23 or 25 hours, and 24 of them land on the evening before or an hour after midnight.
+ */
+export const addDays = (d: Date, n: number): Date => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+
 /** Whole days from `a` to `b` (both taken at local midnight); negative when `b` is earlier. */
 export const daysBetween = (a: Date, b: Date): number => Math.round((startOfDay(b).getTime() - startOfDay(a).getTime()) / DAY_MS);
 
@@ -75,7 +81,7 @@ export function cycleStart(progress: Progress, today: Date): Date {
   const start = parseDay(progress.startDate);
   const since = daysBetween(start, today);
   if (since < 0) return start;
-  return new Date(start.getTime() + Math.floor(since / 7) * 7 * DAY_MS);
+  return addDays(start, Math.floor(since / 7) * 7);
 }
 
 export const isRestDay = (progress: Progress, today: Date): boolean => dayNumber(progress, today) === 7;
@@ -307,8 +313,9 @@ export interface SessionLike {
 }
 
 export function sessionsInCycle<T extends SessionLike>(sessions: T[], progress: Progress, today: Date): (T & { date: Date })[] {
-  const from = cycleStart(progress, today).getTime();
-  const to = from + 7 * DAY_MS;
+  const start = cycleStart(progress, today);
+  const from = start.getTime();
+  const to = addDays(start, 7).getTime();
   return sessions.filter((s): s is T & { date: Date } => s.date instanceof Date && s.date.getTime() >= from && s.date.getTime() < to);
 }
 
