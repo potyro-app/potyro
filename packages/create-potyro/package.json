@@ -3,12 +3,24 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Start a Potyro app: `npm create potyro my-app`",
+  "license": "MIT AND MIT-0",
   "homepage": "https://potyro.app",
-  "keywords": ["potyro", "create", "starter", "template"],
+  "keywords": [
+    "potyro",
+    "create",
+    "starter",
+    "template"
+  ],
   "bin": {
     "create-potyro": "./bin/create-potyro.mjs"
   },
-  "files": ["bin", "index.mjs", "template", "README.md"],
+  "files": [
+    "bin",
+    "index.mjs",
+    "template",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "vitest run"
   },

@@ -11,7 +11,7 @@ npm run build                       # → dist/my-app.potyro-app.zip, for Add an
 
 Every tutorial's code is in [`code/`](code/), one folder per stage. The repo checks that each stage is
 a valid app, packs, typechecks and passes its tests (`pnpm --filter @potyro/tutorials-code test`), so
-the code in an article is code that runs.
+the code in an article is code that runs. It is yours to copy: MIT No Attribution ([`code/LICENSE`](code/LICENSE)).
 
 ## The series
 
