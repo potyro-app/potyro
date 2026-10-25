@@ -21,3 +21,22 @@ test("a sealed app wears the seal at the foot of its page, linking to Potyro", a
   const box = await seal.boundingBox();
   expect(box!.y).toBeGreaterThan(list!.y);
 });
+
+// A sealed app's own screen fills the page down to the bottom bar. The seal's band used to come after
+// it, so the page scrolled as well as the screen, pushing the app's top under the top bar (owner,
+// Palette Catcher on a phone, 2026-10-25). The screen ends above a slim band instead.
+test("on a phone a sealed app's own screen ends above the seal, and the page does not scroll", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/?app=workout");
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
+  const view = page.locator(".k-sealed-view");
+  const seal = page.locator(".k-seal-foot");
+  await expect(view).toBeVisible({ timeout: 30_000 });
+  await expect(seal).toBeVisible();
+  const v = (await view.boundingBox())!;
+  const s = (await seal.boundingBox())!;
+  expect(Math.round(s.height)).toBe(48);
+  expect(v.y + v.height).toBeLessThanOrEqual(s.y + 0.5);
+  const overflow = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
