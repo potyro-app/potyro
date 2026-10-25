@@ -3,8 +3,14 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Write Potyro apps: defineApp(), the ctx types, and `potyro pack` to make the package Add an app installs",
+  "license": "MIT",
   "homepage": "https://potyro.app",
-  "keywords": ["potyro", "app", "offline-first", "pwa"],
+  "keywords": [
+    "potyro",
+    "app",
+    "offline-first",
+    "pwa"
+  ],
   "exports": {
     ".": "./src/index.ts"
   },
@@ -12,7 +18,13 @@
   "bin": {
     "potyro": "./bin/potyro.mjs"
   },
-  "files": ["dist", "bin", "cli", "README.md"],
+  "files": [
+    "dist",
+    "bin",
+    "cli",
+    "README.md",
+    "LICENSE"
+  ],
   "publishConfig": {
     "exports": {
       ".": {

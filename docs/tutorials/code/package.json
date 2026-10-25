@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "The code in docs/tutorials, checked: every stage of every tutorial's app is valid, packs, typechecks, and its tests pass",
+  "license": "MIT-0",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run"
