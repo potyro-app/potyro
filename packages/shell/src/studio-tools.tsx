@@ -10,10 +10,13 @@
 // And beside the code, the files the app ships with (#254): part of the app, like its code.
 
 import { Trans, useLingui } from "@lingui/react/macro";
+import { plural } from "@lingui/core/macro";
 import { useState } from "react";
 import type { Case } from "@potyro/runtime";
 import { caseLabel } from "./app-cases.js";
 import { CodeEditor } from "./code-editor.js";
+import { CodeTree } from "./code-tree.js";
+import { I } from "./icons.js";
 import { History } from "./history.js";
 import { StudioFiles } from "./studio-files.js";
 
@@ -44,16 +47,47 @@ export interface StudioToolsProps {
    */
   modules?: Record<string, string>;
   onModuleChange?: (path: string, next: string) => void;
+  /** Make a module (a new file of code) at this path; absent when files cannot be made yet. */
+  onCreateModule?: (path: string) => void;
+  /** Take a module out of the app (asks first). */
+  onDeleteModule?: (path: string) => void;
   /** Modules whose text differs from the saved app's: marked in the list until saved. */
   changed?: ReadonlySet<string>;
 }
 
-export function StudioTools({ initialTab, source, onSourceChange, onRun, onSave, error, busy, app, cases, onReplay, onRestored, onClose, definition, modules, onModuleChange, changed }: StudioToolsProps) {
+export function StudioTools({
+  initialTab,
+  source,
+  onSourceChange,
+  onRun,
+  onSave,
+  error,
+  busy,
+  app,
+  cases,
+  onReplay,
+  onRestored,
+  onClose,
+  definition,
+  modules,
+  onModuleChange,
+  changed,
+  onCreateModule,
+  onDeleteModule,
+}: StudioToolsProps) {
   const { t } = useLingui();
   // Which file the editor shows: the entry (null), or one of the app's own modules.
   const [file, setFile] = useState<string | null>(null);
+  // Folders made here that hold no file yet: the tree shows them; nothing keeps them until a file does.
+  const [folders, setFolders] = useState<string[]>([]);
+  // On a phone the tree folds away above the editor; it opens on a tap, and closes when a file is picked.
+  const [treeOpen, setTreeOpen] = useState(false);
   const paths = Object.keys(modules ?? {}).sort();
   const shown = file !== null && modules && file in modules ? file : null;
+  const pick = (path: string | null) => {
+    setFile(path);
+    setTreeOpen(false);
+  };
   // Files belong to a saved app: before there is one, the tab is not offered.
   const [tab, setTab] = useState<ToolsTab>(initialTab === "files" && !app ? "source" : initialTab);
   return (
@@ -100,24 +134,41 @@ export function StudioTools({ initialTab, source, onSourceChange, onRun, onSave,
         {tab === "source" ? (
           <div className="k-tools-body">
             {error ? <p className="k-form-error k-studio-error">{error}</p> : null}
-            {paths.length ? (
-              <div className="k-chips k-tools-files" role="group" aria-label={t({ message: "The app's files", comment: "The Studio's code: the list of files the app's code is made of" })}>
-                <button type="button" className="k-chip" data-on={shown === null} aria-pressed={shown === null} onClick={() => setFile(null)}>
-                  <Trans comment="The Studio's code: the app's main file, beside the modules it imports">The app</Trans>
-                </button>
-                {paths.map((path) => (
-                  <button key={path} type="button" className="k-chip" data-on={shown === path} aria-pressed={shown === path} data-changed={changed?.has(path) || undefined} onClick={() => setFile(path)}>
-                    <code>{path}</code>
-                    {changed?.has(path) ? <span className="k-tools-file-changed" aria-label={t({ message: "changed", comment: "The Studio's code: a file edited but not saved yet" })} title={t({ message: "changed", comment: "The Studio's code: a file edited but not saved yet" })} /> : null}
-                  </button>
-                ))}
+            <div className="k-code-pane" data-tree-open={treeOpen || undefined}>
+              <button type="button" className="k-code-tree-toggle" aria-expanded={treeOpen} onClick={() => setTreeOpen((o) => !o)}>
+                {I.files}
+                <span className="k-code-name">{shown ?? t({ message: "The app", comment: "The Studio's code: the app's main file, beside the modules it imports" })}</span>
+                {paths.length ? <span className="k-muted">{plural(paths.length + 1, { one: "# file", other: "# files" })}</span> : null}
+              </button>
+              <CodeTree
+                files={paths}
+                folders={folders}
+                shown={shown}
+                changed={changed}
+                onShow={pick}
+                onCreateFile={
+                  app && onCreateModule
+                    ? (path) => {
+                        onCreateModule(path);
+                        setFolders((f) => f.filter((d) => !path.startsWith(`${d}/`)));
+                        pick(path);
+                      }
+                    : null
+                }
+                onCreateFolder={app && onCreateModule ? (path) => setFolders((f) => [...f, path]) : null}
+                onDeleteFile={(path) => {
+                  if (shown === path) setFile(null);
+                  onDeleteModule?.(path);
+                }}
+              />
+              <div className="k-code-editor">
+                {shown === null ? (
+                  <CodeEditor key="app" className="k-studio-source" label={t`App source`} value={source} onChange={onSourceChange} />
+                ) : (
+                  <CodeEditor key={shown} className="k-studio-source" label={shown} value={modules![shown]!} onChange={(next) => onModuleChange?.(shown, next)} />
+                )}
               </div>
-            ) : null}
-            {shown === null ? (
-              <CodeEditor key="app" className="k-studio-source" label={t`App source`} value={source} onChange={onSourceChange} />
-            ) : (
-              <CodeEditor key={shown} className="k-studio-source" label={shown} value={modules![shown]!} onChange={(next) => onModuleChange?.(shown, next)} />
-            )}
+            </div>
           </div>
         ) : tab === "files" && app ? (
           <StudioFiles app={app} definition={definition} />

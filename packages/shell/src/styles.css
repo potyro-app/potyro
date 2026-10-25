@@ -8854,35 +8854,230 @@ body:has(.k-tabbar) .k-toasts {
   padding: var(--space-3);
   overflow: auto;
 }
-/* The app's files, above the editor (#448): the entry and its own modules, one shown at a time. A
-   file edited but not saved yet carries a dot. On a phone the row scrolls rather than wrapping into
-   a block that pushes the code off the screen. */
-.k-tools-files {
-  flex: 0 0 auto;
+/* The app's code as a tree beside the editor (#448): the main file, then its own modules in their
+   folders. Wide, the tree is a quiet column on the left and the code has the rest; on a phone it
+   folds into one row above the editor, which says which file is shown and opens the tree. */
+.k-code-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr);
+  gap: var(--space-3);
 }
-.k-tools-files .k-chip {
-  display: inline-flex;
+.k-code-editor {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.k-code-tree-toggle {
+  display: none;
+}
+.k-code-tree {
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  font-size: var(--text-small);
+}
+.k-code-tree-head {
+  display: flex;
   align-items: center;
   gap: var(--space-1);
-  min-height: 2.75rem;
+  padding: 0 0 var(--space-2) var(--space-2);
 }
-.k-tools-files code {
+.k-code-tree-title {
+  flex: 1 1 auto;
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.k-code-tool,
+.k-code-act {
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+.k-code-tool {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+.k-code-tool:hover:not(:disabled),
+.k-code-act:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+.k-code-tool:disabled {
+  opacity: 0.4;
+}
+.k-code-list,
+.k-code-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+/* A row's own action sits over its right end, so the row itself — and the highlight of the file in
+   the editor — runs the whole width of the tree. */
+.k-code-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.k-code-row:has(.k-code-act) .k-code-item {
+  padding-inline-end: 2.5rem;
+}
+.k-code-item {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.25rem;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: start;
+  transition: background var(--dur-fast) var(--ease);
+}
+.k-code-item:hover {
+  background: var(--surface);
+}
+/* The file in the editor: the accent's tint, and a bar of it at the edge, so it reads at a glance. */
+.k-code-item[aria-current="true"] {
+  background: var(--accent-tint);
+  box-shadow: inset 3px 0 0 var(--accent);
+  font-weight: 600;
+}
+.k-code-item .k-icon {
+  flex: 0 0 auto;
+  color: var(--ink-soft);
+}
+.k-code-folder .k-icon {
+  color: var(--accent-ink);
+}
+.k-code-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+.k-code-main .k-code-name,
+.k-code-folder .k-code-name {
+  font-family: inherit;
+}
+.k-code-badge {
+  margin-inline-start: auto;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: var(--text-micro);
+}
+.k-code-changed {
+  flex: 0 0 auto;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-inline-start: auto;
+  border-radius: 50%;
+  background: var(--accent);
+}
+/* A row's own actions (a file's delete, a folder's new file) show where the pointer or focus is,
+   so a long tree reads as files, not as a column of bins. A touch screen has no hover: always there. */
+.k-code-act {
+  position: absolute;
+  inset-inline-end: var(--space-1);
+  width: 2rem;
+  height: 2rem;
+  opacity: 0;
+}
+.k-code-row:hover .k-code-act,
+.k-code-row:focus-within .k-code-act {
+  opacity: 1;
+}
+@media (pointer: coarse) {
+  .k-code-act {
+    opacity: 1;
+    width: 2.75rem;
+    height: 2.75rem;
+    inset-inline-end: 0;
+  }
+  .k-code-row:has(.k-code-act) .k-code-item {
+    padding-inline-end: 3rem;
+  }
+  .k-code-item,
+  .k-code-tool {
+    min-height: 2.75rem;
+  }
+  .k-code-tool {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+.k-code-new {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block: var(--space-1);
+}
+.k-code-new > .k-icon {
+  color: var(--ink-soft);
+}
+.k-code-input {
+  flex: 1 1 6rem;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
   font-family: var(--font-mono);
   font-size: var(--text-small);
 }
-.k-tools-file-changed {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: currentColor;
+.k-code-problem {
+  flex: 1 0 100%;
+  margin: 0;
+  color: var(--accent-ink);
+  font-size: var(--text-micro);
 }
 @media (max-width: 760px) {
-  .k-tools-files {
-    flex-wrap: nowrap;
-    overflow-x: auto;
+  .k-code-pane {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
   }
-  .k-tools-files .k-chip {
-    flex: 0 0 auto;
+  .k-code-editor {
+    flex: 1 1 auto;
+  }
+  .k-code-tree-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 2.75rem;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface-sunken);
+    color: var(--ink);
+    font: inherit;
+    text-align: start;
+  }
+  .k-code-tree-toggle .k-muted {
+    margin-inline-start: auto;
+  }
+  .k-code-tree {
+    display: none;
+    max-height: 45vh;
+  }
+  .k-code-pane[data-tree-open] .k-code-tree {
+    display: block;
   }
 }
 @media (max-width: 760px) {
