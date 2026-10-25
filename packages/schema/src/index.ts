@@ -9,6 +9,8 @@ export { computedInfo, computedRun, type ComputedInfo } from "./computed.js";
 export { formatMoney, parseMoney, splitEvenly, splitByShares, shareOf, minorDigits } from "./money.js";
 export { fieldValueProblem, recordValueProblem, sanitiseListRows, FieldValueError, type ValueCheck } from "./values.js";
 export { structureSchema, checkReferences, checkFormFields, describeIssue, ValidationError, VIEW_FIELDS, VIEW_WORDS, PAGE_FIELDS } from "./validate.js";
+// What an app declares, as JSON for a package's manifest (#271): written by `potyro pack`, read by the store.
+export { FN_MARKER, declareApp, describeApp, parseDeclaration, declarationProblem, type AppDeclaration } from "./declaration.js";
 
 // ---- an app's words in the person's language (#302, docs/20) ----
 export type { Language, Words, WordsMap, ContextWords } from "./types/words.js";

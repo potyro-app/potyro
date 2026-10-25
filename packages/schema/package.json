@@ -1,18 +1,49 @@
 {
   "name": "potyro",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
-  "description": "defineApp() typed builder + Zod validation of the declarative parts (WP1, the gate)",
+  "description": "Write Potyro apps: defineApp(), the ctx types, and `potyro pack` to make the package Add an app installs",
+  "license": "MIT",
+  "homepage": "https://potyro.app",
+  "keywords": [
+    "potyro",
+    "app",
+    "offline-first",
+    "pwa"
+  ],
   "exports": {
     ".": "./src/index.ts"
   },
   "types": "./src/index.ts",
+  "bin": {
+    "potyro": "./bin/potyro.mjs"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "cli",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "types": "./dist/index.d.ts"
+  },
   "scripts": {
     "build": "tsc --noEmit -p tsconfig.json",
+    "build:dist": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "pnpm build:dist",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "esbuild": "^0.24.2",
+    "fflate": "^0.8.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {

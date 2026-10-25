@@ -1,0 +1,16 @@
+{
+  "name": "__NAME__",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "potyro pack __NAME__.app.ts -o dist/__NAME__.potyro-app.zip",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "potyro": "^__POTYRO_VERSION__",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.8"
+  }
+}

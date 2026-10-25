@@ -110,6 +110,13 @@ node scripts/ci-select.mjs     # which browser specs a change needs (what the ga
 pnpm ci:local all              # every step; `ci:local e2e:3` one shard; `ci:local e2e:firefox` the
                                # specs in Firefox (not in the gate; run it before merging UI work)
 
+# writing apps outside this repo (docs/tutorials): `npm create potyro <dir>` (packages/create-potyro,
+# its template/) and `potyro pack` (packages/schema/cli/pack.mjs — `pnpm pack:app` is the same code).
+# `potyro` publishes dist/ (publishConfig); in the repo everything reads src/. Each tutorial's code is
+# a stage folder under docs/tutorials/code/, checked by @potyro/tutorials-code: change an article's
+# code there too, never only in the article
+pnpm --filter @potyro/tutorials-code test
+
 # after ANY change under packages/schema/src/types: the generator's model-facing reference is
 # generated from them, and test/reference.test.ts fails while it is stale (#130). The system prompt
 # carries only the CORE; a new capability (ctx.caps.*, a ctx member most apps don't need) is added to
