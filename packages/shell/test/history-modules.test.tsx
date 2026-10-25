@@ -87,7 +87,7 @@ describe("History of an app with modules of its own", () => {
     render(<History appId="cards" appName="Cards" onClose={() => {}} embedded />);
     fireEvent.click(await screen.findByText("bigger cards"));
     const detail = screen.getByRole("region", { name: "Changes in version 2" });
-    expect(detail.textContent).toContain("card.ts");
+    expect(detail.querySelector(".k-history-module")?.textContent).toContain("card.ts");
     const removed = [...detail.querySelectorAll(".k-diff-del")].map((l) => l.textContent).join("\n");
     const added = [...detail.querySelectorAll(".k-diff-add")].map((l) => l.textContent).join("\n");
     expect(removed).toContain("export const size = 12;");

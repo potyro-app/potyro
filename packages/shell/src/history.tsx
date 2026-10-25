@@ -320,7 +320,7 @@ export function History({ appId, appName, onClose, onRestored, embedded }: Histo
                       {error ? <p className="k-form-error">{error}</p> : null}
                       {(lockLines.length || moduleDiffs.length) && !toHunks(lines).length ? null : <Diff lines={lines} painted={painted} />}
                       {moduleDiffs.map((d) => (
-                        <div key={d.path} className="k-history-lock">
+                        <div key={d.path} className="k-history-module">
                           <p className="k-muted">
                             <code>{d.path}</code>
                           </p>
