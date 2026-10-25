@@ -17527,10 +17527,31 @@ img.k-glyph-image {
    made — the logo's symbol with its stroke in the app's colour, the words in --text-micro. */
 .k-seal-foot {
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding: var(--space-6) var(--space-4) var(--space-4);
+  /* A slim band, the same height everywhere: a sealed app's screen ends above it (sealed-view.ts
+     reads --k-seal-room), so the page never scrolls as well as the app's own screen (#428). */
+  box-sizing: border-box;
+  height: var(--k-seal-h);
+  padding: 0 var(--space-4);
+}
+.k-page,
+.k-content {
+  --k-seal-h: 48px;
+}
+.k-page:has(> .k-seal-foot),
+.k-content:has(> .k-seal-foot) {
+  /* The band and the page's gap above it. */
+  --k-seal-room: calc(var(--k-seal-h) + var(--space-3));
+}
+/* A sealed app's own screen is as tall as the room down to the bottom bar (sealed-view.ts), so its page
+   keeps only that bar's height under it, not the 7.5rem a list keeps for its floating button. */
+.k-page:has(.k-sealed-view),
+.k-content:has(.k-sealed-view) {
+  padding-bottom: var(--k-chrome-bottom, 0px);
 }
 .k-seal {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -17544,6 +17565,12 @@ img.k-glyph-image {
   letter-spacing: 0.01em;
   text-decoration: none;
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+/* The pill looks 32px; its tap reaches 44px (DESIGN.md §11.4). */
+.k-seal::after {
+  content: "";
+  position: absolute;
+  inset: -6px 0;
 }
 .k-seal:hover {
   background: var(--surface-2);
@@ -17867,4 +17894,8 @@ html:has(.k-check-add) {
   margin: calc(-1 * var(--space-2)) 0 0;
   max-width: 32rem;
   color: var(--muted);
+}
+/* On a wide screen the content's gap is --space-4. */
+.k-content:has(> .k-seal-foot) {
+  --k-seal-room: calc(var(--k-seal-h) + var(--space-4));
 }
