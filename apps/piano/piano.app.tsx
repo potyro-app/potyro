@@ -22,6 +22,7 @@ import { blocksForWeek, mainWeeks, resolveLink, startingWeekNumber, validatePlan
 import type { Plan, PlanLink, PlanModule } from "./plan.js";
 import {
   currentWeek,
+  addDays,
   cycleStart,
   dayNumber,
   daysPractised,
@@ -352,7 +353,7 @@ function Today(props: ViewProps) {
   const cycle = sessionsInCycle(sessions, progress, today);
   const cycleFrom = cycleStart(progress, today);
   const dots = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(cycleFrom.getTime() + i * 86_400_000);
+    const d = addDays(cycleFrom, i);
     const key = isoDay(d);
     const s = cycle.find((x) => isoDay(x.date) === key);
     const practised = Array.isArray(s?.blocksDone) && (s!.blocksDone as unknown[]).length > 0;
