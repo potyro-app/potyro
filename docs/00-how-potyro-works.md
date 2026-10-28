@@ -1128,3 +1128,84 @@ The evals cost real money per call and are never started without being asked.
 - Deep docs: docs/19 (the research behind the loops), docs/23, docs/29
 
 </details>
+
+## Targets and servers
+
+One codebase, two targets, and the composition root is the only place that knows which.
+
+**The PWA** is a Vite build with a cache-first service worker: static files, no server logic, no
+database, no API. Persistence is SQLite over OPFS, the fonts ship with the build so the app is
+offline-first down to its typography, and `WebCapabilities` backs `ctx.caps`. The shell is served
+with `frame-src 'none'`.
+
+**Android and iOS** are Capacitor wrapping the same web build (`packages/native`, docs/13 and
+docs/27). `CapacitorCapabilities` backs `ctx.caps` with the real camera, exact local
+notifications, geolocation and the filesystem, and the identity's secrets go to the platform
+keystore. The WebView builds the same realm from the same build and reads `frame-src 'none'` from
+the `<meta>` in `index.html`, since a WebView serves no headers. Invites and demo links arrive as
+deep links. Adding the target changed only the composition root.
+
+Only two things have to run for Potyro to work: the shell's static files and the sync relay. An app
+keeps working with the relay down; it stops reaching other people until it comes back. Four small
+services sit beside them, each a Node process with no dependency on any Potyro package:
+
+| Service | Package | What it holds | What it cannot do |
+|---|---|---|---|
+| sync relay | `jazz-run sync` in a container, docs/16 | an append-only log of encrypted updates per space, in SQLite | read any of it |
+| share service | `packages/share-links` | a demo link's encrypted package, its title and preview image | decrypt a package or run app code |
+| rooms relay | `packages/rooms` | messages in flight; nothing on disk | see who anyone is, or keep history |
+| AI relay | `packages/ai-relay` | Potyro's OpenRouter key and the meters; no content | exceed the monthly cap, or see more than the app sent |
+| platform requests | `packages/platform-requests` | requests to the team, filed as GitHub issues | identify a person |
+
+Without the optional four, requests wait on the device, apps' AI runs on the person's own key,
+links carry the whole app, and multiplayer apps cannot meet. docs/16 is the deployment: how each is
+built, run behind the same gate, and checked, and which of them is live today.
+
+<details><summary>Where in the code</summary>
+
+- `packages/shell/src/main.tsx` — the composition root; `packages/shell/index.html` — the shell's CSP
+- `packages/native/src/capacitor-capabilities.ts`, `packages/native/src/secure-vault.ts`, `packages/native/src/deep-links.ts` — the native target
+- `packages/share-links/src/server.ts`, `packages/rooms/src/server.ts`, `packages/ai-relay/src/server.ts`, `packages/platform-requests/src/server.ts` — the four services
+- Deep docs: docs/13 (Android), docs/27 (iOS), docs/16 (deployment)
+
+</details>
+
+## Testing, in one page
+
+- **Unit tests** in every package, with Vitest, against `MemoryStore`, `FakeCapabilities` and the
+  direct host, so logic is tested without a browser. The untrusted contract runs against both sealed
+  runners while both exist: the realm's Worker runtime in a Node worker thread, and QuickJS.
+- **Containment is a browser property**, so it is asserted in a browser: an adversarial app run
+  sealed tries to reach the network, the shell's storage and another identity, and fails closed,
+  counted at a probe server with a trusted control beside it (`e2e/realm-escape-sandbox.spec.ts`).
+- **The browser suite** (`pnpm e2e`, Playwright) runs with one worker on purpose: every spec drives
+  the same origin, the same OPFS and the same relay, and parallel workers are two clients of the
+  same state. Every example app runs once trusted and once sealed. `pnpm test:e2e:firefox` runs the
+  same specs in Firefox; what differs between engines lives in `e2e/engines.ts`, never in a weaker
+  assertion. A console guard fails a spec on console errors.
+- **Conformance** (`pnpm conformance`) runs one behavioural spec against the web and the native
+  capabilities, so the two cannot silently diverge.
+- **Boundaries** (`pnpm lint:boundaries`) fail the build on an import across a seam, and
+  `pnpm lint:i18n` on raw user-facing text outside the catalogs.
+- **Generated material** has a staleness test each: the model's reference, the corpus, the icon
+  table, the design tokens, the translation catalogs.
+- **The generator** has evals that spend real money and are run only when asked.
+
+```
+pnpm i
+pnpm -r test
+pnpm e2e                 # one worker; see playwright.config.ts
+pnpm test:e2e:firefox
+pnpm conformance
+pnpm lint:boundaries && pnpm lint:i18n && pnpm lint:docs
+pnpm ci:local all        # every step on your own machine (~45 min on a laptop)
+```
+
+<details><summary>Where in the code</summary>
+
+- `playwright.config.ts`, `e2e/` — the browser suite; `e2e/engines.ts` — engine differences; `e2e/console-guard.ts`
+- `packages/capabilities/src/conformance.ts` — the shared spec
+- `scripts/check-boundaries.mjs`, `scripts/check-i18n.mjs`, `scripts/check-doc-paths.mjs`, `scripts/ci-local.mjs`
+- Deep docs: docs/09 (the strategy), docs/12 (trying it and giving feedback)
+
+</details>
