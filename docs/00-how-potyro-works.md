@@ -54,10 +54,14 @@ export default defineApp({
       fields: {
         name: { type: "text", required: true, label: "Name" },
         servings: { type: "number", default: 2, min: 1, integer: true, label: "Servings" },
-        ingredients: { type: "list", of: { ingredient: { type: "relation", to: "ingredient" }, quantity: { type: "number" } } },
+        ingredients: {
+          type: "list",
+          of: { ingredient: { type: "relation", to: "ingredient" }, quantity: { type: "number" } },
+        },
       },
       computed: {
-        calories: (r) => r.ingredients.reduce((s, i) => s + i.ingredient.caloriesPer100 * i.quantity / 100, 0),
+        calories: (r) =>
+          r.ingredients.reduce((s, i) => s + i.ingredient.caloriesPer100 * i.quantity / 100, 0),
         caloriesPerServing: { label: "Calories per serving", value: (r) => r.calories / Math.max(r.servings, 1) },
       },
     },
@@ -834,7 +838,8 @@ a sealed app's store is opened synced; your own apps are not asked. The manifest
 changes the words of the question.
 
 **Promotion is always reachable** (`packages/shell/src/promotion.ts`): from a sealed app's badge, a
-custom screen that could not be drawn, the screen that says it could not open, the card after it was added, its tile and the
+custom screen that could not be drawn, the screen that says it could not open, the card after it
+was added, its tile and the
 Studio. Every one opens the same dialog with the same warning, and only acts when the person
 confirms. A failure that promotion would not fix, such as a module that does not match its lock, is
 never offered promotion as the way out.
