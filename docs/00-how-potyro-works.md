@@ -106,3 +106,86 @@ flowchart LR
 - Deep docs: docs/01 (vision and scope), docs/03 (the definition model), docs/04 (`defineApp` and `ctx`)
 
 </details>
+
+## The package map
+
+The repository is a pnpm workspace. A package is a seam: it exports an interface, and the packages
+above it depend on that interface, never on another package's internals. This is also how parallel
+work is organised, one package per owner at a time, with the working agreement in `CLAUDE.md`.
+
+In dependency order, lowest first:
+
+| Package | Owns | Depends on |
+|---|---|---|
+| `packages/schema` (published as `potyro`) | `defineApp`, the `ctx` types, Zod validation of the declarative parts, `potyro pack` | nothing |
+| `packages/design` | the designer's tokens, fonts, logo and colour clock; the Lucide icon table | nothing |
+| `packages/i18n` | Potyro's own words in the person's language: locale matching, Lingui catalogs, Intl helpers | nothing |
+| `packages/identity` | who you are on this device: the account seed, the cached id and name, recovery words, the secret vault | nothing (cojson) |
+| `packages/capabilities` | the `Capabilities` interface, the web implementation, the fakes, the conformance suite | schema |
+| `packages/store` | the `Store` interface; `MemoryStore`, `LocalStore`, `SqliteStore`, `JazzStore`; migrations, export, packages, the app's folder | schema |
+| `packages/rooms` | the rooms relay for multiplayer apps, and its wire protocol | nothing |
+| `packages/host` | loading and running an app: the direct runner, the browser realm, the QuickJS fallback, `ctx` construction, capability mediation | schema, store, capabilities, rooms (protocol) |
+| `packages/runtime` | the record model, relation resolution, the computed and action runners, the reminder reconciler, JS-predicate queries, React hooks | schema, store, capabilities, host |
+| `packages/views` | the view registry, the built-in views, the host for an app's custom views | runtime, schema, i18n, design |
+| `packages/generator` | the model backends, the prompt and its generated reference, the corpus, the create/modify/fix loops, Ask, the evals | schema, store, capabilities, host, runtime, i18n |
+| `packages/native` | the Capacitor target for Android and iOS: native capability implementations and the native vault | schema, capabilities |
+| `packages/share-links` | the share service for demo links: encrypted packages and their preview cards | nothing |
+| `packages/ai-relay` | the relay that pays for the free AI allowance with Potyro's key, with caps | nothing |
+| `packages/platform-requests` | the relay that files "Potyro lacks this" requests as GitHub issues | nothing |
+| `packages/shell` | the product: launcher, navigation, panels, the Studio, trust prompts, import and export, sharing, the composition root, the PWA build | everything above |
+| `packages/create-potyro` | `npm create potyro <dir>`: a starter for writing an app outside this repo | nothing |
+
+Beside the packages: `apps/` holds twenty-one real apps, each built as an installable package, which
+are the gallery's content and part of the corpus the Studio's model reads; `examples/` holds the six
+living fixtures (recipes, plants, places, groceries, split, workout) that the tests and the tutorials
+are written against; `docs/tutorials/code` holds the tutorial's code, stage by stage, checked by its
+own tests.
+
+Four rules keep the seams honest, and `pnpm lint:boundaries` (`scripts/check-boundaries.mjs`) fails
+on the obvious violations:
+
+- Views talk to the runtime API only. They never import the store, the host or the capabilities.
+- The runtime depends on the `Store` and `Capabilities` interfaces, never on a concrete
+  implementation. The implementations are chosen once, at the composition root in the shell.
+- App code reaches host power only through `ctx`. An app module may import `potyro`; it never
+  imports a host, store or capabilities package.
+- The four servers (`rooms`, `share-links`, `ai-relay`, `platform-requests`) depend on no Potyro
+  package. The shell imports only their browser-safe wire formats.
+
+```mermaid
+flowchart BT
+  schema --> capabilities
+  schema --> store
+  schema --> host
+  store --> host
+  capabilities --> host
+  rooms -. protocol .-> host
+  host --> runtime
+  store --> runtime
+  runtime --> views
+  i18n --> views
+  design --> views
+  runtime --> generator
+  host --> generator
+  views --> shell
+  generator --> shell
+  identity --> shell
+  native --> shell
+  capabilities --> native
+  subgraph servers [servers, no Potyro dependency]
+    sharelinks[share-links]
+    airelay[ai-relay]
+    platreq[platform-requests]
+    rooms
+  end
+  servers -. wire formats .-> shell
+```
+
+<details><summary>Where in the code</summary>
+
+- `CLAUDE.md` — the working agreement: the seams, the dependency order, the commands
+- `pnpm-workspace.yaml` — what is in the workspace
+- `scripts/check-boundaries.mjs` — the boundary check behind `pnpm lint:boundaries`
+- `packages/*/package.json` — each package's one-line description and its Potyro dependencies
+
+</details>
