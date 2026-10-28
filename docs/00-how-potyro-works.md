@@ -369,3 +369,146 @@ On top of any store sit three things that are the same whichever one is undernea
 - Deep doc: docs/06
 
 </details>
+
+## Sync, CRDT and identity
+
+Sync is opt-in per app, never a property of the product. An app that has not asked for it has no
+network, no identity engine and no CRDT loaded; one that has lives in a **space**, a group of people
+with roles, whose data is a tree of CRDT values encrypted to its members and pushed through a relay
+that can read none of it.
+
+### Why Jazz
+
+The engine evaluation (`docs/adr/0001-sync-engine-and-identity.md`) measured Jazz, Yjs and Evolu
+against the same apps, with the spikes kept in `docs/spikes/`. Jazz's cojson won on four points:
+
+- **Per-key merge on a document model.** Two people editing different fields of one record both
+  survive. Evolu's per-column model needed a storage rewrite to get the same property.
+- **A real list CRDT.** Concurrent appends to a nested list field both survive, and three of the
+  first four example apps have nested lists.
+- **Permissions fail closed in the crypto layer.** A non-member has no read key, so no valid
+  transaction exists. It is not a policy check that can be bypassed.
+- **Self-hostable, with app data as ciphertext only.** Verified end to end against a real
+  `jazz-run sync` server; group and account metadata is visible to the relay, app writes are opaque.
+
+Yjs is the documented fallback: its merge semantics are equivalent and the `Store` shape barely
+changes. The ADR keeps the Yjs design on purpose.
+
+### The tree
+
+A record is a CoMap, because that is the only shape in which cojson merges per key. Stored as one
+JSON blob inside a CoMap it would collapse to whole-record last-write-wins, the failure that
+disqualified Evolu.
+
+```mermaid
+flowchart TB
+  G[Group: the space, members and roles] --> root[root CoMap]
+  root --> ent["entities: CoMap&lt;entity, index&gt;"]
+  ent --> idx["index: CoMap&lt;recordId, record&gt;"]
+  idx --> rec["record CoMap: field → value (per-key merge)"]
+  root --> kv["kv: ctx.storage, and the published app source"]
+  root --> blobs["blobs: photos, files' bytes"]
+  root --> meta["meta: schemaVersion, appVersion"]
+  root --> chat["chat: messages beside the data, never reachable from ctx"]
+```
+
+Chat sits beside the entity tree. It is in the space, so it syncs and is encrypted to the members,
+but it is not app data: an app shared with you is someone else's code, and nothing in `ctx` reaches
+the conversation. Messages are ordered by a hybrid logical clock (`packages/store/src/hlc.ts`),
+because wall clocks disagree: a device five minutes fast put its replies into everyone's future,
+and the conversation read backwards with nothing that looked like a bug. The clock folds every
+stamp a device has seen into its own, so a reply can never precede its cause.
+
+A JazzStore write returns only when cojson has written it to storage. That was a real bug: cojson
+flushes on its own schedule, and an add followed by an instant reload was gone. A write in the
+synced store now means what a write in the SQLite store means.
+
+### Identity
+
+A person is a display name plus a **cojson account**, created silently on first run. No signup, no
+email, no identity server. The account id is derived from a secret seed by crypto alone, so minting
+an identity needs no database, no node and no network; the account CoValue is materialised lazily,
+the first time an app syncs, and the ids agree by construction. A person who never turns on sync
+has an identity and has still never loaded the CRDT engine.
+
+The id is for life. Every `createdBy` ever stamped points at it; an id that changed when sync was
+turned on would orphan authorship across every shared record. That is also why `createdBy` is the
+account id and not a field an app writes: cojson signs every transaction with the account that made
+it, so the id is provable, while a value in a field is just data any writer could forge. The host
+stamps authorship; app code sees `ctx.me`, `ctx.space.members` with their roles (`admin`, `writer`,
+`reader`), and a `member` field type that may only name someone in the space.
+
+The seed and the agent secret are the whole identity, so they live in a vault
+(`packages/identity/src/vault.ts`): the platform keystore on Android and iOS, and on the web an
+IndexedDB entry encrypted with an AES-GCM key the browser generated as non-extractable. The limit is
+stated plainly: code on this origin can still ask that key to decrypt. What the vault removes is the
+secret lying in the clear in localStorage, where an extension or a backup tool could read it.
+
+A second device is linked by the seed as recovery words. The words identify you with no lookup, but
+the new device still has to load the account, and that arrives through the relay you already sync
+through. There is no identity server; there is a transport.
+
+### Two kinds of trust that never merge
+
+Potyro has two orthogonal axes called trust, and collapsing them is the mistake the design guards
+against. **Code trust** is provenance: your own app runs direct, anyone else's runs sealed. **Peer
+trust** is membership: who may read and write a space. A friend you trust completely can send you an
+app, and it still runs sealed. Being invited to someone's data says nothing about whether their code
+should run with ambient authority. In fact the sealed box is what makes accepting a friend's app
+safe.
+
+### Turning sync on is a copy, not a switch
+
+The local store and the synced store keep their data in different files. Flipping a flag would open
+the app empty, which is indistinguishable from data loss. So `packages/shell/src/toggle-sync.ts` is
+the only place allowed to do it, and it copies first and flips the flag only when the copy
+succeeded. The copy (`packages/store/src/copy-store.ts`) preserves what a naive copy would lose: ids
+and creation times, because relations and media references point at them; blob keys, because a
+record's photo points at a key and minting a new one loses every photo while appearing to succeed;
+the kv area; the app's folder with its ids. Nothing is deleted from the old store, so a migration
+that turns out wrong is reversible by flipping back. Bytes that are not on this device are reported,
+not copied.
+
+"Back up everything" (`packages/shell/src/backup-all.ts`) is the same mechanism applied to every
+app, one at a time with progress, because a new device should bring back every app and not only the
+ones someone remembered to tick. It is off until asked for: nothing in Potyro sends data anywhere
+until the person says so.
+
+Which apps are yours is kept on your account, not on a device (`packages/store/src/account-apps.ts`):
+a map from app id to the space holding its data, the app's code, and roughly how much there is to
+fetch, encrypted to your keys and stored on the relay like any other value. A new device signs in,
+reads the map, and asks for the spaces it names.
+
+### The relay
+
+The relay is a dumb, encrypted store-and-forward server: an append-only log of opaque update blobs
+per space, which it can never decrypt. It is `jazz-run sync` with a SQLite file, run in a container.
+Peer-to-peer was considered and rejected as the primary transport, because the use cases are
+asynchronous (you add an expense at dinner, your flatmate reconciles on Sunday), a backgrounded phone
+app is not a peer, and NAT traversal needs a TURN server, which is a hosted relay by another name.
+A solo synced app is a space with one member and no peers: still no network.
+
+### What breaks when an app is shared
+
+Per-field last-write-wins is the right merge, and app code can still be wrong about it. The first
+app shared in a public test had two such bugs, neither producing an error (docs/17): reordering by
+swapping two rows' `order` values fused them, because a swap is a read-modify-write across two
+records and nothing makes that atomic; and a `+1` button that read the count on screen and wrote it
+back lost presses when two people pressed at once. Both devices agreed on the wrong answer. The
+store answers the second with `increment(entity, id, field, delta)`, which takes the delta and lets
+the CRDT sum each contributor; the first is a modelling rule. The Studio runs a two-peer check on
+every app it saves (`packages/shell/src/check-concurrency.ts`) and reports what would not survive
+two people, without blocking the save, because plenty of apps are never shared.
+
+<details><summary>Where in the code</summary>
+
+- `packages/store/src/jazz-store.ts` — the CRDT store and the tree; `packages/store/src/jazz-backend.ts` — opening it durably, the account, the group, the root, durability on write
+- `packages/store/src/hlc.ts` — the hybrid clock; `packages/store/src/people-log.ts` — guests and the people log
+- `packages/identity/src/identity.ts`, `packages/identity/src/vault.ts` — the account, the id for life, the secret vault
+- `packages/store/src/copy-store.ts`, `packages/shell/src/toggle-sync.ts`, `packages/shell/src/backup-all.ts` — sync as a copy
+- `packages/store/src/account-apps.ts` — your apps, on your account
+- `packages/shell/src/open-store.ts` — which store, and the live space for `ctx.space`
+- `packages/shell/src/check-concurrency.ts`, `packages/store/test/concurrency-hazards.test.ts` — the two-peer check
+- Deep docs: `docs/adr/0001-sync-engine-and-identity.md`, docs/17, docs/16 (running the relay)
+
+</details>
