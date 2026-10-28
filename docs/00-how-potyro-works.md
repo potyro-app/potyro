@@ -29,7 +29,7 @@ not yet done, the text says so.
   iframe, host power only through the same `ctx`, mediated, with consent prompts and a watchdog.
 - **Everything works offline, and nothing leaves the device until you say so.** Records live in
   SQLite over OPFS; sync is opt-in per app and end-to-end encrypted; a person who never syncs never
-  loads the sync engine or touches the network.
+  starts the sync engine, opens a sync database or touches the network.
 - **The Studio writes apps with a model, under gates.** A change is edits the host applies, every
   candidate is validated and run before it is accepted, and a fix counts only when the person's own
   recorded case passes against it.
@@ -141,8 +141,9 @@ living fixtures (recipes, plants, places, groceries, split, workout) that the te
 are written against; `docs/tutorials/code` holds the tutorial's code, stage by stage, checked by its
 own tests.
 
-Four rules keep the seams honest, and `pnpm lint:boundaries` (`scripts/check-boundaries.mjs`) fails
-on the obvious violations:
+Four rules keep the seams honest. `pnpm lint:boundaries` (`scripts/check-boundaries.mjs`) checks
+the first, the third and the servers' half of the fourth with a regex scan; the runtime's rule is a
+convention held by review:
 
 - Views talk to the runtime API only. They never import the store, the host or the capabilities.
 - The runtime depends on the `Store` and `Capabilities` interfaces, never on a concrete
@@ -150,7 +151,8 @@ on the obvious violations:
 - App code reaches host power only through `ctx`. An app module may import `potyro`; it never
   imports a host, store or capabilities package.
 - The four servers (`rooms`, `share-links`, `ai-relay`, `platform-requests`) depend on no Potyro
-  package. The shell imports only their browser-safe wire formats.
+  package. What depends on them (the shell, and the host for the rooms protocol) imports only their
+  browser-safe wire formats.
 
 ```mermaid
 flowchart BT
@@ -209,9 +211,11 @@ code runs.
    and React never enter the untrusted bundle.
 4. **Load.** The host decides by provenance (`packages/host/src/create-host.ts`). Your own app loads
    as an ES module in the page and runs direct (`direct-host.ts`): the functions are real closures
-   and a custom view is a real React component. An app that came from anyone else loads sealed: the
-   bundle runs in a Worker inside a sandboxed iframe, and the host talks to it over a MessagePort
-   ("Security isolation" below). Either way the result is a `LoadedApp` with the same `call*`
+   and a custom view is a real React component. An app that came from anyone else loads sealed
+   through the runner the shell injects (`packages/shell/src/sandbox-runner.ts` chooses the realm,
+   or QuickJS behind a flag): the bundle runs in a Worker inside a sandboxed iframe, and the host
+   talks to it over a MessagePort (`packages/host/src/realm/realm-host.ts`; "Security isolation"
+   below). Either way the result is a `LoadedApp` with the same `call*`
    methods, so nothing above the host knows the difference.
 5. **Run.** The runtime (`packages/runtime/src/core.ts`) owns the read path and the write path. It
    resolves records through the store, follows relations, runs computed values, applies a page's
@@ -226,8 +230,9 @@ code runs.
 
 1. The shell mounts a page. The page names an entity, a view, and a filter and sort that may be
    data or functions.
-2. The runtime asks the store for the entity's records, resolves relations, and runs the computed
-   values the view needs, through the host, memoised for the pass.
+2. The runtime asks the store for the entity's records, resolves relations, and runs every
+   computed value of the entity for each record, in declaration order, through the host, memoised
+   for the pass.
 3. The runtime applies the page's filter and sort as JavaScript over the resolved rows, again
    through the host. There is no query planner: at personal scale, thousands of records and not
    millions, a predicate over an in-memory array is simpler and fast enough, and it removes a whole
@@ -254,9 +259,9 @@ sequenceDiagram
 
 An action does its work through `ctx`: patch or create records, read the time, reach a capability,
 open a sheet. For a sealed app each of those is a message to the host, answered on a ctx whose
-capabilities are mediated. After a write the reminder reconciler recomputes the reminders that
-depend on the changed record and schedules them through `ctx.caps.notifications` where the device
-has them.
+capabilities are mediated. After a write to an entity a reminder watches, the shell re-runs the
+reminder reconciler (debounced), which recomputes every reminder and schedules them through
+`ctx.caps.notifications` where the device has them.
 
 <details><summary>Where in the code</summary>
 
@@ -289,13 +294,14 @@ interface Store {
 ```
 
 Records, blobs (photos and files' bytes), the app's folder, a key-value area (`ctx.storage`, where
-an app keeps its own state), and the schema version. Three implementations exist, and the shell
-chooses one per app at the composition root (`packages/shell/src/open-store.ts`):
+an app keeps its own state), and the schema version. Three durable implementations exist, and the
+shell chooses one per app at the composition root (`packages/shell/src/open-store.ts`); a fourth,
+`MemoryStore`, is the same interface in memory for tests:
 
 **SqliteStore over OPFS** is the default. One SQLite database per app, the engine being
-`@sqlite.org/sqlite-wasm`. Records are rows of a generic document table: entity, id, a JSON
-document of the field values, and the two timestamps, with tables beside it for blobs, kv, files
-and meta. A record is read and written as a document, so adding a field is not a schema change in
+`@sqlite.org/sqlite-wasm`. Records are rows of a generic document table: entity, id and a JSON
+document of the field values with the two timestamps inside it, with tables beside it for blobs,
+kv, files and meta. A record is read and written as a document, so adding a field is not a schema change in
 SQLite, which keeps migrations simple.
 
 The engine runs in a dedicated Web Worker (`packages/store/src/sqlite-worker.ts`), and this is not
@@ -315,15 +321,16 @@ SharedWorker cannot host the pool (sync access handles are for dedicated workers
 second tab through the first tab's worker would give it the bytes but not the truth, because each
 tab keeps its own in-memory model of what is stored.
 
-**LocalStore** is the fallback where the pool cannot be built: Firefox and headless Chrome lack
-it. It serialises the app under one key in localStorage and rewrites it after each mutation, which
-is fine at personal scale and nowhere else. `MemoryStore` is the same interface in memory, for
-tests and the runtime's default.
+**LocalStore** is the fallback where a worker cannot get storage at all, a Firefox private window
+for instance. It serialises the app under one key in localStorage and rewrites it after each
+mutation, which is fine at personal scale and nowhere else.
 
-**JazzStore** is what an app gets when sync is on: the CRDT store, durable on cojson's own OPFS
-SQLite file, with per-field merge across devices. The next section is about it. A synced app
-cannot fall back to LocalStore, which has no CRDT; rather than silently drop the guarantee the
-person switched on, opening fails loudly and the shell says so.
+**JazzStore** is what an app gets when sync is on: the CRDT store, durable on cojson's own SQLite
+file, in OPFS through the worker where it can, else OPFS on the main thread, else a SQLite
+snapshot in IndexedDB, with per-field merge across devices. The next section is about it. A synced
+app never falls back to LocalStore, which has no CRDT; where neither OPFS nor IndexedDB exists,
+opening fails and the shell says so rather than silently dropping the guarantee the person switched
+on.
 
 ```mermaid
 flowchart TB
@@ -350,12 +357,14 @@ On top of any store sit three things that are the same whichever one is undernea
   Sources are large and there are many versions of each app; the localStorage budget already
   carries every app's current source, and history is exactly the thing that would push it over.
 - **Migrations** (docs/06). An app declares its `schemaVersion` and a list of steps: `addField`,
-  `dropField`, `renameField`, `renameEntity`, and `transform`, a function over every record as the
-  escape hatch. The steps are applied by one shared, pure function (`packages/store/src/migrate.ts`)
-  so every store runs identical semantics, and the test suite for the in-memory store covers the
-  logic the SQLite store relies on. The Studio adds a check above this: after a model changes an
-  app, every stored value is compared before and after, and a value that disappeared without a
-  migration step to account for it is reported as loss ("The Studio and the generator" below).
+  `dropField`, `renameField`, `renameEntity`, `addRelation`, `changeType`, `addRecord`,
+  `setDefaultForExisting`, and `transform`, a function over every record as the escape hatch. The
+  steps are applied by one shared, pure function (`packages/store/src/migrate.ts`) so every store
+  runs identical semantics, and the test suite for the in-memory store covers the logic the SQLite
+  store relies on. The generator's eval harness adds a check above this when it measures the
+  modify loop: every stored value is compared before and after a change, and a value that
+  disappeared without a migration step to account for it is reported as loss ("The Studio and the
+  generator" below).
 
 <details><summary>Where in the code</summary>
 
@@ -380,7 +389,8 @@ that can read none of it.
 ### Why Jazz
 
 The engine evaluation (`docs/adr/0001-sync-engine-and-identity.md`) measured Jazz, Yjs and Evolu
-against the same apps, with the spikes kept in `docs/spikes/`. Jazz's cojson won on four points:
+to the same standard; the Jazz and Evolu spikes are kept in `docs/spikes/`. Jazz's cojson won on
+four points:
 
 - **Per-key merge on a document model.** Two people editing different fields of one record both
   survive. Evolu's per-column model needed a storage rewrite to get the same property.
@@ -429,7 +439,8 @@ A person is a display name plus a **cojson account**, created silently on first 
 email, no identity server. The account id is derived from a secret seed by crypto alone, so minting
 an identity needs no database, no node and no network; the account CoValue is materialised lazily,
 the first time an app syncs, and the ids agree by construction. A person who never turns on sync
-has an identity and has still never loaded the CRDT engine.
+has an identity and has still never started a CRDT node, opened a sync database or touched the
+network.
 
 The id is for life. Every `createdBy` ever stamped points at it; an id that changed when sync was
 turned on would orphan authorship across every shared record. That is also why `createdBy` is the
@@ -496,9 +507,11 @@ swapping two rows' `order` values fused them, because a swap is a read-modify-wr
 records and nothing makes that atomic; and a `+1` button that read the count on screen and wrote it
 back lost presses when two people pressed at once. Both devices agreed on the wrong answer. The
 store answers the second with `increment(entity, id, field, delta)`, which takes the delta and lets
-the CRDT sum each contributor; the first is a modelling rule. The Studio runs a two-peer check on
-every app it saves (`packages/shell/src/check-concurrency.ts`) and reports what would not survive
-two people, without blocking the save, because plenty of apps are never shared.
+the CRDT sum each contributor; the first is a modelling rule. When an app is about to be shared,
+the shell runs it over two peers (`packages/shell/src/check-concurrency.ts`) and reports what would
+not survive two people, then asks whether to share anyway. It runs there and not on every save,
+because sharing is the one moment the answer changes what a person should do, and plenty of apps
+are never shared.
 
 <details><summary>Where in the code</summary>
 
@@ -615,22 +628,23 @@ sequenceDiagram
 
 ## Device capabilities
 
-The device's powers reach app code as `ctx.caps.*`, and only that way. Behind `ctx.caps` is one
+The device's powers reach app code through `ctx`, and only that way. Behind them is one
 interface, `Capabilities` (`packages/capabilities/src/types.ts`), with an implementation per target.
-A member is `null` where the target lacks it, and the runtime degrades rather than fails.
+A member is `null` where the target lacks it, and the runtime degrades rather than fails. What app
+code sees is `ctx.caps` with eight members, plus two powers that live elsewhere on `ctx`:
 
-| Capability | What app code gets | Web | Native (Capacitor) |
+| App code | What it gets | Web | Native (Capacitor) |
 |---|---|---|---|
-| `camera` | take a photo | file-input capture | the camera plugin |
-| `notifications` | schedule, list and cancel reminders | `null`: a browser cannot promise exact offline scheduling, so reminders fall back to the in-app due surface | exact local notifications |
-| `geo` | the position | Geolocation API | the geolocation plugin |
-| `haptics` | a tap | Vibration API | the haptics plugin |
-| `filesystem` | save and open files | File System Access API, with an input and download fallback | the filesystem plugin |
-| `network` | `fetch`, WebSocket connections, rooms | `fetch`, WebSocket | native HTTP, native sockets |
-| `liveCamera` | a live video stream, with faces found | `getUserMedia` | the same, in the WebView |
-| `ai` | send text or a picture to a model and get text or JSON back | the AI relay, or the person's own key | the same |
-| `share` | the device's share sheet | Web Share | the share plugin |
-| `speech` | voice input | Web Speech | the native recogniser |
+| `ctx.caps.camera` | take a photo | file-input capture | the camera plugin |
+| `ctx.caps.camera.live()` | a live video stream, with the faces found in it (trusted apps only) | `getUserMedia` | the same, in the WebView |
+| `ctx.caps.notifications` | schedule, list and cancel reminders | `null`: a browser cannot promise exact offline scheduling, so reminders fall back to the in-app due surface | exact local notifications |
+| `ctx.caps.geo` | the position | Geolocation API | the geolocation plugin |
+| `ctx.caps.haptics` | a tap | Vibration API | the haptics plugin |
+| `ctx.caps.filesystem` | save and open files | File System Access API, with an input and download fallback | the filesystem plugin |
+| `ctx.caps.network` | `fetch`, WebSocket connections, rooms | `fetch`, WebSocket | the WebView's `fetch` and WebSocket; a native socket plugin for `ws://` on the local network (Android) |
+| `ctx.caps.ai` | send text or a picture to a model and get text or JSON back | the AI relay, or the person's own key | the same |
+| `ctx.caps.speech` | voice input | Web Speech | the native recogniser |
+| `ctx.ui.share()` | the device's share sheet | Web Share | the share plugin |
 
 The two implementations were written months apart, so a **conformance suite**
 (`packages/capabilities/src/conformance.ts`) runs one behavioural spec against both: which members
@@ -650,11 +664,12 @@ permissions: { camera: true, filesystem: true, network: { hosts: ["api.open-mete
 
 For your own app the manifest changes nothing: `ctx.caps` is the device's capabilities, unmediated.
 For a sealed app the host builds a different `ctx.caps` (`packages/host/src/mediate.ts`): every
-capability is absent unless the manifest asked for it; each one that was asked for is granted only
-after a consent prompt, once per app on this device; and some are scoped by a wrapper, so the
-filesystem is a folder of the app's own and the network is the hosts the manifest names. A shared
-app that asks for a host its manifest does not name is refused at once, without a prompt. The
-interface app code sees is the same at both trust levels; authority is what differs.
+capability is absent unless the manifest asked for it; each one that was asked for sits behind a
+consent prompt (haptics excepted), asked at first use and, for AI, live connections and speech,
+remembered per app on this device; and some are scoped by a wrapper, so a file the app saves goes
+under a folder of its name and the network is the hosts the manifest names. A shared app that asks
+for a host its manifest does not name is refused at once, without a prompt. The interface app code
+sees is the same at both trust levels; authority is what differs.
 
 Two capabilities have a server behind them, and both follow the same rule: the server never sees
 more than the app sent.
@@ -818,8 +833,8 @@ so a shared app is a way out for data as surely as the network is. The shell ask
 a sealed app's store is opened synced; your own apps are not asked. The manifest's `sync: true` only
 changes the words of the question.
 
-**Promotion is always reachable** (`packages/shell/src/promotion.ts`): from a sealed app's badge, its
-custom screen, the screen that says it could not open, the card after it was added, its tile and the
+**Promotion is always reachable** (`packages/shell/src/promotion.ts`): from a sealed app's badge, a
+custom screen that could not be drawn, the screen that says it could not open, the card after it was added, its tile and the
 Studio. Every one opens the same dialog with the same warning, and only acts when the person
 confirms. A failure that promotion would not fix, such as a module that does not match its lock, is
 never offered promotion as the way out.
@@ -877,7 +892,8 @@ says nothing about whether their code should run with ambient authority.
 Every shared link is a working demo (docs/24). The link carries a demo package: an ordinary
 `potyro-app/1` zip with the source, the app's own modules and its lock, the files it ships with, and
 demo records, which are the app's own sample data or the seed its package came with, never the
-person's records. Building it opens the person's store only to copy files the app shipped with.
+person's records. Building it opens the person's store only to copy files the app shipped with
+and, when the app has a lock, to read its own modules.
 
 ```mermaid
 flowchart LR
@@ -888,8 +904,8 @@ flowchart LR
   viewer -- "decrypts with the key from the fragment,<br/>installs sealed with its demo records" --> app[the app, running]
 ```
 
-The service holds ciphertext it cannot read, beside the two things a link preview needs and that the
-sharer made public on purpose: a title and a preview image drawn from the demo records. It can show
+The service holds ciphertext it cannot read, beside what a link preview needs and the sharer made
+public on purpose: a title, a line of description and a preview image drawn from the demo records. It can show
 what a link is called, never what the app is or holds. Where the service is not there, the device
 makes an inline link with the whole package in the fragment, which works on any static site and
 shows no preview.
@@ -957,9 +973,10 @@ changing the engine changes the model and nothing else:
 All five implement one contract, `ModelBackend` (`packages/generator/src/backend.ts`): turn a
 request into a source, repair a failing source, or reply to a change request. A hybrid backend
 composes two of them and escalates from the on-device model to the cloud when the local repair loop
-has not converged. Keys live in memory only and are never persisted. Only OpenRouter carries tool
-calls end to end, so it is the engine that can investigate; the others get one turn with the same
-material in the first message. How hard a model thinks is a setting per engine, off by default:
+has not converged. Keys are kept in the tab's sessionStorage, gone when the tab closes, never in
+localStorage. Only OpenRouter carries tool calls end to end, so it is the engine that can
+investigate and the only one that runs the loops below; the others get one turn with the
+reference and the capability passages, and a repair round. How hard a model thinks is a setting per engine, off by default:
 measured on the modify eval, the high level was within the noise for twice the cost.
 
 ### What the model is given
@@ -975,9 +992,9 @@ measured on the modify eval, the high level was within the noise for twice the c
 - **The corpus** is the repository's own material: the example apps, the real apps in `apps/`, the
   API docs and the schema's types, collected at build time into one versioned corpus that ships with
   each release and is searched on the device (`packages/generator/src/corpus.ts`). The reference says
-  what an app can declare; the corpus shows how a real app puts the parts together. The passages
-  that speak to a request go into the first message, for every engine, so the model starts from how
-  a real app does it instead of searching for it.
+  what an app can declare; the corpus shows how a real app puts the parts together. In the loops,
+  the passages that speak to a request go into the first message, so the model starts from how a
+  real app does it instead of searching for it; the capability passages reach every engine.
 - **The app itself, exactly once.** The first message carries it; every later turn refers to it.
   A check takes edits, never a second copy.
 
@@ -995,7 +1012,7 @@ flowchart TD
   shape --> run[run on sample records, every page, in the isolate]
   run -->|what it newly breaks| model
   run --> accept[accept: a version, in History]
-  model -->|QUESTION: / NOT-IN-APP: / NEEDS-PLATFORM:| exit[an honest exit]
+  model -->|ASK: / NOT-IN-APP: / NEEDS-PLATFORM:| exit[an honest exit]
 ```
 
 **Modify** (`packages/generator/src/agent/modify-loop.ts`). A change comes back as SEARCH/REPLACE
@@ -1034,19 +1051,23 @@ about itself: a question, a diagnosis that the fault is not the app's, exhaustio
 
 The tools (`packages/generator/src/agent/tools.ts`): `lookup` a declaration, `example` and
 `search_corpus` and `read` the corpus, `check` a candidate, `inspect_app`, `query_data` and
-`replay_case` against the running app. Every failure, a hallucinated tool name included, comes back
-as a result the model can act on, never as a thrown error that ends the loop. Two markers end a turn
-honestly: `QUESTION:` before building, and `NOT-IN-APP:` for a request that is not the app's to
-change, accepted only after the model has actually looked. A third, `NEEDS-PLATFORM:`, is offered by
+`replay_case` against the running app, `read_conversation` for what was said about earlier
+versions, and `translate` for an app's catalogs. Every failure, a hallucinated tool name included,
+comes back as a result the model can act on, never as a thrown error that ends the loop. Two
+markers end a turn honestly: `ASK:` (`QUESTION:` in the create loop) before building, and
+`NOT-IN-APP:` for a request that is not the app's to change, accepted only after the model has
+actually looked. A third, `NEEDS-PLATFORM:`, is offered by
 the harness where the loop has evidence that Potyro itself lacks something, and the Studio then
 offers to send the request to the team in the person's words (`packages/platform-requests`).
 
 ### Keeping the data
 
-Did the change keep what the person had written? Reachability is not enough: a record can sit on
-its list exactly where it was, with its title intact and its notes gone. So the check is at the
-value level (`packages/generator/src/data-safety.ts`): every entity, every record id, every stored
-field value before the change and after. A difference is **explained** when a migration step in the
+Did the change keep what the person had written? The Studio's own gates are the compile, the shape
+and the run above. The eval harness that measures the modify loop asks the stricter question,
+because reachability is not enough: a record can sit on its list exactly where it was, with its
+title intact and its notes gone. So its check is at the value level
+(`packages/generator/src/data-safety.ts`): every entity, every record id, every stored field value
+before the change and after. A difference is **explained** when a migration step in the
 chain that actually ran accounts for it, a rename or a declared drop, and **unexplained loss**
 otherwise. A `transform` step is an arbitrary function and can account for anything, so a chain
 containing one is flagged for review rather than passed: "a human looked" and "we could not tell"
@@ -1106,10 +1127,12 @@ supports, does not state or contradicts what the record says
 
 ### Measuring it
 
-The harness is measured, not reasoned about. `pnpm --filter @potyro/generator eval:modify` runs
-the modify loop over scenarios against the example apps and reports what each change kept and lost;
-`eval:openrouter` does the same for create; `eval:ask` runs real requests against the example apps
-with the web on, and the transcripts are read. The rule that follows: a change to the harness needs a
+The harness is measured, not reasoned about. `pnpm --filter @potyro/generator eval:modify` builds
+each scenario's app from a description, applies three changes to it through the backend's modify
+with one repair, and reports what each change kept and lost at the value level;
+`eval:modify:edits` runs the edit format and, with `--loop`, the modify loop against the real
+example apps; `eval:openrouter` measures create; `eval:ask` runs real requests against the example
+apps with the web on, and the transcripts are read. The rule that follows: a change to the harness needs a
 before-and-after win on an eval, one change at a time. A green CI with a worse eval is a regression.
 The evals cost real money per call and are never started without being asked.
 
@@ -1133,8 +1156,9 @@ The evals cost real money per call and are never started without being asked.
 
 One codebase, two targets, and the composition root is the only place that knows which.
 
-**The PWA** is a Vite build with a cache-first service worker: static files, no server logic, no
-database, no API. Persistence is SQLite over OPFS, the fonts ship with the build so the app is
+**The PWA** is a Vite build with a service worker that is network-first for navigations, so a
+stale document never replays an old build, and cache-first for everything else: static files, no
+server logic, no database, no API. Persistence is SQLite over OPFS, the fonts ship with the build so the app is
 offline-first down to its typography, and `WebCapabilities` backs `ctx.caps`. The shell is served
 with `frame-src 'none'`.
 
@@ -1142,8 +1166,8 @@ with `frame-src 'none'`.
 docs/27). `CapacitorCapabilities` backs `ctx.caps` with the real camera, exact local
 notifications, geolocation and the filesystem, and the identity's secrets go to the platform
 keystore. The WebView builds the same realm from the same build and reads `frame-src 'none'` from
-the `<meta>` in `index.html`, since a WebView serves no headers. Invites and demo links arrive as
-deep links. Adding the target changed only the composition root.
+the `<meta>` in `index.html`, since a WebView serves no headers. Invites and links to a page of an
+app arrive as deep links. Adding the target changed only the composition root.
 
 Only two things have to run for Potyro to work: the shell's static files and the sync relay. An app
 keeps working with the relay down; it stops reaching other people until it comes back. Four small
