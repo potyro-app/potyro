@@ -28,7 +28,8 @@ not yet done, the text says so.
   arrived from anyone else runs sealed: its logic in a Worker inside an opaque-origin sandboxed
   iframe, host power only through the same `ctx`, mediated, with consent prompts and a watchdog.
 - **Everything works offline, and nothing leaves the device until you say so.** Records live in
-  SQLite over OPFS; sync is opt-in per app and end-to-end encrypted; a person who never syncs never
+  SQLite, in the browser's private file storage (OPFS, the Origin Private File System); sync is
+  opt-in per app and end-to-end encrypted; a person who never syncs never
   starts the sync engine, opens a sync database or touches the network.
 - **The Studio writes apps with a model, under gates.** A change is edits the host applies, every
   candidate is validated and run before it is accepted, and a fix counts only when the person's own
@@ -99,8 +100,9 @@ search chip. The real file adds photos, tags, steps, a cook mode and more, but n
 kind.
 
 Two kinds of thing sit side by side in that object. The **shape** is data: entities, fields, pages
-and view layout. The schema package validates it with Zod, and from it the runtime gets storage,
-forms, validation and migrations for free. The **logic** is functions: a computed value, a page
+and view layout. The schema package validates it with [Zod](https://zod.dev), a TypeScript library
+that checks a value against a declared schema at run time and derives the static type from the same
+declaration; from the shape the runtime gets storage, forms, validation and migrations for free. The **logic** is functions: a computed value, a page
 filter, an action, a reminder, a custom view written in React. TypeScript types them; nothing
 validates them, because arbitrary code cannot be validated, only run somewhere safe.
 
@@ -149,8 +151,8 @@ In dependency order, lowest first:
 |---|---|---|
 | `packages/schema` (published as `potyro`) | `defineApp`, the `ctx` types, Zod validation of the declarative parts, `potyro pack` | nothing |
 | `packages/design` | the designer's tokens, fonts, logo and colour clock; the Lucide icon table | nothing |
-| `packages/i18n` | Potyro's own words in the person's language: locale matching, Lingui catalogs, Intl helpers | nothing |
-| `packages/identity` | who you are on this device: the account seed, the cached id and name, recovery words, the secret vault | nothing (cojson) |
+| `packages/i18n` | Potyro's own words in the person's language: locale matching, translation catalogs (Lingui), Intl helpers | nothing |
+| `packages/identity` | who you are on this device: the account seed, the cached id and name, recovery words, the secret vault | nothing (the cojson library) |
 | `packages/capabilities` | the `Capabilities` interface, the web implementation, the fakes, the conformance suite | schema |
 | `packages/store` | the `Store` interface; `MemoryStore`, `LocalStore`, `SqliteStore`, `JazzStore`; migrations, export, packages, the app's folder | schema |
 | `packages/rooms` | the rooms relay for multiplayer apps, and its wire protocol | nothing |
@@ -234,8 +236,8 @@ code runs.
 2. **Validate.** `defineApp` normalises the declarative parts and checks them with Zod: every field
    has a known type, every relation points at an entity that exists, every page names a view the
    registry has. The functions are typed by TypeScript and otherwise left alone.
-3. **Bundle.** In the browser, esbuild-wasm joins the entry, the app's own modules and its libraries
-   into one file (`packages/shell/src/app-bundler.ts`). Before esbuild reads a byte of a module or a
+3. **Bundle.** In the browser, esbuild (the JavaScript bundler, compiled to WebAssembly so it runs
+   there) joins the entry, the app's own modules and its libraries into one file (`packages/shell/src/app-bundler.ts`). Before esbuild reads a byte of a module or a
    library, the bytes are checked against the app's lock. For a trusted app the imports of `potyro`
    and `react` resolve to the shell's real modules; for a sealed app they resolve to stubs, so Zod
    and React never enter the untrusted bundle.
@@ -244,7 +246,8 @@ code runs.
    and a custom view is a real React component. An app that came from anyone else loads sealed
    through the runner the shell injects (`packages/shell/src/sandbox-runner.ts` chooses the realm,
    or QuickJS behind a flag): the bundle runs in a Worker inside a sandboxed iframe, and the host
-   talks to it over a MessagePort (`packages/host/src/realm/realm-host.ts`; "Security isolation"
+   talks to it over a MessagePort, the browser's channel between two JavaScript contexts
+   (`packages/host/src/realm/realm-host.ts`; "Security isolation"
    below). Either way the result is a `LoadedApp` with the same `call*`
    methods, so nothing above the host knows the difference.
 5. **Run.** The runtime (`packages/runtime/src/core.ts`) owns the read path and the write path. It
@@ -344,8 +347,8 @@ Writes are committed when they return; a reload the instant after an add never l
 
 **One tab owns the storage** (`packages/store/src/storage-owner.ts`). The pool holds an exclusive
 handle on every file it serves, so a second tab of the same origin cannot open the same pool; before
-this was handled, two tabs quietly became two diverging copies of the same apps. A Web Lock names
-the owner. Another tab is told that Potyro is open elsewhere and offered the take-over: the lock
+this was handled, two tabs quietly became two diverging copies of the same apps. A Web Lock, the
+browser's lock shared across a site's tabs, names the owner. Another tab is told that Potyro is open elsewhere and offered the take-over: the lock
 moves, the old owner closes its databases outside any transaction and lets go of the files. A
 SharedWorker cannot host the pool (sync access handles are for dedicated workers only), and routing a
 second tab through the first tab's worker would give it the bytes but not the truth, because each
@@ -355,8 +358,9 @@ tab keeps its own in-memory model of what is stored.
 for instance. It serialises the app under one key in localStorage and rewrites it after each
 mutation, which is fine at personal scale and nowhere else.
 
-**JazzStore** is what an app gets when sync is on: the CRDT store, durable on cojson's own SQLite
-file, in OPFS through the worker where it can, else OPFS on the main thread, else a SQLite
+**JazzStore** is what an app gets when sync is on: the CRDT store (a conflict-free replicated data
+type: a structure every device can edit offline and merge later without conflicts), durable on
+cojson's own SQLite file, in OPFS through the worker where it can, else OPFS on the main thread, else a SQLite
 snapshot in IndexedDB, with per-field merge across devices. The next section is about it. A synced
 app never falls back to LocalStore, which has no CRDT; where neither OPFS nor IndexedDB exists,
 opening fails and the shell says so rather than silently dropping the guarantee the person switched
@@ -418,9 +422,9 @@ that can read none of it.
 
 ### Why Jazz
 
-The engine evaluation (`docs/adr/0001-sync-engine-and-identity.md`) measured Jazz, Yjs and Evolu
-to the same standard; the Jazz and Evolu spikes are kept in `docs/spikes/`. Jazz's cojson won on
-four points:
+The engine evaluation (`docs/adr/0001-sync-engine-and-identity.md`) measured three local-first sync
+engines, [Jazz](https://jazz.tools), Yjs and Evolu, to the same standard; the Jazz and Evolu spikes
+are kept in `docs/spikes/`. Jazz's CRDT library, cojson, won on four points:
 
 - **Per-key merge on a document model.** Two people editing different fields of one record both
   survive. Evolu's per-column model needed a storage rewrite to get the same property.
@@ -995,10 +999,10 @@ changing the engine changes the model and nothing else:
 | Engine | What it is | Where it runs | Tools |
 |---|---|---|---|
 | `claude -p` | Claude Code's command line, on this machine, through the dev server | local | no |
-| On-device | a small coder model in the browser through WebGPU (WebLLM); offline once the weights are cached | local | no |
+| On-device | a small coder model in the browser on WebGPU, the browser's GPU API, through the WebLLM runtime; offline once the weights are cached | local | no |
 | Chrome built-in | Gemini Nano, nothing to download | local | no |
 | Anthropic | Claude with the person's own API key | cloud | no |
-| OpenRouter | one key, any hosted model; DeepSeek V4 Flash is the measured default | cloud | yes |
+| OpenRouter | a gateway to hosted models behind one key (DeepSeek, Qwen, Llama); DeepSeek V4 Flash is the measured default | cloud | yes |
 
 All five implement one contract, `ModelBackend` (`packages/generator/src/backend.ts`): turn a
 request into a source, repair a failing source, or reply to a change request. A hybrid backend
@@ -1192,7 +1196,8 @@ server logic, no database, no API. Persistence is SQLite over OPFS, the fonts sh
 offline-first down to its typography, and `WebCapabilities` backs `ctx.caps`. The shell is served
 with `frame-src 'none'`.
 
-**Android and iOS** are Capacitor wrapping the same web build (`packages/native`, docs/13 and
+**Android and iOS** are Capacitor, the native shell that wraps a web build into an app and exposes
+device APIs as plugins, around the same web build (`packages/native`, docs/13 and
 docs/27). `CapacitorCapabilities` backs `ctx.caps` with the real camera, exact local
 notifications, geolocation and the filesystem, and the identity's secrets go to the platform
 keystore. The WebView builds the same realm from the same build and reads `frame-src 'none'` from
@@ -1226,13 +1231,13 @@ built, run behind the same gate, and checked, and which of them is live today.
 
 ## Testing, in one page
 
-- **Unit tests** in every package, with Vitest, against `MemoryStore`, `FakeCapabilities` and the
+- **Unit tests** in every package, with Vitest (the Vite-native test runner), against `MemoryStore`, `FakeCapabilities` and the
   direct host, so logic is tested without a browser. The untrusted contract runs against both sealed
   runners while both exist: the realm's Worker runtime in a Node worker thread, and QuickJS.
 - **Containment is a browser property**, so it is asserted in a browser: an adversarial app run
   sealed tries to reach the network, the shell's storage and another identity, and fails closed,
   counted at a probe server with a trusted control beside it (`e2e/realm-escape-sandbox.spec.ts`).
-- **The browser suite** (`pnpm e2e`, Playwright) runs with one worker on purpose: every spec drives
+- **The browser suite** (`pnpm e2e`, on Playwright, the browser automation runner) runs with one worker on purpose: every spec drives
   the same origin, the same OPFS and the same relay, and parallel workers are two clients of the
   same state. Every example app runs once trusted and once sealed. `pnpm test:e2e:firefox` runs the
   same specs in Firefox; what differs between engines lives in `e2e/engines.ts`, never in a weaker
