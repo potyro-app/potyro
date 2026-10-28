@@ -512,3 +512,103 @@ two people, without blocking the save, because plenty of apps are never shared.
 - Deep docs: `docs/adr/0001-sync-engine-and-identity.md`, docs/17, docs/16 (running the relay)
 
 </details>
+
+## Export, import and packages
+
+Your data is a plain file you fully own, and an app is a zip anyone can read. Three formats carry
+things between devices and people; all three are built on the same reader.
+
+### The export bundle
+
+Export packs an app's logic and data into one `.potyro.zip` (`packages/store/src/export.ts`):
+
+| File | What it is |
+|---|---|
+| `data.sqlite` | a real SQLite file: opens in any SQLite browser, Datasette, or the command line |
+| `data.json` | every entity's rows as JSON |
+| `csv/<entity>.csv` | one CSV per entity |
+| `manifest.json` | schema version, provenance, granted capabilities, the app's declaration as data, the mode |
+| `app.ts` | the app's source |
+| `lock.json`, `files/.modules/`, `src/` | the app's code beyond its source: its libraries' bytes and its own modules, with a lock naming every file and its digest |
+
+Two modes: `snapshot` is stripped and human-friendly, one way; `mergeable` is the full state. Import
+reads the bundle back and reopens the SQLite bytes as a working store. Because the code travels with
+its lock, adding an app from a bundle on a device that never had it fetches nothing, and a file that
+is not what the lock says is refused by name. A shared app's files whose bytes were never on the
+exporting device are named in the manifest, not fetched: an export must never pull every member's
+files through one device.
+
+### An app is more than its entry file
+
+`apps/palette-catcher` is one app and seven files: the entry, `palette-catcher.app.ts`, and six
+modules it imports relatively, `card.ts`, `names.ts`, `palette.ts`, `sample.ts`, `styles.ts` and
+`words.ts`. `apps/mood-sleep` imports Chart.js by URL, pinned to an exact version:
+
+```ts
+import { Chart, registerables } from "https://esm.sh/chart.js@4.5.1?bundle";
+```
+
+Libraries are URL imports only, never bare npm names: a URL names bytes that can be fetched and
+locked, a package name does not. `potyro pack` (`packages/schema/cli/pack.mjs`; in this repository
+`pnpm pack:app`) follows the entry's imports with esbuild into the package's `src/`, so only what the
+app really runs is packed and a type-only import adds nothing, and refuses an import that leaves the
+source's folder. At run time esbuild-wasm bundles entry, modules and libraries into one file in the
+browser. The security section says how the lock makes that safe.
+
+### The app package
+
+What travels when an app is shared or installed is a package in the `potyro-app/1` format
+(`packages/store/src/app-package.ts`):
+
+| File | What it is |
+|---|---|
+| `app.ts` or `app.tsx` | the source |
+| `src/<path>` | the app's own modules |
+| `files/<path>` | files the app ships with, installed into its folder as shipped |
+| `lock.json`, `files/.modules/` | the libraries the source imports by URL, and their bytes |
+| `seed.json` | first records, `{ entity: [row, …] }`, applied once on first install |
+| `manifest.json` | `{ format: "potyro-app/1", source, files, modules, app, credit?, line? }` |
+| `chat.json` | optional: the Studio conversation that made it |
+
+The manifest's `app` is what the app declares, as data, with every function replaced by a marker.
+That is what the Add-an-app card reads: name, entities, pages, what it asks for, what it ships,
+without running the code. Before the person confirms, the module is also loaded in the sealed box on
+a throwaway store and sample records are put through its functions, so a feature the box lacks is
+named on the card in plain words. `credit` says who made it and what it is a remix of; `line` says
+which app it is across devices, so a link made on one device opens the right copy on another. A bare
+source is a package with no files; an export bundle is read as a package too, which is how a backup
+installs on a device that never had the app.
+
+Everything comes in sealed. A file from this device or pasted source may be marked "I wrote this"
+on the card; a link never can, and an update that arrives by link drops a trusted app back into the
+sealed box, so a link cannot put new code into an app that runs with full authority.
+
+### Moving to a new home
+
+When Potyro moved domains, the apps had to move with it, and no server was allowed to see them. The
+old site opens the new one and the two windows talk with `postMessage`
+(`packages/shell/src/move-protocol.ts`): each side accepts messages only from the window it is
+talking to, only from a Potyro origin, and only for a channel id made fresh for this hand-over.
+
+```mermaid
+sequenceDiagram
+  participant Old as old site
+  participant New as new site (opened at /?move=channel)
+  New-->>Old: hello
+  Old->>New: offer: manifest + digest
+  Note over New: shown to the person; nothing taken yet
+  New-->>Old: send (only after "Bring them in")
+  Old->>New: archive (accepted only if its digest is the offer's)
+  New-->>Old: done | failed
+```
+
+<details><summary>Where in the code</summary>
+
+- `packages/store/src/export.ts` — the export bundle; `packages/store/src/app-package.ts` — the package format and its reader
+- `packages/store/src/app-declaration.ts` — the app as data for the card
+- `packages/schema/cli/pack.mjs`, `scripts/pack-app.mjs` — `potyro pack`
+- `packages/shell/src/add-app.ts`, `packages/shell/src/app-trial.ts`, `packages/shell/src/package-libraries.ts` — Add an app, the test load, what a package fetches
+- `packages/shell/src/move-protocol.ts`, `packages/shell/src/move-page.tsx` — moving to a new home
+- Deep docs: docs/07 "Packages and Add an app", docs/16 "Moving to a new home", docs/24 §6 (credit and remix)
+
+</details>
