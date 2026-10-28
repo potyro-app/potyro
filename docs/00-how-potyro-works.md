@@ -686,3 +686,159 @@ and apps a recogniser behind the same consent.
 - Deep docs: docs/07 (the capability matrix), docs/23, docs/25, docs/26, docs/28, docs/29
 
 </details>
+
+## Security isolation
+
+The one property worth protecting is: *I can open an app someone sent me without it wrecking my
+machine.* Potyro protects it with an execution boundary, never with a language restriction, and the
+boundary is chosen by **provenance**. Your own app runs direct, with full authority. An app that
+arrived from anyone else, by link, file, paste or sync, runs **sealed**, and nothing about the app
+can change that; only you can, by promoting it.
+
+### The browser realm
+
+A sealed app's logic runs in a Worker inside an iframe with `sandbox="allow-scripts"` and nothing
+else: an opaque origin, no same-origin access, no navigation, no popups, no forms. The frame carries
+a strict Content Security Policy (`default-src 'none'`, `connect-src 'none'`, `blob:` for the
+Worker), so nothing in it can fetch, and the WebRTC constructors are deleted before any app code runs,
+because WebRTC is a channel the CSP does not govern. The shell itself is served with
+`frame-src 'none'`, so the frame cannot navigate itself anywhere that fetches.
+
+```mermaid
+flowchart LR
+  subgraph page [Shell page, the real origin]
+    host[realm-host.ts: the host half]
+    ctx[the app's mediated ctx]
+  end
+  subgraph frame [sandboxed iframe, opaque origin, strict CSP]
+    worker[Worker: the app's logic bundle]
+  end
+  subgraph vframe [one sandboxed iframe per custom view]
+    view[the view bundle, React inside]
+  end
+  worker <-- MessagePort: ops --> host
+  view <-- its own MessagePort --> host
+  host --> ctx
+```
+
+The only way out of the realm is a MessagePort to the host. The app's `ctx` in the Worker is a proxy
+(`packages/host/src/realm/ctx-proxy.ts`): every call becomes a message naming an op from a fixed
+allow-list and a ctx id the host issued. The host coerces the arguments, which are values from
+untrusted code, and calls the same method on the same `ctx` a trusted app would get, built with the
+mediated capabilities, the values gate and authorship stamping inside. That sentence is the design:
+**there is no second copy of any check.** An op the realm sends is the method call a trusted app
+makes, on a ctx whose authority is already decided. Blobs, bytes and dates cross by structured
+clone; functions never cross.
+
+The watchdog gives every call a deadline and the Worker beats every 100 ms. A missed deadline or a
+silence of a second kills the realm, frame and Worker together, and rejects what was waiting; the
+next call starts a fresh realm, measured at 40 to 60 ms. Deadlines pause while the app is waiting on
+the person or the world (a prompt, a dialog, a fetch), so an app can stretch its budget only by
+asking something. Before this, a generated app with a runaway loop froze the tab.
+
+### Sealed custom views
+
+An app's own screens are React components, and a sealed app's run in a sandboxed frame of their
+own, one per mounted view, with the same authority as the logic and no more
+(`packages/host/src/realm/sealed-view.ts`). The shell keeps the chrome and navigation; the frame
+fills the page's content area and scrolls inside itself. Its ops go to the host through its own
+port and are answered from the same table the logic uses, with a fresh mediated ctx per op; a few
+view-only ops (watch a query, run an action, navigate) are accepted on a view's port alone. Media
+and files reach the frame as bytes, and the frame makes its own `blob:` URLs, because the shell's do
+not load in an opaque origin.
+
+A frame per view means a stuck view is removed without ending the app's logic, and unmounting takes
+the view's whole document with it, whatever it forgot to clean up. The view watchdog pings every
+250 ms and stops a view that is silent for two seconds or blocks the page for two seconds. On every
+engine but desktop Chromium a view's frame shares the shell's thread, so an endless loop there
+freezes the tab and nothing in the tab can stop it. The **crash-loop guard**
+(`packages/host/src/realm/view-guard.ts`) makes that happen at most once per app: a marker goes into
+localStorage before a view mounts and is kept fresh while it answers; a marker found stale means
+that view took a tab down, and the app's views are not mounted again on this device until the person
+asks. On Chromium every sandboxed frame shares one renderer process, so after a silent stop the host
+pings every live logic frame and, if one does not answer, restarts every realm to free the process.
+
+### What the host enforces in every box
+
+Two checks sit in the direct `ctx` and in the realm's bridge alike, so neither can drift into
+trusting the app. The **values gate** (`packages/host/src/values-gate.ts`) refuses a write whose
+values do not fit the entity's fields, because in a shared app the other copies would have to survive
+it and the next reader cannot tell a bug from a tampered change; a `member` value may name only
+someone in the space. **Authorship** (`packages/host/src/authorship.ts`) stamps `createdBy` from the
+account, never from a value the app supplied.
+
+### The code beyond the entry file
+
+An app's own modules and its libraries are code, and code must be the code the app was installed
+with. The **lock** (`packages/store/src/app-lock.ts`) maps every library URL and every own module to
+the file holding it in the app's space (`.modules/<sha256>.js`, `.src/<path>`) and the digest of its
+bytes, in the Subresource Integrity form. It lives on the app's record beside its source, never in
+the synced file space, so a collaborator cannot change code that runs on your device by changing a
+file. `.modules/` and `.src/` are hidden from `ctx.files`, and the app cannot write them.
+
+One bundler plugin (`packages/shell/src/package-modules.ts`) serves both trust levels and reads every
+module and library through the store, checking the digest before esbuild sees a byte. A mismatch
+refuses to bundle, by name ("chart.js 4.5.1 is not the copy this app was installed with"), and the
+app shows that instead of opening.
+
+Fetching a library is an install step, never a run-time act (`packages/shell/src/library-fetch.ts`,
+`packages/shell/src/open-libraries.ts`). It happens once, host-side, after the person allows the
+card's line ("fetches chart.js 4.5.1, 190 KB, from esm.sh"), and `ctx.caps.network` plays no part. The
+fetch walks the library's whole import graph with esbuild and locks every file it reaches, or refuses
+by the library's name: a URL without an exact version, a file the host does not serve, a bare package
+name inside a library, an `import()` of a value decided at run time, a file loaded beside itself
+through `import.meta.url`. Nothing half-locked is kept, so an app never breaks offline because a file
+it needs was left behind.
+
+What travels with an app and what does not is decided by the same reasoning
+(`packages/store/src/carried-code.ts`). The lock and the app's own modules travel with the source,
+in the same record, so a new source can never arrive ahead of the module it imports; modules are
+checked against the lock on arrival like every other byte. Library bytes do not travel: p5 alone is
+megabytes, and every device can fetch them from the address the lock names and check them.
+
+In the sealed box a library is more code in the Worker: no DOM, no `fetch`. A library that reaches
+for `window` while loading fails with its own name, and the app says it can only run as yours. The
+Studio's checks stand libraries in as inert values, identically for the original and the candidate,
+so a change to the app's own code can still be judged.
+
+### The fallback, consent, promotion, and the limits
+
+**QuickJS-WASM** was the sealed box before the realm and remains behind a flag
+(`packages/host/src/isolate/`, chosen by `packages/shell/src/sandbox-runner.ts`): for a whole build,
+for one device through localStorage, or automatically where no realm can be built (no DOM or no
+Worker, which is the Node tests and a very old WebView). Both boxes are sealed; the choice is which
+engine, never whether the app gets ambient authority. The Studio's own checks of a candidate still
+run in QuickJS. The realm won on the measurements in docs/22: a shared app that uses `Intl`, `URL`
+and a charting library runs and draws, where through QuickJS its computed values came back empty,
+and a `ctx` round trip is faster.
+
+**Consent before a sealed app's data leaves the device** (`packages/shell/src/sync-consent.ts`).
+Sync changes what sealed code can do: anything it writes goes into a document other people receive,
+so a shared app is a way out for data as surely as the network is. The shell asks once per app before
+a sealed app's store is opened synced; your own apps are not asked. The manifest's `sync: true` only
+changes the words of the question.
+
+**Promotion is always reachable** (`packages/shell/src/promotion.ts`): from a sealed app's badge, its
+custom screen, the screen that says it could not open, the card after it was added, its tile and the
+Studio. Every one opens the same dialog with the same warning, and only acts when the person
+confirms. A failure that promotion would not fix, such as a module that does not match its lock, is
+never offered promotion as the way out.
+
+**The limits**, plainly. A Worker's memory is not capped. Nested Workers from `blob:` are allowed by
+the CSP and end with the frame. On every engine but desktop Chromium a view's frame shares the
+shell's thread, which is why the crash-loop guard exists. On the web, code on this origin can still
+ask the vault's key to decrypt the identity's secret; the vault removes the secret from the clear,
+not the origin's power over it. The WebRTC deny-list is a list, re-checked on each engine release.
+The audit notes in docs/22 §10.5 and §11.5 name every new surface.
+
+<details><summary>Where in the code</summary>
+
+- `packages/host/src/realm/realm-host.ts` — the host half; `packages/host/src/realm/frame.ts` — the sandboxed frame and its CSP; `packages/host/src/realm/worker-runtime.ts` — inside the Worker; `packages/host/src/realm/ctx-proxy.ts`, `packages/host/src/realm/protocol.ts` — the ops
+- `packages/host/src/realm/sealed-view.ts`, `packages/host/src/realm/view-runtime.ts`, `packages/host/src/realm/view-watchdog.ts`, `packages/host/src/realm/view-guard.ts` — sealed views
+- `packages/host/src/mediate.ts`, `packages/host/src/values-gate.ts`, `packages/host/src/authorship.ts` — what every box enforces
+- `packages/host/src/isolate/` — the QuickJS fallback; `packages/shell/src/sandbox-runner.ts` — which box
+- `packages/store/src/app-lock.ts`, `packages/store/src/carried-code.ts`, `packages/shell/src/package-modules.ts`, `packages/shell/src/library-fetch.ts`, `packages/shell/src/open-libraries.ts` — the code beyond the entry file
+- `packages/shell/src/sync-consent.ts`, `packages/shell/src/promotion.ts`, `packages/shell/src/trust-dialog.tsx`, `packages/shell/src/trusted-loader.ts` — consent and promotion
+- Deep docs: docs/07, docs/22
+
+</details>
