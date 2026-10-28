@@ -269,3 +269,103 @@ has them.
 - Deep docs: docs/04 (the `ctx` surface), docs/05 (the runtime interfaces)
 
 </details>
+
+## Storage
+
+Everything an app keeps goes through one interface, `Store`, and nothing above it knows which
+implementation is behind it. The interface is small enough to read in one go:
+
+```ts
+interface Store {
+  open(appId): Promise<void>; close(): Promise<void>;
+  all(entity, narrow?); get(entity, id); byIndex?(entity, field, value);
+  insert(entity, data); update(entity, id, patch); delete(entity, id); increment?(…);
+  transaction(fn); subscribe(entity, cb);
+  putBlob(blob); getBlob(ref); deleteBlob(key); blobHere?(ref);
+  listFiles(); getFile(id); setFile(entry); deleteFile(id);
+  kvGet(k); kvSet(k, v); kvDelete(k); kvKeys?(prefix);
+  storedSchemaVersion(); runMigrations(plan); memberIds?();
+}
+```
+
+Records, blobs (photos and files' bytes), the app's folder, a key-value area (`ctx.storage`, where
+an app keeps its own state), and the schema version. Three implementations exist, and the shell
+chooses one per app at the composition root (`packages/shell/src/open-store.ts`):
+
+**SqliteStore over OPFS** is the default. One SQLite database per app, the engine being
+`@sqlite.org/sqlite-wasm`. Records are rows of a generic document table: entity, id, a JSON
+document of the field values, and the two timestamps, with tables beside it for blobs, kv, files
+and meta. A record is read and written as a document, so adding a field is not a schema change in
+SQLite, which keeps migrations simple.
+
+The engine runs in a dedicated Web Worker (`packages/store/src/sqlite-worker.ts`), and this is not
+an optimisation: the OPFS sync-access-handle API that makes SQLite durable exists only in workers,
+in every browser. Before the worker existed, every device silently fell back to a path that
+rewrote the whole database into IndexedDB after each write, so ticking a box in a shopping list paid
+for the photo library of an unrelated app. In the worker a write costs the write. All of a device's
+databases share one handle pool, because a pool per app ran out of handles after a handful of apps.
+Writes are committed when they return; a reload the instant after an add never loses it.
+
+**One tab owns the storage** (`packages/store/src/storage-owner.ts`). The pool holds an exclusive
+handle on every file it serves, so a second tab of the same origin cannot open the same pool; before
+this was handled, two tabs quietly became two diverging copies of the same apps. A Web Lock names
+the owner. Another tab is told that Potyro is open elsewhere and offered the take-over: the lock
+moves, the old owner closes its databases outside any transaction and lets go of the files. A
+SharedWorker cannot host the pool (sync access handles are for dedicated workers only), and routing a
+second tab through the first tab's worker would give it the bytes but not the truth, because each
+tab keeps its own in-memory model of what is stored.
+
+**LocalStore** is the fallback where the pool cannot be built: Firefox and headless Chrome lack
+it. It serialises the app under one key in localStorage and rewrites it after each mutation, which
+is fine at personal scale and nowhere else. `MemoryStore` is the same interface in memory, for
+tests and the runtime's default.
+
+**JazzStore** is what an app gets when sync is on: the CRDT store, durable on cojson's own OPFS
+SQLite file, with per-field merge across devices. The next section is about it. A synced app
+cannot fall back to LocalStore, which has no CRDT; rather than silently drop the guarantee the
+person switched on, opening fails loudly and the shell says so.
+
+```mermaid
+flowchart TB
+  shell[Shell: open-store.ts chooses per app] --> store[Store interface]
+  store --> sq[SqliteStore]
+  store --> ls[LocalStore]
+  store --> jz[JazzStore]
+  sq --> w[dedicated Worker: sqlite-wasm, one SAH pool, one tab owns it]
+  w --> opfs[(OPFS)]
+  ls --> local[(localStorage)]
+  jz --> cojson[cojson node, per-field merge] --> opfs2[(OPFS SQLite)]
+```
+
+On top of any store sit three things that are the same whichever one is underneath:
+
+- **The app's own folder** (`packages/store/src/file-space.ts`). A store keeps an index of file
+  entries and the bytes as blobs; the folder is the rules on top: a path is taken by one file at a
+  time, a file's id survives a rename so a `file` field keeps pointing at it, replacing the bytes
+  keeps the id and the created time, every write records a digest, and bytes are written before the
+  entry that points at them. In a shared app two members can write the same file; the last write
+  wins at the file level and what it replaced is kept for a while as an earlier copy, visible in the
+  folder and never to the app.
+- **History and the Studio's conversation** are stores of their own, under their own namespaces.
+  Sources are large and there are many versions of each app; the localStorage budget already
+  carries every app's current source, and history is exactly the thing that would push it over.
+- **Migrations** (docs/06). An app declares its `schemaVersion` and a list of steps: `addField`,
+  `dropField`, `renameField`, `renameEntity`, and `transform`, a function over every record as the
+  escape hatch. The steps are applied by one shared, pure function (`packages/store/src/migrate.ts`)
+  so every store runs identical semantics, and the test suite for the in-memory store covers the
+  logic the SQLite store relies on. The Studio adds a check above this: after a model changes an
+  app, every stored value is compared before and after, and a value that disappeared without a
+  migration step to account for it is reported as loss ("The Studio and the generator" below).
+
+<details><summary>Where in the code</summary>
+
+- `packages/store/src/types.ts` — the `Store` interface
+- `packages/store/src/sqlite-store.ts`, `packages/store/src/sqlite-backend.ts`, `packages/store/src/sqlite-worker.ts`, `packages/store/src/sqlite-worker-client.ts` — SQLite over OPFS in a worker
+- `packages/store/src/storage-owner.ts` — one tab owns the pool
+- `packages/store/src/local-store.ts`, `packages/store/src/memory-store.ts`, `packages/store/src/idb-sqlite.ts` — the fallbacks
+- `packages/store/src/file-space.ts` — the app's folder
+- `packages/store/src/migrate.ts` — migration steps, shared by every store
+- `packages/shell/src/open-store.ts` — which store an app gets; `packages/shell/src/app-history.ts`, `packages/shell/src/studio-chat.ts` — history and the conversation as their own stores
+- Deep doc: docs/06
+
+</details>
