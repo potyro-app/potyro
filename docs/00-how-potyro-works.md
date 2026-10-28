@@ -46,8 +46,17 @@ import { defineApp } from "potyro";
 export default defineApp({
   id: "recipes",
   name: "Recipes",
+  version: "1.0.0",
   schemaVersion: 1,
   entities: {
+    ingredient: {
+      label: "Ingredient",
+      displayField: "name",
+      fields: {
+        name: { type: "text", required: true, label: "Name" },
+        caloriesPer100: { type: "number", min: 0, label: "Calories per 100 g" },
+      },
+    },
     recipe: {
       label: "Recipe",
       displayField: "name",
@@ -56,21 +65,38 @@ export default defineApp({
         servings: { type: "number", default: 2, min: 1, integer: true, label: "Servings" },
         ingredients: {
           type: "list",
-          of: { ingredient: { type: "relation", to: "ingredient" }, quantity: { type: "number" } },
+          label: "Ingredients",
+          of: {
+            ingredient: { type: "relation", to: "ingredient", required: true, label: "Ingredient" },
+            quantity: { type: "number", min: 0, required: true, label: "Grams" },
+          },
         },
       },
       computed: {
         calories: (r) =>
-          r.ingredients.reduce((s, i) => s + i.ingredient.caloriesPer100 * i.quantity / 100, 0),
+          r.ingredients.reduce((s, i) => s + (i.ingredient.caloriesPer100 ?? 0) * i.quantity / 100, 0),
         caloriesPerServing: { label: "Calories per serving", value: (r) => r.calories / Math.max(r.servings, 1) },
       },
     },
   },
   pages: [
-    { id: "all", title: "Recipes", view: { type: "gallery", entity: "recipe", filter: (r, ctx) => matches(r, ctx.params.q) } },
+    {
+      id: "all",
+      title: "Recipes",
+      view: {
+        type: "gallery",
+        entity: "recipe",
+        filters: [{ label: "Search", param: "q", type: "text" }],
+        filter: (r, ctx) => !ctx.params.q || r.name.toLowerCase().includes(String(ctx.params.q).toLowerCase()),
+      },
+    },
   ],
 });
 ```
+
+Two entities, a relation between them, a list of rows, two computed values and one page with a
+search chip. The real file adds photos, tags, steps, a cook mode and more, but nothing of another
+kind.
 
 Two kinds of thing sit side by side in that object. The **shape** is data: entities, fields, pages
 and view layout. The schema package validates it with Zod, and from it the runtime gets storage,
