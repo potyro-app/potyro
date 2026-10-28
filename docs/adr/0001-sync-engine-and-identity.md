@@ -7,6 +7,9 @@
 - **Supersedes:** nothing
 - **Related:** KA-09 (presence), KA-10/11 (community), KA-04 (export `mode: "mergeable"`)
 
+> **How it is built today** is in docs/00 "Sync, CRDT and identity"; this record keeps the decision
+> and the alternatives, including the superseded Yjs reasoning.
+
 ## Context
 
 Potyro has no sync. `Store` has three implementations (`MemoryStore`, `LocalStore`,
