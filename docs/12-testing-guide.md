@@ -315,8 +315,8 @@ Open the exported `data.sqlite` in **Datasette** or `sqlite3` to confirm it's a 
 ## 6. Studio — build, run, and save apps (full screen)
 
 Header **Studio** opens a full-screen builder. The **live app is the default view** — the starter
-app renders immediately (bundled in-browser with esbuild-wasm, run **untrusted in the QuickJS
-isolate**, `untrusted` badge). It's fully interactive: add records, switch pages, tick things.
+app renders immediately (bundled in-browser with esbuild-wasm, run **sealed, in the browser
+realm** (QuickJS-WASM behind a flag), `untrusted` badge). It's fully interactive: add records, switch pages, tick things.
 
 | Do | Expect |
 |---|---|
@@ -341,7 +341,7 @@ Saved apps run **untrusted** (in the sandbox) by default. To run one **directly*
 |---|---|
 | Open a saved app → click the **untrusted ▾** badge (top-left) | A trust prompt listing the app's declared capabilities |
 | **Promote to trusted** | The app reloads and runs **directly** as a real module — badge shows **trusted**. Its data persists |
-| Click **trusted ▾** → **Revoke trust** | Back to running in the isolate |
+| Click **trusted ▾** → **Revoke trust** | Back to running in the sealed box |
 
 Editing a trusted app's source (Studio or Edit mode) resets it to untrusted — a new version isn't
 vouched-for until you promote it again. A trusted load that fails (e.g. an invalid edit) falls back to
