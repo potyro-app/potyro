@@ -189,3 +189,83 @@ flowchart BT
 - `packages/*/package.json` — each package's one-line description and its Potyro dependencies
 
 </details>
+
+## An app's life
+
+From a file on disk to a screen on a phone, an app passes through six stages. Every one of them is
+the same whether the app is yours or arrived from someone else; only the fourth decides where the
+code runs.
+
+1. **Define.** A person, or the Studio's model, writes the module: `defineApp({...})` with its
+   entities, pages and functions. The entry file may import the app's own modules and libraries by
+   URL (see "Export, import and packages").
+2. **Validate.** `defineApp` normalises the declarative parts and checks them with Zod: every field
+   has a known type, every relation points at an entity that exists, every page names a view the
+   registry has. The functions are typed by TypeScript and otherwise left alone.
+3. **Bundle.** In the browser, esbuild-wasm joins the entry, the app's own modules and its libraries
+   into one file (`packages/shell/src/app-bundler.ts`). Before esbuild reads a byte of a module or a
+   library, the bytes are checked against the app's lock. For a trusted app the imports of `potyro`
+   and `react` resolve to the shell's real modules; for a sealed app they resolve to stubs, so Zod
+   and React never enter the untrusted bundle.
+4. **Load.** The host decides by provenance (`packages/host/src/create-host.ts`). Your own app loads
+   as an ES module in the page and runs direct (`direct-host.ts`): the functions are real closures
+   and a custom view is a real React component. An app that came from anyone else loads sealed: the
+   bundle runs in a Worker inside a sandboxed iframe, and the host talks to it over a MessagePort
+   ("Security isolation" below). Either way the result is a `LoadedApp` with the same `call*`
+   methods, so nothing above the host knows the difference.
+5. **Run.** The runtime (`packages/runtime/src/core.ts`) owns the read path and the write path. It
+   resolves records through the store, follows relations, runs computed values, applies a page's
+   filter and sort as JavaScript over the rows, runs actions, and reconciles reminders. Every call
+   into app code goes through the host, which is what keeps direct and sealed execution uniform.
+6. **Render.** The views package (`packages/views/src/registry.ts`) has fourteen built-in views:
+   list, gallery, table, detail, calendar, map, steps, checklist, board, timeline, stats, chart,
+   aggregate, and custom, which mounts the app's own React component. The shell puts the page in
+   its chrome: the launcher, navigation, the panels for data, history, people and the Studio.
+
+### The read path
+
+1. The shell mounts a page. The page names an entity, a view, and a filter and sort that may be
+   data or functions.
+2. The runtime asks the store for the entity's records, resolves relations, and runs the computed
+   values the view needs, through the host, memoised for the pass.
+3. The runtime applies the page's filter and sort as JavaScript over the resolved rows, again
+   through the host. There is no query planner: at personal scale, thousands of records and not
+   millions, a predicate over an in-memory array is simpler and fast enough, and it removes a whole
+   class of pushdown and residual logic.
+4. The rows reach the view, built-in or the app's own.
+5. The runtime subscribes to the entity; a change re-runs the query and the view updates.
+
+### The write path
+
+```mermaid
+sequenceDiagram
+  participant V as View
+  participant R as Runtime
+  participant H as Host
+  participant A as App function
+  participant S as Store
+  V->>R: runAction(entity, key, id, input)
+  R->>H: callAction(record, ctx)
+  H->>A: action(record, ctx)
+  A->>S: ctx.data.update(...)  (through the mediated ctx when sealed)
+  S-->>R: subscribe: entity changed
+  R-->>V: re-query, re-render
+```
+
+An action does its work through `ctx`: patch or create records, read the time, reach a capability,
+open a sheet. For a sealed app each of those is a message to the host, answered on a ctx whose
+capabilities are mediated. After a write the reminder reconciler recomputes the reminders that
+depend on the changed record and schedules them through `ctx.caps.notifications` where the device
+has them.
+
+<details><summary>Where in the code</summary>
+
+- `packages/schema/src/defineApp.ts` — validate and normalise
+- `packages/shell/src/app-bundler.ts` — bundle in the browser; `packages/shell/src/package-modules.ts` resolves modules and libraries against the lock
+- `packages/host/src/create-host.ts` — dispatch by provenance; `packages/host/src/direct-host.ts` — the trusted runner; `packages/host/src/realm/` — the sealed runner
+- `packages/runtime/src/core.ts` — the read and write paths; `packages/runtime/src/watch.ts` — framework-free subscriptions; `packages/runtime/src/hooks.ts` — the React binding
+- `packages/views/src/registry.ts` — the built-in views; `packages/views/src/custom.tsx` — the app's own view
+- `packages/shell/src/main.tsx` — the composition root
+- Deep docs: docs/04 (the `ctx` surface), docs/05 (the runtime interfaces)
+
+</details>
