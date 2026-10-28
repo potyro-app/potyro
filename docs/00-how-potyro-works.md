@@ -612,3 +612,77 @@ sequenceDiagram
 - Deep docs: docs/07 "Packages and Add an app", docs/16 "Moving to a new home", docs/24 §6 (credit and remix)
 
 </details>
+
+## Device capabilities
+
+The device's powers reach app code as `ctx.caps.*`, and only that way. Behind `ctx.caps` is one
+interface, `Capabilities` (`packages/capabilities/src/types.ts`), with an implementation per target.
+A member is `null` where the target lacks it, and the runtime degrades rather than fails.
+
+| Capability | What app code gets | Web | Native (Capacitor) |
+|---|---|---|---|
+| `camera` | take a photo | file-input capture | the camera plugin |
+| `notifications` | schedule, list and cancel reminders | `null`: a browser cannot promise exact offline scheduling, so reminders fall back to the in-app due surface | exact local notifications |
+| `geo` | the position | Geolocation API | the geolocation plugin |
+| `haptics` | a tap | Vibration API | the haptics plugin |
+| `filesystem` | save and open files | File System Access API, with an input and download fallback | the filesystem plugin |
+| `network` | `fetch`, WebSocket connections, rooms | `fetch`, WebSocket | native HTTP, native sockets |
+| `liveCamera` | a live video stream, with faces found | `getUserMedia` | the same, in the WebView |
+| `ai` | send text or a picture to a model and get text or JSON back | the AI relay, or the person's own key | the same |
+| `share` | the device's share sheet | Web Share | the share plugin |
+| `speech` | voice input | Web Speech | the native recogniser |
+
+The two implementations were written months apart, so a **conformance suite**
+(`packages/capabilities/src/conformance.ts`) runs one behavioural spec against both: which members
+exist, what shapes come back, and that scheduling, listing and cancelling a reminder agree with each
+other. The one honest difference, whether exact scheduling is supported, is asserted to match what
+the target claims about itself. What only a device can prove, that a notification fires with the app
+closed, stays a device test. `pnpm conformance` runs both. Tests of the runtime and the views use
+`FakeCapabilities` from the same package.
+
+### Permission is per app, and authority is per trust
+
+An app declares what it wants in its manifest:
+
+```ts
+permissions: { camera: true, filesystem: true, network: { hosts: ["api.open-meteo.com"] }, ai: true }
+```
+
+For your own app the manifest changes nothing: `ctx.caps` is the device's capabilities, unmediated.
+For a sealed app the host builds a different `ctx.caps` (`packages/host/src/mediate.ts`): every
+capability is absent unless the manifest asked for it; each one that was asked for is granted only
+after a consent prompt, once per app on this device; and some are scoped by a wrapper, so the
+filesystem is a folder of the app's own and the network is the hosts the manifest names. A shared
+app that asks for a host its manifest does not name is refused at once, without a prompt. The
+interface app code sees is the same at both trust levels; authority is what differs.
+
+Two capabilities have a server behind them, and both follow the same rule: the server never sees
+more than the app sent.
+
+- **AI** (`ctx.caps.ai`, docs/23). An app names a kind of work and passes exactly what the call
+  needs: some text, a photo, a schema for the answer. There is no ambient context, and the key never
+  reaches app code; the shell holds it, picks the service and makes the call. A sealed app asks
+  first, naming the service and what goes, and the prompt says who would pay as things are now: the
+  free allowance through Potyro's relay (`packages/ai-relay`), which holds Potyro's key, fixes the
+  model, and meters per device, per address and with a monthly cap checked before every dispatch;
+  then the person's own key from Model settings; then nothing, and the call fails in words.
+- **Live connections** (`ctx.caps.network.socket` and `.room`, docs/28). A WebSocket to a host the
+  manifest names, or a room on Potyro's relay (`packages/rooms`, docs/26) for multiplayer apps. The
+  rooms relay keeps nothing, authenticates nobody, logs no payload, and forwards every frame a member
+  sends to every other member of the room; the room id is the only capability. An app that needs the
+  relay itself unable to read its messages encrypts them with a key in the share link's fragment.
+
+The live camera (docs/25) gives a page a video element and the faces found in it, one per page
+however many apps ask, and only to trusted apps. Speech (docs/29) gives the Studio its microphone
+and apps a recogniser behind the same consent.
+
+<details><summary>Where in the code</summary>
+
+- `packages/capabilities/src/types.ts` — the interface; `packages/capabilities/src/web.ts` — the browser; `packages/capabilities/src/fake.ts` — for tests; `packages/capabilities/src/conformance.ts` — the shared spec
+- `packages/native/src/capacitor-capabilities.ts` — the Capacitor implementation
+- `packages/host/src/mediate.ts` — the sealed app's `ctx.caps`; `packages/host/src/sockets.ts`, `packages/host/src/speech.ts`, `packages/host/src/ai.ts` — per-capability mediation
+- `packages/ai-relay/src`, `packages/rooms/src` — the two servers
+- `packages/schema/src/types/app.ts` — `PermissionManifest`
+- Deep docs: docs/07 (the capability matrix), docs/23, docs/25, docs/26, docs/28, docs/29
+
+</details>
