@@ -842,3 +842,93 @@ The audit notes in docs/22 §10.5 and §11.5 name every new surface.
 - Deep docs: docs/07, docs/22
 
 </details>
+
+## Sharing
+
+"Share" means three different things in Potyro, and the share sheet says them plainly:
+
+| What you share | What the other person gets | Mechanism |
+|---|---|---|
+| **A link anyone can try** | the app, running, with sample records; nothing of yours | a demo link: a sealed package through the share service, the key in the fragment |
+| **Use it together** | the app and its records, live, with you | an invite into a synced space; the app's source rides in the space |
+| **A live session** | a room other members' messages flow through, now | the rooms relay |
+
+A fourth path runs the other way: text shared into Potyro from another app.
+
+### Using an app together
+
+An invite link carries only the **space coordinates** in its fragment, about 200 bytes
+(`packages/shell/src/share-sync.ts`). It used to carry the app's source too, and dropping it bought
+two things: deep links on native, where Android App Links and iOS Universal Links get unreliable
+past a few kilobytes; and updates from the moment of joining, because the guest reads the same
+published source everyone else is reading instead of a snapshot frozen at share time. The fragment
+never reaches a server, which is what keeps the invite secret off the relay.
+
+The source rides in the space's `kv`, which is already a CoMap in the shared root, so it replicates
+through the same channel as the data (`packages/shell/src/app-sync.ts`). Each copy publishes only
+when its own source is strictly newer, by timestamp, so a guest who declines an update does not push
+their older source back over the author's. Accepting an update is never silent: it replaces code that
+runs on this device, so it is a prompt, and the new version lands in History where it can be rolled
+back like any other edit. A guest's copy is still untrusted code. Being invited to someone's data
+says nothing about whether their code should run with ambient authority.
+
+### A link anyone can try
+
+Every shared link is a working demo (docs/24). The link carries a demo package: an ordinary
+`potyro-app/1` zip with the source, the app's own modules and its lock, the files it ships with, and
+demo records, which are the app's own sample data or the seed its package came with, never the
+person's records. Building it opens the person's store only to copy files the app shipped with.
+
+```mermaid
+flowchart LR
+  dev[the sharer's device] -- "ciphertext (AES-GCM, fresh key per link)<br/>+ title and preview image" --> svc[share service<br/>packages/share-links]
+  dev -- "https://site/s/&lt;id&gt;#k=&lt;key&gt;" --> chat[a chat]
+  chat --> viewer[the viewer's device]
+  svc -- ciphertext --> viewer
+  viewer -- "decrypts with the key from the fragment,<br/>installs sealed with its demo records" --> app[the app, running]
+```
+
+The service holds ciphertext it cannot read, beside the two things a link preview needs and that the
+sharer made public on purpose: a title and a preview image drawn from the demo records. It can show
+what a link is called, never what the app is or holds. Where the service is not there, the device
+makes an inline link with the whole package in the fragment, which works on any static site and
+shows no preview.
+
+From a demo, **Make it mine** copies the app as a new app of the person's own, through the ordinary
+Add-an-app card, with `credit` in the manifest naming who made it and what it is a remix of, as a
+short chain. A link can also open an app at one of its pages with parameters
+(`packages/shell/src/app-link.ts`): the app is named by its **line**, which every copy of an app
+carries, so a link made on one device opens the right copy on another; a line is a matching hint,
+never a credential, and what a link can do is small on purpose. Share links count on the device
+only, as local counters with no id, no app name and no network.
+
+### Rooms
+
+A room is a live session on the rooms relay (`packages/rooms`, docs/26): every frame a member sends
+goes as-is to every other member, plus a small presence envelope for joins and leaves. The relay
+keeps nothing, so a member who joins late gets the member list and not the history; the members
+already there send the state. It has no accounts: the room id is the only capability, to be treated
+like a link to a shared document. It reads and logs no payload, and an app that needs the relay
+unable to read its messages encrypts them with a key carried in the share link's fragment. App code
+reaches a room through `ctx.caps.network.room`.
+
+### Text shared into Potyro
+
+When another app shares text into Potyro, what another AI wrote for instance, it is kept for the
+session and offered on a page that asks which app to bring it into
+(`packages/shell/src/share-inbox.ts`). Which app fits best is judged on the device with no model,
+by the shared text's words against each app's own words read from its source; the person picks
+either way. The chosen app's Ask opens with the text filled in. The other direction, "send this" to
+a chat, opens the chat's own address only on the person's tap (`packages/shell/src/share-networks.ts`).
+
+<details><summary>Where in the code</summary>
+
+- `packages/shell/src/share-sheet.tsx` — the sheet; `packages/shell/src/share-page.tsx` — the page a link opens
+- `packages/shell/src/share-sync.ts`, `packages/shell/src/app-sync.ts` — invites and the published source
+- `packages/shell/src/demo-share.ts`, `packages/shell/src/demo-package.ts`, `packages/shell/src/share-service.ts`, `packages/shell/src/preview-card.ts` — demo links; `packages/share-links/src` — the service
+- `packages/shell/src/remix.tsx`, `packages/shell/src/app-link.ts`, `packages/shell/src/share-events.ts` — Make it mine, page links, counting
+- `packages/rooms/src` — the rooms relay
+- `packages/shell/src/share-inbox.ts`, `packages/shell/src/share-networks.ts` — text in, send this
+- Deep docs: docs/24, docs/26, docs/28
+
+</details>
