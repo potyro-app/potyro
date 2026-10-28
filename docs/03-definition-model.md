@@ -538,7 +538,7 @@ dialog. Neither kind is reachable from `ctx`: sources are Ask's, not the app's.
 
 ## What the runtime does with a module
 
-1. **Load** the module (direct import if trusted; bundle→isolate if untrusted — docs/07).
+1. **Load** the module (direct import if trusted; bundle→the sealed box (the browser realm) if untrusted — docs/07).
 2. **Validate** the declarative parts (`packages/schema` Zod) — entity/field/view *structure*
    only. Functions are typed by TS at author time; the runtime just calls them.
 3. **Run**: resolve records + relations from the `Store`, execute `computed`/`filter`/`sort`
