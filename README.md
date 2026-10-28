@@ -37,7 +37,7 @@ machine.* That is **not** a language restriction. It is an execution choice, mad
 - **Your own apps run direct.** Full host context, real imports, the device's capabilities. Zero
   sandbox, zero ceremony. This is the daily driver and the "I just want to write code" path.
 - **Received and shared apps run sealed.** The *same source* runs in a Worker inside an opaque-origin
-  sandboxed iframe with a strict CSP, reaching host power only through the same `ctx`, mediated:
+  sandboxed iframe with a strict Content Security Policy, reaching host power only through the same `ctx`, mediated:
   capabilities denied by default and granted per consent, a watchdog on every call, each custom view
   in a sandboxed frame of its own. Same language, same functions; only the injected authority
   differs. (QuickJS-WASM remains as the fallback box behind a flag.)
@@ -62,15 +62,17 @@ Same code, two authority levels. The language is never the thing that is limited
 
 - Your own apps run direct; apps from anyone else run sealed in the browser realm, with consent
   prompts, a watchdog and a crash-loop guard.
-- Records in SQLite in the browser's private file storage (OPFS), in a worker, with one tab owning the storage; migrations; export to
-  a zip with a real SQLite file, JSON and CSV inside.
-- Sync, opt-in per app: end-to-end encrypted spaces on Jazz, a local-first sync engine, behind a relay that holds only
-  ciphertext; an identity derived from a seed with no signup; recovery words for a second device.
+- Records in SQLite in the browser's private file storage (OPFS), in a worker, with one tab owning
+  the storage; migrations; export to a zip with a real SQLite file, JSON and CSV inside.
+- Sync, opt-in per app: end-to-end encrypted spaces on Jazz, a local-first sync engine, behind a
+  relay that holds only ciphertext; an identity derived from a seed with no signup; recovery words
+  for a second device.
 - Sharing three ways: an invite into an app's data, a demo link anyone can try with sample records,
   and rooms for multiplayer apps.
 - Device capabilities through `ctx.caps`: camera, live camera, notifications, geolocation, haptics,
   files, network and sockets, AI, the share sheet, voice.
-- Android and iOS through Capacitor, the native shell around a web build, with native capabilities and the platform keystore.
+- Android and iOS through Capacitor, the native shell around a web build, with native capabilities
+  and the platform keystore.
 - The Studio: describe an app, change it, fix it by recording what went wrong, point at the part you
   mean, in your language, with one of five model engines, every candidate gated before it is kept.
 - Twenty-one real apps in `apps/`, six example apps in `examples/`, the gallery on potyro.com, and a
