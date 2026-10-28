@@ -55,22 +55,22 @@ Same code, two authority levels. The language is never the thing that is limited
    optional (sync, demo links, rooms, AI) and clearly separated.
 5. **One codebase, two targets.** PWA and Capacitor share the runtime; native is additive.
 6. **Everything behind a seam.** `Store` (persistence) and `Capabilities` (device) are interfaces;
-   they *are* what `ctx` exposes. Swapping SQLite for the CRDT store, or web for native, never
+   they *are* what `ctx` exposes. Swapping SQLite for the CRDT sync store, or web for native, never
    touches app code or views.
 
 ## What works today
 
 - Your own apps run direct; apps from anyone else run sealed in the browser realm, with consent
   prompts, a watchdog and a crash-loop guard.
-- Records in SQLite over OPFS, in a worker, with one tab owning the storage; migrations; export to
+- Records in SQLite in the browser's private file storage (OPFS), in a worker, with one tab owning the storage; migrations; export to
   a zip with a real SQLite file, JSON and CSV inside.
-- Sync, opt-in per app: end-to-end encrypted spaces on Jazz (cojson) behind a relay that holds only
+- Sync, opt-in per app: end-to-end encrypted spaces on Jazz, a local-first sync engine, behind a relay that holds only
   ciphertext; an identity derived from a seed with no signup; recovery words for a second device.
 - Sharing three ways: an invite into an app's data, a demo link anyone can try with sample records,
   and rooms for multiplayer apps.
 - Device capabilities through `ctx.caps`: camera, live camera, notifications, geolocation, haptics,
   files, network and sockets, AI, the share sheet, voice.
-- Android and iOS through Capacitor, with native capabilities and the platform keystore.
+- Android and iOS through Capacitor, the native shell around a web build, with native capabilities and the platform keystore.
 - The Studio: describe an app, change it, fix it by recording what went wrong, point at the part you
   mean, in your language, with one of five model engines, every candidate gated before it is kept.
 - Twenty-one real apps in `apps/`, six example apps in `examples/`, the gallery on potyro.com, and a
