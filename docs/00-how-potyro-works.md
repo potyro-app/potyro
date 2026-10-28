@@ -932,3 +932,199 @@ a chat, opens the chat's own address only on the person's tap (`packages/shell/s
 - Deep docs: docs/24, docs/26, docs/28
 
 </details>
+
+## The Studio and the generator
+
+The Studio is where a person who does not write code gets an app: they describe it, change it by
+asking, fix it by showing what went wrong, and point at the part they mean. A model does the
+writing. Everything around the model exists because a model that compiles, validates and renders an
+app will still report success while the app is broken, so the Studio's rule is that **a candidate
+counts only when it passes a gate**, and every exit that is not a pass says so.
+
+### Engines
+
+Five engines answer the Studio, chosen in one place (`packages/shell/src/engines.ts`) so that
+changing the engine changes the model and nothing else:
+
+| Engine | What it is | Where it runs | Tools |
+|---|---|---|---|
+| `claude -p` | Claude Code's command line, on this machine, through the dev server | local | no |
+| On-device | a small coder model in the browser through WebGPU (WebLLM); offline once the weights are cached | local | no |
+| Chrome built-in | Gemini Nano, nothing to download | local | no |
+| Anthropic | Claude with the person's own API key | cloud | no |
+| OpenRouter | one key, any hosted model; DeepSeek V4 Flash is the measured default | cloud | yes |
+
+All five implement one contract, `ModelBackend` (`packages/generator/src/backend.ts`): turn a
+request into a source, repair a failing source, or reply to a change request. A hybrid backend
+composes two of them and escalates from the on-device model to the cloud when the local repair loop
+has not converged. Keys live in memory only and are never persisted. Only OpenRouter carries tool
+calls end to end, so it is the engine that can investigate; the others get one turn with the same
+material in the first message. How hard a model thinks is a setting per engine, off by default:
+measured on the modify eval, the high level was within the noise for twice the cost.
+
+### What the model is given
+
+- **The reference** is the schema, verbatim. A hand-written summary of what an app can declare
+  drifts the moment someone adds an option and forgets the prompt, and every gap becomes a refusal
+  that only a prompt edit can fix. So the reference is generated from the type declarations in
+  `packages/schema/src/types`, with their doc comments (`packages/generator/src/reference.ts`), and
+  a test fails when it is stale. It is split in two: the **core**, which goes into every system
+  prompt, and the **capabilities** an app reaches for only sometimes, which are read on demand through
+  a `lookup` tool, through passages put beside a request that names one, and through a one-line
+  index the prompt keeps so the model knows each exists.
+- **The corpus** is the repository's own material: the example apps, the real apps in `apps/`, the
+  API docs and the schema's types, collected at build time into one versioned corpus that ships with
+  each release and is searched on the device (`packages/generator/src/corpus.ts`). The reference says
+  what an app can declare; the corpus shows how a real app puts the parts together. The passages
+  that speak to a request go into the first message, for every engine, so the model starts from how
+  a real app does it instead of searching for it.
+- **The app itself, exactly once.** The first message carries it; every later turn refers to it.
+  A check takes edits, never a second copy.
+
+### Three loops, one rule
+
+```mermaid
+flowchart TD
+  req[request + the app + corpus passages] --> model
+  model -->|SEARCH/REPLACE edits| apply[apply the edits]
+  apply -->|an edit's SEARCH is not in the file| model
+  apply --> validate[compile + validate]
+  validate -->|errors, in words| model
+  validate --> shape[shape gate: no entity or page lost]
+  shape -->|"your change removes the 'place' entity"| model
+  shape --> run[run on sample records, every page, in the isolate]
+  run -->|what it newly breaks| model
+  run --> accept[accept: a version, in History]
+  model -->|QUESTION: / NOT-IN-APP: / NEEDS-PLATFORM:| exit[an honest exit]
+```
+
+**Modify** (`packages/generator/src/agent/modify-loop.ts`). A change comes back as SEARCH/REPLACE
+blocks (`packages/generator/src/edits.ts`), and the host applies them. This replaced asking for the
+whole file after a measurement: retyping two hundred lines to change three doubled colons and
+renamed keys in lines the change never touched. With edits, lines the model does not mention cannot
+be damaged. An edit whose SEARCH is not in the file is sent back with its number; a result that drops
+an entity or a page is sent back with the loss named (`packages/generator/src/guarded-modify.ts`);
+a whole-file reply is still accepted but labelled, so the Studio says so. A candidate that passes
+is then run (`packages/shell/src/run-candidate.ts`): on a throwaway store seeded with sample
+records, in the isolate with a budget, every computed value, filter, action and reminder runs and
+every page is mounted; what threw comes back as errors and a page that shows nothing as a warning;
+the candidate is judged against the original's own run, so failures the app already had are context
+and never a reason to refuse the change. A model that repeats itself has stopped reasoning: the
+repeated turns are rolled back and one note says what was tried and the ways out; a second repeat
+ends the loop with the best candidate so far. A chain with two candidates turned back starts again
+from the request with one line per attempt, because the research says a fresh start beats a long
+repair chain at equal cost (docs/19).
+
+**Create** (`packages/generator/src/agent/create-loop.ts`) is the same loop for "make me an app",
+with two differences from measurement. A first draft is one call with the tools off, because models
+given tools spent them looking things up before writing anything, at three to five times the cost.
+And up to two independent first drafts are made, the second only when the first did not pass, since
+the gate cannot rank two apps that both pass. A new app has no original to compare with, so an error
+blocks and a warning does not.
+
+**Fix** (`packages/generator/src/agent/loop.ts`, `packages/shell/src/verify-candidate.ts`) is for
+"this does not work". The person records a **case**: what they did, as the app's own navigation
+vocabulary rather than a DOM recording, and what they expected. The case is replayed first against
+the app as it is; if it already passes, the loop refuses to start and says so, because no candidate
+could prove more. Otherwise the agent investigates with tools and proposes; a candidate is `fix`
+only after the person's own case has been replayed against it and passed, on their real records,
+read-only, in the isolate with a budget. A rejected candidate is fed back as a failure in words,
+which is the single most useful sentence a model otherwise never hears. Every other exit is honest
+about itself: a question, a diagnosis that the fault is not the app's, exhaustion.
+
+The tools (`packages/generator/src/agent/tools.ts`): `lookup` a declaration, `example` and
+`search_corpus` and `read` the corpus, `check` a candidate, `inspect_app`, `query_data` and
+`replay_case` against the running app. Every failure, a hallucinated tool name included, comes back
+as a result the model can act on, never as a thrown error that ends the loop. Two markers end a turn
+honestly: `QUESTION:` before building, and `NOT-IN-APP:` for a request that is not the app's to
+change, accepted only after the model has actually looked. A third, `NEEDS-PLATFORM:`, is offered by
+the harness where the loop has evidence that Potyro itself lacks something, and the Studio then
+offers to send the request to the team in the person's words (`packages/platform-requests`).
+
+### Keeping the data
+
+Did the change keep what the person had written? Reachability is not enough: a record can sit on
+its list exactly where it was, with its title intact and its notes gone. So the check is at the
+value level (`packages/generator/src/data-safety.ts`): every entity, every record id, every stored
+field value before the change and after. A difference is **explained** when a migration step in the
+chain that actually ran accounts for it, a rename or a declared drop, and **unexplained loss**
+otherwise. A `transform` step is an arbitrary function and can account for anything, so a chain
+containing one is flagged for review rather than passed: "a human looked" and "we could not tell"
+must not produce the same verdict.
+
+### Versions, files and the conversation
+
+Every source an app has ever had is a version in a store of its own
+(`packages/shell/src/app-history.ts`), written by the one save path, so an edit by a model is
+inspectable and reversible: the History panel diffs and restores. The conversation is its own record
+too (`packages/shell/src/studio-chat.ts`), because a conversation does not only produce versions:
+the agent asks what the app is for, the person answers, a request is declined, and all of that used
+to vanish when the Studio closed. A conversation starts under a draft id before there is an app, and
+the first version adopts it.
+
+The Studio shows the app's code as a tree of files and folders (`packages/shell/src/code-files.ts`):
+the entry and the app's own modules. A person can make and delete files; the modify and fix loops
+see the app as its files joined into one text, and a candidate is split back into files before
+bundling, so an edit may change a module as well as the entry. A save that imports a library the app
+does not have says what it would fetch and asks first (`packages/shell/src/studio-libraries.ts`).
+The model is not yet taught to use libraries; that waits on a measured eval.
+
+### Pointing at the app
+
+<!-- shot: studio-point-mode -->
+
+In the Studio's preview, point mode (`packages/shell/src/point-mode.tsx`) lays a layer over the app
+that takes every tap, so the app does not work while it is on and the mode cannot be mistaken for
+using it. What a tap would point at is outlined and named, and the rest dims. A tap chooses the
+narrowest part, a button in a custom view say, and a tray offers what it is inside, its view and its
+page, so a wider meaning is one more tap rather than a bigger target. It works the same with a finger
+and a mouse; a drag still scrolls the app.
+
+The screen side reads the tags the built-in views and the shell already put on the page for edit
+mode, `data-k-field`, `data-k-page` and `data-k-part` (`packages/shell/src/point-target.ts`). The
+model is told in words, "the Nights list on the Patterns page", and shown the lines that declare it
+with their numbers, a slice of the app and never a second copy. Edit mode uses the same tags the
+other way: every piece of text on screen that is a literal in the source can be changed in place,
+with no model, and saved as a version like any other change (`packages/shell/src/inline-edit.tsx`).
+Voice input gives the Studio a microphone (`packages/shell/src/studio-voice.ts`, docs/29).
+
+### Ask
+
+Ask (`packages/generator/src/agent/ask.ts`) is a model working on an app's data for the person:
+"find dog-friendly places near here", "make me a push/pull/legs block". The answer lands in the app
+as records, in the app's own shape, through one tool, `propose_records`, whose rows are checked
+against the entities' fields exactly as a save checks them; a proposal that does not fit goes back
+with the reasons. **The model sees structure, never records**: the loop runs on a cloud engine and
+takes no store, no runtime and no row, only the app's declaration; the shell de-duplicates against
+the person's records locally after the proposal comes back. Every proposed fact carries its
+evidence, a URL and a quote, or says it is general knowledge. The quote is checked mechanically
+first (`packages/generator/src/agent/evidence.ts`): it counts only if it is in the text actually
+retrieved for the request, independent sites are counted, and no model judges here so none can talk
+its way past it. Then a second model reads only that retrieved text and says, per record, whether it
+supports, does not state or contradicts what the record says
+(`packages/generator/src/agent/verify-claims.ts`). Nothing writes until the person accepts.
+
+### Measuring it
+
+The harness is measured, not reasoned about. `pnpm --filter @potyro/generator eval:modify` runs
+the modify loop over scenarios against the example apps and reports what each change kept and lost;
+`eval:openrouter` does the same for create; `eval:ask` runs real requests against the example apps
+with the web on, and the transcripts are read. The rule that follows: a change to the harness needs a
+before-and-after win on an eval, one change at a time. A green CI with a worse eval is a regression.
+The evals cost real money per call and are never started without being asked.
+
+<details><summary>Where in the code</summary>
+
+- `packages/shell/src/engines.ts`, `packages/shell/src/studio-engine.ts`, `packages/shell/src/start-create.ts`, `packages/shell/src/start-modify.ts`, `packages/shell/src/start-fix.ts` — the engines and where the pieces meet
+- `packages/generator/src/backend.ts`, `packages/generator/src/openrouter-backend.ts`, `packages/generator/src/claude-backend.ts`, `packages/generator/src/cli-backend.ts`, `packages/generator/src/webllm-backend.ts`, `packages/generator/src/gemini-nano-backend.ts`, `packages/generator/src/hybrid-backend.ts` — the backends
+- `packages/generator/src/reference.ts`, `packages/generator/src/corpus.ts` — what the model is given
+- `packages/generator/src/agent/create-loop.ts`, `packages/generator/src/agent/modify-loop.ts`, `packages/generator/src/agent/loop.ts`, `packages/generator/src/agent/tools.ts`, `packages/generator/src/agent/discovery-tools.ts`, `packages/generator/src/agent/app-tools.ts`, `packages/generator/src/agent/loop-recovery.ts`, `packages/generator/src/agent/platform-request.ts` — the loops
+- `packages/generator/src/edits.ts`, `packages/generator/src/guarded-modify.ts`, `packages/generator/src/data-safety.ts` — edits and what they must keep
+- `packages/shell/src/run-candidate.ts`, `packages/shell/src/verify-candidate.ts`, `packages/runtime/src/case.ts`, `packages/runtime/src/replay.ts` — the gates
+- `packages/shell/src/app-history.ts`, `packages/shell/src/studio-chat.ts`, `packages/shell/src/code-files.ts`, `packages/shell/src/studio-libraries.ts` — versions, the conversation, files
+- `packages/shell/src/point-mode.tsx`, `packages/shell/src/point-target.ts`, `packages/shell/src/inline-edit.tsx`, `packages/shell/src/inline-targets.ts`, `packages/shell/src/studio-voice.ts` — pointing, edit mode, voice
+- `packages/generator/src/agent/ask.ts`, `packages/generator/src/agent/evidence.ts`, `packages/generator/src/agent/verify-claims.ts` — Ask
+- `packages/generator/scripts` — the evals
+- Deep docs: docs/19 (the research behind the loops), docs/23, docs/29
+
+</details>
