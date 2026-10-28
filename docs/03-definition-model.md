@@ -1,3 +1,10 @@
+---
+title: Definition Model
+description: The app module: defineApp's top-level shape, entities, fields, pages and views, with logic as functions.
+status: current
+order: 3
+---
+
 # 03 · Definition Model (`*.app.ts`)
 
 An app is a TypeScript module that default-exports `defineApp({...})`. The object mixes

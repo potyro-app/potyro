@@ -1,3 +1,10 @@
+---
+title: Vision & Scope
+description: The problem Potyro solves, the insight that makes it tractable, goals and non-goals.
+status: current
+order: 1
+---
+
 # 01 · Vision & Scope
 
 ## The problem, stated precisely

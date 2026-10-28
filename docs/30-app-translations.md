@@ -1,3 +1,10 @@
+---
+title: App translations
+description: One language in the source, catalogs beside it: how an app carries its words in other languages.
+status: current
+order: 30
+---
+
 # 30 · App translations: one language in the source, catalogs beside it
 
 **Status: approved, 2026-10-19 (§9); built on `feat/app-catalogs`.** It replaces how docs/20 (#302) stores an app's words. docs/20's

@@ -1,3 +1,10 @@
+---
+title: App Module API
+description: defineApp and the ctx surface: the real API app functions receive, member by member.
+status: current
+order: 4
+---
+
 # 04 · App Module API — `defineApp` and the `ctx` surface
 
 This is the real API of the system. "Full control" is delivered here: app functions receive

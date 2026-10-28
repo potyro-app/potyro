@@ -1,3 +1,10 @@
+---
+title: Execution, Trust & Targets
+description: Provenance decides execution; the browser realm, the mediated ctx, packages, libraries and modules, the PWA and Capacitor targets.
+status: current
+order: 7
+---
+
 # 07 · Execution, Trust & Targets
 
 App logic is full JavaScript. Safety comes from **where the code runs** and **what `ctx.caps`

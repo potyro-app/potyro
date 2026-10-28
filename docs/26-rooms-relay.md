@@ -1,3 +1,10 @@
+---
+title: Rooms relay
+description: A relay for real-time multiplayer apps: joining, messages and events, limits, what it does not do.
+status: current
+order: 26
+---
+
 # Rooms: a relay for real-time multiplayer apps
 
 Status: built (`packages/rooms`), **not deployed yet** — see docs/16 "Rooms for multiplayer apps".

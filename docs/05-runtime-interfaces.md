@@ -1,3 +1,10 @@
+---
+title: Runtime Interfaces
+description: The TypeScript contracts at the seams: Store, Capabilities, Host, LoadedApp, the view contracts.
+status: current
+order: 5
+---
+
 # 05 · Runtime Interfaces (TypeScript contracts)
 
 The seams. `Store` and `Capabilities` are exactly what `ctx` (docs/04) surfaces to app code.

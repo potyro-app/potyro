@@ -1,3 +1,10 @@
+---
+title: AI in apps
+description: ctx.caps.ai: the API, the permission, who pays, the model, where each part lives.
+status: current
+order: 23
+---
+
 # 23 · AI in apps — `ctx.caps.ai` (#213, part 3)
 
 Status: built (this branch). The free allowance's relay is **not deployed**; until it is, apps use

@@ -1,3 +1,9 @@
+---
+title: ADR 0001: Sync engine and identity
+description: Why Jazz (cojson), the identity model, spaces, the relay, and the alternatives measured.
+status: historical
+---
+
 # ADR 0001 · Sync engine and identity model
 
 - **Status:** Proposed

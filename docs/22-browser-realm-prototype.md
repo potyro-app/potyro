@@ -1,3 +1,10 @@
+---
+title: Browser realm
+description: Shared apps in a sandboxed iframe and Worker: the prototype's measurements and what shipped.
+status: current
+order: 22
+---
+
 # 22 · Browser-realm prototype — shared apps in a sandboxed iframe + Worker (#272)
 
 > **§0–§9 are the prototype report (2026-10-13); §10–§11 describe what shipped.** The current

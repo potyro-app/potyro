@@ -1,3 +1,10 @@
+---
+title: Testing Strategy
+description: The test layers, the must-pass invariants and what CI runs.
+status: current
+order: 9
+---
+
 # 09 · Testing Strategy
 
 Tests are per-WP and ship in the same PR as the code. Two things need special discipline: the
