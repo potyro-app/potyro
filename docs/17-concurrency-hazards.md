@@ -1,3 +1,9 @@
+---
+title: Concurrency hazards
+description: What breaks when an app is shared: the two bugs found in the first public test and the classes behind them.
+status: historical
+---
+
 # What breaks when an app is shared, and what to do about it
 
 > **Written 2026-08-10, kept as a record.** The hazards are still real; the current description of

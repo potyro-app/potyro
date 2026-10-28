@@ -1,3 +1,10 @@
+---
+title: Testing guide
+description: A hands-on walkthrough of everything built: how to try Potyro and give feedback.
+status: current
+order: 12
+---
+
 # 12 · Testing guide — try it & give feedback
 
 A hands-on walkthrough of everything built so far. Work top to bottom, or jump to a section. For each

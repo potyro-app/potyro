@@ -1,3 +1,10 @@
+---
+title: Live connections
+description: ctx.caps.network.socket and .room: WebSockets and rooms from app code, with permission and limits.
+status: current
+order: 28
+---
+
 # 28 — Live connections: `ctx.caps.network.socket` and `.room`
 
 Status: built (owner decisions 2026-10-15). Apps reach a WebSocket server — a price stream, a home

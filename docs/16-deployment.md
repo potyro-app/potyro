@@ -1,3 +1,10 @@
+---
+title: Deployment
+description: Deploying the shell, the sync relay and the optional services on your own domain, as it was done.
+status: current
+order: 16
+---
+
 # Deploying Potyro on your own domain (KA-34)
 
 **`https://apps.vaz.io` is live and this is how it was done** — a real recipe, not a sketch. It was

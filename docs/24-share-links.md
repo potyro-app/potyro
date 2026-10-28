@@ -1,3 +1,10 @@
+---
+title: Share links
+description: Every shared link is a working demo: the link, demo records, the share service, credit and remix, page links, the gallery.
+status: current
+order: 24
+---
+
 # Share links: every shared link is a working demo
 
 Status: design, approved for Phase 0 by the owner on 2026-10-15 (distribution research, Phase 0).

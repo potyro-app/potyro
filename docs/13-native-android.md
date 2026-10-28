@@ -1,3 +1,10 @@
+---
+title: Native Android
+description: Running Potyro on an Android device through Capacitor: build, install, the device checklist.
+status: current
+order: 13
+---
+
 # 13 · Native Android (Capacitor) — run Potyro on a device
 
 The Capacitor target wraps the **shell's web build** into a native Android app. Nothing about the app
