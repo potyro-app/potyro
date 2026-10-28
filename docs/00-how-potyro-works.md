@@ -839,8 +839,7 @@ changes the words of the question.
 
 **Promotion is always reachable** (`packages/shell/src/promotion.ts`): from a sealed app's badge, a
 custom screen that could not be drawn, the screen that says it could not open, the card after it
-was added, its tile and the
-Studio. Every one opens the same dialog with the same warning, and only acts when the person
+was added, its tile and the Studio. Every one opens the same dialog with the same warning, and only acts when the person
 confirms. A failure that promotion would not fix, such as a module that does not match its lock, is
 never offered promotion as the way out.
 
