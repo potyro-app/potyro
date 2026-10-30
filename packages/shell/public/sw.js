@@ -3,7 +3,7 @@
 // every edit invisible until the cache happens to miss.
 //
 // Strategy differs by request kind, which the previous cache-first-for-everything version got wrong:
-//   navigations     → NETWORK FIRST, cache as fallback. A stale document replays an old app build.
+//   navigations     → NETWORK FIRST, the kept page as fallback. A stale document replays an old build.
 //                     That surfaced as "changing route shows the old version", and as an app being
 //                     trusted via a typed URL but untrusted via the in-app launcher — both are real
 //                     navigations, and one was served from cache.
@@ -21,106 +21,254 @@
 // the server's error page", intermittently, whenever the browser has forgotten the credentials it
 // was silently attaching. See `stepAside` below.
 //
-// CACHE is versioned: bump it on release and `activate` drops every older cache. It is bumped here
-// deliberately, so a browser still holding a poisoned v2 throws it away on the next load.
+// What never goes through the cache at all: the servers behind the site (`/ai/`, `/share-api/`,
+// `/requests/`, `/rooms/`) and share links (`/s/<id>`, whose page carries that link's own preview
+// and can be taken down). Those requests go to the network as if there were no worker, and nothing
+// they return is kept. Nor is any response that says `Cache-Control: no-store`.
+//
+// ONE CACHE PER BUILD (#123). The build stamps `BUILD` below (`precacheShell` in
+// packages/shell/vite.config.ts writes the same id into `shell-precache.json`), so every release
+// is a new worker with its own cache, `potyro-<build>`. Install keeps that build's boot files and
+// its page; `warm` keeps the rest.
+//
+// Old caches are dropped only when no open page needs them. A page left open on the previous
+// build (a home-screen app sitting in the background is the usual case) still loads that build's
+// lazy chunks, and they live in the previous build's cache. So each page tells the worker which
+// build it runs (`hello`, carrying its entry script's path), the worker asks every page it has not
+// heard from (`potyro-build?`), and only once every open page has answered does it delete the caches
+// no page is running from. A page that never answers keeps every old cache in place: a cache
+// left a little too long costs space, one deleted too early costs a blank screen.
+//
+// Offline, EVERY navigation gets this build's own copy of the page, keyed "/" whatever the address
+// said (`/?user=…` is a route of the same page, not another document). That copy is only ever
+// written when this build's boot files are in the same cache, and only if it is this build's page
+// (it names this build's entry script). A cache is deleted whole, never the files its page names,
+// so an offline deep link cannot get a page whose scripts are gone.
 
-const CACHE = "potyro-v4";
+const BUILD = "__POTYRO_BUILD__";
+const PREFIX = "potyro-";
+const CACHE = PREFIX + BUILD;
+/** The page, whatever route it was asked for with. */
+const SHELL = "/";
+/** This build's list of its own files, kept beside them so it can be read offline. */
+const LIST_KEY = "/__potyro_shell_list";
+/** Never through the cache: the site's servers, and share links. */
+const BYPASS = ["/ai/", "/share-api/", "/requests/", "/rooms/", "/s/"];
+
+function bypassed(req) {
+  const path = new URL(req.url).pathname;
+  return BYPASS.some((prefix) => path.startsWith(prefix));
+}
+
+/** A response that may be kept: a success that does not ask not to be stored. */
+function storable(res) {
+  if (!res || !res.ok) return false;
+  const cacheControl = (res.headers && res.headers.get("cache-control")) || "";
+  return !/no-store/i.test(cacheControl);
+}
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
-  // Pre-caching the shell is an optimisation, not a precondition: `cache.add` REJECTS on a non-2xx,
-  // so behind an auth gate a single 401 here would fail the whole install and leave the previous
-  // worker in place indefinitely.
+  // Pre-caching the shell is an optimisation, not a precondition: a rejection here would fail the
+  // whole install, and behind an auth gate a single 401 would leave the previous worker in place
+  // indefinitely. Everything below swallows its own failures.
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((c) => Promise.all([c.add("/").catch(() => {}), precacheCatalogs(c), precacheBoot(c)]))
+      .then(async (cache) => {
+        const list = await fetchList();
+        if (list) await cache.put(LIST_KEY, new Response(JSON.stringify(list))).catch(() => {});
+        await Promise.all([precacheCatalogs(cache), ...(list ? list.boot : []).map((url) => keep(cache, url))]);
+        // The page last, once what it loads is here.
+        await keepShell(cache, list);
+      })
       .catch(() => {}),
   );
 });
 
-/** The build's list of its own files (packages/shell/vite.config.ts `precacheShell`). */
-function shellList() {
+/** The build's list of its own files, from the network (packages/shell/vite.config.ts `precacheShell`). */
+function fetchList() {
   return fetch("/shell-precache.json", { cache: "no-store" })
-    .then((res) => (res.ok ? res.json() : {}))
-    .then((list) => ({
-      boot: Array.isArray(list.boot) ? list.boot : [],
-      rest: Array.isArray(list.rest) ? list.rest : [],
-    }))
-    .catch(() => ({ boot: [], rest: [] }));
+    .then((res) => (res.ok ? res.json() : null))
+    .then(readList)
+    .catch(() => null);
+}
+
+function readList(list) {
+  if (!list || typeof list !== "object") return null;
+  return {
+    build: typeof list.build === "string" ? list.build : "",
+    entry: typeof list.entry === "string" ? list.entry : "",
+    boot: Array.isArray(list.boot) ? list.boot : [],
+    rest: Array.isArray(list.rest) ? list.rest : [],
+  };
+}
+
+/** This build's list, as kept at install. */
+function ownList(cache) {
+  return cache
+    .match(LIST_KEY)
+    .then((hit) => (hit ? hit.json() : null))
+    .then(readList)
+    .catch(() => null);
+}
+
+/**
+ * The list to fill this build's cache from: the server's when it is this build's, else the kept
+ * one. A server already on a NEWER build is the next worker's business; filling this cache with its
+ * files would only mix two builds in one cache.
+ */
+async function currentList(cache) {
+  const kept = await ownList(cache);
+  const fetched = await fetchList();
+  if (fetched && fetched.build === BUILD) {
+    if (!kept) await cache.put(LIST_KEY, new Response(JSON.stringify(fetched))).catch(() => {});
+    return fetched;
+  }
+  return kept;
 }
 
 /** Fetch one file into the cache unless it is there already. Never rejects. */
 function keep(cache, url) {
   return cache
     .match(url)
-    .then((hit) =>
-      hit
-        ? undefined
-        : fetch(url).then((res) => (res.ok ? cache.put(url, withoutVary(res)) : undefined)),
-    )
+    .then((hit) => (hit ? undefined : fetch(url).then((res) => (storable(res) ? cache.put(url, withoutVary(res)) : undefined))))
     .catch(() => {});
 }
 
-/**
- * The page's own script, styles and icons, at install (#123).
- *
- * On a first visit the page fetches its entry script BEFORE this worker is in charge, so the fetch
- * handler never sees it and it was never cached: after one visit online, a reload offline found the
- * cached page and no script — a blank screen. Best-effort like the rest of install: a failure leaves
- * that file to the fetch handler.
- */
-function precacheBoot(cache) {
-  return shellList().then(({ boot }) => Promise.all(boot.map((url) => keep(cache, url))));
+/** Are all of this build's boot files in its cache? Its page is only worth keeping if so. */
+async function bootKept(cache, list) {
+  if (!list) return true;
+  const hits = await Promise.all(list.boot.map((url) => cache.match(url)));
+  return hits.every(Boolean);
+}
+
+/** Is this HTML this build's page? It names this build's entry script. */
+async function isOwnPage(res, list) {
+  if (!list || !list.entry) return true;
+  const html = await res.clone().text();
+  return html.includes(list.entry);
+}
+
+/** The page, fresh, into this build's cache: only when it is this build's and its files are here. */
+async function keepShell(cache, list) {
+  try {
+    const res = await fetch(SHELL, { cache: "reload" });
+    if (!storable(res) || !(await isOwnPage(res, list)) || !(await bootKept(cache, list))) return;
+    await cache.put(SHELL, res);
+  } catch {
+    // Offline or refused: the next navigation online keeps it instead.
+  }
 }
 
 /**
  * Everything else the build made, after the worker has taken over: an example app opened for the
- * first time on a plane needs the bundler and the runtime's chunks, which Home never fetches. Asked
- * for by the page on each load (`warm`), so an interrupted run carries on next time; four at a time;
- * already-kept files cost one cache lookup. Then copies of OLDER builds' files are dropped — the
- * names are content-hashed, so without this every release would pile its whole build on top of the
- * last one. Only `/assets/`: the face finder's files are fetched on demand and kept as they are.
+ * first time on a plane needs the bundler and the runtime's chunks, which Home never fetches. Only
+ * when the page asks (`warm`): automatically on Wi-Fi or a cable, otherwise when the person chooses
+ * it in You (packages/shell/src/offline-ready.ts). An interrupted run carries on next time; four
+ * at a time; already-kept files cost one cache lookup. Then every open page hears how far it got.
  */
 let warming = null;
 function warm() {
-  warming ??= Promise.all([caches.open(CACHE), shellList()])
-    .then(async ([cache, { boot, rest }]) => {
-      if (!boot.length && !rest.length) return;
-      const queue = [...rest];
+  warming ??= caches
+    .open(CACHE)
+    .then(async (cache) => {
+      const list = await currentList(cache);
+      if (!list) return;
+      const queue = [...list.boot, ...list.rest];
       const worker = async () => {
         while (queue.length) await keep(cache, queue.shift());
       };
       await Promise.all([worker(), worker(), worker(), worker()]);
-      const current = new Set([...boot, ...rest]);
-      const kept = await cache.keys();
-      await Promise.all(
-        kept
-          .map((req) => new URL(req.url))
-          .filter((url) => url.origin === self.location.origin && url.pathname.startsWith("/assets/") && !current.has(url.pathname))
-          .map((url) => cache.delete(url.href)),
-      );
+      // The page too, now that its files are surely here.
+      if (!(await cache.match(SHELL))) await keepShell(cache, list);
     })
     .catch(() => {})
     .finally(() => {
       warming = null;
     });
-  return warming;
+  return warming.then(() => prune()).then(() => broadcast());
+}
+
+/** Is all of this build kept? What the You panel's "Everything works offline" waits for. */
+async function offlineReady() {
+  const cache = await caches.open(CACHE);
+  const list = await ownList(cache);
+  if (!list) return false;
+  const hits = await Promise.all([...list.boot, ...list.rest, SHELL].map((url) => cache.match(url)));
+  return hits.every(Boolean);
+}
+
+async function statusMessage(done = false) {
+  const ready = await offlineReady().catch(() => false);
+  return { type: "offline", ready, warming: !done && warming !== null, done };
+}
+
+function windows() {
+  return self.clients.matchAll({ type: "window", includeUncontrolled: true });
+}
+
+/** A run of `warm` has finished: tell every open page how much of Potyro is kept. */
+async function broadcast() {
+  const [message, pages] = await Promise.all([statusMessage(true), windows()]);
+  for (const page of pages) page.postMessage(message);
+}
+
+/** Which build each open page runs: client id → the path of its entry script. */
+const runs = new Map();
+let pruning = Promise.resolve();
+function prune() {
+  pruning = pruning.then(pruneNow).catch(() => {});
+  return pruning;
+}
+
+/**
+ * Drop what no open page can need (see the header): older builds' caches, and stray files of older
+ * builds a page of theirs left in this one. Nothing at all until every open page has said which
+ * build it runs.
+ */
+async function pruneNow() {
+  const cache = await caches.open(CACHE);
+  const list = await ownList(cache);
+  if (!list) return;
+  const pages = await windows();
+  for (const id of [...runs.keys()]) if (!pages.some((page) => page.id === id)) runs.delete(id);
+  const unheard = pages.filter((page) => !runs.has(page.id));
+  if (unheard.length) {
+    for (const page of unheard) page.postMessage({ type: "potyro-build?" });
+    return;
+  }
+  const mine = new Set(list.boot);
+  const elsewhere = [...new Set(pages.map((page) => runs.get(page.id)))].filter((entry) => !mine.has(entry));
+  for (const key of await caches.keys()) {
+    if (key === CACHE || !key.startsWith(PREFIX)) continue;
+    const old = await caches.open(key);
+    const inUse = (await Promise.all(elsewhere.map((entry) => old.match(entry)))).some(Boolean);
+    if (!inUse) await caches.delete(key);
+  }
+  // A page of another build is still open: what it stashed here may be its only copy.
+  if (elsewhere.length) return;
+  const current = new Set([...list.boot, ...list.rest]);
+  const kept = await cache.keys();
+  await Promise.all(
+    kept
+      .map((req) => new URL(req.url))
+      .filter((url) => url.pathname.startsWith("/assets/") && !current.has(url.pathname))
+      .map((url) => cache.delete(url.href)),
+  );
 }
 
 self.addEventListener("message", (event) => {
-  if (event.data && event.data.type === "warm") event.waitUntil(warm());
+  const data = event.data;
+  if (!data || typeof data !== "object") return;
+  if (data.type === "warm") event.waitUntil(warm());
+  else if (data.type === "status" && event.source) event.waitUntil(statusMessage().then((m) => event.source.postMessage(m)));
+  else if (data.type === "hello" && event.source && typeof data.entry === "string") {
+    runs.set(event.source.id, data.entry);
+    event.waitUntil(prune());
+  }
 });
 
-/**
- * Every language's catalog chunk, so switching language works offline (#298).
- *
- * Each language is a lazy chunk, fetched only when chosen — and this worker otherwise caches only
- * what has been fetched, so a language never used online would be missing on a plane. The build
- * writes the chunk list to `/i18n-precache.json` (packages/shell/vite.config.ts); the names are
- * content-hashed, so they cannot be written here. Best-effort, one file at a time: a failure leaves
- * that language to be fetched on demand, as before, and never fails the install.
- */
 /**
  * The response, minus its `Vary` header. Fetched here it was a plain request; the page later asks
  * for it as a module script, which carries an `Origin` header — and a server that answers
@@ -134,6 +282,15 @@ function withoutVary(res) {
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 }
 
+/**
+ * Every language's catalog chunk, so switching language works offline (#298).
+ *
+ * Each language is a lazy chunk, fetched only when chosen — and this worker otherwise caches only
+ * what has been fetched, so a language never used online would be missing on a plane. The build
+ * writes the chunk list to `/i18n-precache.json` (packages/shell/vite.config.ts); the names are
+ * content-hashed, so they cannot be written here. Best-effort, one file at a time: a failure leaves
+ * that language to be fetched on demand, as before, and never fails the install.
+ */
 function precacheCatalogs(cache) {
   return fetch("/i18n-precache.json", { cache: "no-store" })
     .then((res) => (res.ok ? res.json() : { files: [] }))
@@ -141,7 +298,7 @@ function precacheCatalogs(cache) {
       Promise.all(
         (Array.isArray(files) ? files : []).map((url) =>
           fetch(url)
-            .then((res) => (res.ok ? cache.put(url, withoutVary(res)) : undefined))
+            .then((res) => (storable(res) ? cache.put(url, withoutVary(res)) : undefined))
             .catch(() => {}),
         ),
       ),
@@ -149,19 +306,16 @@ function precacheCatalogs(cache) {
     .catch(() => {});
 }
 
+// No cache is deleted here: the pages still open may be on the build before (see the header).
+// Taking them over and asking each which build it runs is what lets `prune` decide.
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim()),
-  );
+  event.waitUntil(self.clients.claim().then(() => prune()));
 });
 
 /**
  * Cache a copy without letting a cache failure fail the response — and never cache a failure.
  *
- * `res.ok` is the whole guard: a 401 from an auth gate, a 404 from a stale asset name, a 5xx from a
+ * `res.ok` is the main guard: a 401 from an auth gate, a 404 from a stale asset name, a 5xx from a
  * relay hiccup are all answers that must not outlive the moment. An auth failure additionally
  * evicts any older copy, so recovering is a reload rather than "clear all site data".
  */
@@ -174,8 +328,8 @@ function stash(req, res) {
     return res;
   }
   // `type: "opaque"` is a cross-origin response we cannot inspect; `ok` is false for it, which is
-  // the conservative answer.
-  if (!res.ok) return res;
+  // the conservative answer. And `no-store` means what it says.
+  if (!storable(res)) return res;
   // The face finder's runtime and model (docs/25 §Faces) are versioned in their path and the same for
   // every origin; the runtime's loader is a module script, asked for with an `Origin` header, so a
   // `Vary: Origin` kept on the copy would make it miss offline (see `withoutVary`).
@@ -205,6 +359,7 @@ const RETRY_MARK = "/__potyro_auth_retry";
 async function stepAside(req) {
   const cache = await caches.open(CACHE);
   await cache.delete(req).catch(() => {});
+  await cache.delete(shellKey(req)).catch(() => {});
   const seen = await cache.match(RETRY_MARK);
   const recent = seen ? Date.now() - Number(await seen.text()) < 60_000 : false;
   await cache.put(RETRY_MARK, new Response(String(Date.now()))).catch(() => {});
@@ -221,15 +376,50 @@ async function stepAside(req) {
   return new Response(body, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
 }
 
+/** Where the page is kept, as an absolute URL beside the request's own. */
+function shellKey(req) {
+  return new URL(SHELL, req.url).href;
+}
+
+/**
+ * A navigation answered by the network: keep it as THE page when it is the page (any route of `/`)
+ * and this build's, with its files here. Another path is answered and not kept.
+ */
+function keepNavigation(req, res) {
+  const path = new URL(req.url).pathname;
+  if ((path === "/" || path === "/index.html") && storable(res)) {
+    const copy = res.clone();
+    caches
+      .open(CACHE)
+      .then(async (cache) => {
+        const list = await ownList(cache);
+        if (!(await isOwnPage(copy, list)) || !(await bootKept(cache, list))) return;
+        await cache.put(shellKey(req), copy);
+      })
+      .catch(() => {});
+  }
+  return res;
+}
+
+/** Offline: this build's page for every navigation; an older build's only if this one has none. */
+function shellCopy(req) {
+  return caches
+    .open(CACHE)
+    .then((cache) => cache.match(shellKey(req)))
+    .then((hit) => hit || caches.match(shellKey(req)));
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
+  // Straight to the network, as if there were no worker: nothing of it is kept.
+  if (bypassed(req)) return;
 
   if (req.mode === "navigate") {
     event.respondWith(
       fetch(req)
-        .then((res) => (res.status === 401 || res.status === 403 ? stepAside(req) : stash(req, res)))
-        .catch(() => caches.match(req).then((hit) => hit || caches.match("/"))),
+        .then((res) => (res.status === 401 || res.status === 403 ? stepAside(req) : keepNavigation(req, res)))
+        .catch(() => shellCopy(req)),
     );
     return;
   }
@@ -240,7 +430,7 @@ self.addEventListener("fetch", (event) => {
         hit ||
         fetch(req)
           .then((res) => stash(req, res))
-          .catch(() => caches.match("/")),
+          .catch(() => shellCopy(req)),
     ),
   );
 });

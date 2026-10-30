@@ -5,6 +5,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 import react from "@vitejs/plugin-react";
 import { linguiBabelPlugin, linguiVitePlugins } from "@potyro/i18n/build.mjs";
 import { realmViewPlugin, realmWorkerPlugin } from "@potyro/host/realm-build.mjs";
@@ -15,6 +16,7 @@ import { createShareHandler, type ShareRequest } from "../share-links/src/handle
 import { memoryShareStore } from "../share-links/src/store.ts";
 import { LIMITS as SHARE_LIMITS } from "../share-links/src/wire.ts";
 import { FACES_DIR, FACES_MODEL, FACES_RUNTIME } from "./src/faces/faces-assets.ts";
+import { stampServiceWorker } from "./src/sw-stamp.ts";
 
 /**
  * The shell's own CSP (#272, docs/22 §3.2): it embeds no frame that fetches, so `frame-src 'none'`.
@@ -228,18 +230,24 @@ const PUBLIC_BOOT = ["manifest.webmanifest", "favicon.svg", "icon-192.png", "ico
  *
  * Two lists. `boot` is the page's entry and everything it imports statically, with their styles and
  * fonts: without these nothing shows, so the worker's install fetches them. `rest` is every other file the
- * build emitted under assets/: the worker fetches those after it takes over, a few at a time, and
- * drops copies of older builds' files that are no longer in the list. Content-hashed names, known
- * only after the build, hence a file rather than a list in sw.js.
+ * build emitted under assets/: the worker fetches those when the page asks (`warm`), a few at a time.
+ * Content-hashed names, known only after the build, hence a file rather than a list in sw.js.
+ *
+ * And the build's id (#123): a hash of both lists, written into the list and stamped into the
+ * emitted `sw.js` (its `BUILD`). A changed sw.js is what makes the browser install a new worker on a
+ * release, with a cache of its own, instead of one worker mixing every build into one cache. `entry`
+ * is the page's entry script, which is how the worker tells its own page from another build's.
  */
 function precacheShell(): Plugin {
   let base = "/";
+  let publicDir = "";
   return {
     name: "potyro-precache-shell",
     apply: "build",
     enforce: "post",
     configResolved(config) {
       base = config.base;
+      publicDir = config.publicDir;
     },
     generateBundle(_options, bundle) {
       const boot = new Set<string>();
@@ -255,13 +263,21 @@ function precacheShell(): Plugin {
         // it, and install has to finish on a slow connection or nothing is kept at all.
         for (const asset of meta?.importedAssets ?? []) if (/\.woff2?$/.test(asset)) boot.add(asset);
       };
-      for (const item of Object.values(bundle)) if (item.type === "chunk" && item.isEntry) visit(item.fileName);
+      const entries = Object.values(bundle).filter((item) => item.type === "chunk" && item.isEntry);
+      for (const item of entries) visit(item.fileName);
+      const entry = entries.find((item) => item.type === "chunk" && /[\\/]src[\\/]main\.tsx$/.test(item.facadeModuleId ?? "")) ?? entries[0];
+      if (!entry) throw new Error("precacheShell: the build has no entry chunk");
       const rest = Object.keys(bundle).filter((f) => f.startsWith("assets/") && !boot.has(f) && !f.endsWith(".map"));
-      const listed = {
+      const lists = {
         boot: [...[...boot].filter((f) => !f.endsWith(".map")), ...PUBLIC_BOOT].map((f) => `${base}${f}`).sort(),
         rest: rest.map((f) => `${base}${f}`).sort(),
       };
+      const build = createHash("sha256").update(JSON.stringify(lists)).digest("hex").slice(0, 12);
+      const listed = { build, entry: `${base}${entry.fileName}`, ...lists };
       this.emitFile({ type: "asset", fileName: SHELL_MANIFEST, source: `${JSON.stringify(listed, null, 2)}\n` });
+      // Over the copy of public/sw.js Vite has already written to the output directory.
+      const sw = readFileSync(join(publicDir, "sw.js"), "utf8");
+      this.emitFile({ type: "asset", fileName: "sw.js", source: stampServiceWorker(sw, build) });
     },
   };
 }
