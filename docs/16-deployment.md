@@ -1254,6 +1254,36 @@ curl -s https://potyro.com/ | grep -c 'potyro.app/s/'       # one Try it and one
 Open it in a private window with the network panel open: every request should go to potyro.com. Then
 tap one card's **Try it** (the app opens sealed) and **Make it mine** (the Make it mine card opens over it).
 
+## The privacy page and the terms (#117): built, not yet served
+
+`/privacy` and `/terms` are static pages made from `docs/legal/privacy.md` and `terms.md` by
+`packages/legal` (docs/legal/README.md). **While either text still has a placeholder or its Draft
+note, no build makes them**: `vite build` and `pnpm gallery:build` print one line instead
+(`legal: /privacy and /terms not built: …`) and the app and the gallery link nothing. That is the
+state of main today, and both sites deploy as they always have.
+
+Once the owner has filled the texts, the next build of each site has them, with nothing to set:
+
+- **potyro.app** (the watcher's `vite build`): `privacy.html`, `privacy/index.html`, the same for
+  terms, and `legal/` in `packages/shell/dist`. The SPA fallback must not answer `/privacy` with the
+  app: Caddy's `try_files` (or whatever sends unknown paths to `index.html`) must try the file
+  first, for example `try_files {path} {path}.html {path}/index.html /index.html`. The live
+  Caddyfile is not in this repository, so check it after the first deploy with the pages.
+- **potyro.com** (`pnpm gallery:build`, rsync as above): `privacy/index.html`, `terms/index.html`
+  and `legal/` beside the gallery. The `file_server` above serves them as they are (`/privacy`
+  redirects to `/privacy/`). They have no script and no inline style, so the CSP above holds. Add
+  them to the no-cache rule: `@page path / /index.html /privacy/* /terms/*`.
+
+The service worker serves a navigation network first, so `/privacy` comes from the server whenever
+the device is online; offline it is the copy from the last visit, or the app if there is none. The
+stylesheet is named by version (`legal.css?v=…`), so its cache-first copy is never stale.
+
+```bash
+curl -s https://potyro.app/privacy | grep -c 'data-legal="privacy"'   # 1, not the app's index.html
+curl -s https://potyro.app/terms   | grep -c 'data-legal="terms"'     # 1
+curl -sL https://potyro.com/privacy | grep -c 'data-legal="privacy"'  # 1
+```
+
 ## What this does NOT protect
 
 Be straight with anyone you invite:

@@ -46,10 +46,10 @@ When the code changes, change the claim here first, then the public text.
 | F-22 | The relay is unauthenticated: anyone who reaches it can store data. | docs/16 "What this does NOT protect", KA-29 (#119 open) | doc |
 | F-23 | Anyone with an invite link can join. | docs/16 "What this does NOT protect", KA-17 | doc |
 
-**Mismatch to fix in the shell.** `backup-switch.tsx` says "Turn sync off for an app individually to
-take it back off the relay." F-20 says turning sync off removes nothing from the relay. It also says
-"The relay only ever sees encrypted data", which F-16 and F-17 contradict. Neither string was
-changed here.
+**Mismatch fixed in the shell (#117).** `backup-switch.tsx` said "Turn sync off for an app
+individually to take it back off the relay", which F-20 contradicts, and "The relay only ever sees
+encrypted data", which F-16 and F-17 contradict. It now says turning sync off deletes nothing, and
+that names and who shares with whom can be seen on the relay.
 
 ## Demo links
 
@@ -103,7 +103,7 @@ changed here.
 | # | Claim | Proof | Status |
 |---|---|---|---|
 | F-51 | A request holds the person's words, the app's name and structure (no records), the language, a request id and the device id. The issue shows the words, language, app and request id, never the device id or address. Rate limits per device and per address are in memory. | docs/16 "Requests to the Potyro team"; `platform-requests/src/request.ts` `issueBody`; `relay.ts` header | code |
-| F-51a | The card says the list is public. | `shell/src/platform-request-card.tsx` ("It goes on a public list…") | code |
+| F-51a | The card says the request is posted publicly on GitHub; the wording form says the same. | `shell/src/platform-request-card.tsx` ("It is posted publicly on GitHub…"), `suggest-wording.tsx` | code |
 | F-51b | The request relay is live on potyro.app. | `https://potyro.app/requests/health` → `{"ok":true}` | observed |
 
 ## Rooms
