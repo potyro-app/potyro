@@ -6,10 +6,14 @@
 //   SHARE_ADMIN_TOKEN              the operator's token for DELETE /share-api/admin/shares/<id> (at least 32
 //                                  characters; `openssl rand -base64 33`). Unset: that route does not exist,
 //                                  and links are taken down with scripts/takedown.mjs on the server (docs/16)
-//   SHARE_ABUSE_CONTACT            the address a taken-down link's page says to write to (the terms' report address)
+//   SHARE_ABUSE_CONTACT            the address a taken-down link's page says to write to (the terms' report address).
+//                                  Unset, or a placeholder like `<ABUSE EMAIL>`: contact@potyro.com (a placeholder is logged)
 //   SHARE_CREATE_PER_ADDRESS_DAY   default 30 — links one address (IPv6: its /64) makes a day (UTC)
 //   SHARE_PAYLOAD_PER_ADDRESS_DAY  default 300 — packages it fetches a day: one per demo opened
 //   SHARE_PAGE_PER_ADDRESS_DAY     default 2000 — link pages and preview pictures it fetches a day
+//                                  (an IPv6 /48 gets eight times each of these three, all its /64s together)
+//   SHARE_STORED_BYTES_DAY         default 2000000000 — bytes of new links the whole service keeps a day
+//   SHARE_MIN_FREE_BYTES           default 1000000000 — no new link while the disk would have less free
 //   TRUST_PROXY                    default caddy — whose X-Forwarded-For to believe (address.ts); `none` for none
 //   PORT                           default 4203
 //   HOST                           default 127.0.0.1 — reachable only through the proxy in front of it
@@ -18,7 +22,7 @@
 // shell needs no CORS. Whose address a request is comes from the proxy (address.ts, #348). Bound to
 // loopback, only the proxy reaches it. The operator token is never logged.
 import { createServer, type Server } from "node:http";
-import { readFile } from "node:fs/promises";
+import { readFile, statfs } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { clientAddress, readTrustProxy, type TrustProxy } from "./address.ts";
 import { createShareHandler, MIN_ADMIN_TOKEN, type Limits, type ShareRequest, type ShareResponse } from "./handler.ts";
@@ -58,12 +62,40 @@ export function startServer(opts: { handle: (req: ShareRequest) => Promise<Share
   return new Promise((resolve) => server.listen(opts.port, opts.host, () => resolve(server)));
 }
 
-/** The per-address limits from the environment; a value that is not a whole number above 0 stops the service. */
+/** Where a taken-down link's page says to write when SHARE_ABUSE_CONTACT names nobody. */
+export const GENERAL_CONTACT = "contact@potyro.com";
+
+/** `<ABUSE EMAIL>` and the like: a value nobody has filled in yet (the same rule as the shell's contact.ts). */
+export const isPlaceholder = (value: string): boolean => /^<[^>]*>$/.test(value.trim());
+
+/**
+ * `SHARE_ABUSE_CONTACT`, or the general address when it is unset or still a placeholder — never a
+ * `mailto:` nobody can send to. A placeholder is said once at start, so the operator sees it.
+ */
+export function readAbuseContact(raw: string | undefined, warn: (message: string) => void = console.warn): string {
+  const value = (raw ?? "").trim();
+  if (!value) return GENERAL_CONTACT;
+  if (isPlaceholder(value)) {
+    warn(`[share-links] SHARE_ABUSE_CONTACT is the placeholder ${value}: taken-down links say to write to ${GENERAL_CONTACT}. Set the real report address.`);
+    return GENERAL_CONTACT;
+  }
+  return value;
+}
+
+/** The free bytes on the disk `dir` is on. */
+export const freeBytesOf = (dir: string) => async (): Promise<number> => {
+  const s = await statfs(dir);
+  return s.bavail * s.bsize;
+};
+
+/** The limits from the environment; a value that is not a whole number above 0 stops the service. */
 export function readLimits(env: Record<string, string | undefined>): Partial<Limits> {
   const names: Array<[keyof Limits, string]> = [
     ["createsPerDay", "SHARE_CREATE_PER_ADDRESS_DAY"],
     ["payloadsPerDay", "SHARE_PAYLOAD_PER_ADDRESS_DAY"],
     ["pagesPerDay", "SHARE_PAGE_PER_ADDRESS_DAY"],
+    ["storedBytesPerDay", "SHARE_STORED_BYTES_DAY"],
+    ["minFreeBytes", "SHARE_MIN_FREE_BYTES"],
   ];
   const out: Partial<Limits> = {};
   for (const [key, name] of names) {
@@ -100,13 +132,14 @@ async function main(): Promise<void> {
     console.error(`[share-links] SHARE_ADMIN_TOKEN is shorter than ${MIN_ADMIN_TOKEN} characters; make a longer one (openssl rand -base64 33).`);
     process.exit(1);
   }
-  const abuseContact = process.env.SHARE_ABUSE_CONTACT || undefined;
+  const abuseContact = readAbuseContact(process.env.SHARE_ABUSE_CONTACT);
   const handle = createShareHandler({
     store: diskShareStore(dir),
     indexHtml: () => readFile(index, "utf8"),
     publicOrigin: process.env.POTYRO_PUBLIC_ORIGIN,
     adminToken,
     abuseContact,
+    freeBytes: freeBytesOf(dir),
     limits,
     // The error's message only: never a request, its headers or the operator's token.
     onError: (e) => console.error("[share-links]", e instanceof Error ? e.message : e),
@@ -114,7 +147,7 @@ async function main(): Promise<void> {
   await startServer({ handle, port, host, trustProxy });
   console.log(
     `[share-links] keeping shares in ${dir}, page from ${index}, listening on ${host}:${port}, trusting ${trustProxy}; ` +
-      `operator takedown ${adminToken ? "on" : "off (no SHARE_ADMIN_TOKEN)"}; ${abuseContact ? "report address set" : "no SHARE_ABUSE_CONTACT: a taken-down link names no address"}`,
+      `operator takedown ${adminToken ? "on" : "off (no SHARE_ADMIN_TOKEN)"}; a taken-down link says to write to ${abuseContact}`,
   );
 }
 

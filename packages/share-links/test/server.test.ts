@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { readLimits, startServer } from "../src/server.ts";
+import { GENERAL_CONTACT, readAbuseContact, readLimits, startServer } from "../src/server.ts";
 import { createShareHandler, type ShareRequest } from "../src/handler.ts";
 import { clientAddress, readTrustProxy } from "../src/address.ts";
 import { memoryShareStore } from "../src/store.ts";
@@ -71,5 +71,18 @@ describe("whose address it is, and the limits from the environment", () => {
     });
     expect(() => readLimits({ SHARE_PAGE_PER_ADDRESS_DAY: "lots" })).toThrow(/SHARE_PAGE_PER_ADDRESS_DAY/);
     expect(() => readLimits({ SHARE_CREATE_PER_ADDRESS_DAY: "0" })).toThrow(/above 0/);
+    expect(readLimits({ SHARE_STORED_BYTES_DAY: "1000", SHARE_MIN_FREE_BYTES: "50" })).toEqual({ storedBytesPerDay: 1000, minFreeBytes: 50 });
+  });
+
+  it("never names a placeholder as the report address: it says so, and names the general one", () => {
+    const said: string[] = [];
+    const warn = (m: string) => said.push(m);
+    expect(readAbuseContact("<ABUSE EMAIL>", warn)).toBe(GENERAL_CONTACT);
+    expect(said.join()).toMatch(/placeholder <ABUSE EMAIL>/);
+    expect(readAbuseContact(" <anything> ", warn)).toBe(GENERAL_CONTACT);
+    expect(readAbuseContact(undefined, warn)).toBe("contact@potyro.com");
+    expect(readAbuseContact("", warn)).toBe("contact@potyro.com");
+    expect(said).toHaveLength(2);
+    expect(readAbuseContact("abuse@potyro.app", warn)).toBe("abuse@potyro.app");
   });
 });

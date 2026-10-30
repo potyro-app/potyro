@@ -84,6 +84,20 @@ describe("scripts/takedown.mjs", () => {
     expect(missing.err).toMatch(/No link/);
   });
 
+  it("sends the token only over https, or to this machine", async () => {
+    const http = await run(["A".repeat(22), "--reason", "x", "--site", "http://potyro.app"], { SHARE_ADMIN_TOKEN: ADMIN });
+    expect(http.code).toBe(1);
+    expect(http.err).toMatch(/must start with https:\/\//);
+    expect(http.err).not.toContain(ADMIN);
+    const { siteBaseOf } = (await import(SCRIPT)) as { siteBaseOf: (s: string) => string };
+    expect(siteBaseOf("https://potyro.app/")).toBe("https://potyro.app");
+    expect(siteBaseOf("https://apps.example/potyro/")).toBe("https://apps.example/potyro");
+    expect(siteBaseOf("http://localhost:4203")).toBe("http://localhost:4203");
+    expect(siteBaseOf("http://127.0.0.1:4203")).toBe("http://127.0.0.1:4203");
+    expect(() => siteBaseOf("ftp://potyro.app")).toThrow(/https/);
+    expect(() => siteBaseOf("potyro.app")).toThrow(/not an address/);
+  });
+
   it("wants one id and a reason, and says how", async () => {
     expect((await run(["not-an-id", "--reason", "x"])).code).toBe(2);
     const noReason = await run(["A".repeat(22)], { SHARE_ADMIN_TOKEN: ADMIN });
