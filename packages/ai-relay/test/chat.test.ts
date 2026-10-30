@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { createChatProxy, readChatRequest, type ChatReply, type ChatRequest } from "../src/chat.ts";
+import { CHAT_MESSAGES, chatLimits, createChatProxy, NOT_ENOUGH_LEFT, readChatRequest, type ChatReply, type ChatRequest } from "../src/chat.ts";
+import { createBudget } from "../src/budget.ts";
 import { memoryLedger } from "../src/ledger.ts";
+import { estimateUsd, MODEL_PRICES } from "../src/prices.ts";
 
 const NOW = Date.UTC(2026, 9, 15, 12);
 const MODEL = "deepseek/deepseek-v4-flash-0731";
 const AUTH = "Bearer potyro-device:device-0001";
 const enc = new TextEncoder();
+
+/** What the relay estimates a body costs at most on the default model (prices.ts). */
+const estimate = (body: unknown, maxTokens = 64_000): number => estimateUsd(MODEL_PRICES[MODEL]!, JSON.stringify(body).length, maxTokens);
 
 const chatBody = (over: Record<string, unknown> = {}) => ({ model: MODEL, messages: [{ role: "user", content: "Make me a plant app." }], ...over });
 const post = (body: unknown, over: Partial<ChatRequest> = {}): ChatRequest => ({
@@ -46,22 +51,22 @@ function controlled() {
 }
 
 describe("what a chat request may be", () => {
-  const opts = { models: [MODEL], maxTokens: 32_000, planned: false };
+  const opts = { models: [MODEL], maxTokens: 64_000, planned: false };
 
   it("refuses an unknown model, or one with OpenRouter's :online suffix", () => {
-    expect(readChatRequest(chatBody({ model: "openai/gpt-6" }), opts)).toMatchObject({ ok: false, status: 400, error: "model" });
-    expect(readChatRequest(chatBody({ model: `${MODEL}:online` }), opts)).toMatchObject({ ok: false, error: "model" });
-    expect(readChatRequest(chatBody({ model: undefined }), opts)).toMatchObject({ ok: false, error: "model" });
+    expect(readChatRequest(chatBody({ model: "openai/gpt-6" }), opts)).toMatchObject({ ok: false, status: 400, code: "model" });
+    expect(readChatRequest(chatBody({ model: `${MODEL}:online` }), opts)).toMatchObject({ ok: false, code: "model" });
+    expect(readChatRequest(chatBody({ model: undefined }), opts)).toMatchObject({ ok: false, code: "model" });
   });
 
   it("refuses fields it does not know, among them a model list and a user id", () => {
-    expect(readChatRequest(chatBody({ models: [MODEL, "openai/gpt-6"] }), opts)).toMatchObject({ ok: false, error: "unknown field models" });
-    expect(readChatRequest(chatBody({ user: "someone" }), opts)).toMatchObject({ ok: false, error: "unknown field user" });
+    expect(readChatRequest(chatBody({ models: [MODEL, "openai/gpt-6"] }), opts)).toMatchObject({ ok: false, code: "request", param: "models" });
+    expect(readChatRequest(chatBody({ user: "someone" }), opts)).toMatchObject({ ok: false, code: "request", param: "user" });
   });
 
   it("refuses OpenRouter's server tools without a plan, in each of the ways they are asked for", () => {
-    expect(readChatRequest(chatBody({ tools: [{ type: "openrouter:web_search" }] }), opts)).toMatchObject({ ok: false, status: 403, error: "plan" });
-    expect(readChatRequest(chatBody({ plugins: [{ id: "web" }] }), opts)).toMatchObject({ ok: false, status: 403, error: "plan" });
+    expect(readChatRequest(chatBody({ tools: [{ type: "openrouter:web_search" }] }), opts)).toMatchObject({ ok: false, status: 403, code: "plan" });
+    expect(readChatRequest(chatBody({ plugins: [{ id: "web" }] }), opts)).toMatchObject({ ok: false, status: 403, code: "plan" });
     expect(readChatRequest(chatBody({ web_search_options: { search_context_size: "high" } }), opts)).toMatchObject({ ok: false, status: 403 });
     // With a plan (none exist yet), they go through.
     expect(readChatRequest(chatBody({ tools: [{ type: "openrouter:web_search" }] }), { ...opts, planned: true }).ok).toBe(true);
@@ -77,7 +82,7 @@ describe("what a chat request may be", () => {
     ];
     const reasoning = { effort: "high", exclude: true };
     const read = readChatRequest(chatBody({ messages, tools, tool_choice: "auto", reasoning, temperature: 0.2 }), opts);
-    if (!read.ok) throw new Error(read.error);
+    if (!read.ok) throw new Error(read.code);
     expect(read.body.messages).toEqual(messages);
     expect(read.body.tools).toEqual(tools);
     expect(read.body.tool_choice).toBe("auto");
@@ -86,17 +91,28 @@ describe("what a chat request may be", () => {
   });
 
   it("decides the token cap, the provider's data rule and the usage report itself", () => {
-    const read = readChatRequest(chatBody({ max_tokens: 64_000, provider: { sort: "throughput", data_collection: "allow" }, usage: { include: false } }), opts);
-    if (!read.ok) throw new Error(read.error);
-    expect(read.body.max_tokens).toBe(32_000);
+    const read = readChatRequest(chatBody({ max_tokens: 100_000, provider: { sort: "throughput", data_collection: "allow" }, usage: { include: false } }), opts);
+    if (!read.ok) throw new Error(read.code);
+    expect(read.body.max_tokens).toBe(64_000);
+    expect(read.maxTokens).toBe(64_000);
     expect(read.body.provider).toEqual({ sort: "throughput", data_collection: "deny" });
     expect(read.body.usage).toEqual({ include: true });
     // No cap asked for: the clamp, never open-ended.
     const open = readChatRequest(chatBody(), opts);
-    expect(open.ok && open.body.max_tokens).toBe(32_000);
+    expect(open.ok && open.body.max_tokens).toBe(64_000);
     const small = readChatRequest(chatBody({ max_tokens: 500 }), opts);
     expect(small.ok && small.body.max_tokens).toBe(500);
-    expect(readChatRequest(chatBody({ max_tokens: -1 }), opts)).toMatchObject({ ok: false, error: "max_tokens" });
+    expect(small.ok && small.maxTokens).toBe(500);
+    // Only max_completion_tokens: that is the most the answer may be.
+    const completion = readChatRequest(chatBody({ max_completion_tokens: 2_000 }), opts);
+    expect(completion.ok && [completion.body.max_tokens, completion.maxTokens]).toEqual([undefined, 2_000]);
+    expect(readChatRequest(chatBody({ max_tokens: -1 }), opts)).toMatchObject({ ok: false, code: "request", param: "max_tokens" });
+  });
+
+  it("leaves the Studio's high thinking level (64 000 tokens) as it asked", () => {
+    const read = readChatRequest(chatBody({ max_tokens: 64_000, reasoning: { effort: "high" } }), opts);
+    expect(read.ok && read.body.max_tokens).toBe(64_000);
+    expect(chatLimits().maxTokens).toBe(64_000);
   });
 });
 
@@ -125,8 +141,8 @@ describe("the chat route", () => {
     expect((await chat.handle(post(chatBody(), { authorization: "Bearer sk-or-v1-someones-key" }))).status).toBe(401);
     expect((await chat.handle(post("{nope"))).status).toBe(400);
     expect((await chat.handle(post("x".repeat(5 * 1024 * 1024)))).status).toBe(413);
-    expect(await chat.handle(post(chatBody({ model: "anthropic/claude-opus-5" })))).toMatchObject({ status: 400, json: { ok: false, error: "model" } });
-    expect(await chat.handle(post(chatBody({ tools: [{ type: "openrouter:web_search" }] })))).toMatchObject({ status: 403, json: { error: "plan" } });
+    expect(await chat.handle(post(chatBody({ model: "anthropic/claude-opus-5" })))).toMatchObject({ status: 400, json: { error: { code: "model", type: "potyro" } } });
+    expect(await chat.handle(post(chatBody({ tools: [{ type: "openrouter:web_search" }] })))).toMatchObject({ status: 403, json: { error: { code: "plan" } } });
     // A plan token is no use while no plan exists.
     expect((await chat.handle(post(chatBody({ plugins: [{ id: "web" }] }), { plan: "anything" }))).status).toBe(403);
     expect((await chat.handle({ ...post(chatBody()), method: "GET" })).status).toBe(405);
@@ -142,7 +158,7 @@ describe("the chat route", () => {
     await text(await chat.handle(post(chatBody())));
     // 0.45 spent + 0.1 would not: refused unsent, with nothing left.
     const third = await chat.handle(post(chatBody()));
-    expect(third).toMatchObject({ status: 429, json: { ok: false, error: "allowance", reason: "device-month" }, headers: { "x-potyro-left-usd": "0" } });
+    expect(third).toMatchObject({ status: 429, json: { error: { code: "allowance", message: CHAT_MESSAGES.allowance } }, headers: { "x-potyro-left-usd": "0" } });
     await chat.handle(post(chatBody()));
     expect(up.sent).toHaveLength(2);
     expect(ledger.events()["2026-10"]).toEqual({ exhausted: 1 });
@@ -155,7 +171,7 @@ describe("the chat route", () => {
     const ledger = memoryLedger();
     ledger.addSpend("2026-10", 9.99); // what /complete spent this month
     const chat = createChatProxy({ upstream: up.fn, now: () => NOW, ledger, limits: { monthlyUsd: 10, reserveUsd: 0.02 } });
-    expect(await chat.handle(post(chatBody()))).toMatchObject({ status: 429, json: { error: "allowance", reason: "service-month" } });
+    expect(await chat.handle(post(chatBody()))).toMatchObject({ status: 429, json: { error: { code: "service-month" } } });
     expect(up.sent).toHaveLength(0);
   });
 
@@ -170,7 +186,7 @@ describe("the chat route", () => {
     const a = await chat.handle(post(chatBody()));
     const b = await chat.handle(post(chatBody()));
     // Two reserves (0.04) are out; a third would need 0.06 of 0.05.
-    expect(await chat.handle(post(chatBody()))).toMatchObject({ status: 429, json: { error: "busy" } });
+    expect(await chat.handle(post(chatBody()))).toMatchObject({ status: 429, json: { error: { code: "busy" } } });
     pending.forEach((p) => (p.push(answer(0.001)), p.end()));
     await Promise.all([text(a), text(b)]);
     expect((await chat.handle(post(chatBody()))).status).toBe(200);
@@ -185,7 +201,7 @@ describe("the chat route", () => {
     };
     const chat = createChatProxy({ upstream: slow, now: () => NOW });
     const out = [await chat.handle(post(chatBody())), await chat.handle(post(chatBody())), await chat.handle(post(chatBody()))];
-    expect(await chat.handle(post(chatBody()))).toMatchObject({ status: 429, json: { error: "busy" } });
+    expect(await chat.handle(post(chatBody()))).toMatchObject({ status: 429, json: { error: { code: "busy" } } });
     pending.forEach((p) => (p.push(answer(0)), p.end()));
     await Promise.all(out.map(text));
     expect((await chat.handle(post(chatBody()))).status).toBe(200);
@@ -193,14 +209,17 @@ describe("the chat route", () => {
 
   it("holds one address to its daily dollars whatever device ids it sends", async () => {
     const up = upstream([() => new Response(answer(0.6)), () => new Response(answer(0.6))]);
-    const chat = createChatProxy({ upstream: up.fn, now: () => NOW, limits: { addressDayUsd: 1, deviceMonthUsd: 5, reserveUsd: 0.02 } });
+    const chat = createChatProxy({ upstream: up.fn, now: () => NOW, limits: { addressDayUsd: 1, deviceMonthUsd: 5, reserveUsd: 0.02, dayUsd: 5 } });
     await text(await chat.handle(post(chatBody(), { authorization: "Bearer potyro-device:fresh-id-1" })));
     const second = await chat.handle(post(chatBody(), { authorization: "Bearer potyro-device:fresh-id-2" }));
     expect(second.status).toBe(200);
-    // A third fits while the second is out: 0.6 spent and 0.04 held of 1.
+    // A third fits while the second is out: 0.6 spent and two holds (each the estimate, ~0.018, or
+    // the 0.02 reserve, whichever is more) of 1.
     expect(await chat.handle(post(chatBody(), { authorization: "Bearer potyro-device:fresh-id-9" }))).toMatchObject({ status: 200 });
     await text(second);
-    expect(await chat.handle(post(chatBody(), { authorization: "Bearer potyro-device:fresh-id-3" }))).toMatchObject({ json: { reason: "address-day" } });
+    expect(await chat.handle(post(chatBody(), { authorization: "Bearer potyro-device:fresh-id-3" }))).toMatchObject({
+      json: { error: { code: "address-day", message: "Free AI is busy on this network today; it is back tomorrow, or add your own key in Model settings." } },
+    });
   });
 
   it("forwards a streamed answer piece by piece, keep-alive lines included, and debits the cost in its final chunk", async () => {
@@ -234,27 +253,87 @@ describe("the chat route", () => {
     expect(ledger.spent("2026-10")).toBeCloseTo(0.0031);
   });
 
-  it("charges the reserve when the cost is not known, and nothing when OpenRouter refused or failed", async () => {
+  it("charges the estimate whenever the answer does not say what it cost, and passes a refusal back as it is", async () => {
     const ledger = memoryLedger();
+    const errors: unknown[] = [];
     const up = upstream([
       () => new Response(answer(null)),
       () => new Response('{"error":{"message":"reasoning is mandatory"}}', { status: 400 }),
       () => new Response('{"error":{"message":"Insufficient credits"}}', { status: 402 }),
       () => new Response('{"error":{"message":"upstream died"}}'),
       new Error("network"),
+      () => new Response(answer(0.001)),
     ]);
-    const chat = createChatProxy({ upstream: up.fn, now: () => NOW, ledger, limits: { reserveUsd: 0.02 } });
+    const chat = createChatProxy({ upstream: up.fn, now: () => NOW, ledger, limits: { reserveUsd: 0.02 }, onError: (e) => errors.push(e) });
+    const each = estimate(chatBody());
     await text(await chat.handle(post(chatBody())));
-    expect(ledger.spent("2026-10")).toBeCloseTo(0.02);
+    expect(ledger.spent("2026-10")).toBeCloseTo(each, 9);
     // A refusal the Studio acts on comes back as it is.
     const refused = await chat.handle(post(chatBody()));
     expect(refused.status).toBe(400);
     expect(await text(refused)).toContain("reasoning is mandatory");
     // Potyro's key out of credit is not the sender's business.
-    expect(await chat.handle(post(chatBody()))).toMatchObject({ status: 502, json: { error: "upstream" } });
+    expect(await chat.handle(post(chatBody()))).toMatchObject({ status: 502, json: { error: { code: "upstream" } } });
     await text(await chat.handle(post(chatBody())));
     expect((await chat.handle(post(chatBody()))).status).toBe(502);
-    expect(ledger.spent("2026-10")).toBeCloseTo(0.02);
+    // Five answers without a cost: five estimates. Then one that says what it cost: that.
+    expect(ledger.spent("2026-10")).toBeCloseTo(5 * each, 9);
+    await text(await chat.handle(post(chatBody())));
+    expect(ledger.spent("2026-10")).toBeCloseTo(5 * each + 0.001, 9);
+    expect(errors).toHaveLength(2);
+  });
+
+  it("charges the estimate when the sender goes away before OpenRouter answers, and does not report it as a failure", async () => {
+    const ledger = memoryLedger();
+    const errors: unknown[] = [];
+    const gone = new AbortController();
+    const chat = createChatProxy({
+      upstream: (_body, signal) =>
+        new Promise<Response>((_resolve, reject) => signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")))),
+      now: () => NOW,
+      ledger,
+      onError: (e) => errors.push(e),
+    });
+    const pending = chat.handle(post(chatBody(), { signal: gone.signal }));
+    gone.abort();
+    expect((await pending).status).toBe(502);
+    expect(ledger.deviceSpent("2026-10", "device-0001")).toBeCloseTo(estimate(chatBody()), 9);
+    expect(errors).toEqual([]);
+  });
+
+  it("charges the estimate when a timeout or the network ends a request, and reports it", async () => {
+    const ledger = memoryLedger();
+    const errors: unknown[] = [];
+    const chat = createChatProxy({ upstream: async () => Promise.reject(new DOMException("timed out", "TimeoutError")), now: () => NOW, ledger, onError: (e) => errors.push(e) });
+    expect((await chat.handle(post(chatBody()))).status).toBe(502);
+    expect(ledger.spent("2026-10")).toBeCloseTo(estimate(chatBody()), 9);
+    expect(errors).toHaveLength(1);
+  });
+
+  it("charges the estimate for a stream cut before its usage chunk", async () => {
+    const c = controlled();
+    const ledger = memoryLedger();
+    const chat = createChatProxy({ upstream: async () => new Response(c.stream), now: () => NOW, ledger });
+    const res = await chat.handle(post(chatBody({ stream: true, max_tokens: 1_000 })));
+    c.push('data: {"choices":[{"delta":{"content":"Hel"}}]}\n\n');
+    c.end();
+    await text(res);
+    expect(ledger.spent("2026-10")).toBeCloseTo(estimate(chatBody({ stream: true, max_tokens: 1_000 }), 1_000), 9);
+  });
+
+  it("refuses unsent a request whose estimate is more than the device has left, and says a smaller one may fit", async () => {
+    const ledger = memoryLedger();
+    ledger.debit("2026-10", "device-0001", 0.47);
+    const up = upstream();
+    const chat = createChatProxy({ upstream: up.fn, now: () => NOW, ledger, limits: { deviceMonthUsd: 0.5, reserveUsd: 0.02 } });
+    // 64 000 tokens out could cost ~$0.018; with a long chat (~400 000 characters ≈ $0.014 in) it is over the $0.03 left.
+    const long = chatBody({ messages: [{ role: "user", content: "x".repeat(400_000) }] });
+    expect(estimate(long)).toBeGreaterThan(0.03);
+    expect(await chat.handle(post(long))).toMatchObject({ status: 429, json: { error: { code: "allowance", message: NOT_ENOUGH_LEFT } }, headers: { "x-potyro-left-usd": "0.03" } });
+    expect(up.sent).toHaveLength(0);
+    // Not used up: a small one still goes, and nothing was counted as exhausted.
+    expect((await chat.handle(post(chatBody({ max_tokens: 1_000 })))).status).toBe(200);
+    expect(ledger.events()["2026-10"]).toBeUndefined();
   });
 
   it("stops reading upstream when the sender goes away, and frees the device's slot", async () => {
@@ -269,8 +348,8 @@ describe("the chat route", () => {
     await reader.read();
     await reader.cancel();
     expect(cancelled).toBe(true);
-    // The cost is not known: the reserve is charged, and the slot is free again.
-    expect(ledger.spent("2026-10")).toBeCloseTo(0.02);
+    // The cost is not known: the estimate is charged, and the slot is free again.
+    expect(ledger.spent("2026-10")).toBeCloseTo(estimate(chatBody({ stream: true })), 9);
     const again = await chat.handle(post(chatBody()));
     expect(again.status).toBe(200);
   });
@@ -279,7 +358,7 @@ describe("the chat route", () => {
     let off = true;
     const up = upstream();
     const chat = createChatProxy({ upstream: up.fn, now: () => NOW, isOff: () => off });
-    expect(await chat.handle(post(chatBody()))).toMatchObject({ status: 503, json: { ok: false, error: "off" } });
+    expect(await chat.handle(post(chatBody()))).toMatchObject({ status: 503, json: { error: { code: "off", message: CHAT_MESSAGES.off, type: "potyro" } } });
     off = false;
     expect((await chat.handle(post(chatBody()))).status).toBe(200);
     expect(up.sent).toHaveLength(1);
@@ -293,5 +372,126 @@ describe("the chat route", () => {
     expect((await chat.handle(post(chatBody()))).status).toBe(429);
     now = Date.UTC(2026, 10, 1, 1);
     expect((await chat.handle(post(chatBody()))).status).toBe(200);
+  });
+
+  it("does not wipe a new month when a request from the old one settles after it began", async () => {
+    let now = Date.UTC(2026, 9, 31, 23, 59);
+    const pending: Array<ReturnType<typeof controlled>> = [];
+    const slow = async (): Promise<Response> => {
+      const c = controlled();
+      pending.push(c);
+      return new Response(c.stream);
+    };
+    const ledger = memoryLedger();
+    const chat = createChatProxy({ upstream: slow, now: () => now, ledger });
+    const october = await chat.handle(post(chatBody()));
+    now = Date.UTC(2026, 10, 1, 0, 5);
+    const november = await chat.handle(post(chatBody(), { authorization: "Bearer potyro-device:device-0002" }));
+    pending[1]!.push(answer(0.004));
+    pending[1]!.end();
+    await text(november);
+    expect(ledger.spent("2026-11")).toBeCloseTo(0.004);
+    // October's request ends now: written for October, which has ended, so it is dropped — and
+    // November's spend is still there.
+    pending[0]!.push(answer(0.25));
+    pending[0]!.end();
+    await text(october);
+    expect(ledger.spent("2026-11")).toBeCloseTo(0.004);
+    expect(ledger.deviceSpent("2026-11", "device-0002")).toBeCloseTo(0.004);
+    expect(ledger.spent("2026-10")).toBe(0);
+    expect(ledger.stale()).toBe(1);
+  });
+
+  it("counts an IPv6 sender by its /64, so new addresses in it share one day", async () => {
+    const up = upstream([() => new Response(answer(0.3)), () => new Response(answer(0.3))]);
+    const chat = createChatProxy({ upstream: up.fn, now: () => NOW, limits: { addressDayUsd: 0.6, deviceMonthUsd: 5, dayUsd: 5 } });
+    const from = (ip: string, id: string) => post(chatBody(), { ip, authorization: `Bearer potyro-device:${id}` });
+    await text(await chat.handle(from("2001:db8:1:2::1", "fresh-id-1")));
+    await text(await chat.handle(from("2001:db8:1:2:ffff:ffff:ffff:fffe", "fresh-id-2")));
+    expect(await chat.handle(from("2001:db8:1:2:aaaa::9", "fresh-id-3"))).toMatchObject({ status: 429, json: { error: { code: "address-day" } } });
+    // The next /64 over is someone else.
+    expect((await chat.handle(from("2001:db8:1:3::1", "fresh-id-4"))).status).toBe(200);
+  });
+
+  it("stops the whole service at its DAILY cap before dispatch, and starts again the next day", async () => {
+    let now = NOW;
+    const ledger = memoryLedger();
+    const up = upstream([() => new Response(answer(0.3)), () => new Response(answer(0.3))]);
+    const chat = createChatProxy({ upstream: up.fn, now: () => now, ledger, limits: { dayUsd: 0.6, monthlyUsd: 10, deviceMonthUsd: 5, addressDayUsd: 0.5 } });
+    await text(await chat.handle(post(chatBody(), { ip: "1.1.1.1" })));
+    // 0.3 spent today + a hold of ~0.02 + this one's: still under 0.6.
+    await text(await chat.handle(post(chatBody(), { ip: "2.2.2.2" })));
+    expect(await chat.handle(post(chatBody(), { ip: "3.3.3.3" }))).toMatchObject({
+      status: 429,
+      json: { error: { code: "service-day", message: CHAT_MESSAGES["service-day"] } },
+    });
+    expect(up.sent).toHaveLength(2);
+    now += 24 * 60 * 60 * 1000;
+    expect((await chat.handle(post(chatBody(), { ip: "3.3.3.3" }))).status).toBe(200);
+  });
+
+  it("holds every request in flight against the service's caps, so many at once cannot cross them", async () => {
+    const pending: Array<ReturnType<typeof controlled>> = [];
+    const slow = async (): Promise<Response> => {
+      const c = controlled();
+      pending.push(c);
+      return new Response(c.stream);
+    };
+    const each = estimate(chatBody());
+    // Room for three holds of the 0.02 reserve, not four.
+    const chat = createChatProxy({ upstream: slow, now: () => NOW, limits: { dayUsd: 0.07, monthlyUsd: 10, addressDayUsd: 0.05, reserveUsd: 0.02 } });
+    expect(each).toBeLessThan(0.02);
+    for (let i = 0; i < 3; i++) expect((await chat.handle(post(chatBody(), { ip: `10.0.0.${i}`, authorization: `Bearer potyro-device:device-000${i}` }))).status).toBe(200);
+    expect(await chat.handle(post(chatBody(), { ip: "10.0.0.9", authorization: "Bearer potyro-device:device-0009" }))).toMatchObject({ json: { error: { code: "service-day" } } });
+    expect(pending).toHaveLength(3);
+  });
+
+  it("gives an address four devices' months a day by default, and never as much as the service's day", () => {
+    expect(chatLimits({ deviceMonthUsd: 0.5, monthlyUsd: 100 }).addressDayUsd).toBe(2);
+    // $10 a month is $1.25 a day: one network may have half of it.
+    expect(chatLimits({ deviceMonthUsd: 0.5, monthlyUsd: 10 })).toMatchObject({ dayUsd: 1.25, addressDayUsd: 0.625 });
+    expect(() => chatLimits({ addressDayUsd: 2, dayUsd: 1 })).toThrow(/below the service's daily cap/);
+    // A shared budget's day is the one in force.
+    expect(chatLimits({ deviceMonthUsd: 0.5 }, 8).addressDayUsd).toBe(2);
+  });
+
+  it("will not start with a model it has no price for", () => {
+    expect(() => createChatProxy({ upstream: upstream().fn, now: () => NOW, models: ["openai/gpt-6"] })).toThrow(/no price for openai\/gpt-6/);
+    expect(() => createChatProxy({ upstream: upstream().fn, now: () => NOW, models: ["openai/gpt-6"], prices: { "openai/gpt-6": { input: 1, output: 2 } } })).not.toThrow();
+  });
+
+  it("answers every refusal in OpenAI's error shape, with a code and words that say what to do", async () => {
+    const ledger = memoryLedger();
+    ledger.addSpend("2026-10", 10);
+    const full = createChatProxy({ upstream: upstream().fn, now: () => NOW, ledger, budget: createBudget({ now: () => NOW, ledger, monthlyUsd: 10 }) });
+    const chat = createChatProxy({ upstream: upstream().fn, now: () => NOW });
+    const replies = [
+      await chat.handle(post(chatBody(), { authorization: undefined })),
+      await chat.handle({ ...post(chatBody()), method: "GET" }),
+      await chat.handle(post("{nope")),
+      await chat.handle(post("x".repeat(5 * 1024 * 1024))),
+      await chat.handle(post(chatBody({ model: "openai/gpt-6" }))),
+      await chat.handle(post(chatBody({ plugins: [{ id: "web" }] }))),
+      await chat.handle(post(chatBody({ user: "someone" }))),
+      await full.handle(post(chatBody())),
+    ];
+    expect(replies.map((r) => [r.status, "json" in r && (r.json.error as { code: string }).code])).toEqual([
+      [401, "device"],
+      [405, "method"],
+      [400, "request"],
+      [413, "too-big"],
+      [400, "model"],
+      [403, "plan"],
+      [400, "request"],
+      [429, "service-month"],
+    ]);
+    for (const r of replies) {
+      if (!("json" in r)) throw new Error("not a refusal");
+      const error = r.json.error as Record<string, unknown>;
+      expect(error.type).toBe("potyro");
+      expect(error.message).toBe(CHAT_MESSAGES[error.code as keyof typeof CHAT_MESSAGES]);
+      expect(Object.keys(r.json)).toEqual(["error"]);
+    }
+    expect(replies[6]).toMatchObject({ json: { error: { param: "user" } } });
   });
 });

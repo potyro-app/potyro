@@ -127,7 +127,7 @@ describe("the chat route over HTTP", () => {
     const off = await fetch(url, { method: "POST", headers: { ...headers, origin: "https://localhost" }, body });
     expect(off.status).toBe(503);
     expect(off.headers.get("access-control-allow-origin")).toBe("https://localhost");
-    expect(await off.json()).toEqual({ ok: false, error: "off" });
+    expect(await off.json()).toMatchObject({ error: { code: "off", type: "potyro" } });
   });
 });
 

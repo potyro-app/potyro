@@ -4,14 +4,16 @@
 //   OPENROUTER_API_KEY       required — a key for Potyro's own OpenRouter account, with a credit limit set there
 //   AI_MODEL                 default google/gemini-2.5-flash-lite (AI_MODEL in request.ts) — `/complete` only
 //   AI_MONTHLY_CAP_USD       default 10 — the whole service's spend a calendar month, every route, checked before each request
+//   AI_DAY_USD               default AI_MONTHLY_CAP_USD / 8 — the same, a calendar day (UTC), so one day cannot eat the month
+//   AI_MODEL_PRICES          JSON {"<model>": {"input": 0.14, "output": 0.28}}, $ a million tokens, over the table in prices.ts
 //   AI_PER_DEVICE_DAY        default 20 — `/complete`
 //   AI_PER_DEVICE_MONTH      default 100 — `/complete`
 //   AI_PER_ADDRESS_DAY       default 60 — `/complete`
 //   AI_CHAT_MODELS           default deepseek/deepseek-v4-flash-0731 — comma-separated, the only models the chat route sends
 //   AI_DEVICE_MONTH_USD      default 0.5 — what one device may spend a month on the chat route
-//   AI_ADDRESS_DAY_USD       default 1 — what one address may spend a day on the chat route
-//   AI_CHAT_RESERVE_USD      default 0.02 — held for a chat request while it is out
-//   AI_CHAT_MAX_TOKENS       default 32000 — the clamp on a chat request's max_tokens
+//   AI_ADDRESS_DAY_USD       default 4 × AI_DEVICE_MONTH_USD, at most half of AI_DAY_USD — one address (IPv6: its /64) a day on the chat route; must be below AI_DAY_USD
+//   AI_CHAT_RESERVE_USD      default 0.02 — the least a chat request is held for while it is out (more when its estimate is more)
+//   AI_CHAT_MAX_TOKENS       default 64000 — the clamp on a chat request's max_tokens (the Studio's high thinking level)
 //   AI_CHAT_OFF              "1" turns the chat route off (503), read on every request
 //   AI_CHAT_OFF_FILE         a path: while a file is there, the chat route is off — the switch that needs no restart
 //   AI_COUNT_PER_ADDRESS_DAY default 20 — POST /count from one address a day
@@ -30,9 +32,11 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { clientAddress, readTrustProxy, type TrustProxy } from "./address.ts";
+import { createBudget, DEFAULT_MONTHLY_USD } from "./budget.ts";
 import { CHAT_MODELS, createChatProxy, type ChatLimits, type ChatReply, type ChatRequest } from "./chat.ts";
 import { createCounts, type CountReply, type CountRequest } from "./counts.ts";
 import { createAiRelay, persistentLedger, type Limits, type RelayRequest, type RelayResponse } from "./relay.ts";
+import { readModelPrices } from "./prices.ts";
 import { AI_LIMITS, AI_MODEL, OPENROUTER_URL, readOpenRouterReply, type UpstreamReply } from "./request.ts";
 
 /** A prefix the proxy may leave on the path (`/ai/complete` → `/complete`). */
@@ -221,11 +225,20 @@ async function main(): Promise<void> {
   const file = process.env.AI_LEDGER ?? "./ai-ledger.json";
   // A ledger that cannot be read stops the relay rather than starting the month again at zero.
   const initial = existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as never) : null;
-  const ledger = persistentLedger(initial, (s) => {
-    writeFileSync(`${file}.tmp`, JSON.stringify(s));
-    renameSync(`${file}.tmp`, file);
-  });
+  // A request that settles after its month or day ended is not counted (ledger.ts): say how often.
+  const onStale = (n: number): void => console.error(`[ai-relay] a request settled after its month or day ended and was not counted (${n} so far)`);
+  const ledger = persistentLedger(
+    initial,
+    (s) => {
+      writeFileSync(`${file}.tmp`, JSON.stringify(s));
+      renameSync(`${file}.tmp`, file);
+    },
+    { onStale },
+  );
   const monthlyUsd = num("AI_MONTHLY_CAP_USD");
+  // One budget for both routes: the caps count every request still out, on either.
+  const budget = createBudget({ now: Date.now, ledger, monthlyUsd: monthlyUsd ?? DEFAULT_MONTHLY_USD, dayUsd: num("AI_DAY_USD") });
+  const prices = readModelPrices(process.env.AI_MODEL_PRICES);
   const limits = defined<Limits>([
     ["monthlyUsd", monthlyUsd],
     ["perDeviceDay", num("AI_PER_DEVICE_DAY")],
@@ -243,14 +256,14 @@ async function main(): Promise<void> {
   const models = list(process.env.AI_CHAT_MODELS) ?? CHAT_MODELS;
   // Never the request, the device or the address: the upstream's status or message only.
   const onError = (e: unknown): void => console.error("[ai-relay]", e instanceof Error ? e.message : e);
-  const relay = createAiRelay({ upstream: openRouter(key), now: Date.now, ledger, limits, model, onError });
-  const chat = createChatProxy({ upstream: openRouterChat(key), now: Date.now, ledger, limits: chatLimits, models, isOff: killSwitch(process.env), onError });
+  const relay = createAiRelay({ upstream: openRouter(key), now: Date.now, ledger, budget, limits, model, prices, onError });
+  const chat = createChatProxy({ upstream: openRouterChat(key), now: Date.now, ledger, budget, limits: chatLimits, models, prices, isOff: killSwitch(process.env), onError });
   const counts = createCounts({ now: Date.now, ledger, perAddressDay: num("AI_COUNT_PER_ADDRESS_DAY") });
   const port = Number(process.env.PORT ?? 4204);
   const host = process.env.HOST ?? "127.0.0.1";
   const corsOrigins = list(process.env.AI_CORS_ORIGINS) ?? DEFAULT_CORS_ORIGINS;
   await startServer({ handle: relay.handle, chat: chat.handle, counts: counts.handle, port, host, trustProxy, corsOrigins });
-  console.log(`[ai-relay] ${model}; chat ${models.join(", ")}; cap $${monthlyUsd ?? 10} a month; proxy ${trustProxy}; listening on ${host}:${port}`);
+  console.log(`[ai-relay] ${model}; chat ${models.join(", ")}; cap $${budget.monthlyUsd} a month, $${budget.dayUsd} a day; proxy ${trustProxy}; listening on ${host}:${port}`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) void main();
