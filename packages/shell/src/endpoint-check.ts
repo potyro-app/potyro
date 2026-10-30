@@ -21,7 +21,48 @@ function modelIds(body: unknown): string[] | null {
   return data.map((m) => (m as { id?: unknown })?.id).filter((id): id is string => typeof id === "string");
 }
 
-export async function checkEndpoint(setting: EndpointSetting, fetchImpl: FetchLike = (u, i) => globalThis.fetch(u, i)): Promise<EndpointCheck> {
+/**
+ * Hosts an https page may still reach over plain http: the browser counts them as this same computer.
+ * Any other http address is blocked from an https page before a request leaves it.
+ */
+function isThisComputer(host: string): boolean {
+  return host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host.endsWith(".localhost");
+}
+
+/** The protocol of the page Potyro runs in ("https:"), or "" where there is no page (a test, a worker). */
+const pageProtocol = (): string => globalThis.location?.protocol ?? "";
+
+/**
+ * Why `base` gave no answer, in words that say what to check. The browser does not say which it was:
+ * no server there, a page that is not allowed to ask it, or a plain http address an https page may
+ * not reach. The last is told apart, since the page and the address show it; the other two are both
+ * named, since either may be it.
+ */
+export function noAnswerText(base: string, page: string = pageProtocol()): string {
+  let host: string | null = null;
+  let protocol: string | null = null;
+  try {
+    ({ hostname: host, protocol } = new URL(base));
+  } catch {
+    // not an address: the general words below still say to check it
+  }
+  if (page === "https:" && protocol === "http:" && host !== null && !isThisComputer(host)) {
+    return t`No answer from ${base}. This page is https, so it can only reach an http server on this same computer. Use an https address for this server.`;
+  }
+  return t`No answer from ${base}. Check the server is running and the address is right. A server on your own machine must also allow requests from this page (for Ollama, set OLLAMA_ORIGINS).`;
+}
+
+/**
+ * The same words when a create, a change or Ask could not reach the endpoint, with where to test it.
+ * `base` is the address as the person typed it.
+ */
+export function unreachableText(base: string, page: string = pageProtocol()): string {
+  const why = noAnswerText(base.trim().replace(/\/+$/, ""), page);
+  return t`${why} You can test the connection in the Studio’s Model settings.`;
+}
+
+/** `page`: the protocol of the page asking, `location.protocol` when absent. */
+export async function checkEndpoint(setting: EndpointSetting, fetchImpl: FetchLike = (u, i) => globalThis.fetch(u, i), page: string = pageProtocol()): Promise<EndpointCheck> {
   const base = setting.baseUrl.trim().replace(/\/+$/, "");
   if (!base) return { ok: false, text: t`Give the server’s address first.` };
   let url: URL;
@@ -39,15 +80,13 @@ export async function checkEndpoint(setting: EndpointSetting, fetchImpl: FetchLi
       ...(typeof AbortSignal !== "undefined" && "timeout" in AbortSignal ? { signal: AbortSignal.timeout(CHECK_TIMEOUT_MS) } : {}),
     });
   } catch {
-    // The browser does not say which: no server there, a page that is not allowed to ask it, or a
-    // plain http address an https page may not reach. All three are named, since any may be it.
-    return {
-      ok: false,
-      text: t`No answer from ${base}. Check the server is running and the address is right. A server on your own machine must also allow requests from this page (for Ollama, set OLLAMA_ORIGINS).`,
-    };
+    return { ok: false, text: noAnswerText(base, page) };
   }
   const status = res.status;
-  if (status === 401 || status === 403) return { ok: false, text: t`The server refused the key (${status}). Check the key.` };
+  if (status === 401 || status === 403) {
+    // With no key there was nothing to refuse: the server wants one.
+    return { ok: false, text: key ? t`The server refused the key (${status}). Check the key.` : t`This server needs a key. Add one above.` };
+  }
   if (status === 404) return { ok: false, text: t`Nothing at ${base}/models. Check the address: it usually ends in /v1.` };
   if (!res.ok) return { ok: false, text: t`The server answered with an error (${status}).` };
   let body: unknown;
