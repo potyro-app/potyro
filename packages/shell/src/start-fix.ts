@@ -19,6 +19,7 @@ import {
 } from "@potyro/generator/agent";
 import { createOpenRouterEngine, type Language } from "@potyro/generator/backends";
 import { canInvestigate, chatEngineOptions, engineReady, type EngineConfig } from "./engines.js";
+import { freeNotNow } from "./free-ai.js";
 import { verifyCandidate } from "./verify-candidate.js";
 import type { ModuleSource } from "./package-modules.js";
 import { joinForModel, unpackCandidate } from "./joined-app.js";
@@ -67,9 +68,11 @@ function refusal(cfg: EngineConfig): LoopOutcome | undefined {
     return {
       kind: "refused",
       text:
-        engine === "endpoint"
-          ? t`The endpoint needs its address and a model to investigate. Add them in the Studio’s Model settings.`
-          : t`${engine} needs your own API key to investigate. Add one in the Studio’s Model settings.`,
+        engine === "potyro"
+          ? freeNotNow()
+          : engine === "endpoint"
+            ? t`The endpoint needs its address and a model to investigate. Add them in the Studio’s Model settings.`
+            : t`${engine} needs your own API key to investigate. Add one in the Studio’s Model settings.`,
     };
   }
   return undefined;

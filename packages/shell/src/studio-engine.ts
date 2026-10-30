@@ -34,6 +34,7 @@ import { engineLabel, type EngineConfig } from "./engines.js";
 import { currentLocale } from "./locale.js";
 import { knownNoTools, rememberNoTools } from "./endpoint-tools.js";
 import { unreachableText } from "./endpoint-check.js";
+import { freeRefusal } from "./free-ai.js";
 
 /** What a turn came to. `summary` is what the conversation says happened. */
 export type Outcome =
@@ -213,10 +214,15 @@ export function studioEngine(
    * An endpoint the request never reached, said as what to check (the same words as Test connection),
    * or null for any other failure. The error's own words stay as the detail.
    */
-  const unreachable = (e: unknown): Extract<Outcome, { kind: "failed" }> | null =>
-    endpointFailure(e) === "unreachable"
+  const unreachable = (e: unknown): Extract<Outcome, { kind: "failed" }> | null => {
+    // Potyro's free engine said no (#121): its words already say what to do next (free-ai.ts).
+    const refused = freeRefusal(e);
+    // The detail is for a developer: the relay's code, as it sent it.
+    if (refused) return { kind: "failed", text: refused.message, detail: refused.code };
+    return endpointFailure(e) === "unreachable"
       ? { kind: "failed", text: unreachableText(engine.endpoint.baseUrl), detail: e instanceof Error ? e.message : String(e) }
       : null;
+  };
 
   /**
    * Did the loop fail because the endpoint's model takes no tools? Then it is remembered for this
@@ -418,7 +424,8 @@ export function studioEngine(
         // An endpoint it could not reach is said as what to check, after "Could not fix it:".
         attempt: (instr) =>
           attempt(joined?.text ?? source, instr).catch((e: unknown) => {
-            throw unreachable(e) ? new Error(unreachableText(engine.endpoint.baseUrl)) : e;
+            const away = unreachable(e);
+            throw away ? new Error(away.text) : e;
           }),
         shapeOf: async (text) => {
           const u = await unpackOrThrow(text, joined, files);
