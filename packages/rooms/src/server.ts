@@ -4,7 +4,7 @@
 //   PORT                          default 4205
 //   HOST                          default 127.0.0.1 — reachable only through the proxy in front of it
 //   ROOMS_ORIGINS                 comma-separated browser origins allowed to connect, or "*";
-//                                 default https://apps.vaz.io,https://localhost,capacitor://localhost
+//                                 default https://potyro.app,https://localhost,capacitor://localhost
 //   ROOMS_TRUST_PROXY             default 1 — the address is the LAST X-Forwarded-For entry (Apache's)
 //   ROOMS_MAX_MESSAGE_BYTES       default 65536
 //   ROOMS_MAX_MEMBERS             default 16 a room
@@ -25,7 +25,7 @@ import type { AddressInfo } from "node:net";
 import { startRoomsRelay } from "./relay.ts";
 import type { RoomLimits } from "./protocol.ts";
 
-export const DEFAULT_ORIGINS = ["https://apps.vaz.io", "https://localhost", "capacitor://localhost"];
+export const DEFAULT_ORIGINS = ["https://potyro.app", "https://localhost", "capacitor://localhost"];
 
 const ENV_LIMITS: ReadonlyArray<readonly [string, keyof RoomLimits]> = [
   ["ROOMS_MAX_MESSAGE_BYTES", "messageBytes"],

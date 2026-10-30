@@ -26,7 +26,7 @@ const running: RoomsRelay[] = [];
 const clients: WebSocket[] = [];
 
 export async function relay(opts: Partial<RelayOptions> = {}): Promise<{ relay: RoomsRelay; url: (room: string, query?: string) => string; port: number }> {
-  const r = await startRoomsRelay({ port: 0, host: "127.0.0.1", origins: ["https://apps.vaz.io"], ...opts });
+  const r = await startRoomsRelay({ port: 0, host: "127.0.0.1", origins: ["https://potyro.app"], ...opts });
   running.push(r);
   const { port } = r.server.address() as AddressInfo;
   return { relay: r, port, url: (room, query = "") => `ws://127.0.0.1:${port}/rooms/${room}${query}` };
@@ -40,7 +40,7 @@ export async function cleanup(): Promise<void> {
 /** Opens a connection and resolves once it is open, with every frame queued from the first. */
 export function connect(
   url: string,
-  headers: Record<string, string> = { origin: "https://apps.vaz.io" },
+  headers: Record<string, string> = { origin: "https://potyro.app" },
   options: { autoPong?: boolean } = {},
 ): Promise<Omit<Client, "welcome">> {
   const ws = new WebSocket(url, { headers, ...options });

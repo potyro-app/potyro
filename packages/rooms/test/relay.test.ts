@@ -166,7 +166,7 @@ describe("refusals", () => {
   });
 
   it("refuses an origin not on the list with HTTP 403, and allows one that is, or none", async () => {
-    const { url } = await relay({ origins: ["https://apps.vaz.io", "https://localhost"] });
+    const { url } = await relay({ origins: ["https://potyro.app", "https://localhost"] });
     const room = newRoomId();
     await expect(connect(url(room), { origin: "https://evil.example" })).rejects.toThrow("HTTP 403");
     await expect(join(url(room), { origin: "https://localhost" })).resolves.toBeTruthy();
@@ -193,7 +193,7 @@ describe("refusals", () => {
 
   it("closes an address past roomsPerAddress with 4003, counting the proxy's own (last) X-Forwarded-For entry", async () => {
     const { url } = await relay({ limits: { roomsPerAddress: 2 } });
-    const as = (first: string) => ({ origin: "https://apps.vaz.io", "x-forwarded-for": `${first}, 203.0.113.7` });
+    const as = (first: string) => ({ origin: "https://potyro.app", "x-forwarded-for": `${first}, 203.0.113.7` });
     await join(url(newRoomId()), as("1.1.1.1"));
     const second = newRoomId();
     await join(url(second), as("2.2.2.2"));
@@ -201,7 +201,7 @@ describe("refusals", () => {
     const third = await connect(url(newRoomId()), as("4.4.4.4"));
     expect(await third.closed).toEqual({ code: CLOSE.tooManyRooms, reason: "too many rooms from this address" });
     // another address is not affected
-    await expect(join(url(newRoomId()), { origin: "https://apps.vaz.io", "x-forwarded-for": "203.0.113.7, 198.51.100.1" })).resolves.toBeTruthy();
+    await expect(join(url(newRoomId()), { origin: "https://potyro.app", "x-forwarded-for": "203.0.113.7, 198.51.100.1" })).resolves.toBeTruthy();
   });
 
   it("closes an address past connectionsPerAddress with 4003", async () => {
@@ -372,7 +372,7 @@ describe("lifetime", () => {
     let pings = 0;
     a.ws.on("ping", () => pings++);
     // A client that does not answer pings: ws answers them unless told not to.
-    const deaf = await connect(url(room), { origin: "https://apps.vaz.io" }, { autoPong: false });
+    const deaf = await connect(url(room), { origin: "https://potyro.app" }, { autoPong: false });
     const welcome = await deaf.nextEvent();
     expect(welcome.type).toBe("welcome");
     await a.nextEvent(); // its join
