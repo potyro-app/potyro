@@ -11153,13 +11153,19 @@ body:has(.k-tabbar) .k-toasts {
 .k-identity-install-text b {
   font-weight: 600;
 }
+/* Every answer here is a thumb's 44px, mouse or not, with 8px between: the row exists for phones. */
 .k-identity-install-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.5rem;
   margin-left: auto;
 }
+.k-identity-install-actions button {
+  min-height: 2.75rem;
+}
 .k-identity-install-no {
+  min-width: 2.75rem;
   padding: 0.45rem 0.6rem;
   border: 0;
   border-radius: var(--radius-sm);
