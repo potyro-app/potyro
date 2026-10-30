@@ -19,6 +19,7 @@ import { ThinkingSettings } from "./thinking-settings.js";
 import { EndpointSettings } from "./endpoint-settings.js";
 import { RememberKey } from "./remember-key.js";
 import { freeOffered, leftWords, refusalText, stoppedNow, useFreeAi } from "./free-ai.js";
+import { checkFreeEngine } from "./engine-store.js";
 
 /**
  * Where the microphone's words are made on this device (docs/29): voice uses none of the engines
@@ -75,6 +76,11 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
   const set = (patch: Partial<EngineConfig>): void => onChange({ ...config, ...patch });
   const free = useFreeAi();
   const freeStop = stoppedNow(free);
+  // Opening Model settings asks the free route again where it gave no answer, so Potyro is listed
+  // once it can be reached.
+  useEffect(() => {
+    void checkFreeEngine({ again: true }).catch(() => {});
+  }, []);
 
   // Choosing an engine reveals ITS settings underneath it, which on a short window opens below the
   // fold — you tick OpenRouter and the key field it just asked you for is off screen.
@@ -166,7 +172,7 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
                     {/* Settings belong to their engine, and appear only when it is the one selected. */}
                     {active && e.id === "potyro" ? (
                       <p className="k-muted k-free-left" role="status">
-                        {freeStop ? refusalText(freeStop.code, freeStop.said) : free.left ? leftWords(free.left) : null}
+                        {freeStop ? refusalText(freeStop.code) : free.left ? leftWords(free.left) : null}
                       </p>
                     ) : null}
 

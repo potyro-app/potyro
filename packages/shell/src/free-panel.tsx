@@ -10,7 +10,7 @@
 import { useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { galleryUrl } from "./gallery-link.js";
-import { refusalText, type FreeAi, stoppedNow } from "./free-ai.js";
+import { freeUnreachable, refusalText, type FreeAi, stoppedNow } from "./free-ai.js";
 import { countOnce, countedThisMonth } from "./demand-counts.js";
 
 /** Where each service hands out keys. Names are the services' own. */
@@ -47,9 +47,9 @@ export function FreePanel({ free, onAddKey, ownKey }: Props) {
 
   return (
     <section className="k-free-panel" aria-labelledby="k-free-panel-h">
-      {stop ? (
+      {stop || free.health?.unknown ? (
         <p className="k-free-panel-stop" role="status">
-          {refusalText(stop.code, stop.said)}
+          {stop ? refusalText(stop.code) : freeUnreachable()}
         </p>
       ) : null}
       <h2 id="k-free-panel-h" className="k-free-panel-title">

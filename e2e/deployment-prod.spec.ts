@@ -65,14 +65,15 @@ test("a deployed build still lets you repair an app, and does not offer the dev 
   await page.getByRole("button", { name: /New app/ }).first().click();
   const studio = page.locator(".k-studio");
   await expect(studio).toBeVisible({ timeout: 30_000 });
-  // It starts on an engine that can work here — one that asks for a key — not on `claude -p`.
-  await expect(studio.getByRole("button", { name: "Model settings" })).not.toContainText("claude -p");
+  // It starts on an engine that can work here — one that asks for a key — not on `claude -p`. With no
+  // relay behind this build there is no free app making either, so the Studio says what a key is
+  // (#455) and its Add a key opens Model settings.
+  await studio.getByRole("region", { name: "Add a key to make apps" }).getByRole("button", { name: "Add a key" }).click();
   // And the dev server's own engine is not offered at all here: a developer's tool has no place on a
   // deployed site or a phone (owner, 2026-10-30). The other local engines still appear, disabled with
   // a reason where the browser cannot run them.
-  await studio.getByRole("button", { name: "Model settings" }).click();
   const modal = page.getByRole("dialog", { name: "Model settings" });
-  await expect(modal.getByRole("radio", { name: /OpenRouter/ })).toBeVisible();
+  await expect(modal.getByRole("radio", { name: /OpenRouter/ })).toBeChecked();
   await expect(modal.getByRole("radio", { name: /claude -p/ })).toHaveCount(0);
   await expect(modal).not.toContainText("only while the dev server runs");
 

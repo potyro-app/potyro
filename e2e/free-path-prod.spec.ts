@@ -51,3 +51,56 @@ test("with no free app making and no key, a first visit sees what a key is and w
   await modal.getByRole("button", { name: "Close model settings" }).click();
   await expect(studio.getByRole("textbox", { name: "Describe the app" })).toBeVisible();
 });
+
+test("while /health has not answered, the Studio shows neither the key panel nor 'needs an API key'", async ({ page }) => {
+  // Slower than a page load, under the shell's three-second look.
+  await page.route("**/ai/health", async (route) => {
+    await new Promise((r) => setTimeout(r, 2_500));
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, chat: true }) });
+  });
+  // Whether either ever showed, even for a moment, before the answer came.
+  await page.addInitScript(() => {
+    const w = window as unknown as { __shown?: string[] };
+    w.__shown = [];
+    new MutationObserver(() => {
+      for (const sel of [".k-free-panel", ".k-composer-warn"]) if (document.querySelector(sel) && !w.__shown!.includes(sel)) w.__shown!.push(sel);
+    }).observe(document, { childList: true, subtree: true });
+  });
+  const studio = await openStudio(page);
+  await expect(studio.getByRole("button", { name: "Model settings" })).toHaveText(/^\s*Potyro\s*$/, { timeout: 30_000 });
+  await expect(studio.getByRole("textbox", { name: "Describe the app" })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __shown: string[] }).__shown)).toEqual([]);
+});
+
+test("no answer from /health says it can't be reached, and asks again when Model settings opens", async ({ page, consoleGuard }) => {
+  consoleGuard.allow(/Failed to load resource/, "the faked relay's /health fails on purpose, as a dropped network does");
+  let up = false;
+  await page.route("**/ai/health", (route) =>
+    up ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, chat: true }) }) : route.abort("failed"),
+  );
+  const studio = await openStudio(page);
+  const panel = studio.getByRole("region", { name: "Add a key to make apps" });
+  await expect(panel).toBeVisible({ timeout: 30_000 });
+  await expect(panel.getByRole("status")).toHaveText("Free app making can't be reached right now. Check your connection and try again, or add your own key.");
+  // The network is back, and Model settings, opened, asks again: Potyro is listed.
+  up = true;
+  await panel.getByRole("button", { name: "Add a key" }).click();
+  const modal = page.getByRole("dialog", { name: "Model settings" });
+  await expect(modal.getByRole("radio", { name: /^Potyro/ })).toBeVisible({ timeout: 30_000 });
+  await modal.getByRole("button", { name: "Close model settings" }).click();
+  await expect(studio.getByRole("button", { name: "Model settings" })).toHaveText(/^\s*Potyro\s*$/, { timeout: 30_000 });
+});
+
+test("Ask, opened in an app before the Studio ever is, starts on Potyro and says where the request goes", async ({ page }) => {
+  const source = `import { defineApp } from "potyro";\nexport default defineApp({ id: "reader", name: "Reader", version: "1.0.0", schemaVersion: 1, entities: { book: { label: "Book", displayField: "title", fields: { title: { type: "text", required: true } } } }, pages: [{ id: "all", title: "Books", view: { type: "list", entity: "book", display: { primary: "title" } } }] });`;
+  await page.addInitScript((src) => {
+    if (!localStorage.getItem("potyro:user-apps")) localStorage.setItem("potyro:user-apps", JSON.stringify([{ id: "reader", name: "Reader", source: src, trusted: true, updatedAt: new Date().toISOString() }]));
+  }, source);
+  await page.route("**/ai/health", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, chat: true }) }));
+  await page.goto("/?user=reader");
+  await expect(page.locator("h1").first()).toHaveText("Reader", { timeout: 30_000 });
+  await page.getByRole("button", { name: /^✧?\s*Ask\b/ }).click();
+  const dialog = page.getByRole("dialog", { name: "Ask Reader" });
+  await expect(dialog.getByText(/Potyro passes all of this to OpenRouter and the model it picks\./)).toBeVisible();
+  await expect(dialog.getByText(/Ask needs your OpenRouter key/)).toHaveCount(0);
+});

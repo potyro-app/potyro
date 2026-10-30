@@ -177,9 +177,17 @@ export interface RelayHealth {
   ok: boolean;
   chat: boolean;
   model?: string;
+  /**
+   * No answer at all: offline, unreachable or too slow. Says nothing about the relay, so nothing is
+   * decided on it (the Studio keeps a chosen Potyro engine), and it is believed for a minute only.
+   */
+  unknown?: true;
 }
 
 const NOT_THERE: RelayHealth = { ok: false, chat: false };
+const NO_ANSWER: RelayHealth = { ok: false, chat: false, unknown: true };
+/** How long "no answer" is believed: long enough not to ask on every look, short enough to recover. */
+const NO_ANSWER_FOR_MS = 60_000;
 /** Per `/health` address: what it said, and when. Believed for `SEEN_FOR_MS`, as `relaySeen` is. */
 const healthSeen = new Map<string, { at: number; health: RelayHealth }>();
 
@@ -188,22 +196,28 @@ export function forgetRelayHealth(): void {
   healthSeen.clear();
 }
 
+/** Ask again next time where there was no answer: the browser is back online, or the person looked again. */
+export function forgetNoAnswer(): void {
+  for (const [url, seen] of healthSeen) if (seen.health.unknown) healthSeen.delete(url);
+}
+
 /** The relay's `/health`, from the `/complete` address beside it. */
 export const healthUrl = (complete: string): string => complete.replace(/\/complete$/, "/health");
 
 /**
  * A look at the relay's `/health` (no AI, nothing sent but the GET), remembered for ten minutes, so
  * the consent question and the Studio ask it once between them. A site with no relay answers with
- * its own page or a 404: not there.
+ * its own page or a 404: not there. No answer (offline, a network failure, slower than `HEALTH_MS`)
+ * is `unknown`, remembered for a minute, and not at all while offline.
  */
 export async function relayHealth(opts: { url?: string; fetch?: typeof fetch; now?: () => number; online?: () => boolean } = {}): Promise<RelayHealth> {
   const url = opts.url ?? healthUrl(aiRelayEndpoint());
   const now = opts.now ?? Date.now;
   const known = healthSeen.get(url);
-  if (known && now() - known.at < SEEN_FOR_MS) return known.health;
-  if (!(opts.online?.() ?? globalThis.navigator?.onLine !== false)) return NOT_THERE;
+  if (known && now() - known.at < (known.health.unknown ? NO_ANSWER_FOR_MS : SEEN_FOR_MS)) return known.health;
+  if (!(opts.online?.() ?? globalThis.navigator?.onLine !== false)) return NO_ANSWER;
   const doFetch = opts.fetch ?? ((input: RequestInfo | URL, init?: RequestInit) => globalThis.fetch(input, init));
-  let health = NOT_THERE;
+  let health = NO_ANSWER;
   try {
     health = await withTimeout(HEALTH_MS, async (signal) => {
       const res = await doFetch(url, { method: "GET", signal });
@@ -212,7 +226,7 @@ export async function relayHealth(opts: { url?: string; fetch?: typeof fetch; no
       return { ok: true, chat: body.chat === true, ...(typeof body.model === "string" && body.model ? { model: body.model } : {}) };
     });
   } catch {
-    // unreachable or too slow: not there, for now
+    // unreachable or too slow: no answer, which is not "not there"
   }
   healthSeen.set(url, { at: now(), health });
   return health;

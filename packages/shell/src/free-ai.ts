@@ -11,14 +11,16 @@
 //   - why it stopped: a refusal's code (`{error: {code, type: "potyro"}}`), said as a sentence with
 //     what to do next (`refusalText`). A month's or a day's "used up" is kept on this device until
 //     that month or day is over, so the Studio shows its no-dead-end panel at once, rather than after
-//     one more request that cannot go.
+//     one more request that cannot go. Only a real "used up" is kept: an `allowance` refusal while
+//     more than the relay's least hold is left means THIS request is too big for what is left, and a
+//     shorter one may still go (`stopOf`).
 //
 // The engine itself is the ordinary chat engine (engines.ts `chatEngineOptions`) pointed at the relay,
 // with this device's random id as its key; `freeFetch` reads the header and the refusals on the way.
 
 import { useSyncExternalStore } from "react";
 import { t } from "@lingui/core/macro";
-import { aiRelayEndpoint, forgetRelayHealth, relayHealth, type RelayHealth } from "./app-ai.js";
+import { aiRelayEndpoint, forgetNoAnswer, forgetRelayHealth, relayHealth, type RelayHealth } from "./app-ai.js";
 import { deviceId } from "./device-id.js";
 
 /** The model the chat route sends when its `/health` names none: the relay's own default (chat.ts CHAT_MODELS). */
@@ -69,8 +71,11 @@ export function leftWords(left: Left): string {
   return t({ message: "used up this month", comment: "The free engine: this month's free app making is used up" });
 }
 
-/** What a person is told for each refusal, with what to do next. `said`: the relay's own message. */
-export function refusalText(code: FreeCode, said?: string): string {
+/**
+ * What a person is told for each refusal, with what to do next. Always the shell's own sentence, in
+ * the person's language: the relay's `message` is English, for a developer reading the wire.
+ */
+export function refusalText(code: FreeCode): string {
   switch (code) {
     case "allowance":
       return t`This month's free app making is used up on this device. Add your own key to keep going, or start from an app in the gallery.`;
@@ -79,8 +84,7 @@ export function refusalText(code: FreeCode, said?: string): string {
     case "service-day":
       return t`Free app making is used up for today. It's back tomorrow, or add your own key.`;
     case "address-day":
-      // The relay's own words about this network today: it knows why, the shell does not.
-      return said?.trim() || t`Free app making is busy on this network today. It's back tomorrow, or add your own key.`;
+      return t`Free app making is busy on this network today. It's back tomorrow, or add your own key.`;
     case "off":
       return t`Free app making is paused right now. Add your own key, or try again later.`;
     case "busy":
@@ -99,10 +103,18 @@ export function refusalText(code: FreeCode, said?: string): string {
   }
 }
 
+/** An `allowance` refusal with more than the least hold left: this request does not fit, a shorter one may. */
+export const tooLongForWhatIsLeft = (): string => t`This conversation is too long for the free allowance. Start a new app, or add your own key.`;
+
+/** `/health` gave no answer (offline, unreachable, too slow): nothing is known about free app making. */
+export const freeUnreachable = (): string =>
+  t`Free app making can't be reached right now. Check your connection and try again, or add your own key.`;
+
 /** Why the free engine cannot run now, for a surface outside the Studio (Ask, Fix this). */
 export function freeNotNow(): string {
   const stopped = stoppedNow();
-  if (stopped) return refusalText(stopped.code, stopped.said);
+  if (stopped) return refusalText(stopped.code);
+  if (getFreeAi().health?.unknown) return freeUnreachable();
   return t`Free app making isn't available right now. Add your own key in the Studio’s Model settings.`;
 }
 
@@ -125,8 +137,6 @@ interface Stopped {
   code: FreeStop;
   /** The month (`2026-10`) or day (`2026-10-30`, UTC) it lasts; "" for this page only. */
   until: string;
-  /** The relay's own words, for `address-day`. */
-  said?: string;
 }
 
 export interface FreeAi {
@@ -171,15 +181,14 @@ export function stoppedNow(s: FreeAi = getFreeAi()): Stopped | null {
   return s.stopped;
 }
 
+/** Hear every change to what the relay said. */
+export function subscribeFreeAi(cb: () => void): () => void {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+
 export function useFreeAi(): FreeAi {
-  return useSyncExternalStore(
-    (cb) => {
-      listeners.add(cb);
-      return () => listeners.delete(cb);
-    },
-    getFreeAi,
-    getFreeAi,
-  );
+  return useSyncExternalStore(subscribeFreeAi, getFreeAi, getFreeAi);
 }
 
 /** The chat route serves, as far as `/health` said. */
@@ -187,20 +196,29 @@ export const freeOffered = (s: FreeAi = getFreeAi()): boolean => Boolean(s.healt
 /** It serves and nothing has stopped it for this device. */
 export const freeWorks = (s: FreeAi = getFreeAi()): boolean => freeOffered(s) && !stoppedNow(s) && s.left !== "none";
 
-/** Ask the relay's `/health` (or its ten-minute memory) whether the chat route serves. */
-export async function checkFreeAi(opts: Parameters<typeof relayHealth>[0] = {}): Promise<FreeAi> {
+/** Ask the relay's `/health` (or its memory: ten minutes for an answer, a minute for none) whether the chat route serves. */
+export async function checkFreeAi(
+  opts: Parameters<typeof relayHealth>[0] & { again?: boolean } = {},
+  /** Called with what is about to be said, before anyone hears it: the engine store picks the engine first. */
+  before?: (next: FreeAi) => void,
+): Promise<FreeAi> {
+  // Looking again (back online, Model settings opened): a "no answer" is not believed any longer.
+  if (opts.again) forgetNoAnswer();
   const health = await relayHealth(opts);
   // A stop that is over, or a pause the relay no longer reports, goes.
   const over = state.stopped && (!stoppedNow(state) || (state.stopped.code === "off" && health.chat));
-  set({ health, ...(over ? { stopped: null } : {}) });
+  const patch: Partial<FreeAi> = { health, ...(over ? { stopped: null } : {}) };
+  before?.({ ...state, ...patch });
+  set(patch);
   return getFreeAi();
 }
 
-function stop(code: FreeStop, said?: string): void {
+function stop(code: FreeStop): void {
   const now = clock();
-  // The device's month and the service's month last the month; a day's, the day; "off" this page only.
+  // The device's month and the service's month last the month; a day's (the service's, this
+  // network's), the day; "off" this page only.
   const until = code === "allowance" || code === "service-month" ? monthOf(now) : code === "off" ? "" : dayOf(now);
-  const stopped: Stopped = { code, until, ...(said ? { said } : {}) };
+  const stopped: Stopped = { code, until };
   if (until) {
     try {
       globalThis.localStorage?.setItem(STOP_KEY, JSON.stringify(stopped));
@@ -267,8 +285,13 @@ export function freeFetch(inner: (url: string, init?: RequestInit) => Promise<Re
       .catch(() => null)) as { error?: { code?: unknown; message?: unknown; type?: unknown } } | null;
     const error = body?.error;
     if (error?.type !== "potyro" || !isCode(error.code)) return res;
-    const said = typeof error.message === "string" ? error.message : undefined;
-    if (isStop(error.code)) stop(error.code, error.code === "address-day" ? said : undefined);
-    throw new FreeAiRefusal(error.code, refusalText(error.code, said));
+    if (error.code === "allowance" && !(usd < NONE_USD)) {
+      // More than the least hold is left (or the relay did not say): this request is too big for it,
+      // a shorter one may still go. Nothing is kept; what is left is as the relay says.
+      if (Number.isFinite(usd)) set({ left: leftOf(usd) });
+      throw new FreeAiRefusal(error.code, tooLongForWhatIsLeft());
+    }
+    if (isStop(error.code)) stop(error.code);
+    throw new FreeAiRefusal(error.code, refusalText(error.code));
   };
 }
