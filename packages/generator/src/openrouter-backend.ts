@@ -125,6 +125,24 @@ export type Dialect = "openrouter" | "openai";
 /** A key, or something that gives the current one: a token that is refreshed later. */
 export type ApiKey = string | (() => string | Promise<string>);
 
+/**
+ * Why an OpenAI-compatible endpoint could not be used, when it is something the person can act on.
+ * `tools-unsupported`: the model behind it takes no tools (Ollama's llama3: "does not support
+ * tools"), so a loop cannot run on it, but one plain turn can. `unreachable`: the request never got
+ * an answer — no server at the address, a page not allowed to ask it, or no reply in time.
+ * Carried as the error's `cause`, so the message stays what a developer needs to read.
+ */
+export type EndpointFailure = "tools-unsupported" | "unreachable";
+
+/** The `EndpointFailure` an error carries, or null for any other error. */
+export function endpointFailure(e: unknown): EndpointFailure | null {
+  const kind = (e as { cause?: { kind?: unknown } } | null)?.cause?.kind;
+  return kind === "tools-unsupported" || kind === "unreachable" ? kind : null;
+}
+
+/** How servers say a model takes no tools: Ollama, vLLM, LM Studio and llama.cpp each word it their way. */
+const TOOLS_UNSUPPORTED = /does not support tools|tools? (is|are) not supported|tool_choice/i;
+
 export interface OpenRouterOptions {
   /** Falls back to `OPENROUTER_API_KEY` in the environment, under the `openrouter` dialect only. Read per request. */
   apiKey?: ApiKey;
@@ -267,12 +285,22 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
       const controller = typeof AbortController !== "undefined" ? new AbortController() : undefined;
       const whole = controller ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
       try {
-        const res = await doFetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(bodyOf(req, reasoning, temperature)),
-      ...(controller ? { signal: controller.signal } : {}),
-        });
+        let res: Response;
+        try {
+          res = await doFetch(`${baseUrl}/chat/completions`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(bodyOf(req, reasoning, temperature)),
+            ...(controller ? { signal: controller.signal } : {}),
+          });
+        } catch (e) {
+          // The browser's own words ("Failed to fetch", "NetworkError when attempting to fetch
+          // resource") say nothing a person can act on. Under the openai dialect the server is one
+          // the person named, so the failure is marked, and the caller says what to check.
+          if (!plain) throw e;
+          const why = e instanceof Error ? e.message : String(e);
+          throw new Error(`${who}: no answer from ${baseUrl} (${why})`, { cause: { kind: "unreachable" satisfies EndpointFailure } });
+        }
         return { res, text: await readBody(res, bodyTimeoutMs, () => controller?.abort(), who) };
       } finally {
         clearTimeout(whole);
@@ -295,7 +323,12 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
     }
 
     if (!res.ok) {
-      throw new Error(`${who} ${res.status}: ${errorMessage(body) ?? text.slice(0, 500)}`);
+      const said = errorMessage(body) ?? text.slice(0, 500);
+      // A model that takes no tools: a loop cannot run on it, but one plain turn can (the caller decides).
+      if (plain && res.status >= 400 && res.status < 500 && TOOLS_UNSUPPORTED.test(said)) {
+        throw new Error(`${who} ${res.status}: ${said}`, { cause: { kind: "tools-unsupported" satisfies EndpointFailure } });
+      }
+      throw new Error(`${who} ${res.status}: ${said}`);
     }
     // A 200 carrying an `error` is how an upstream provider failure arrives.
     const upstream = errorMessage(body);
@@ -408,12 +441,16 @@ export async function createOpenRouterBackend(opts: OpenRouterOptions = {}): Pro
     const engine = createOpenRouterEngine(opts);
     return new OpenRouterBackend(engine, opts.model, { dialect: "openai", ...(opts.maxTokens === undefined ? {} : { maxTokens: opts.maxTokens }) });
   }
-  const apiKey = opts.apiKey || readEnv(opts.env)?.OPENROUTER_API_KEY;
+  // A key given as a function is asked now: a function is always truthy, so testing it unresolved let
+  // a missing key through to a request with `Authorization: Bearer ` and OpenRouter's 401.
+  const given = typeof opts.apiKey === "function" ? await opts.apiKey() : opts.apiKey;
+  const apiKey = given || readEnv(opts.env)?.OPENROUTER_API_KEY;
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY is not set (or pass apiKey). Get one at https://openrouter.ai/keys");
   }
   const model = opts.model ?? DEFAULT_MODEL;
-  const engine = createOpenRouterEngine({ ...opts, apiKey, model });
+  // The function is kept when it gave a key, so a key refreshed later is the one each request sends.
+  const engine = createOpenRouterEngine({ ...opts, apiKey: given && typeof opts.apiKey === "function" ? opts.apiKey : apiKey, model });
   return new OpenRouterBackend(engine, model, {
     ...(opts.maxTokens === undefined ? {} : { maxTokens: opts.maxTokens }),
     ...(opts.reasoning === undefined ? {} : { reasoning: opts.reasoning }),

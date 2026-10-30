@@ -4,7 +4,7 @@
 // depend on.
 
 import { describe, expect, it } from "vitest";
-import { createOpenRouterBackend, createOpenRouterEngine, type FetchLike } from "../src/index.js";
+import { createOpenRouterBackend, createOpenRouterEngine, endpointFailure, type FetchLike } from "../src/index.js";
 
 interface Sent {
   url: string;
@@ -150,5 +150,83 @@ describe("the openai dialect", () => {
     expect(backend.name).toBe("openai:llama3");
     expect(sent[0]!.body).not.toHaveProperty("max_tokens");
     expect(sent[0]!.body).not.toHaveProperty("provider");
+  });
+
+  it("marks a model that takes no tools, so the caller can fall back to one plain turn", async () => {
+    // Ollama's own reply for llama3, word for word.
+    const { fetch, sent } = fakeFetch({ status: 400, body: { error: { message: "registry.ollama.ai/library/llama3:latest does not support tools" } } });
+    const engine = createOpenRouterEngine({ dialect: "openai", model: "llama3", fetch });
+
+    const err = await engine.chat.completions.create({ messages: [{ role: "user", content: "hi" }], tools: TOOLS }).catch((e: unknown) => e);
+
+    expect(endpointFailure(err)).toBe("tools-unsupported");
+    expect((err as Error).message).toBe("The endpoint 400: registry.ollama.ai/library/llama3:latest does not support tools");
+    expect(sent).toHaveLength(1);
+  });
+
+  it("reads the other ways a server says it takes no tools", async () => {
+    for (const message of ["Tools are not supported for this model", '"auto" tool choice requires --enable-auto-tool-choice and --tool-call-parser to be set (tool_choice)']) {
+      const { fetch } = fakeFetch({ status: 400, body: { error: { message } } });
+      const engine = createOpenRouterEngine({ dialect: "openai", model: "m", fetch });
+      const err = await engine.chat.completions.create({ messages: [{ role: "user", content: "hi" }], tools: TOOLS }).catch((e: unknown) => e);
+      expect(endpointFailure(err)).toBe("tools-unsupported");
+    }
+  });
+
+  it("leaves any other error unmarked, and OpenRouter's own errors too", async () => {
+    const other = createOpenRouterEngine({ dialect: "openai", model: "m", fetch: fakeFetch({ status: 400, body: { error: { message: "context too long" } } }).fetch });
+    expect(endpointFailure(await other.chat.completions.create({ messages: [{ role: "user", content: "hi" }] }).catch((e: unknown) => e))).toBeNull();
+    const server = createOpenRouterEngine({ dialect: "openai", model: "m", fetch: fakeFetch({ status: 500, body: { error: { message: "tools are not supported" } } }).fetch });
+    expect(endpointFailure(await server.chat.completions.create({ messages: [{ role: "user", content: "hi" }] }).catch((e: unknown) => e))).toBeNull();
+    const openrouter = createOpenRouterEngine({ apiKey: "k", fetch: fakeFetch({ status: 400, body: { error: { message: "does not support tools" } } }).fetch });
+    expect(endpointFailure(await openrouter.chat.completions.create({ messages: [{ role: "user", content: "hi" }] }).catch((e: unknown) => e))).toBeNull();
+  });
+
+  it("marks a request that never got an answer as unreachable, naming the address", async () => {
+    const fetch: FetchLike = async () => {
+      throw new TypeError("Failed to fetch");
+    };
+    const engine = createOpenRouterEngine({ dialect: "openai", baseUrl: "http://localhost:11434/v1", model: "m", fetch });
+
+    const err = await engine.chat.completions.create({ messages: [{ role: "user", content: "hi" }] }).catch((e: unknown) => e);
+
+    expect(endpointFailure(err)).toBe("unreachable");
+    expect((err as Error).message).toBe("The endpoint: no answer from http://localhost:11434/v1 (Failed to fetch)");
+  });
+
+  it("marks a request aborted before any answer as unreachable too", async () => {
+    const fetch: FetchLike = (_url, init) =>
+      new Promise((_, reject) => init?.signal?.addEventListener("abort", () => reject(new DOMException("The operation was aborted.", "AbortError"))));
+    const engine = createOpenRouterEngine({ dialect: "openai", model: "m", fetch, timeoutMs: 10 });
+
+    expect(endpointFailure(await engine.chat.completions.create({ messages: [{ role: "user", content: "hi" }] }).catch((e: unknown) => e))).toBe("unreachable");
+  });
+
+  it("leaves OpenRouter's own network failures as they were", async () => {
+    const fetch: FetchLike = async () => {
+      throw new TypeError("Failed to fetch");
+    };
+    const engine = createOpenRouterEngine({ apiKey: "k", fetch });
+    const err = await engine.chat.completions.create({ messages: [{ role: "user", content: "hi" }] }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(TypeError);
+    expect(endpointFailure(err)).toBeNull();
+  });
+});
+
+describe("the openrouter backend's key", () => {
+  it("refuses a key given as a function that gives nothing, before any request", async () => {
+    const { fetch, sent } = fakeFetch({ body: { choices: [{ message: { content: "ok" } }] } });
+    await expect(createOpenRouterBackend({ apiKey: () => "", fetch, env: {} })).rejects.toThrow("OPENROUTER_API_KEY is not set (or pass apiKey). Get one at https://openrouter.ai/keys");
+    await expect(createOpenRouterBackend({ apiKey: async () => "", fetch, env: {} })).rejects.toThrow(/OPENROUTER_API_KEY is not set/);
+    expect(sent).toHaveLength(0);
+  });
+
+  it("keeps a function that gives a key, so each request reads it again", async () => {
+    const { fetch, sent } = fakeFetch({ body: { choices: [{ message: { content: "```ts\nexport default 1;\n```" } }] } });
+    let n = 0;
+    const backend = await createOpenRouterBackend({ apiKey: () => `tok-${++n}`, fetch, env: {} });
+    await backend.generate({ id: "x", description: "a list" });
+    expect(sent.at(-1)!.headers.Authorization).toMatch(/^Bearer tok-\d+$/);
+    expect(n).toBeGreaterThan(1);
   });
 });
