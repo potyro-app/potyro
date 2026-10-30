@@ -25,7 +25,7 @@ import { InstallRow } from "./install-row.js";
 import { CountsSwitch } from "./counts-switch.js";
 import { LegalLinks } from "./legal-links.js";
 import { shellDialogs } from "./dialog.js";
-import { RELAY_KEY, syncRelayUrl } from "./open-store.js";
+import { RELAY_KEY, syncRelayUrl, usesOwnRelay } from "./open-store.js";
 import { DEFAULT_NAME, ensureIdentity, peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@potyro/identity";
 import { personHue, personInitials } from "@potyro/runtime";
 
@@ -194,7 +194,7 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
   };
 
   const named = Boolean(me?.name && me.name !== DEFAULT_NAME);
-  const ownRelay = Boolean(globalThis.localStorage?.getItem(RELAY_KEY));
+  const ownRelay = usesOwnRelay();
   const relay = syncRelayUrl();
 
   // #95: this read like a debug page — a monospace `no identity yet` under the name, a ws:// URL on

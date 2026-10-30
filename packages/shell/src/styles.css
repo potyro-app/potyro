@@ -11281,6 +11281,10 @@ body:has(.k-tabbar) .k-toasts {
 /* The privacy page and the terms (#117, legal-links.tsx): a quiet link under what it is about, in the
    same register as the wording link above — there when wanted, never louder than the choice itself. */
 .k-legal-link {
+  /* A 44px tap area with the same quiet look: the height is the box, not the type. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--ink-soft);
   font-size: 0.85rem;
   text-decoration: underline;
@@ -11291,11 +11295,6 @@ body:has(.k-tabbar) .k-toasts {
 .k-legal-link:focus-visible {
   color: var(--ink);
   text-decoration-color: var(--accent-line);
-}
-p > .k-legal-link,
-.k-dialog-detail + .k-legal-link,
-.k-dialog-message + .k-legal-link {
-  display: inline-block;
 }
 .k-legal-links {
   display: flex;

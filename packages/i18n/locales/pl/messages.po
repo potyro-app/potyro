@@ -7980,8 +7980,12 @@ msgid "What happened"
 msgstr "Co się stało"
 
 #: ../shell/src/backup-switch.tsx
-msgid "What is in your apps is encrypted on this device, so the relay cannot read it. Your name and who you share with can be seen there."
-msgstr "To, co jest w twoich aplikacjach, jest szyfrowane na tym urządzeniu, więc przekaźnik nie może tego przeczytać. Twoje imię i to, z kim się dzielisz, są tam widoczne."
+msgid "What is in your apps is encrypted on this device, so Potyro’s server cannot read it. Your name and who you share with can be seen there."
+msgstr "To, co jest w twoich aplikacjach, jest szyfrowane na tym urządzeniu, więc serwer Potyro nie może tego przeczytać. Twoje imię i to, z kim się dzielisz, są tam widoczne."
+
+#: ../shell/src/backup-switch.tsx
+msgid "What is in your apps is encrypted on this device, so the server you chose cannot read it. Your name and who you share with can be seen there."
+msgstr "To, co jest w twoich aplikacjach, jest szyfrowane na tym urządzeniu, więc wybrany przez ciebie serwer nie może tego przeczytać. Twoje imię i to, z kim się dzielisz, są tam widoczne."
 
 #. Under the question asking for a home device's address; the field below takes it
 #: ../shell/src/app-sockets.ts
