@@ -34,9 +34,82 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((c) => Promise.all([c.add("/").catch(() => {}), precacheCatalogs(c)]))
+      .then((c) => Promise.all([c.add("/").catch(() => {}), precacheCatalogs(c), precacheBoot(c)]))
       .catch(() => {}),
   );
+});
+
+/** The build's list of its own files (packages/shell/vite.config.ts `precacheShell`). */
+function shellList() {
+  return fetch("/shell-precache.json", { cache: "no-store" })
+    .then((res) => (res.ok ? res.json() : {}))
+    .then((list) => ({
+      boot: Array.isArray(list.boot) ? list.boot : [],
+      rest: Array.isArray(list.rest) ? list.rest : [],
+    }))
+    .catch(() => ({ boot: [], rest: [] }));
+}
+
+/** Fetch one file into the cache unless it is there already. Never rejects. */
+function keep(cache, url) {
+  return cache
+    .match(url)
+    .then((hit) =>
+      hit
+        ? undefined
+        : fetch(url).then((res) => (res.ok ? cache.put(url, withoutVary(res)) : undefined)),
+    )
+    .catch(() => {});
+}
+
+/**
+ * The page's own script, styles and icons, at install (#123).
+ *
+ * On a first visit the page fetches its entry script BEFORE this worker is in charge, so the fetch
+ * handler never sees it and it was never cached: after one visit online, a reload offline found the
+ * cached page and no script — a blank screen. Best-effort like the rest of install: a failure leaves
+ * that file to the fetch handler.
+ */
+function precacheBoot(cache) {
+  return shellList().then(({ boot }) => Promise.all(boot.map((url) => keep(cache, url))));
+}
+
+/**
+ * Everything else the build made, after the worker has taken over: an example app opened for the
+ * first time on a plane needs the bundler and the runtime's chunks, which Home never fetches. Asked
+ * for by the page on each load (`warm`), so an interrupted run carries on next time; four at a time;
+ * already-kept files cost one cache lookup. Then copies of OLDER builds' files are dropped — the
+ * names are content-hashed, so without this every release would pile its whole build on top of the
+ * last one. Only `/assets/`: the face finder's files are fetched on demand and kept as they are.
+ */
+let warming = null;
+function warm() {
+  warming ??= Promise.all([caches.open(CACHE), shellList()])
+    .then(async ([cache, { boot, rest }]) => {
+      if (!boot.length && !rest.length) return;
+      const queue = [...rest];
+      const worker = async () => {
+        while (queue.length) await keep(cache, queue.shift());
+      };
+      await Promise.all([worker(), worker(), worker(), worker()]);
+      const current = new Set([...boot, ...rest]);
+      const kept = await cache.keys();
+      await Promise.all(
+        kept
+          .map((req) => new URL(req.url))
+          .filter((url) => url.origin === self.location.origin && url.pathname.startsWith("/assets/") && !current.has(url.pathname))
+          .map((url) => cache.delete(url.href)),
+      );
+    })
+    .catch(() => {})
+    .finally(() => {
+      warming = null;
+    });
+  return warming;
+}
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "warm") event.waitUntil(warm());
 });
 
 /**
