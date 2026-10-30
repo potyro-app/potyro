@@ -2,26 +2,41 @@
 // model, and a button that asks the server before anything is spent on it. The key is held like the
 // other engines' keys (engine-store.ts): in this tab only, never saved.
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { EndpointSetting, EngineConfig } from "./engines.js";
 import { checkEndpoint, type EndpointCheck } from "./endpoint-check.js";
 
 export function EndpointSettings({ config, onChange }: { config: EngineConfig; onChange: (next: EngineConfig) => void }) {
   const { t } = useLingui();
-  const listId = useId();
+  // Without React's colons: an id is also read as a CSS selector (happy-dom reads `list` that way).
+  const listId = `k-endpoint-models-${useId().replace(/:/g, "")}`;
   const [state, setState] = useState<{ kind: "idle" } | { kind: "testing" } | { kind: "done"; result: EndpointCheck }>({ kind: "idle" });
+  /**
+   * The models the server listed at the last test that reached it. Kept apart from the result, which
+   * any edit clears: typing in the model field is when the list is wanted, and the datalist filters
+   * itself by what is typed. Only another address or key makes it someone else's list.
+   */
+  const [models, setModels] = useState<string[]>([]);
+  /** Which test is the current one. Every edit moves it on, so a test still running when one is made is ignored. */
+  const run = useRef(0);
   const setting = config.endpoint;
   const set = (patch: Partial<EndpointSetting>): void => {
     onChange({ ...config, endpoint: { ...setting, ...patch } });
-    // A result is about the settings it was made with; once they change it says nothing true.
-    if (state.kind === "done") setState({ kind: "idle" });
+    // A result is about the settings it was made with; once they change it says nothing true, and a
+    // test still running is about the settings before this edit.
+    run.current += 1;
+    if (state.kind !== "idle") setState({ kind: "idle" });
+    if (patch.baseUrl !== undefined || patch.key !== undefined) setModels([]);
   };
   const test = async (): Promise<void> => {
+    const id = ++run.current;
     setState({ kind: "testing" });
-    setState({ kind: "done", result: await checkEndpoint(setting) });
+    const result = await checkEndpoint(setting);
+    if (run.current !== id) return;
+    setState({ kind: "done", result });
+    if (result.ok) setModels(result.models);
   };
-  const models = state.kind === "done" && state.result.ok ? state.result.models : [];
   return (
     <div className="k-engine-fields k-endpoint">
       <input
