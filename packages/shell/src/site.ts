@@ -7,7 +7,7 @@
 // `location` pointed at the phone: an invite link nobody else could open, a relay at
 // `wss://localhost/sync`, and on iOS no relay at all (a `capacitor:` origin has no http host).
 //
-// So a native build is TOLD its site, once, at build time — `VITE_POTYRO_SITE=https://apps.vaz.io` —
+// So a native build is TOLD its site, once, at build time — `VITE_POTYRO_SITE=https://potyro.app` —
 // and everything that used to read `location` asks here instead. A web build sets nothing and
 // behaves exactly as before. A native build without it has no site: sync stays local, and the
 // service calls fail the way they always did there (docs/27 §2.1).
@@ -17,9 +17,9 @@
 import { siteBase } from "./demo-link.js";
 
 export interface Site {
-  /** `https://apps.vaz.io` — no trailing slash. */
+  /** `https://potyro.app` — no trailing slash. */
   origin: string;
-  /** `apps.vaz.io` — for the relay's websocket address. */
+  /** `potyro.app` — for the relay's websocket address. */
   host: string;
   /** The path the shell is served at, always ending in `/` (`/`, or `/potyro/`). */
   path: string;
