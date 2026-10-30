@@ -67,7 +67,13 @@ describe("scripts/takedown.mjs", () => {
     expect(wrong.err).toMatch(/answered 401/);
   });
 
-  it("writes straight into the shares folder on the server, with no token", async () => {
+  // The --dir mode loads the TypeScript store through Node 22's --experimental-strip-types, which is
+  // what the server's node:22 container runs (docs/16). A Node without it (the CI machine's Node 20)
+  // cannot run this mode at all, so the test is skipped there rather than failed: the takedown itself
+  // is covered above through the HTTP route on every Node.
+  const [major, minor] = process.versions.node.split(".").map(Number);
+  const stripsTypes = major > 22 || (major === 22 && minor >= 6);
+  it.skipIf(!stripsTypes)("writes straight into the shares folder on the server, with no token", async () => {
     dir = mkdtempSync(join(tmpdir(), "shares-"));
     const handle = createShareHandler({ store: diskShareStore(dir), indexHtml: async () => INDEX });
     const id = await makeShare(handle);
