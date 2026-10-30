@@ -1009,7 +1009,10 @@ All five implement one contract, `ModelBackend` (`packages/generator/src/backend
 request into a source, repair a failing source, or reply to a change request. A hybrid backend
 composes two of them and escalates from the on-device model to the cloud when the local repair loop
 has not converged. Keys are kept in the tab's sessionStorage, gone when the tab closes, never in
-localStorage. OpenRouter and an OpenAI-compatible endpoint carry tool calls end to end, so they run the loops below; Ask's web search is OpenRouter's own server tool and is offered only there How hard a model thinks is a setting per engine, off by default:
+localStorage. OpenRouter and an OpenAI-compatible endpoint carry tool calls end to end, so they can
+investigate and run the loops below; the others get one turn with the reference and the
+capability passages, and a repair round. Ask's web search is OpenRouter's own server tool and is
+offered only there. How hard a model thinks is a setting per engine, off by default:
 measured on the modify eval, the high level was within the noise for twice the cost.
 
 ### What the model is given
