@@ -47,6 +47,8 @@ export class DemoDeclined extends Error {}
 /** The package a demo link carries. Throws in plain words when it cannot be read. */
 /** A link that leads nowhere any more (a 404): the splash says so with the mascot, not as an error. */
 export class LinkGoneError extends Error {}
+/** The app could not be fetched now, but may be later (no connection, too many today): the splash offers Try again. */
+export class DemoRetryError extends Error {}
 
 export async function loadDemoPackage(link: DemoLink): Promise<AppPackage> {
   if (link.kind === "inline") {
@@ -56,7 +58,7 @@ export async function loadDemoPackage(link: DemoLink): Promise<AppPackage> {
       throw new Error(t`This link is damaged: the app in it could not be read. Ask whoever sent it for a new one.`);
     }
   }
-  const { fetchHostedPackage, GoneError, TakenDownError } = await import("./share-service.js");
+  const { fetchHostedPackage, GoneError, TakenDownError, TooManyError } = await import("./share-service.js");
   let zip: Uint8Array;
   try {
     zip = await fetchHostedPackage(link.id, link.key);
@@ -71,7 +73,16 @@ export async function loadDemoPackage(link: DemoLink): Promise<AppPackage> {
       );
     }
     if (e instanceof GoneError) throw new LinkGoneError(t`This link no longer works: whoever shared it took it down, or it was never made.`);
-    if (e instanceof TypeError) throw new Error(t`The app could not be fetched. Check the connection and try again.`);
+    // A limit for the day on this network's address (docs/16 "Limits per address"): the link is fine.
+    if (e instanceof TooManyError) {
+      throw new DemoRetryError(
+        t({
+          message: "Too many apps were opened from this network today. Try again tomorrow, or on another network.",
+          comment: "Opening a demo link: the share service's daily limit for this network was reached",
+        }),
+      );
+    }
+    if (e instanceof TypeError) throw new DemoRetryError(t`The app could not be fetched. Check the connection and try again.`);
     throw new Error(t`This link is damaged: the app in it could not be read. Ask whoever sent it for a new one.`);
   }
   try {
