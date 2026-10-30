@@ -74,9 +74,10 @@ Same code, two authority levels. The language is never the thing that is limited
 - Android and iOS through Capacitor, the native shell around a web build, with native capabilities
   and the platform keystore.
 - The Studio: describe an app, change it, fix it by recording what went wrong, point at the part you
-  mean, in your language, with one of six model engines, every candidate gated before it is kept.
-- Twenty-one real apps in `apps/`, six example apps in `examples/`, the gallery on potyro.com, and a
-  tutorial for writing apps outside this repo.
+  mean, in your language, with one of six model engines (`packages/shell/src/engines.ts`), every candidate gated before it is kept.
+- Real apps in `apps/` (twenty-one on 2026-10-30; `ls apps` counts them), the example apps in
+  `examples/` (six; `ls examples/*.app.ts*`), the gallery on potyro.com, and a tutorial for writing
+  apps outside this repo.
 
 ## Repository map
 
@@ -86,8 +87,8 @@ docs/00-how-potyro-works.md     ← START HERE: the architecture, layer by layer
 docs/README.md                  ← every doc, with its status
 CLAUDE.md                       ← the working agreement for agents and people working here
 packages/                       ← the workspace: schema, store, host, runtime, views, shell, …
-apps/                           ← 21 real apps, each an installable package
-examples/                       ← the six living fixtures the tests are written against
+apps/                           ← the real apps, each an installable package
+examples/                       ← the living fixtures the tests are written against
 docs/tutorials/                 ← writing Potyro apps outside this repo
 gallery/                        ← the gallery site on potyro.com
 e2e/                            ← the browser suite
