@@ -1,0 +1,17 @@
+{
+  "name": "@potyro/legal",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "description": "The privacy page and the terms of use as static pages (#117): renders docs/legal/privacy.md and terms.md on the design tokens, with no script, into the shell's build and the gallery's. Builds nothing while a text still has a placeholder or says it is a draft. Depends on no Potyro package at run time.",
+  "license": "Apache-2.0",
+  "exports": {
+    "./build.mjs": "./src/build.mjs",
+    "./vite.mjs": "./src/vite.mjs"
+  },
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  }
+}
