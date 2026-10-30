@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { createShareHandler, dayCounts, type Limits, type ShareRequest, type ShareResponse } from "../src/handler.ts";
+import { createShareHandler, dayCounts, DEFAULT_LIMITS, wideKey, type Limits, type ShareRequest, type ShareResponse } from "../src/handler.ts";
+import { addressKey } from "../src/address.ts";
 import { memoryShareStore } from "../src/store.ts";
 import { diskShareStore } from "../src/disk.ts";
 import { startServer } from "../src/server.ts";
@@ -26,7 +27,7 @@ const req = (over: Partial<ShareRequest>): ShareRequest => ({ method: "GET", pat
 
 const ADMIN = "an-operator-token-that-is-long-enough-0123456789";
 
-function service(opts: { limits?: Partial<Limits>; now?: () => number; adminToken?: string; abuseContact?: string } = {}) {
+function service(opts: { limits?: Partial<Limits>; now?: () => number; adminToken?: string; abuseContact?: string; freeBytes?: () => Promise<number> } = {}) {
   const store = memoryShareStore();
   const handle = createShareHandler({
     store,
@@ -36,6 +37,7 @@ function service(opts: { limits?: Partial<Limits>; now?: () => number; adminToke
     now: opts.now,
     adminToken: opts.adminToken,
     abuseContact: opts.abuseContact,
+    freeBytes: opts.freeBytes,
   });
   return { store, handle };
 }
@@ -207,7 +209,7 @@ describe("taking a link down, as the operator (#11)", () => {
     const { out } = await create(handle);
     await takeDown(handle, out.id, ADMIN);
     const html = String((await handle(req({ path: `/potyro/s/${out.id}` }))).body);
-    expect(html).toContain(`<a href="/potyro/">Go to Potyro</a>`);
+    expect(html).toContain(`<a class="home" href="/potyro/">Go to Potyro</a>`);
     // Without a report address, the page names none rather than a wrong one.
     expect(html).not.toContain("mailto:");
   });
@@ -252,6 +254,20 @@ describe("taking a link down, as the operator (#11)", () => {
     expect((await takeDown(handle, out.id, ADMIN, "why", "5.6.7.8")).status).toBe(200);
   });
 
+  it("refuses an address out of tries before comparing its token: the right one too", async () => {
+    const { handle, store } = service({ adminToken: ADMIN, limits: { adminFailuresPerDay: 2 } });
+    const { out } = await create(handle);
+    expect((await takeDown(handle, out.id, "guess-1")).status).toBe(401);
+    expect((await takeDown(handle, out.id, "guess-2")).status).toBe(401);
+    // A guess that happens to be right, past the limit, gets what every other guess gets.
+    const right = await takeDown(handle, out.id, ADMIN);
+    expect(right.status).toBe(429);
+    expect(body(right)).toMatchObject({ code: "too-many-tries" });
+    expect(await store.takenDown(out.id)).toBeNull();
+    // A right token only counts nothing: the operator, from a fresh address, uses up no tries.
+    for (let i = 0; i < 3; i++) expect((await takeDown(handle, "A".repeat(22), ADMIN, "why", "5.6.7.8")).status).toBe(404);
+  });
+
   it("says when there is no such link, and wants a JSON body", async () => {
     const { handle } = service({ adminToken: ADMIN });
     const missing = await takeDown(handle, "A".repeat(22), ADMIN);
@@ -291,11 +307,82 @@ describe("per-address limits a day (#119)", () => {
     expect((await handle(req({ method: "HEAD", path: `/s/${out.id}` }))).status).toBe(200);
     const refusedPage = await handle(req({ path: `/s/${out.id}` }));
     expect(refusedPage.status).toBe(429);
-    expect(body(refusedPage)).toMatchObject({ code: "too-many-pages" });
+    expect(refusedPage.headers["content-type"]).toMatch(/text\/html/);
+    // A picture is fetched by a chat app, not read by a person: it stays JSON.
+    const refusedPicture = await handle(req({ path: `/s/${out.id}/preview.jpg` }));
+    expect(refusedPicture.status).toBe(429);
+    expect(body(refusedPicture)).toMatchObject({ code: "too-many-pages" });
 
     // Health is never limited; another address has its own day.
     expect((await handle(req({ path: "/share-api/health" }))).status).toBe(200);
     expect((await handle(req({ path: `/s/${out.id}`, ip: "5.6.7.8" }))).status).toBe(200);
+  });
+
+  it("answers a person's browser over the pages limit with a page in their language, and when to try again", async () => {
+    // 21:30 UTC: the counts start again in two and a half hours, "about 3".
+    const { handle } = service({ limits: { pagesPerDay: 1 }, now: () => Date.UTC(2026, 10, 2, 21, 30) });
+    const { out } = await create(handle);
+    expect((await handle(req({ path: `/potyro/s/${out.id}` }))).status).toBe(200);
+    const page = await handle(req({ path: `/potyro/s/${out.id}`, headers: { "accept-language": "de-DE,de;q=0.9" } }));
+    expect(page.status).toBe(429);
+    expect(page.headers["content-type"]).toBe("text/html; charset=utf-8");
+    expect(page.headers["retry-after"]).toBe(String(150 * 60));
+    expect(page.headers["cache-control"]).toBe("no-store");
+    expect(page.headers["content-security-policy"]).toMatch(/default-src 'none'/);
+    const html = String(page.body);
+    expect(html).toContain(`<html lang="de">`);
+    expect(html).toContain("Aus diesem Netz wurden heute zu viele Links geöffnet.");
+    expect(html).toContain("in etwa 3 Stunden");
+    expect(html).toContain(`<a class="home" href="/potyro/">Zu Potyro</a>`);
+    // Words for a person, not the API's: no JSON, no code, no script.
+    expect(html).not.toContain("too-many-pages");
+    expect(html).not.toContain(`"ok"`);
+    expect(html).not.toContain("<script");
+    for (const [lang, words] of [
+      ["en", "Try again in about 3 hours, or on another network."],
+      ["pt-BR", "Tente de novo daqui a umas 3 horas"],
+      ["es", "Vuelve a intentarlo en unas 3 horas"],
+      ["it", "Riprova tra circa 3 ore"],
+      ["pl", "Spróbuj ponownie za około 3 godziny"],
+    ]) {
+      expect(String((await handle(req({ path: `/s/${out.id}`, headers: { "accept-language": lang! } }))).body)).toContain(words);
+    }
+  });
+
+  it("counts an IPv6 /48 too, at eight times each limit, so many /64s are not many addresses", async () => {
+    const { handle } = service({ limits: { pagesPerDay: 1 } });
+    const { out } = await create(handle);
+    const page = (ip: string) => handle(req({ path: `/s/${out.id}`, ip }));
+    for (let i = 0; i < 8; i++) expect((await page(`2001:db8:7:${i.toString(16)}::1`)).status).toBe(200);
+    // The ninth /64 of the same /48 has had nothing yet, but its /48 is used up.
+    expect((await page("2001:db8:7:ff::1")).status).toBe(429);
+    // Another /48 has its own; IPv4 has no wider count.
+    expect((await page("2001:db8:8:1::1")).status).toBe(200);
+    expect(wideKey(addressKey("2001:db8:7:ff::1"))).toBe("2001:db8:7::/48");
+    expect(wideKey(addressKey("1.2.3.4"))).toBeNull();
+  });
+
+  it("caps the bytes the whole service keeps a day, without spending anyone's own count", async () => {
+    const size = 3 + JPEG.byteLength;
+    const { handle } = service({ limits: { storedBytesPerDay: size * 2, createsPerDay: 3 } });
+    expect((await create(handle, upload(), "1.1.1.1")).res.status).toBe(201);
+    expect((await create(handle, upload(), "2.2.2.2")).res.status).toBe(201);
+    const full = await create(handle, upload(), "3.3.3.3");
+    expect(full.res.status).toBe(503);
+    expect(full.out).toMatchObject({ ok: false, code: "full-today" });
+    expect(Number(full.res.headers["retry-after"])).toBeGreaterThan(0);
+  });
+
+  it("makes no new link while the disk would be left with less than its floor free", async () => {
+    let free = 5_000_000_000;
+    const { handle } = service({ freeBytes: async () => free });
+    expect((await create(handle)).res.status).toBe(201);
+    free = DEFAULT_LIMITS.minFreeBytes + 5;
+    const low = await create(handle);
+    expect(low.res.status).toBe(503);
+    expect(low.out).toMatchObject({ ok: false, code: "no-room" });
+    // Opening links already made still works.
+    expect((await handle(req({ path: "/share-api/health" }))).status).toBe(200);
   });
 
   it("counts an IPv6 /64 as one address, and an IPv4 written as IPv6 as itself", async () => {
@@ -380,5 +467,25 @@ describe("on disk, over HTTP", () => {
     expect(readdirSync(folder)).toEqual(["taken-down.json"]);
     expect(JSON.parse(readFileSync(join(folder, "taken-down.json"), "utf8"))).toMatchObject({ reason: "notice 2026-11-02: unlawful content" });
     expect((await handle(req({ path: `/s/${out.id}` }))).status).toBe(410);
+  });
+
+  it("a sharer's delete takes only the share's files: a takedown that lands meanwhile keeps its record", async () => {
+    dir = mkdtempSync(join(tmpdir(), "shares-"));
+    const store = diskShareStore(dir);
+    const handle = createShareHandler({ store, indexHtml: async () => INDEX });
+    const { out } = await create(handle as ReturnType<typeof service>["handle"]);
+    const folder = join(dir, out.id.slice(0, 2), out.id);
+    // The takedown's record is written between the sharer's checks and the removal.
+    writeFileSync(join(folder, "taken-down.json"), JSON.stringify({ at: "2026-11-02T10:00:00Z", reason: "notice" }));
+    await store.remove(out.id);
+    expect(readdirSync(folder)).toEqual(["taken-down.json"]);
+    expect(await store.takenDown(out.id)).toMatchObject({ reason: "notice" });
+    expect((await handle(req({ path: `/s/${out.id}` }))).status).toBe(410);
+
+    // With nothing else there, the folder goes too.
+    const other = await create(handle as ReturnType<typeof service>["handle"]);
+    await store.remove(other.out.id);
+    expect(existsSync(join(dir, other.out.id.slice(0, 2), other.out.id))).toBe(false);
+    await store.remove(other.out.id); // twice is fine
   });
 });
