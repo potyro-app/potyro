@@ -21,6 +21,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { StorageReport } from "./storage-report.js";
 import { LANGUAGE_SELECT_ID, LanguagePicker } from "./language-picker.js";
 import { BackupSwitch } from "./backup-switch.js";
+import { InstallRow } from "./install-row.js";
 import { shellDialogs } from "./dialog.js";
 import { RELAY_KEY, syncRelayUrl } from "./open-store.js";
 import { DEFAULT_NAME, ensureIdentity, peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@potyro/identity";
@@ -257,6 +258,8 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
               </small>
             </div>
           </div>
+          {/* Only where the browser can do it and Potyro is not on the home screen yet (#123). */}
+          <InstallRow />
           {words ? (
             <div className="k-identity-words">
               <p className="k-muted">

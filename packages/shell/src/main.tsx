@@ -31,6 +31,7 @@ import { App } from "./App.js";
 import { Studio } from "./studio.js";
 import { Launcher, openInstalledApp } from "./launcher.js";
 import { applyLook } from "./look.js";
+import { listenForInstall } from "./install-offer.js";
 import { followThemeColor } from "./theme-color.js";
 import { appKey, recordOpen, recordSignals } from "./launcher-store.js";
 import { pauseTiles, watchTile } from "./tile-runner.js";
@@ -1215,6 +1216,10 @@ function warmOffline(reg: ServiceWorkerRegistration): void {
   if (saveData) return;
   reg.active?.postMessage({ type: "warm" });
 }
+
+// Before boot awaits anything: the browser's install offer (#123) fires once, and only a listener
+// that is already there catches it.
+listenForInstall();
 
 boot().catch((err: unknown) => {
   // Not a boot error: the screen saying another tab has the storage is already up.
