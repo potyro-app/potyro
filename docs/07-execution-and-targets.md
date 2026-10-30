@@ -303,6 +303,22 @@ Vite build + cache-first service worker. Persistence via OPFS SQLite. `WebCapabi
 `ctx.caps`. Trusted apps run direct (main/worker); untrusted apps' logic in the browser realm, served
 with `frame-src 'none'` (QuickJS-WASM behind the flag).
 
+**Offline after one visit, and the home screen (#123).** The service worker
+(`packages/shell/public/sw.js`) serves pages network-first and everything else cache-first, and it
+does not wait to see a file fetched: the build writes `shell-precache.json`
+(`precacheShell` in `packages/shell/vite.config.ts`) with two lists. `boot` (the entry chunk, its
+static imports, styles and fonts, the manifest and icons, about 2.4 MB) is fetched at install,
+because on a first visit the page loads its entry before the worker controls it, and a reload
+offline used to find the page with no script. `rest` (every other file under `assets/`, about 40 MB,
+mostly the bundler's Wasm an app needs to open) is fetched after the worker takes over, when the page
+posts `warm` on load, four at a time. The same step drops older builds' `/assets/` files. With the
+browser's Save-Data on, the page does not ask, and files are kept as they are used. The You panel offers adding
+Potyro to the home screen (`install-offer.ts`): the browser's own dialog where `beforeinstallprompt`
+fires (its mini-infobar is suppressed), the two Safari steps on iPhone and iPad, nothing once
+installed or after "No thanks". `e2e/pwa-install-prod.spec.ts` covers this against a production
+build (`pnpm test:e2e:prod`, not part of `ci:local all`). Real-device checks on Android Chrome and
+iOS Safari are still to be recorded in docs/13 and docs/27.
+
 ### Capacitor (second)
 Wraps the same web build. `CapacitorCapabilities` backs `ctx.caps` with real native camera,
 **exact local notifications**, geolocation, filesystem. Same runners: the WebView builds the realm
