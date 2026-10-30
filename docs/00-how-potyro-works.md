@@ -993,7 +993,7 @@ counts only when it passes a gate**, and every exit that is not a pass says so.
 
 ### Engines
 
-Five engines answer the Studio, chosen in one place (`packages/shell/src/engines.ts`) so that
+Six engines answer the Studio, chosen in one place (`packages/shell/src/engines.ts`) so that
 changing the engine changes the model and nothing else:
 
 | Engine | What it is | Where it runs | Tools |
@@ -1003,14 +1003,13 @@ changing the engine changes the model and nothing else:
 | Chrome built-in | Gemini Nano, nothing to download | local | no |
 | Anthropic | Claude with the person's own API key | cloud | no |
 | OpenRouter | a gateway to hosted models behind one key (DeepSeek, Qwen, Llama); DeepSeek V4 Flash is the measured default | cloud | yes |
+| OpenAI-compatible endpoint | any server speaking the OpenAI chat API (OpenAI, Ollama, LM Studio, vLLM), named by base URL, optional key and model; sent none of OpenRouter's fields | the person's choice | yes |
 
 All five implement one contract, `ModelBackend` (`packages/generator/src/backend.ts`): turn a
 request into a source, repair a failing source, or reply to a change request. A hybrid backend
 composes two of them and escalates from the on-device model to the cloud when the local repair loop
 has not converged. Keys are kept in the tab's sessionStorage, gone when the tab closes, never in
-localStorage. Only OpenRouter carries tool calls end to end, so it is the engine that can
-investigate and the only one that runs the loops below; the others get one turn with the
-reference and the capability passages, and a repair round. How hard a model thinks is a setting per engine, off by default:
+localStorage. OpenRouter and an OpenAI-compatible endpoint carry tool calls end to end, so they run the loops below; Ask's web search is OpenRouter's own server tool and is offered only there How hard a model thinks is a setting per engine, off by default:
 measured on the modify eval, the high level was within the noise for twice the cost.
 
 ### What the model is given
