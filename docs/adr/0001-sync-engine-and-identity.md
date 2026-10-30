@@ -6,7 +6,7 @@ status: historical
 
 # ADR 0001 · Sync engine and identity model
 
-- **Status:** Proposed
+- **Status:** Accepted, as built (recorded 2026-10-30; proposed 2026-08-07)
 - **Date:** 2026-08-07
 - **Deciders:** core
 - **Satisfies:** `docs/10-backlog.md#ka-08` ("Evaluate + choose … Decision recorded (ADR)")
@@ -15,6 +15,32 @@ status: historical
 
 > **How it is built today** is in docs/00 "Sync, CRDT and identity"; this record keeps the decision
 > and the alternatives, including the superseded Yjs reasoning.
+
+## Status today (2026-10-30)
+
+What follows is the record as it was argued in August, amendments included. Since then:
+
+- **D1 shipped.** `JazzStore` (`packages/store/src/jazz-store.ts`, first commit `e8c8f0fe` on
+  2026-08-07) is what an app gets when sync is on; local-only apps keep `SqliteStore`.
+- **D2/D2a shipped.** `packages/identity` wraps the cojson account; the recovery words link a second
+  device, through the relay.
+- **D3: invites are a fragment on the site's own URL**, `…#join=…` (`packages/shell/src/share-sync.ts`),
+  not `https://potyro.app/join/<spaceId>`.
+- **D4: the relay is `jazz-run sync`**, cojson's own server, in a container (docs/16 §3),
+  not a relay of our own. WebRTC, local-network and file transports are not built.
+- **D5 shipped:** a photo is its own `FileStream` CoValue, fetched when someone opens it.
+- **D7 shipped** as the version gate (`packages/shell/src/version-gate.ts`): an older copy goes
+  read-only, and moving the shared data to a new shape is asked.
+- **D8 shipped:** `permissions.sync` (`packages/schema/src/types/app.ts`), asked before an app you
+  did not write syncs.
+- **The `mergeable` export does not exist.** The manifest type still names the mode, but every export
+  is a `snapshot` and an import replaces an app's records (docs/06 "Backup and portability"), so
+  the "sneakernet via the `mergeable` bundle" transport in D4 is not there.
+- **Code trust is no longer "the QuickJS isolate".** An untrusted app runs in the browser realm
+  (docs/22); QuickJS-WASM is the fallback behind a flag. The two-axes argument is unchanged.
+- **New since:** the backup switch (`packages/shell/src/backup-all.ts`) turns sync on for every app,
+  so a second device signed in with the words brings back everything, not only the apps someone
+  ticked.
 
 ## Context
 

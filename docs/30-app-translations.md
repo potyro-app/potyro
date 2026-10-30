@@ -160,7 +160,7 @@ and every `{placeholder}` kept (read as ICU, so words inside plural branches are
 - **Back-compat**: inline maps keep working, read as in docs/20. A shared app made before this opens
   unchanged. No `schemaVersion` moves: no records change.
 - **Codemod** (`pnpm --filter @potyro/generator maps-to-po <source> <locales folder>`), for the 6
-  examples and 9 showcase apps, and their own modules:
+  examples and the 9 showcase apps there were when it ran (2026-10-19), and their own modules:
   - every slot map becomes its default-language string, and the other languages become entries in
     `locales/<lang>.po`;
   - every `ctx.t({ en: …, … }, vars)` call becomes `ctx.t("…", vars)` the same way;
