@@ -31,6 +31,7 @@ import { App } from "./App.js";
 import { Studio } from "./studio.js";
 import { Launcher, openInstalledApp } from "./launcher.js";
 import { applyLook } from "./look.js";
+import { followThemeColor } from "./theme-color.js";
 import { appKey, recordOpen, recordSignals } from "./launcher-store.js";
 import { pauseTiles, watchTile } from "./tile-runner.js";
 import { seedExamples } from "./examples.js";
@@ -1022,6 +1023,8 @@ async function boot(): Promise<void> {
   // Before anything paints. A light flash on a device set to dark is the whole feature failing in
   // the one moment it is most visible.
   applyLook();
+  // And the browser's bar with it, when a theme is chosen rather than the system's (#123).
+  followThemeColor();
 
   // The language, before anything paints for the same reason (#298): the saved choice, else the
   // device's, else English. English needs no fetch; another language is one small chunk, from the
