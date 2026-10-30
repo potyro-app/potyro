@@ -4,7 +4,7 @@
 // everybody's key. Everything about it is narrow, because it stands between anyone on the internet
 // and a bill:
 //
-//   - one route, `POST /complete`, taking exactly the payload `readAiPayload` accepts, size-capped
+//   - `POST /complete` (this file) takes exactly the payload `readAiPayload` accepts, size-capped
 //     before parsing;
 //   - the model, the token cap and the provider rules are fixed here (`openRouterBody`), never by the
 //     sender;
