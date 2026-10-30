@@ -103,6 +103,13 @@ Owner decision 2026-10-15: **both**, free first.
    meters: per device a day and a month, per address a day, and **a monthly spending cap for the
    whole service, checked before every dispatch**. A device id is random and says nothing about the
    person.
+   The same relay also serves **the Studio and Ask**, once the shell has the engine for it (E1/E3):
+   `POST /ai/v1/chat/completions` takes an OpenAI-shaped chat request (its messages, tools and
+   reasoning as the Studio's loop writes them), sends it on only for an allowlisted model, with the
+   token cap clamped and `data_collection: "deny"` forced, pipes the answer back as it streams, and
+   holds each device to a monthly allowance in US dollars, debited from OpenRouter's `usage.cost`.
+   Web search is refused there until a paid plan exists (none does). Both routes share the one
+   monthly cap. Deployment and every limit: docs/16 "AI for apps".
 2. **Then the person's own key** — the OpenRouter key in Model settings (session-only, as for Ask)
    — when the allowance is used up, the relay is not reachable, or it is not deployed.
 3. **Neither:** the call throws, in words the shell shows as the action's failure:
@@ -154,11 +161,12 @@ environment variable.
 | QuickJS ops `cap.ai.*` | `@potyro/host` isolate | bytes cross as base64; a `FileRef` / `MediaRef` as itself |
 | free first, own key, resize, offline, timeouts, guards, spend, on/off | `@potyro/shell` `app-ai.ts` | holds the key and the person's choices |
 | wire format, OpenRouter body, relay, server | `@potyro/ai-relay` | browser-safe format + Node relay, no Potyro dependencies |
+| the Studio's and Ask's chat route, its dollar allowance, the demand counts | `@potyro/ai-relay` `chat.ts`, `counts.ts`, `ledger.ts` | the same key, the same cap, the same ledger |
 
 ## What this does not do
 
 Image generation and editing (the original scope of #213) are not here: its blockers (provider
 terms, the AI Act's labelling, minors) are unchanged. Streaming, tools and web search are not
-offered to apps. An on-device model is not wired yet; `AiCap` is the seam it would plug into.
+offered to apps (the relay's chat route has streaming and tools, for the Studio and Ask only). An on-device model is not wired yet; `AiCap` is the seam it would plug into.
 
 These are new optional members: no existing app changes, so `schemaVersion` is not bumped.
