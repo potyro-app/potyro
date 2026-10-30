@@ -13906,8 +13906,15 @@ input.k-switch:disabled {
   color: var(--ink-faint);
   font-weight: 400;
 }
-/* Report (#11): there for whoever needs it, quiet for everyone else. */
+/* Report (#11): there for whoever needs it, quiet for everyone else. Its target is 44px tall: the
+   padding reaches out above and below the line and the negative margins take it back, so the bar
+   stays as slim as it was. */
 .k-demo-report {
+  display: inline-block;
+  min-width: 44px;
+  padding-block: calc((44px - 1lh) / 2);
+  margin-block: calc((1lh - 44px) / 2);
+  text-align: center;
   color: var(--ink-soft);
   text-decoration: underline;
   text-decoration-color: var(--ink-faint);
