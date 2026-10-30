@@ -32,6 +32,7 @@ import { Studio } from "./studio.js";
 import { Launcher, openInstalledApp } from "./launcher.js";
 import { applyLook } from "./look.js";
 import { listenForInstall } from "./install-offer.js";
+import { connectOffline, type ConnectionInfo } from "./offline-ready.js";
 import { followThemeColor } from "./theme-color.js";
 import { appKey, recordOpen, recordSignals } from "./launcher-store.js";
 import { pauseTiles, watchTile } from "./tile-runner.js";
@@ -1197,24 +1198,16 @@ function registerServiceWorker(): void {
   navigator.serviceWorker
     .register("/sw.js")
     .then(() => navigator.serviceWorker.ready)
-    .then((reg) => warmOffline(reg))
+    .then((reg) => {
+      // Which build this page runs, for the worker (public/sw.js header): the path of this, the
+      // entry script. Then how much is kept for offline use, and the rest only on Wi-Fi or a cable
+      // (offline-ready.ts) — otherwise when the person asks for it in You.
+      const connection = (navigator as Navigator & { connection?: ConnectionInfo }).connection;
+      connectOffline(navigator.serviceWorker, reg, new URL(import.meta.url).pathname, connection);
+    })
     .catch(() => {
       /* offline SW is best-effort */
     });
-}
-
-let warmAsked = false;
-/**
- * Ask the worker to keep the rest of Potyro for offline use (#123, public/sw.js `warm`): once per
- * page load, since `mount` runs on every route. Not when the person has asked their browser to save
- * data — then the files are kept as they are used, as before, and Home still opens offline.
- */
-function warmOffline(reg: ServiceWorkerRegistration): void {
-  if (warmAsked) return;
-  warmAsked = true;
-  const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
-  if (saveData) return;
-  reg.active?.postMessage({ type: "warm" });
 }
 
 // Before boot awaits anything: the browser's install offer (#123) fires once, and only a listener
