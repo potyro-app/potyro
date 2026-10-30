@@ -129,8 +129,8 @@ them, but do not build it now.
   files and `ctx.storage`; `data.json` and `csv/<entity>.csv`; `manifest.json`; the source; and the
   app's libraries and modules with their lock (docs/00 "The export bundle"). It is a **snapshot** of
   the current values: a synced app's CRDT history does not go into it.
-- **`mergeable` does not exist yet.** `ExportMode` in `export.ts` names `"snapshot" | "mergeable"`,
-  but every export writes `mode: "snapshot"`, and nothing reads the mode back.
+- **The manifest's `mode` is always `snapshot`.** `ExportMode` in `export.ts` names nothing else, and
+  `unpackBundle` reads a bundle that says otherwise (an old file) as a snapshot.
 - **Import** (`⋯` → Import) **replaces** the app's records with the bundle's: the records it replaces
   are removed first, so what you import is what you have (`replaceWithBundle` in `main.tsx`). It does
   not merge. Merging two devices' edits is what sync does, not a file.
