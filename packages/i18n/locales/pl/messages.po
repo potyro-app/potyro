@@ -1112,6 +1112,11 @@ msgstr "Lista rzeczy do spakowania na każdy wyjazd"
 msgid "A picture of your own on the tile"
 msgstr "Twój własny obrazek na kafelku"
 
+#. Subject of the email that reports a demo link to the Potyro team
+#: ../shell/src/demo.tsx
+msgid "A Potyro link"
+msgstr "Link w Potyro"
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "A query parameter named"
 msgstr "Parametr zapytania o nazwie"
@@ -5619,6 +5624,11 @@ msgstr "Powtórz"
 msgid "Replay this path against the app"
 msgstr "Powtórz tę ścieżkę na aplikacji"
 
+#. Demo bar: report this demo link to the Potyro team
+#: ../shell/src/demo.tsx
+msgid "Report"
+msgstr "Zgłoś"
+
 #: ../shell/src/history.tsx
 msgid "Reported as host-side"
 msgstr "Zgłoszone jako problem platformy"
@@ -6468,6 +6478,11 @@ msgstr "Dotknij mapy, aby umieścić punkt"
 msgid "Tap the part you mean"
 msgstr "Dotknij części, o którą ci chodzi"
 
+#. Demo bar: what the Report link does
+#: ../shell/src/demo.tsx
+msgid "Tell the Potyro team about this link, if you think it is illegal"
+msgstr "Powiadom zespół Potyro o tym linku, jeśli uważasz, że jest nielegalny"
+
 #: ../shell/src/endpoint-settings.tsx
 msgid "Test connection"
 msgstr "Sprawdź połączenie"
@@ -6716,6 +6731,23 @@ msgstr "Nie udało się pobrać linku stąd"
 #: ../shell/src/share-body.tsx
 msgid "The link could not be made. The words can still be sent."
 msgstr "Nie udało się utworzyć linku. Tekst nadal można wysłać."
+
+#. Start of the email that reports a demo link; the person writes their reasons under the second line
+#: ../shell/src/demo.tsx
+msgid ""
+"The link: {reportLink}\n"
+"\n"
+"Why I think it is illegal:\n"
+"\n"
+"\n"
+"I believe this report is accurate and complete."
+msgstr ""
+"Link: {reportLink}\n"
+"\n"
+"Dlaczego uważam, że jest nielegalny:\n"
+"\n"
+"\n"
+"Oświadczam, że to zgłoszenie jest prawdziwe i kompletne."
 
 #: ../shell/src/move-archive.ts
 #: ../shell/src/move-archive.ts
@@ -7156,6 +7188,11 @@ msgstr "Ten link już nie działa: osoba, która go udostępniła, wycofała go 
 #: ../shell/src/main.tsx
 msgid "This link opens an app you don't have here. Ask whoever sent it to share the app with you, then open the link again."
 msgstr "Ten link otwiera aplikację, której tu nie masz. Poproś osobę, która go wysłała, żeby udostępniła ci aplikację, i otwórz link jeszcze raz."
+
+#. A demo link the Potyro team removed after a report; the address is where to write
+#: ../shell/src/demo.tsx
+msgid "This link was taken down: the app behind it was removed from Potyro. If you think this was a mistake, write to {address}."
+msgstr "Ten link został zablokowany: aplikacja, do której prowadził, została usunięta z Potyro. Jeśli uważasz, że to pomyłka, napisz na {address}."
 
 #: ../shell/src/realm-probe-screen.tsx
 msgid "This makes a sealed screen busy for 3 seconds, three ways, and measures whether Potyro froze meanwhile. The counter stops while it is frozen."
