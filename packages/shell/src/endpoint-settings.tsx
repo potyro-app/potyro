@@ -1,11 +1,13 @@
 // The OpenAI-compatible endpoint's own settings (#121): where it is, its key if it takes one, which
 // model, and a button that asks the server before anything is spent on it. The key is held like the
-// other engines' keys (engine-store.ts): in this tab only, never saved.
+// other engines' keys (engine-store.ts): in this tab only, unless the person asks this device to
+// remember the endpoint (remember-key.tsx), when all three go into the device's vault.
 
 import { useId, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { EndpointSetting, EngineConfig } from "./engines.js";
 import { checkEndpoint, type EndpointCheck } from "./endpoint-check.js";
+import { RememberKey } from "./remember-key.js";
 
 export function EndpointSettings({ config, onChange }: { config: EngineConfig; onChange: (next: EngineConfig) => void }) {
   const { t } = useLingui();
@@ -78,6 +80,7 @@ export function EndpointSettings({ config, onChange }: { config: EngineConfig; o
           ))}
         </datalist>
       ) : null}
+      <RememberKey kind="endpoint" hasKey={setting.baseUrl.trim().length > 0} />
       <div className="k-endpoint-test">
         <button type="button" className="k-add" disabled={state.kind === "testing" || !setting.baseUrl.trim()} onClick={() => void test()}>
           {state.kind === "testing" ? <Trans comment="Button while it asks the server">Testing…</Trans> : <Trans>Test connection</Trans>}
