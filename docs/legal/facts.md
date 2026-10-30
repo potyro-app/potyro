@@ -60,8 +60,8 @@ changed here.
 | F-26 | Public per link: title (app name), one line, language, preview picture; the line names the sharer when "Say it is by" is ticked. | `share-links/src/store.ts` (`StoredShare`: meta, createdAt, deleteHash, imageType); `wire.ts` `ShareMeta`; `shell/src/demo-share.ts` `previewMeta`; `share-sheet.tsx` | code |
 | F-27 | Pages carry `noindex`. | docs/16, docs/24 §4 | doc |
 | F-28 | Links never expire. | docs/16 "Disk: links are never expired"; no expiry in `disk.ts` | doc, code |
-| F-29 | Delete: `DELETE /share-api/shares/<id>` with the delete token, or the operator removes the folder. The sharer's device keeps the last 200 tokens (`potyro:shares`) but **no UI calls DELETE yet**. | `share-links/src/handler.ts`, `disk.ts`; `shell/src/share-service.ts` (`remember`, no DELETE anywhere in shell) | code |
-| F-30 | Per-address limit: 30 links a day, in memory. | docs/16; `share-links/src/handler.ts` (`allow(req.ip, …)`) | code |
+| F-29 | Delete: `DELETE /share-api/shares/<id>` with the delete token (the link then answers 404). The operator takes a link down by id without the token (`DELETE /share-api/admin/shares/<id>` with the operator token, or `scripts/takedown.mjs`); the link's package, picture and meta are removed, the time and the operator's reason are kept, and the link answers 410 with a page naming the report address. The sharer's device keeps the last 200 tokens (`potyro:shares`) but **no UI calls DELETE yet**. | `share-links/src/handler.ts`, `disk.ts`, `scripts/takedown.mjs`, `test/handler.test.ts`, `test/takedown.test.ts`; `shell/src/share-service.ts` (`remember`, no DELETE anywhere in shell); docs/16 "Taking a link down" | code |
+| F-30 | Per-address limits a day (UTC), in memory: 30 links made, 300 packages fetched, 2000 link pages and pictures; an IPv6 address counts as its /64. Addresses are held only as counts for the day, never written down. | docs/16 "Limits per address"; `share-links/src/handler.ts` (`dayCounts`, `DEFAULT_LIMITS`), `address.ts` | code |
 | F-31 | Without the service, the inline link carries the whole app in the fragment. | docs/24 §2 | doc |
 | F-32 | The link service is live on potyro.app. | `https://potyro.app/share-api/health` → `{"ok":true}` | observed (docs/16 says so since the #458 pass, 2026-10-30) |
 
@@ -132,7 +132,7 @@ changed here.
 | F-60 | The sync relay on potyro.app is live. | `/sync` did not answer a plain GET within 10 s (it expects a websocket). | **to verify** |
 | F-61 | Mail for potyro.com and potyro.app goes to Gandi. | `dig MX potyro.com` → `spool.mail.gandi.net`, `fb.mail.gandi.net` (same for potyro.app) | observed. Whether privacy@, abuse@, security@ exist: **to verify** |
 | F-62 | The gallery on potyro.com keeps no access log. | docs/16 "The gallery" (Caddy `log { output discard }`) | doc; whether it is applied on the server: **to verify** |
-| F-63 | The gallery's "Report a link" mails contact@potyro.com. | docs/24 §10; `gallery/src/build.mjs` | doc |
+| F-63 | The gallery's "Report a link" and a hosted demo link's Report mail the report address (`abuse` in `shell/src/contacts.json`); while that is the `<ABUSE EMAIL>` placeholder, contact@potyro.com. | docs/24 §4, §10; `gallery/src/build.mjs`; `shell/src/contact.ts`, `demo.tsx` | code |
 | F-64 | potyro.app answers without a gate (public). | `curl -sI https://potyro.app/` → 200, no auth | observed |
 | F-65 | `/privacy` and `/terms` on potyro.app currently serve the app shell (the SPA fallback), not these texts. | `curl https://potyro.app/privacy` → the shell's `index.html` | observed |
 
@@ -141,7 +141,7 @@ changed here.
 | # | Claim | Proof | Status |
 |---|---|---|---|
 | F-29 | A demo link can be deleted by id. | see above | code |
-| F-52 | A space's data can be removed from the relay. | No tool exists. cojson has `deleteCoValueContent` for a whole CoValue (docs/10 KA-30); deleting from `sync.db` by hand is untested, and #119's delete path is open. | **to verify**. The public text says "we will try, by hand" |
+| F-52 | A space's data can be removed from the relay, by hand, with the relay stopped; a device that still holds the space puts it back when it next syncs, and backups keep it until they age out. | `store/scripts/erase-space.mjs`, tested on a database made by cojson in `store/test/erase-space.test.ts` (including the copy coming back); docs/16 "Erasing a space or an account from the relay" | code; never run on potyro.app yet. The public text says "we will try, by hand" |
 | F-66 | GitHub issues can be deleted by a repository admin. | GitHub feature, not Potyro code | to verify on `fuzue/potyro` once public |
 | F-67 | The identity id is shown under You, Advanced. | `shell/src/identity-panel.tsx` ("Identity `{me.id}`") | code |
 | F-68 | Export saves an app with its records as a file. | `shell/src/App.tsx` app menu `Export`; docs/16 (the person's export of a shared app, `missingFiles`) | code |
