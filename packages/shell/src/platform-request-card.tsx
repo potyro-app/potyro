@@ -9,6 +9,7 @@ import { useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { PlatformRequestPayload } from "@potyro/platform-requests";
 import type { PlatformAsk, SentRequest } from "./studio-chat.js";
+import { LegalLink } from "./legal-links.js";
 
 export interface PlatformRequestCardProps {
   ask: PlatformAsk;
@@ -69,9 +70,13 @@ export function PlatformRequestCard({ ask, sent, review, onSend }: PlatformReque
             </p>
             <pre>{step.payload.structure || t`(nothing could be read from the app)`}</pre>
           </details>
+          {/* Said before it goes, plainly (#117, #124): the relay files it as a public GitHub issue. */}
           <p className="k-ask-card-note">
-            <Trans>It goes on a public list of requests the Potyro team reads, without your name. No account needed.</Trans>
+            <Trans>It is posted publicly on GitHub, where anyone can read it, without your name.</Trans>
           </p>
+          <LegalLink section="requests" block>
+            <Trans comment="Studio request card: link to the privacy page's section on requests">How requests are kept, and how to remove one</Trans>
+          </LegalLink>
           <div className="k-card-actions">
             <button type="button" className="k-card-open" onClick={() => void send(step.payload)}>
               <Trans>Send</Trans>

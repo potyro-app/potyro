@@ -37,7 +37,8 @@ describe("the card", () => {
     // Exactly what goes: the structure as it will be sent, entries never.
     expect(screen.getByText(/"plant": "\(a function\)"/)).toBeTruthy();
     expect(screen.getByText(/None of your entries are in it/)).toBeTruthy();
-    expect(screen.getByText(/public list/)).toBeTruthy();
+    // Said plainly before it goes: the request becomes a public GitHub issue (#117, #124).
+    expect(screen.getByText(/posted publicly on GitHub, where anyone can read it/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
     await waitFor(() => expect(onSend).toHaveBeenCalledWith(payload));

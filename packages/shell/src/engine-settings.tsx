@@ -20,6 +20,7 @@ import { EndpointSettings } from "./endpoint-settings.js";
 import { RememberKey } from "./remember-key.js";
 import { freeOffered, leftWords, refusalText, stoppedNow, useFreeAi } from "./free-ai.js";
 import { checkFreeEngine } from "./engine-store.js";
+import { LegalLink } from "./legal-links.js";
 
 /**
  * Where the microphone's words are made on this device (docs/29): voice uses none of the engines
@@ -251,6 +252,10 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
         </div>
 
         <VoiceNote />
+        {/* What each choice sends, and to whom (#117): the privacy page's Studio section. */}
+        <LegalLink section="studio" block>
+          <Trans comment="Model settings: link to the privacy page's section on the Studio's models">What leaves your device with each choice</Trans>
+        </LegalLink>
 
         <footer className="k-modal-foot">
           <span className="k-muted">

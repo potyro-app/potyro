@@ -17,6 +17,7 @@ import { shareEvent } from "./share-events.js";
 import { networkLinks } from "./share-networks.js";
 import { CLIP_SECONDS, clipEnvFor, clipWay, startClip, type Recording } from "./clip.js";
 import { shellCaps } from "./shell-caps.js";
+import { LegalLink } from "./legal-links.js";
 
 type State = { kind: "choose" } | { kind: "making" } | { kind: "made"; made: MadeDemoLink } | { kind: "failed"; why: string };
 
@@ -171,6 +172,10 @@ export function ShareSheet({ app, onClose, onInvite, clipRoot }: ShareSheetProps
               </button>
             </>
           )}
+          {/* The link's name, line and picture are public (#117, docs/24 §4): what, and for how long. */}
+          <LegalLink section="links" block>
+            <Trans comment="Share sheet: link to the privacy page's section on demo links">What a link makes public, and for how long</Trans>
+          </LegalLink>
         </section>
 
         {way ? (
@@ -243,6 +248,9 @@ export function ShareSheet({ app, onClose, onInvite, clipRoot }: ShareSheetProps
               <Trans>Choose Share on its tile in your apps to invite someone: that turns on sync for it.</Trans>
             </p>
           )}
+          <LegalLink section="sync" block>
+            <Trans comment="Share sheet, Use it together: link to the privacy page's section on sync and sharing">What sharing keeps on Potyro’s server</Trans>
+          </LegalLink>
         </section>
       </div>
     </div>
