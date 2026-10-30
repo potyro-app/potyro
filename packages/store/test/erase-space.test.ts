@@ -271,7 +271,7 @@ describe.skipIf(!hasNodeSqlite)("erasing a space from the relay's database", () 
   it("refuses while the relay has the database open, and changes nothing", async () => {
     const file = copyOfDb();
     const before = counts(file);
-    const relay = new DatabaseSync(file);
+    const relay = new DatabaseSync!(file);
     relay.exec("PRAGMA journal_mode = WAL");
     relay.prepare("SELECT COUNT(*) FROM coValues").get();
     const r = await run(["--db", file, "--space", world.a.group]);
