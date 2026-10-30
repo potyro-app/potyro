@@ -52,9 +52,8 @@ None of these links exists yet. Adding them is shell work, with words through Li
   relay". It does not: `toggle-sync.ts` deletes nothing, and the relay keeps everything (F-20). The
   same switch says "The relay only ever sees encrypted data", but names and who-shares-with-whom
   are readable there (F-16, F-17).
-- `docs/16-deployment.md` on `main` says the AI, link, request and rooms services are not deployed.
-  All four answer on potyro.app (F-32, F-41, F-51b, F-54a). The copy on the `docs/how-potyro-works`
-  branch already says the AI relay is.
+- `docs/16-deployment.md` said the link and request services were not deployed. All four services
+  answer on potyro.app (F-32, F-41, F-51b, F-54a); docs/16 says so since the #458 pass (2026-10-30).
 - There is no button to take a demo link down, though the device keeps its delete token (F-29).
 - There is no tool to remove a space from the relay (F-52), and no way to tell people in the app
   that the terms changed.

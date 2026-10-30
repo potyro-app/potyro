@@ -63,7 +63,7 @@ pnpm i
 # 1. The web build the app wraps. The native app is not served from the site, so tell it which site
 #    is its own (packages/shell/src/site.ts): the sync relay, the AI and request services and the
 #    links people send are derived from this. Leave it out for a fully local build.
-VITE_POTYRO_SITE=https://apps.vaz.io pnpm --filter @potyro/shell build:web
+VITE_POTYRO_SITE=https://potyro.app pnpm --filter @potyro/shell build:web
 
 # 2. Generate the Xcode project (first time only) and patch it: Info.plist usage descriptions,
 #    file sharing, the potyro:// scheme, "Open with", the deployment target, AppDelegate.
@@ -77,11 +77,11 @@ pnpm cap:open:ios
 After every web change:
 
 ```bash
-VITE_POTYRO_SITE=https://apps.vaz.io pnpm --filter @potyro/shell build:web
+VITE_POTYRO_SITE=https://potyro.app pnpm --filter @potyro/shell build:web
 pnpm --filter @potyro/native cap:sync:ios       # copies dist → ios/App/App/public and re-patches
 ```
 
-Shortcut: `VITE_POTYRO_SITE=https://apps.vaz.io pnpm --filter @potyro/native ios` (build, sync, open).
+Shortcut: `VITE_POTYRO_SITE=https://potyro.app pnpm --filter @potyro/native ios` (build, sync, open).
 
 `ios/` is **generated and gitignored**, like `android/`. Do not commit it. Anything it needs that
 Capacitor does not generate lives in a script (`scripts/patch-plist.mjs`, re-run by every
@@ -90,22 +90,26 @@ template (`packages/native/ios-templates/`, copied in once by hand, §4). If you
 changing something in `ios/` that must survive a fresh `cap add ios`, put it in the script and say
 so in the PR.
 
-### 2.1 Pointing it at apps.vaz.io — and what will not work yet
+### 2.1 Pointing it at potyro.app — and what will not work yet
 
-`VITE_POTYRO_SITE` sets all of these at once; each can still be overridden on its own:
+`VITE_POTYRO_SITE` sets all of these at once; each can still be overridden on its own. potyro.app has
+no basic-auth gate (the first site, apps.vaz.io, did, and is no longer updated: docs/16). What is
+left is CORS: the WebView's origin (`capacitor://localhost` on iOS, `https://localhost` on Android)
+is another origin than the site's. Checked against the code and the live site on 2026-10-30, not on
+a device:
 
 | Service | Derived address | Override | Works from the iOS app today? |
 |---|---|---|---|
-| Sync relay (websocket) | `wss://apps.vaz.io/sync` | `VITE_POTYRO_RELAY` | **No** — apps.vaz.io is behind HTTP basic auth, and a WebView websocket cannot send it |
-| AI for apps | `https://potyro.app/ai` (`/complete`, `/v1/chat/completions`) — set it, apps.vaz.io has no AI relay | `VITE_POTYRO_AI=https://potyro.app/ai` | **Yes** — potyro.app is not behind the basic-auth gate, and the relay answers the WebViews' origins (`capacitor://localhost` on iOS, `https://localhost` on Android; `AI_CORS_ORIGINS`) with CORS, without credentials (docs/16 "AI for apps") |
-| Platform requests | `https://apps.vaz.io/requests/…` | `VITE_POTYRO_REQUESTS` | **No** — the gate, and the service sends no CORS headers (it assumes same origin) |
-| Hosted demo links | `https://apps.vaz.io/share-api` | `VITE_POTYRO_SHARE` | Falls back to an inline link (the health check fails) |
-| Invite and demo links people send | `https://apps.vaz.io/#join=…` | — | The link is right; opening it in the app needs Universal Links (§9) |
+| Sync relay (websocket) | `wss://potyro.app/sync` | `VITE_POTYRO_RELAY` | **Not tried on a device.** The relay upgrades without credentials; a websocket is not subject to CORS |
+| AI for apps | `https://potyro.app/ai` (`/complete`) | `VITE_POTYRO_AI` | **Yes** — the relay answers the WebViews' origins (`AI_CORS_ORIGINS`) with CORS, without credentials (docs/16 "AI for apps"). Its chat route, `/v1/chat/completions`, is not running there yet |
+| Platform requests | `https://potyro.app/requests/…` | `VITE_POTYRO_REQUESTS` | **No** — the service sends no CORS headers (it assumes same origin) |
+| Hosted demo links | `https://potyro.app/share-api` | `VITE_POTYRO_SHARE` | Falls back to an inline link: the share service sends no CORS headers either, so the health check fails |
+| Invite and demo links people send | `https://potyro.app/#join=…` | — | The link is right; opening it in the app needs Universal Links (§9) |
 
 The same is true of the Android build. Everything local works without any of it: apps, records,
-reminders, camera, sharing between apps on the phone. AI still works with the person's own
-OpenRouter key (Model settings), which is called directly and allows browser origins. Fixing the
-two "No"s is an owner decision (§7, decision 1); do not work around it in the app.
+reminders, camera, sharing between apps on the phone. AI also works with the person's own
+OpenRouter key (Model settings), which is called directly and allows browser origins. Fixing the two
+"No"s is an owner decision (§7, decision 1); do not work around it in the app.
 
 ## 3. The audit: what WKWebView changes, subsystem by subsystem
 
@@ -281,7 +285,7 @@ iOS version and the model with every result.
 | R1 | **High** | OPFS sync access handles unavailable in WKWebView on some iOS versions | The store falls back to IndexedDB (whole-file rewrite per save: slow as data grows, but nothing is lost) | A native SQLite VFS bridged through a Capacitor plugin, or wa-sqlite's IDB batch-atomic VFS; decide only on evidence from checklist #2 |
 | R2 | **High** | Access handles closed while the app is suspended in the background (reported on Capacitor iOS) | Killing and reopening the app reopens the pool | Reopen the pool on `visibilitychange`/`App` resume when a handle throws `InvalidStateError`; needs the error text from checklist #4 |
 | R3 | **High (distribution)** | App Review: Guideline 2.5.2 (no downloaded code that changes features) and 4.7 (HTML5/JS mini apps allowed, but 4.7.2 "may not extend or expose native platform APIs … without prior permission", 4.7.3 per-instance consent, 4.7.4 an index with universal links, 4.7.5 age gating). Potyro gives apps camera, location and notifications through `ctx`. | TestFlight **internal** testing needs no review | Owner decision 2 (§7) |
-| R4 | **High** | Services unreachable from the app (basic-auth gate + no CORS for `capacitor://localhost`) | Local everything; AI through `https://potyro.app/ai` (CORS for the WebViews) or the person's own key; inline demo links | Owner decision 1 (§7) |
+| R4 | **High** | Services unreachable from the app (no CORS for `capacitor://localhost` on the request and share services; the old site's basic-auth gate) | Local everything; AI through `https://potyro.app/ai` (CORS for the WebViews) or the person's own key; inline demo links | Owner decision 1 (§7) |
 | R5 | Medium | 64 pending notifications per app | Soonest 64 kept (`makeRoom`); the rest come back when their app reconciles | A background refresh task that reconciles every app (§9) |
 | R6 | Medium | A sealed frame reaching the camera through Capacitor's blanket `.grant` | WebKit Permissions Policy should refuse a cross-origin frame | Override `requestMediaCapturePermissionFor` to grant the main frame only — needs checklist #6 |
 | R7 | Medium | Memory: a heavy app or the face model gets the WebContent process killed | Capacitor reloads the page; data is in SQLite | Per-Worker limits (docs/22 §6.1) |
@@ -327,7 +331,7 @@ directly instead of filing it publicly. A fix to the generated project goes into
   in progress (a timer, a cook-along step) is started from the app through a small Capacitor plugin.
   No push: everything is local, and widgets refresh from the shared container on a timeline and
   when the app writes.
-- **Universal Links** for `https://apps.vaz.io/#join=…` and demo links: an `applinks:` entitlement
+- **Universal Links** for `https://potyro.app/#join=…` and demo links: an `applinks:` entitlement
   plus `/.well-known/apple-app-site-association` on the site (the fragment survives, so the invite
   secret never reaches a server — `deep-links.ts`).
 - **Background reconcile** (`BGAppRefreshTask`) so reminders past the 64 limit return without the
