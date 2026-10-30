@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { createAiRelay, memoryLedger, persistentLedger, UNPRICED_USD, type LedgerState } from "../src/relay.ts";
+import { createAiRelay, memoryLedger, persistentLedger, type LedgerState } from "../src/relay.ts";
+import { createBudget } from "../src/budget.ts";
+import { createChatProxy } from "../src/chat.ts";
+import { estimateUsd, MODEL_PRICES } from "../src/prices.ts";
 import { AI_FORMAT, AI_MODEL, openRouterBody, readAiPayload, readOpenRouterReply, type AiPayload } from "../src/request.ts";
 import type { UpstreamReply } from "../src/request.ts";
 
@@ -27,6 +30,9 @@ function upstream(replies: Array<UpstreamReply | Error> = []) {
     },
   };
 }
+
+/** What the relay estimates a payload costs at most (prices.ts). */
+const estimate = (p: AiPayload): number => estimateUsd(MODEL_PRICES[AI_MODEL]!, JSON.stringify(openRouterBody(p)).length, Math.min(p.maxTokens, 4000));
 
 const post = (body: unknown, ip = "1.2.3.4") => ({ method: "POST", path: "/complete", body: typeof body === "string" ? body : JSON.stringify(body), ip });
 const NOW = Date.UTC(2026, 9, 15, 12);
@@ -142,10 +148,12 @@ describe("the relay", () => {
       { ok: true, text: "a", cost: 0.004 },
       { ok: true, text: "b", cost: 0.004 },
     ]);
-    const relay = createAiRelay({ upstream: up.fn, now: () => NOW, limits: { monthlyUsd: 0.011, reserveUsd: 0.004 } });
+    // Room for two answers and the estimate of a third (~$0.0016), not more.
+    const monthlyUsd = 0.008 + estimate(payload()) / 2;
+    const relay = createAiRelay({ upstream: up.fn, now: () => NOW, limits: { monthlyUsd, dayUsd: 1 } });
     expect((await relay.handle(post(payload({ device: "device-a-001" })))).status).toBe(200);
     expect((await relay.handle(post(payload({ device: "device-b-001" })))).status).toBe(200);
-    // 0.008 spent + 0.004 for the next one would be over 0.011: refused unsent.
+    // 0.008 spent + the next one's estimate would be over: refused unsent.
     const third = await relay.handle(post(payload({ device: "device-c-001" })));
     expect(third.body).toMatchObject({ error: "allowance", reason: "service-month" });
     expect(up.sent).toHaveLength(2);
@@ -160,15 +168,80 @@ describe("the relay", () => {
     expect((await relay.handle(post(payload()))).status).toBe(200);
   });
 
-  it("counts an unpriced answer as costing something, and a failed one as nothing", async () => {
+  it("counts a request when it is sent, and charges the estimate when OpenRouter does not say what it cost", async () => {
     const ledger = memoryLedger();
-    const relay = createAiRelay({ upstream: upstream([{ ok: true, text: "x" }, { ok: false, status: 500, message: "down" }, new Error("timeout")]).fn, now: () => NOW, ledger });
+    const replies: Array<UpstreamReply | Error> = [
+      { ok: true, text: "x" },
+      { ok: false, status: 500, message: "down" },
+      { ok: false, status: 502, message: "the model answered with nothing" },
+      new Error("timeout"),
+    ];
+    const relay = createAiRelay({ upstream: upstream(replies).fn, now: () => NOW, ledger });
+    const each = estimate(payload());
     await relay.handle(post(payload()));
-    expect(ledger.spent("2026-10")).toBe(UNPRICED_USD);
+    expect(ledger.spent("2026-10")).toBeCloseTo(each, 9);
     expect((await relay.handle(post(payload()))).status).toBe(502);
     expect((await relay.handle(post(payload()))).status).toBe(502);
-    expect(ledger.spent("2026-10")).toBe(UNPRICED_USD);
-    expect(ledger.count("2026-10", "device-0001")).toBe(1);
+    expect((await relay.handle(post(payload()))).status).toBe(502);
+    expect(ledger.spent("2026-10")).toBeCloseTo(4 * each, 9);
+    // Every one went out, so every one is a turn of the device's month.
+    expect(ledger.count("2026-10", "device-0001")).toBe(4);
+  });
+
+  it("refuses unsent a request whose estimate would cross the cap, though what was spent is under it", async () => {
+    const up = upstream();
+    const ledger = memoryLedger();
+    ledger.addSpend("2026-10", 9.999);
+    const relay = createAiRelay({ upstream: up.fn, now: () => NOW, ledger, limits: { monthlyUsd: 10 } });
+    expect(estimate(payload())).toBeGreaterThan(0.001);
+    expect((await relay.handle(post(payload()))).body).toMatchObject({ error: "allowance", reason: "service-month" });
+    expect(up.sent).toHaveLength(0);
+  });
+
+  it("stops at the service's daily cap, shared with the chat route", async () => {
+    const ledger = memoryLedger();
+    const budget = createBudget({ now: () => NOW, ledger, monthlyUsd: 10, dayUsd: 0.05 });
+    ledger.addDaySpend("2026-10-15", 0.049);
+    const relay = createAiRelay({ upstream: upstream().fn, now: () => NOW, ledger, budget });
+    expect((await relay.handle(post(payload()))).body).toMatchObject({ error: "allowance", reason: "service-day" });
+  });
+
+  it("holds a /complete request in flight against the caps the chat route checks, and lets go when it settles", async () => {
+    const ledger = memoryLedger();
+    const each = estimate(payload());
+    // Room for one /complete request's estimate and a chat request's 0.02 reserve, not both.
+    const budget = createBudget({ now: () => NOW, ledger, monthlyUsd: 0.02 + each / 2, dayUsd: 1 });
+    const waiting: Array<() => void> = [];
+    const slow = () => new Promise<UpstreamReply>((resolve) => waiting.push(() => resolve({ ok: true, text: "x", cost: 0.0001 })));
+    const relay = createAiRelay({ upstream: slow, now: () => NOW, ledger, budget });
+    const chat = createChatProxy({
+      upstream: async () => new Response('{"usage":{"cost":0.0001}}'),
+      now: () => NOW,
+      ledger,
+      budget,
+      limits: { addressDayUsd: 0.5 },
+    });
+    const chatPost = { method: "POST", body: JSON.stringify({ model: "deepseek/deepseek-v4-flash-0731", messages: [{ role: "user", content: "hi" }] }), ip: "5.5.5.5", authorization: "Bearer potyro-device:device-0009" };
+    const out = relay.handle(post(payload()));
+    expect(budget.held()).toBeCloseTo(each, 9);
+    expect(await chat.handle(chatPost)).toMatchObject({ status: 429, json: { error: { code: "service-month" } } });
+    waiting.forEach((w) => w());
+    expect((await out).status).toBe(200);
+    expect(budget.held()).toBe(0);
+    expect(ledger.spent("2026-10")).toBeCloseTo(0.0001, 9);
+    expect((await chat.handle(chatPost)).status).toBe(200);
+  });
+
+  it("counts an IPv6 sender by its /64", async () => {
+    const relay = createAiRelay({ upstream: upstream().fn, now: () => NOW, limits: { perAddressDay: 2 } });
+    await relay.handle(post(payload({ device: "fresh-id-1" }), "2001:db8:aa:1::1"));
+    await relay.handle(post(payload({ device: "fresh-id-2" }), "2001:db8:aa:1::2"));
+    expect((await relay.handle(post(payload({ device: "fresh-id-3" }), "2001:db8:aa:1:dead:beef::3"))).body).toMatchObject({ reason: "address-day" });
+    expect((await relay.handle(post(payload({ device: "fresh-id-4" }), "2001:db8:aa:2::1"))).status).toBe(200);
+  });
+
+  it("will not start with a model it has no price for", () => {
+    expect(() => createAiRelay({ upstream: upstream().fn, now: () => NOW, model: "openai/gpt-6" })).toThrow(/no price/);
   });
 
   it("lets a device have two requests in flight, not three", async () => {

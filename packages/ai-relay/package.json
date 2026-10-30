@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "private": true,
-  "description": "AI for apps (docs/23): the request format the shell sends (browser-safe), its OpenRouter body, and the small server-side relay that pays for the free allowance with Potyro's key — model fixed, per-device and per-address limits, a monthly spending cap checked before every dispatch. Depends on no Potyro package. Deployment: docs/16.",
+  "description": "AI for apps (docs/23): the request format the shell sends (browser-safe), its OpenRouter body, and the small server-side relay that pays for the free allowance with Potyro's key — /complete for apps (model fixed), a chat route for the Studio and Ask (allowlisted models, a dollar allowance per device), per-device and per-address limits (an IPv6 address by its /64), monthly and daily spending caps checked before every dispatch with a worst-case estimate, demand counts. Depends on no Potyro package. Deployment: docs/16.",
   "license": "Apache-2.0",
   "exports": {
     ".": "./src/request.ts",
