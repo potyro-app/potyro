@@ -1,10 +1,14 @@
 // Shares on disk: one folder per share, `<dir>/<first two of id>/<id>/`, holding `meta.json`,
-// `payload.bin` and `preview` (when there is one). Taking a share down is removing its folder — the
-// same for the sharer's "stop sharing" and for an operator acting on a notice (docs/16).
+// `payload.bin` and `preview` (when there is one). The sharer's "stop sharing" removes the folder.
+// An operator's takedown (docs/16, "Taking a link down") writes `taken-down.json` into it FIRST — so
+// the link answers 410 from that moment — and then removes the other three. The record is what stays.
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ShareStore, StoredShare } from "./store.ts";
+import type { ShareStore, StoredShare, TakenDown } from "./store.ts";
 import { ID_RE } from "./wire.ts";
+
+export const TAKEN_DOWN_FILE = "taken-down.json";
+const SHARE_FILES = ["meta.json", "payload.bin", "preview"] as const;
 
 export function diskShareStore(dir: string): ShareStore {
   const folder = (id: string): string => {
@@ -19,6 +23,15 @@ export function diskShareStore(dir: string): ShareStore {
       return null;
     }
   };
+  const readJson = async <T>(id: string, file: string): Promise<T | null> => {
+    const raw = await read(id, file);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw.toString("utf8")) as T;
+    } catch {
+      return null;
+    }
+  };
   return {
     async put(id, share, payload, image) {
       const at = folder(id);
@@ -28,15 +41,7 @@ export function diskShareStore(dir: string): ShareStore {
       // Last: a share with a meta is a whole share.
       await writeFile(join(at, "meta.json"), JSON.stringify(share));
     },
-    async get(id) {
-      const raw = await read(id, "meta.json");
-      if (!raw) return null;
-      try {
-        return JSON.parse(raw.toString("utf8")) as StoredShare;
-      } catch {
-        return null;
-      }
-    },
+    get: (id) => readJson<StoredShare>(id, "meta.json"),
     payload: async (id) => {
       const b = await read(id, "payload.bin");
       return b ? new Uint8Array(b) : null;
@@ -46,5 +51,12 @@ export function diskShareStore(dir: string): ShareStore {
       return b ? new Uint8Array(b) : null;
     },
     remove: (id) => rm(folder(id), { recursive: true, force: true }),
+    async takeDown(id, record) {
+      const at = folder(id);
+      await mkdir(at, { recursive: true });
+      await writeFile(join(at, TAKEN_DOWN_FILE), JSON.stringify(record));
+      for (const file of SHARE_FILES) await rm(join(at, file), { force: true });
+    },
+    takenDown: (id) => readJson<TakenDown>(id, TAKEN_DOWN_FILE),
   };
 }

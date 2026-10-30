@@ -147,7 +147,7 @@ function claudeCliPlugin(): Plugin {
 function shareLinksPlugin(): Plugin {
   const store = memoryShareStore();
   const middleware = (indexHtml: (path: string) => Promise<string>) => {
-    const handle = createShareHandler({ store, indexHtml, limits: { perAddress: 100_000, windowMs: 60_000 } });
+    const handle = createShareHandler({ store, indexHtml, limits: { createsPerDay: 100_000, payloadsPerDay: 100_000, pagesPerDay: 100_000 } });
     return (req: IncomingMessage, res: ServerResponse, next: () => void): void => {
       const path = (req.url ?? "/").split("?")[0]!;
       if (!/\/share-api\/|\/s\/[A-Za-z0-9_-]{22}(\/|$)/.test(path)) return next();
