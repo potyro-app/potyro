@@ -16,6 +16,7 @@ import { enrolEveryApp, localOnlyApps, type EnrolProgress } from "./backup-all.j
 import { backupEnabled, setBackupEnabled } from "./backup-setting.js";
 import { shellDialogs } from "./dialog.js";
 import { LegalLink } from "./legal-links.js";
+import { usesOwnRelay } from "./open-store.js";
 
 export function BackupSwitch() {
   const { t } = useLingui();
@@ -23,6 +24,7 @@ export function BackupSwitch() {
   const [progress, setProgress] = useState<EnrolProgress | null>(null);
   const [outcome, setOutcome] = useState<string | null>(null);
   const waiting = localOnlyApps().length;
+  const ownRelay = usesOwnRelay();
 
   const turnOn = async (): Promise<void> => {
     const question = t`Keep your apps on the relay, so a new device signed in with your words can bring them back?`;
@@ -36,10 +38,13 @@ export function BackupSwitch() {
             }) +
             " " +
             t`Anything you make later goes too.`,
-      // What the relay can and cannot see (docs/legal/facts.md F-15–F-17): the apps' contents are
+      // What the server can and cannot see (docs/legal/facts.md F-15–F-17): the apps' contents are
       // encrypted on the device, the name and who shares with whom are not. "Only ever sees
-      // encrypted data" said more than that (#117).
-      { detail: t`What is in your apps is encrypted on this device, so the relay cannot read it. Your name and who you share with can be seen there.`, privacy: "sync" },
+      // encrypted data" said more than that (#117). On a relay of the person's own, it is not
+      // Potyro's server, and the privacy page's section is not about it.
+      ownRelay
+        ? { detail: t`What is in your apps is encrypted on this device, so the server you chose cannot read it. Your name and who you share with can be seen there.` }
+        : { detail: t`What is in your apps is encrypted on this device, so Potyro’s server cannot read it. Your name and who you share with can be seen there.`, privacy: "sync" },
     );
     if (!ok) return;
 
@@ -116,9 +121,11 @@ export function BackupSwitch() {
           {outcome}
         </p>
       ) : null}
-      <LegalLink section="sync" block>
-        <Trans comment="Link under the backup switch to the privacy page's section on sync and backup">What backup keeps on Potyro’s server</Trans>
-      </LegalLink>
+      {ownRelay ? null : (
+        <LegalLink section="sync" block>
+          <Trans comment="Link under the backup switch to the privacy page's section on sync and backup">What backup keeps on Potyro’s server</Trans>
+        </LegalLink>
+      )}
     </div>
   );
 }

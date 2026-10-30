@@ -185,6 +185,18 @@ export interface OpenStoreOpts {
 export const RELAY_KEY = "potyro:sync:relay";
 
 /**
+ * Whether this device syncs through a relay the person set themselves (the You panel's "Use my own
+ * relay"), not the site's. Words that say "Potyro's server" are not true then (#117).
+ */
+export function usesOwnRelay(): boolean {
+  try {
+    return Boolean(globalThis.localStorage?.getItem(RELAY_KEY));
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Sync relay URL, or undefined for local-only.
  *
  * Four sources, most specific first (KA-28):

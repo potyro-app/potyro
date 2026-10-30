@@ -18,6 +18,7 @@ import { networkLinks } from "./share-networks.js";
 import { CLIP_SECONDS, clipEnvFor, clipWay, startClip, type Recording } from "./clip.js";
 import { shellCaps } from "./shell-caps.js";
 import { LegalLink } from "./legal-links.js";
+import { usesOwnRelay } from "./open-store.js";
 
 type State = { kind: "choose" } | { kind: "making" } | { kind: "made"; made: MadeDemoLink } | { kind: "failed"; why: string };
 
@@ -248,9 +249,12 @@ export function ShareSheet({ app, onClose, onInvite, clipRoot }: ShareSheetProps
               <Trans>Choose Share on its tile in your apps to invite someone: that turns on sync for it.</Trans>
             </p>
           )}
-          <LegalLink section="sync" block>
-            <Trans comment="Share sheet, Use it together: link to the privacy page's section on sync and sharing">What sharing keeps on Potyro’s server</Trans>
-          </LegalLink>
+          {/* Through a relay of the person's own, sharing keeps nothing on Potyro's server (#117). */}
+          {usesOwnRelay() ? null : (
+            <LegalLink section="sync" block>
+              <Trans comment="Share sheet, Use it together: link to the privacy page's section on sync and sharing">What sharing keeps on Potyro’s server</Trans>
+            </LegalLink>
+          )}
         </section>
       </div>
     </div>

@@ -4,8 +4,12 @@
 // sections the page really has.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render } from "@testing-library/react";
-import { DialogHost, Dialogs } from "../src/dialog.js";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { DialogHost, Dialogs, shellDialogs } from "../src/dialog.js";
+import { BackupSwitch } from "../src/backup-switch.js";
+import { ShareSheet } from "../src/share-sheet.js";
+import { RELAY_KEY } from "../src/open-store.js";
+import type { UserApp } from "../src/user-apps.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { LEGAL_DIR } from "../../legal/src/build.mjs";
@@ -18,6 +22,7 @@ const site: Site = { origin: "https://potyro.app", host: "potyro.app", path: "/"
 afterEach(() => {
   cleanup();
   vi.unstubAllEnvs();
+  localStorage.clear();
 });
 
 describe("where the links go", () => {
@@ -90,5 +95,51 @@ describe("the platform's questions", () => {
     void act(() => void host.confirm("Delete it?"));
     await vi.waitFor(() => expect(container.querySelector(".k-dialog-message")?.textContent).toBe("Delete it?"));
     expect(container.querySelector(".k-dialog .k-legal-link")).toBeNull();
+  });
+});
+
+describe("on a relay of the person's own", () => {
+  const app: UserApp = { id: "groceries", name: "Groceries", source: "export default {}", updatedAt: "2026-10-30T00:00:00.000Z", trusted: true };
+  const serverLinks = (root: ParentNode) => [...root.querySelectorAll<HTMLAnchorElement>(".k-legal-link")].map((a) => a.textContent).filter((t) => /Potyro’s server/.test(t ?? ""));
+
+  async function backupQuestion() {
+    const view = render(
+      <>
+        <BackupSwitch />
+        <Dialogs host={shellDialogs} />
+      </>,
+    );
+    fireEvent.click(view.getByRole("button", { name: "Back up my apps" }));
+    await vi.waitFor(() => expect(view.container.querySelector(".k-dialog")).not.toBeNull());
+    const question = view.container.querySelector(".k-dialog")!;
+    const shown = { detail: question.querySelector(".k-dialog-detail")?.textContent, links: serverLinks(view.container) };
+    fireEvent.click(view.getByRole("button", { name: "Cancel" }));
+    return shown;
+  }
+
+  it("the backup switch and its question say Potyro's server only when it is Potyro's", async () => {
+    vi.stubEnv("VITE_POTYRO_LEGAL", "1");
+    expect(await backupQuestion()).toEqual({
+      detail: "What is in your apps is encrypted on this device, so Potyro’s server cannot read it. Your name and who you share with can be seen there.",
+      links: ["What backup keeps on Potyro’s server", "What Potyro’s server keeps"],
+    });
+    cleanup();
+    localStorage.setItem(RELAY_KEY, "wss://relay.example.org/sync");
+    expect(await backupQuestion()).toEqual({
+      detail: "What is in your apps is encrypted on this device, so the server you chose cannot read it. Your name and who you share with can be seen there.",
+      links: [],
+    });
+  });
+
+  it("the share sheet links what sharing keeps on Potyro's server only when sharing goes there", () => {
+    vi.stubEnv("VITE_POTYRO_LEGAL", "1");
+    const sheet = () => render(<ShareSheet app={app} onClose={() => {}} />).container;
+    expect(serverLinks(sheet())).toEqual(["What sharing keeps on Potyro’s server"]);
+    cleanup();
+    localStorage.setItem(RELAY_KEY, "wss://relay.example.org/sync");
+    const own = sheet();
+    expect(serverLinks(own)).toEqual([]);
+    // The link about what a demo link makes public stays: that is Potyro's either way.
+    expect(own.querySelector('.k-legal-link[data-section="links"]')).not.toBeNull();
   });
 });
