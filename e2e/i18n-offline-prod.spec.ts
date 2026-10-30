@@ -25,7 +25,8 @@ test("every language chunk is precached, and switching language works offline", 
   await context.setOffline(true);
   await page.locator(".k-launch-you").first().click();
   expect(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
-  const picker = page.locator(".k-identity").getByRole("combobox", { name: "Language" });
+  // By id, as i18n-trusted does: once the language switches, the picker's accessible name is no longer "Language".
+  const picker = page.locator(".k-identity").locator("#k-lang-select");
   await picker.selectOption("de");
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
   await expect(picker).toHaveValue("de");
