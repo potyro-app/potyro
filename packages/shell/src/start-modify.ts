@@ -58,6 +58,7 @@ export interface StartModifyOpts {
 export function modifyLoopRefusal(cfg: EngineConfig): string | undefined {
   if (!canInvestigate(cfg.engine)) return `${cfg.engine} is a one-shot completion, not a chat engine; it cannot use tools.`;
   if (!engineReady(cfg)) {
+    if (cfg.engine === "potyro") return "free app making is not available on this device now (used up, paused, or not offered here).";
     return cfg.engine === "endpoint"
       ? "the endpoint needs its address and a model. Add them in the Studio’s Model settings."
       : `${cfg.engine} needs your own API key. Add one in the Studio’s Model settings.`;

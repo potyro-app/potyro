@@ -164,6 +164,58 @@ const HEALTH_MS = 3_000;
 export function resetRelayMemory(): void {
   relayMissingUntil = 0;
   relaySeen = null;
+  healthSeen.clear();
+}
+
+// ---------------------------------------------------------------- the relay's /health
+
+/**
+ * What the relay's `/health` says (#121). `ok`: a relay answered as itself. `chat`: its chat route,
+ * the Studio's free engine, serves now. `model`: the model that route sends, which the Studio sends.
+ */
+export interface RelayHealth {
+  ok: boolean;
+  chat: boolean;
+  model?: string;
+}
+
+const NOT_THERE: RelayHealth = { ok: false, chat: false };
+/** Per `/health` address: what it said, and when. Believed for `SEEN_FOR_MS`, as `relaySeen` is. */
+const healthSeen = new Map<string, { at: number; health: RelayHealth }>();
+
+/** Ask `/health` again next time: what it said is out of date (the chat route just said it is paused). */
+export function forgetRelayHealth(): void {
+  healthSeen.clear();
+}
+
+/** The relay's `/health`, from the `/complete` address beside it. */
+export const healthUrl = (complete: string): string => complete.replace(/\/complete$/, "/health");
+
+/**
+ * A look at the relay's `/health` (no AI, nothing sent but the GET), remembered for ten minutes, so
+ * the consent question and the Studio ask it once between them. A site with no relay answers with
+ * its own page or a 404: not there.
+ */
+export async function relayHealth(opts: { url?: string; fetch?: typeof fetch; now?: () => number; online?: () => boolean } = {}): Promise<RelayHealth> {
+  const url = opts.url ?? healthUrl(aiRelayEndpoint());
+  const now = opts.now ?? Date.now;
+  const known = healthSeen.get(url);
+  if (known && now() - known.at < SEEN_FOR_MS) return known.health;
+  if (!(opts.online?.() ?? globalThis.navigator?.onLine !== false)) return NOT_THERE;
+  const doFetch = opts.fetch ?? ((input: RequestInfo | URL, init?: RequestInit) => globalThis.fetch(input, init));
+  let health = NOT_THERE;
+  try {
+    health = await withTimeout(HEALTH_MS, async (signal) => {
+      const res = await doFetch(url, { method: "GET", signal });
+      const body = (await res.json().catch(() => null)) as { ok?: unknown; chat?: unknown; model?: unknown } | null;
+      if (!res.ok || body?.ok !== true) return NOT_THERE;
+      return { ok: true, chat: body.chat === true, ...(typeof body.model === "string" && body.model ? { model: body.model } : {}) };
+    });
+  } catch {
+    // unreachable or too slow: not there, for now
+  }
+  healthSeen.set(url, { at: now(), health });
+  return health;
 }
 
 export function createAppAi(deps: AppAiDeps): AiCap {
@@ -214,19 +266,10 @@ export function createAppAi(deps: AppAiDeps): AiCap {
   const freeNow = async (): Promise<boolean> => {
     if (relaySeen && now() - relaySeen.at < SEEN_FOR_MS) return relaySeen.gives;
     if (now() < relayMissingUntil || !online()) return false;
-    try {
-      const ok = await withTimeout(HEALTH_MS, async (signal) => {
-        const res = await doFetch(relay.replace(/\/complete$/, "/health"), { method: "GET", signal });
-        const body = (await res.json().catch(() => null)) as { ok?: unknown } | null;
-        return res.ok && body?.ok === true;
-      });
-      if (ok) relaySeen = { at: now(), gives: true };
-      else markMissing();
-      return ok;
-    } catch {
-      markMissing();
-      return false;
-    }
+    const { ok } = await relayHealth({ url: healthUrl(relay), fetch: doFetch, now, online });
+    if (ok) relaySeen = { at: now(), gives: true };
+    else markMissing();
+    return ok;
   };
 
   const ownKey = async (key: string, payload: AiPayload): Promise<AiReply> => {

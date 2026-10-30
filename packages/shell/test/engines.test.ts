@@ -16,9 +16,9 @@ import {
 } from "../src/engines.js";
 
 describe("canInvestigate", () => {
-  it("is true for exactly the chat engines — openrouter and an OpenAI-compatible endpoint", () => {
+  it("is true for exactly the chat engines — Potyro's free one, openrouter and an OpenAI-compatible endpoint", () => {
     const investigators = ENGINES.filter((e) => e.canInvestigate).map((e) => e.id);
-    expect(investigators).toEqual(["openrouter", "endpoint"]);
+    expect(investigators).toEqual(["potyro", "openrouter", "endpoint"]);
   });
 
   it("agrees with the data in ENGINES for every engine, so the helper never drifts from the table", () => {

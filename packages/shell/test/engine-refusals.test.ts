@@ -11,6 +11,8 @@ import { modifyLoopRefusal } from "../src/start-modify.js";
 import { createLoopRefusal } from "../src/start-create.js";
 import { askRefusal, startAsk } from "../src/start-ask.js";
 import { startFix } from "../src/start-fix.js";
+import { checkFreeAi, resetFreeAi } from "../src/free-ai.js";
+import { resetRelayMemory } from "../src/app-ai.js";
 
 const mocks = vi.hoisted(() => ({ engines: [] as OpenRouterOptions[], askDeps: [] as Array<Record<string, unknown>>, loopDeps: [] as Array<Record<string, unknown>>, askError: null as Error | null }));
 
@@ -46,12 +48,17 @@ const ready: Record<Engine, EngineConfig> = {
   cli: { ...DEFAULT_ENGINE_CONFIG, engine: "cli" },
   edge: { ...DEFAULT_ENGINE_CONFIG, engine: "edge" },
   builtin: { ...DEFAULT_ENGINE_CONFIG, engine: "builtin" },
+  // Nothing to set up: the relay's free chat route serves (its /health says so, below).
+  potyro: { ...DEFAULT_ENGINE_CONFIG, engine: "potyro" },
   anthropic: { ...DEFAULT_ENGINE_CONFIG, engine: "anthropic", anthropicKey: "sk-ant" },
   openrouter: { ...DEFAULT_ENGINE_CONFIG, engine: "openrouter", openrouterKey: "sk-or" },
   endpoint: { ...DEFAULT_ENGINE_CONFIG, engine: "endpoint", endpoint: { baseUrl: "http://localhost:11434/v1", key: "", model: "qwen3" } },
 };
 /** Which engines run the loops once set up. */
-const DRIVES: Record<Engine, boolean> = { cli: false, edge: false, builtin: false, anthropic: false, openrouter: true, endpoint: true };
+const DRIVES: Record<Engine, boolean> = { cli: false, edge: false, builtin: false, potyro: true, anthropic: false, openrouter: true, endpoint: true };
+
+/** The relay's /health, saying its chat route serves. */
+const healthy = (async () => new Response(JSON.stringify({ ok: true, chat: true, model: "deepseek/deepseek-v4-flash-0731" }), { status: 200 })) as unknown as typeof fetch;
 
 const theCase = () => addStep(addStep(newCase("city-maps", "Search stays empty"), { kind: "open", page: "all" }), { kind: "expect", note: "it should list cities" });
 const runtime = {
@@ -60,7 +67,10 @@ const runtime = {
   ctx: { query: async () => [] },
 } as never;
 
-beforeEach(() => {
+beforeEach(async () => {
+  resetRelayMemory();
+  resetFreeAi();
+  await checkFreeAi({ url: "https://apps.test/ai/health", fetch: healthy, online: () => true });
   mocks.engines.length = 0;
   mocks.askDeps.length = 0;
   mocks.loopDeps.length = 0;

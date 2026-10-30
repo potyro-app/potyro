@@ -9,8 +9,9 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { OPENROUTER_MODELS, WEBLLM_MODELS, thinkingOptions, type OpenRouterOptions, type ReasoningLevel } from "@potyro/generator/backends";
 import { i18n } from "@potyro/i18n";
+import { freeBaseUrl, freeFetch, freeKey, freeModel, freeWorks, getFreeAi, leftWords, stoppedNow } from "./free-ai.js";
 
-export type Engine = "cli" | "edge" | "builtin" | "anthropic" | "openrouter" | "endpoint";
+export type Engine = "cli" | "edge" | "builtin" | "potyro" | "anthropic" | "openrouter" | "endpoint";
 
 /**
  * A server that speaks the OpenAI chat API (#121): OpenAI itself, Ollama, LM Studio, vLLM. The base
@@ -78,6 +79,8 @@ export interface EngineChoice {
   canInvestigate: boolean;
   /** Can the person choose how hard this engine's model thinks? Only where a client sends it (#280). */
   canThink?: boolean;
+  /** Listed only while the free relay's chat route serves (`free-ai.ts`): the "Potyro" engine. */
+  whenOffered?: boolean;
 }
 
 export const ENGINES: readonly EngineChoice[] = [
@@ -107,6 +110,17 @@ export const ENGINES: readonly EngineChoice[] = [
     blurb: msg`Chrome's built-in Gemini Nano. Runs locally, nothing to download.`,
     // GeminiNanoBackend has no chat shape at all — no ChatEngine, no tools, no tool_calls.
     canInvestigate: false,
+  },
+  {
+    id: "potyro",
+    label: msg({ message: "Potyro", comment: "Engine name: Potyro's own free app making; the product name, keep as is" }),
+    group: "cloud",
+    blurb: msg`Free to start: Potyro pays for some app making each month. When it runs out, add your own key.`,
+    // The chat engine OpenRouter uses, pointed at Potyro's relay (packages/ai-relay, chat.ts), which
+    // passes tools and tool calls through unchanged: it drives every loop.
+    canInvestigate: true,
+    // The relay picks the model and keeps thinking off: Potyro's bill, Potyro's settings.
+    whenOffered: true,
   },
   {
     id: "anthropic",
@@ -172,6 +186,11 @@ export type ChatEngineOptions = OpenRouterOptions & { model: string };
  * engine this answers for, so "has a chat engine" is asked here and nowhere else.
  */
 export function chatEngineOptions(cfg: EngineConfig): ChatEngineOptions | null {
+  if (cfg.engine === "potyro") {
+    // OpenRouter's own request shape, which the relay passes on: thinking off (the cheap, measured
+    // default), this device's random id as the key, the model the relay named.
+    return { baseUrl: freeBaseUrl(), apiKey: freeKey, model: freeModel(), fetch: freeFetch(), ...thinkingOptions("off") };
+  }
   if (cfg.engine === "openrouter") {
     return { apiKey: cfg.openrouterKey, model: cfg.openrouterModel, ...thinkingOptions(thinkingFor({ ...cfg, engine: "openrouter" }).level) };
   }
@@ -224,6 +243,7 @@ export function keyFor(cfg: EngineConfig): string {
  * needs its key; an endpoint needs its address and a model, and a key only if its server says so.
  */
 export function engineReady(cfg: EngineConfig): boolean {
+  if (cfg.engine === "potyro") return freeWorks();
   if (cfg.engine === "endpoint") return cfg.endpoint.baseUrl.trim().length > 0 && cfg.endpoint.model.trim().length > 0;
   return !isCloud(cfg.engine) || keyFor(cfg).length > 0;
 }
@@ -232,6 +252,12 @@ export function engineReady(cfg: EngineConfig): boolean {
 export function engineLabel(cfg: EngineConfig): string {
   const choice = ENGINES.find((e) => e.id === cfg.engine);
   const base = choice ? i18n._(choice.label) : cfg.engine;
+  if (cfg.engine === "potyro") {
+    // How much is left, in words, once the relay has said (free-ai.ts `leftWords`).
+    const free = getFreeAi();
+    const left = stoppedNow(free) ? "none" : free.left;
+    return left ? `${base} · ${leftWords(left)}` : base;
+  }
   if (cfg.engine === "openrouter") {
     const m = OPENROUTER_MODELS.find((x) => x.id === cfg.openrouterModel);
     const level = THINKS[thinkingFor(cfg).level];
