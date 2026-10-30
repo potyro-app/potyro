@@ -119,7 +119,11 @@ A small Node process beside the relay, same shape as `platform-requests` (#263):
 Caps: payload ≤ 2 MiB, image ≤ 300 KB (JPEG or PNG, checked by magic bytes), title ≤ 80 and
 description ≤ 200 characters, checked before anything is written. Per address (an IPv6 address
 counts as its /64) and per day (UTC): 30 links made, 300 packages fetched, 2000 link pages and
-pictures; a refusal is JSON with a `code` and a sentence (docs/16). Ids are 128 random bits. Meta text is HTML-escaped where it is written into the page. Every page it
+pictures, and an IPv6 /48 eight times that; for the whole service, 2 GB of new links a day and
+none while the disk would have under 1 GB free. A refusal is JSON with a `code` and a sentence,
+except on a link's own page, which is a few lines in the visitor's language; the shell says "Too
+many apps were opened from this network today" with Try again, never that the link is damaged
+(docs/16). Ids are 128 random bits. Meta text is HTML-escaped where it is written into the page. Every page it
 serves carries `noindex`: a link is for whoever it was sent to, not for search.
 
 The shell at `/s/<id>` is the ordinary SPA: it reads `<id>` from the path and `k` from the fragment,
@@ -133,8 +137,10 @@ the hosted form is what the dev server and the browser tests exercise. Deploying
 its page, its package and its picture. The page is not the shell: a few lines in the visitor's
 language — the link was taken down, the app behind it was removed, where to write if it was a
 mistake — and nothing of the link. The service keeps the time and the operator's reason in the
-link's place, and serves neither. A device that still has the shell cached opens the link anyway,
-gets the 410 from the package, and says the same on its splash.
+link's place, and serves neither. Where the shell itself opens the link instead of that page, it
+gets the 410 from the package and says the same on its splash. The service worker never answers
+`/s/…` or `/share-api/…` from its cache (the PWA work's rule, which this needs), so no device keeps
+opening a package it fetched before.
 
 **Report.** The demo bar of a hosted link has a quiet **Report**: a mail to the report address the
 terms name, with the link without its key and the start of a notice. An inline link has none — it is
