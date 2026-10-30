@@ -67,10 +67,14 @@ test("a deployed build still lets you repair an app, and does not offer the dev 
   await expect(studio).toBeVisible({ timeout: 30_000 });
   // It starts on an engine that can work here — one that asks for a key — not on `claude -p`.
   await expect(studio.getByRole("button", { name: "Model settings" })).not.toContainText("claude -p");
+  // And the dev server's own engine is not offered at all here: a developer's tool has no place on a
+  // deployed site or a phone (owner, 2026-10-30). The other local engines still appear, disabled with
+  // a reason where the browser cannot run them.
   await studio.getByRole("button", { name: "Model settings" }).click();
-  const cli = page.getByRole("radio", { name: /claude -p/ });
-  await expect(cli).toBeDisabled();
-  await expect(page.locator(".k-engine-row", { has: cli })).toContainText("only while the dev server runs");
+  const modal = page.getByRole("dialog", { name: "Model settings" });
+  await expect(modal.getByRole("radio", { name: /OpenRouter/ })).toBeVisible();
+  await expect(modal.getByRole("radio", { name: /claude -p/ })).toHaveCount(0);
+  await expect(modal).not.toContainText("only while the dev server runs");
 
   // The endpoint really is absent — this is the fact the gate is protecting against, so assert it
   // rather than assuming. A preview server answers unknown paths with the SPA shell, so "not JSON"

@@ -11,7 +11,10 @@ test("every language chunk is precached, and switching language works offline", 
   await page.evaluate(() => navigator.serviceWorker.ready);
 
   const listed = await page.evaluate(async () => ((await (await fetch("/i18n-precache.json")).json()) as { files: string[] }).files);
-  expect(listed.length).toBe(5); // pt-BR, de, es, pl, it — English is in the main chunk
+  // Five language chunks — pt-BR, de, es, pl, it; English is in the main chunk — plus the apps' icon
+  // table (#425), which the same manifest precaches so an app first opened on a plane has its icons.
+  expect(listed.filter((f) => /\/messages-/.test(f)).length).toBe(5);
+  expect(listed.filter((f) => /lucide-paths/.test(f)).length).toBe(1);
   await expect
     .poll(async () => page.evaluate(async (files) => {
       const cached = await Promise.all(files.map((f) => caches.match(f)));
@@ -22,7 +25,8 @@ test("every language chunk is precached, and switching language works offline", 
   await context.setOffline(true);
   await page.locator(".k-launch-you").first().click();
   expect(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
-  const picker = page.locator(".k-identity").getByRole("combobox", { name: "Language" });
+  // By id, as i18n-trusted does: once the language switches, the picker's accessible name is no longer "Language".
+  const picker = page.locator(".k-identity").locator("#k-lang-select");
   await picker.selectOption("de");
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
   await expect(picker).toHaveValue("de");
