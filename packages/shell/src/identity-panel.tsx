@@ -22,6 +22,7 @@ import { StorageReport } from "./storage-report.js";
 import { LANGUAGE_SELECT_ID, LanguagePicker } from "./language-picker.js";
 import { BackupSwitch } from "./backup-switch.js";
 import { InstallRow } from "./install-row.js";
+import { CountsSwitch } from "./counts-switch.js";
 import { shellDialogs } from "./dialog.js";
 import { RELAY_KEY, syncRelayUrl } from "./open-store.js";
 import { DEFAULT_NAME, ensureIdentity, peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@potyro/identity";
@@ -288,6 +289,14 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
               <Trans>Type the words from your first device to bring its apps here.</Trans>
             </small>
           </button>
+        </section>
+
+        {/* #118: the one thing Potyro counts, and the switch that stops it. */}
+        <section aria-labelledby="k-counts-h">
+          <h3 id="k-counts-h">
+            <Trans comment="You panel heading: what Potyro counts (anonymous numbers only)">Counts</Trans>
+          </h3>
+          <CountsSwitch />
         </section>
 
         {/* KA-28: "bring your own relay" must be reachable without a rebuild and without devtools —
