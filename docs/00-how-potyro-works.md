@@ -1014,8 +1014,8 @@ has not converged. Keys are kept in the tab's sessionStorage, gone when the tab 
 localStorage — unless the person turns on **Remember on this device** beside a key, which puts it in
 the device's secret vault. With no engine that can run (no free allowance and no key), the Studio
 shows what a key is and where to get one, and the gallery, instead of a disabled button. The shell
-counts, anonymously and at most once a month, a key typed and a press of "Tell me when there is a
-paid plan" (docs/23 "Counts"; off in You). Potyro, OpenRouter and an OpenAI-compatible endpoint carry tool calls end to end, so they can
+counts, anonymously and at most once a month, a key typed and a press of "I'd pay for a plan"
+(docs/23 "Counts"; off in You). Potyro, OpenRouter and an OpenAI-compatible endpoint carry tool calls end to end, so they can
 investigate and run the loops below; the others get one turn with the reference and the
 capability passages, and a repair round. Ask's web search is OpenRouter's own server tool and is
 offered only there. How hard a model thinks is a setting per engine, off by default:
