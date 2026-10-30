@@ -1190,9 +1190,27 @@ function registerServiceWorker(): void {
     return;
   }
 
-  navigator.serviceWorker.register("/sw.js").catch(() => {
-    /* offline SW is best-effort */
-  });
+  navigator.serviceWorker
+    .register("/sw.js")
+    .then(() => navigator.serviceWorker.ready)
+    .then((reg) => warmOffline(reg))
+    .catch(() => {
+      /* offline SW is best-effort */
+    });
+}
+
+let warmAsked = false;
+/**
+ * Ask the worker to keep the rest of Potyro for offline use (#123, public/sw.js `warm`): once per
+ * page load, since `mount` runs on every route. Not when the person has asked their browser to save
+ * data — then the files are kept as they are used, as before, and Home still opens offline.
+ */
+function warmOffline(reg: ServiceWorkerRegistration): void {
+  if (warmAsked) return;
+  warmAsked = true;
+  const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+  if (saveData) return;
+  reg.active?.postMessage({ type: "warm" });
 }
 
 boot().catch((err: unknown) => {

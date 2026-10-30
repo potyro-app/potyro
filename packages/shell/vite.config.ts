@@ -211,6 +211,61 @@ function precacheCatalogs(): Plugin {
   };
 }
 
+/** Where the service worker finds the shell's own files to keep for offline use (public/sw.js reads it). */
+const SHELL_MANIFEST = "shell-precache.json";
+
+/** Files in public/ that the page asks for as it boots or gets added to a home screen. */
+const PUBLIC_BOOT = ["manifest.webmanifest", "favicon.svg", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
+
+/**
+ * Write down every file the build made, for the service worker to keep (#123).
+ *
+ * The worker caches what it sees fetched — but on the first visit the page's own script and styles
+ * are fetched BEFORE the worker is in charge, so they were never seen and never cached. After one
+ * visit online, a reload with no network got the cached page and no script: a blank screen. And an
+ * app needs files Home never asks for (the bundler, the runtime's chunks), so an example opened for
+ * the first time on a plane failed as well.
+ *
+ * Two lists. `boot` is the page's entry and everything it imports statically, with their styles and
+ * fonts: without these nothing shows, so the worker's install fetches them. `rest` is every other file the
+ * build emitted under assets/: the worker fetches those after it takes over, a few at a time, and
+ * drops copies of older builds' files that are no longer in the list. Content-hashed names, known
+ * only after the build, hence a file rather than a list in sw.js.
+ */
+function precacheShell(): Plugin {
+  let base = "/";
+  return {
+    name: "potyro-precache-shell",
+    apply: "build",
+    enforce: "post",
+    configResolved(config) {
+      base = config.base;
+    },
+    generateBundle(_options, bundle) {
+      const boot = new Set<string>();
+      const visit = (name: string): void => {
+        const item = bundle[name];
+        if (!item || boot.has(name)) return;
+        boot.add(name);
+        if (item.type !== "chunk") return;
+        for (const imported of item.imports) visit(imported);
+        const meta = (item as { viteMetadata?: { importedCss?: Set<string>; importedAssets?: Set<string> } }).viteMetadata;
+        for (const css of meta?.importedCss ?? []) boot.add(css);
+        // Fonts, yes; not the bundler's 14 MB of Wasm the entry also points at — Home paints without
+        // it, and install has to finish on a slow connection or nothing is kept at all.
+        for (const asset of meta?.importedAssets ?? []) if (/\.woff2?$/.test(asset)) boot.add(asset);
+      };
+      for (const item of Object.values(bundle)) if (item.type === "chunk" && item.isEntry) visit(item.fileName);
+      const rest = Object.keys(bundle).filter((f) => f.startsWith("assets/") && !boot.has(f) && !f.endsWith(".map"));
+      const listed = {
+        boot: [...[...boot].filter((f) => !f.endsWith(".map")), ...PUBLIC_BOOT].map((f) => `${base}${f}`).sort(),
+        rest: rest.map((f) => `${base}${f}`).sort(),
+      };
+      this.emitFile({ type: "asset", fileName: SHELL_MANIFEST, source: `${JSON.stringify(listed, null, 2)}\n` });
+    },
+  };
+}
+
 /**
  * The face finder's files (docs/25 §Faces), served from Potyro's own origin and never a CDN: MediaPipe's
  * Wasm runtime from the pinned @mediapipe/tasks-vision, and the model from packages/shell/faces/. The
@@ -250,7 +305,7 @@ export default defineConfig({
   // (packages/i18n/build.mjs). `precacheCatalogs` tells the service worker which chunks are languages.
   // `realmWorkerPlugin` serves the realm's worker runtime as `virtual:potyro-realm-worker` (#272), and
   // `realmViewPlugin` the sealed custom views' frame runtime as `virtual:potyro-realm-view` (#267).
-  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), claudeCliPlugin(), realmWorkerPlugin(), realmViewPlugin(), shareLinksPlugin(), facesAssets()],
+  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), precacheShell(), claudeCliPlugin(), realmWorkerPlugin(), realmViewPlugin(), shareLinksPlugin(), facesAssets()],
   // The browser suite's parallel shards each start their own dev servers from this one checkout
   // (docs/16 §8). Each shard gets its own dependency cache, so one server re-optimising never
   // rewrites the `deps` another is serving from. Unset: Vite's default, `node_modules/.vite`.
