@@ -13,6 +13,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkerFactory } from "../src/sqlite-worker-client.js";
 
 const opens = vi.hoisted(() => ({ count: 0, fail: false }));
+/** Every relay connection made, never answered — a relay that is down. */
+const sockets = vi.hoisted(() => ({ made: 0 }));
+
+vi.mock("cojson-transport-ws", () => ({
+  WebSocketPeerWithReconnection: class {
+    connected = false;
+    constructor() {
+      sockets.made++;
+    }
+    enable() {}
+    disable() {}
+    subscribe() {}
+    unsubscribe() {}
+  },
+}));
 
 vi.mock("../src/sqlite-worker-client.js", async (importOriginal) => {
   const real = await importOriginal<typeof import("../src/sqlite-worker-client.js")>();
@@ -76,6 +91,7 @@ async function identity(): Promise<{ id: string; secret: string }> {
 beforeEach(() => {
   opens.count = 0;
   opens.fail = false;
+  sockets.made = 0;
 });
 
 // Each case mints accounts and opens cojson storage, which is seconds of WASM crypto, not 5 s's worth.
@@ -123,4 +139,28 @@ describe("the page's node on the device database", { timeout: 30_000 }, () => {
     expect(handle.node).toBeTruthy();
     expect(opens.count).toBe(2);
   });
+
+  it("asks the relay for the account first when a later caller expects it, while the opening is pending", async () => {
+    const account = await identity();
+    const keys = memoryKeys();
+    const relay = "wss://relay.example";
+
+    // An invite accepted at boot registers first, without `expectExisting`; the boot account reader
+    // of a device linked with the recovery words arrives while that opening is still under way.
+    const [joined, reader] = await Promise.all([
+      openJazzStore("user:split", { keys, account, relay }),
+      openAccountNodeInBrowser({ keys, account, relay, expectExisting: true }),
+    ]);
+
+    expect(reader?.node).toBe(joined.node);
+    expect(opens.count).toBe(1);
+    // Two connections: the throwaway one that asked the relay for the account before anything was
+    // minted, and the node's own. Without the later caller's say it would be the node's alone.
+    expect(sockets.made).toBe(2);
+  });
+
+  // Apps recorded before the database move (`${appId}-jazz`) still open a node of their own beside
+  // the device database's: the two-nodes-on-one-account shape this file pins away. Migrating those
+  // spaces into the device database is a follow-up, and until then they keep the hazard.
+  it.todo("gives an app on a legacy per-app database the device database's node, once those are migrated");
 });
