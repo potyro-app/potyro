@@ -508,8 +508,8 @@ msgid "{engine} claims it can investigate this, but startFix has no client wired
 msgstr "{engine} gibt an, das untersuchen zu können, aber startFix hat dafür keinen Client. Das ist ein Konfigurationsfehler, kein Problem deiner App."
 
 #: ../shell/src/start-fix.ts
-msgid "{engine} needs your own API key to investigate — add one in Engine Settings."
-msgstr "{engine} braucht deinen eigenen API-Schlüssel, um das zu untersuchen — füge ihn in den Engine-Einstellungen hinzu."
+msgid "{engine} needs your own API key to investigate. Add one in the Studio’s Model settings."
+msgstr "{engine} braucht deinen eigenen API-Schlüssel, um das zu untersuchen. Füge ihn in den Modelleinstellungen des Studios hinzu."
 
 #: ../shell/src/ask-panel.tsx
 msgid "{engine} sees how this app is organised, what you type and paste, and the area on your map. Nothing already in the app is sent. You choose what gets added."
@@ -726,6 +726,10 @@ msgstr "{library} nutzt eine Funktion, die geteilte Apps noch nicht haben: {word
 #: ../shell/src/case-report.tsx
 msgid "{lostSteps, plural, one {Part of this recording was lost — # step could not be captured.} other {Part of this recording was lost — # steps could not be captured.}}"
 msgstr "{lostSteps, plural, one {Ein Teil dieser Aufzeichnung ging verloren — # Schritt konnte nicht erfasst werden.} other {Ein Teil dieser Aufzeichnung ging verloren — # Schritte konnten nicht erfasst werden.}}"
+
+#: ../shell/src/start-ask.ts
+msgid "{model} can’t use tools, and Ask needs them. Choose another model in the Studio’s Model settings."
+msgstr "{model} kann keine Werkzeuge benutzen, und Ask braucht sie. Wähle ein anderes Modell in den Modelleinstellungen des Studios."
 
 #: ../shell/src/ask-panel.tsx
 msgid "{more, plural, one {Found on {sites} and # more} other {Found on {sites} and # more}}"
@@ -952,6 +956,10 @@ msgstr "{who} hat {field} bei {record} auf {to} gesetzt"
 #: ../shell/src/ask-panel.tsx
 msgid "{why} What was already done is in the app; asking again will mark what is already there."
 msgstr "{why} Was schon erledigt war, ist in der App; fragst du erneut, wird markiert, was schon da ist."
+
+#: ../shell/src/endpoint-check.ts
+msgid "{why} You can test the connection in the Studio’s Model settings."
+msgstr "{why} Du kannst die Verbindung in den Modelleinstellungen des Studios testen."
 
 #: ../shell/src/inline-edit.tsx
 msgid "← Earlier"
@@ -3534,8 +3542,8 @@ msgid "I couldn't make this change: what came back wasn't a change I could apply
 msgstr "Ich konnte diese Änderung nicht machen: Was zurückkam, war keine Änderung, die ich auf die App anwenden konnte. Sag es anders."
 
 #: ../shell/src/studio-engine.ts
-msgid "I couldn't start on this change: the engine chosen in Engine Settings can't change apps. Choose OpenRouter there, with your own key."
-msgstr "Ich konnte mit dieser Änderung nicht anfangen: Die in den Engine-Einstellungen gewählte Engine kann keine Apps ändern. Wähle dort OpenRouter, mit deinem eigenen Schlüssel."
+msgid "I couldn't start on this change: the engine chosen in the Studio’s Model settings can't change apps. Choose OpenRouter there, with your own key, or an OpenAI-compatible endpoint."
+msgstr "Ich konnte mit dieser Änderung nicht anfangen: Die in den Modelleinstellungen des Studios gewählte Engine kann keine Apps ändern. Wähle dort OpenRouter mit deinem eigenen Schlüssel oder einen OpenAI-kompatiblen Endpunkt."
 
 #: ../shell/src/studio-engine.ts
 msgid "I didn't change the app: this isn't something it can change. {text}"
@@ -4158,6 +4166,11 @@ msgstr "Ansehen"
 msgid "Look it over"
 msgstr "Durchsehen"
 
+#. Ask: a switch; the addresses it proposes are looked up on OpenStreetMap to put their pins in the right place
+#: ../shell/src/ask-panel.tsx
+msgid "Look up places on the map"
+msgstr "Orte auf der Karte nachschlagen"
+
 #. Reasoning level
 #: ../shell/src/thinking-settings.tsx
 msgid "Low"
@@ -4541,6 +4554,10 @@ msgstr "Nein"
 #: ../shell/src/endpoint-check.ts
 msgid "No answer from {base}. Check the server is running and the address is right. A server on your own machine must also allow requests from this page (for Ollama, set OLLAMA_ORIGINS)."
 msgstr "Keine Antwort von {base}. Prüfe, ob der Server läuft und die Adresse stimmt. Ein Server auf deinem eigenen Rechner muss außerdem Anfragen von dieser Seite erlauben (bei Ollama: OLLAMA_ORIGINS setzen)."
+
+#: ../shell/src/endpoint-check.ts
+msgid "No answer from {base}. This page is https, so it can only reach an http server on this same computer. Use an https address for this server."
+msgstr "Keine Antwort von {base}. Diese Seite ist https, daher erreicht sie einen http-Server nur auf diesem Rechner. Nutze für diesen Server eine https-Adresse."
 
 #: ../shell/src/main.tsx
 msgid "No app \"{appId}\" installed to import into."
@@ -6646,8 +6663,8 @@ msgid "The endpoint must be an https:// address."
 msgstr "Der Endpunkt muss eine https://-Adresse sein."
 
 #: ../shell/src/start-fix.ts
-msgid "The endpoint needs its address and a model to investigate — add them in Engine Settings."
-msgstr "Der Endpunkt braucht seine Adresse und ein Modell, um das zu untersuchen — füge beides in den Engine-Einstellungen hinzu."
+msgid "The endpoint needs its address and a model to investigate. Add them in the Studio’s Model settings."
+msgstr "Der Endpunkt braucht seine Adresse und ein Modell, um das zu untersuchen. Füge beides in den Modelleinstellungen des Studios hinzu."
 
 #: ../shell/src/file-viewer.tsx
 msgid "The file as it is now is kept as an earlier copy, so you can change your mind."
@@ -7196,6 +7213,10 @@ msgstr "Dieser Bildschirm konnte nicht berechnet werden: {error}"
 #: ../views/src/custom.tsx
 msgid "This screen is built with the app’s own code, so it only runs when the app runs as yours."
 msgstr "Dieser Bildschirm ist mit dem eigenen Code der App gebaut und läuft daher nur, wenn die App als deine eigene läuft."
+
+#: ../shell/src/endpoint-check.ts
+msgid "This server needs a key. Add one above."
+msgstr "Dieser Server braucht einen Schlüssel. Füge oben einen hinzu."
 
 #: ../shell/src/app-source.ts
 msgid "this source could not be parsed"
