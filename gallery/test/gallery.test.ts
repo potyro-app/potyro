@@ -1,7 +1,7 @@
 // The gallery's data and page (docs/24 §10): the data is checked before anything is built or
 // published, the words are in all six languages, and the page asks nothing of anyone else.
 import { describe, expect, it } from "vitest";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LOCALES } from "../../packages/i18n/src/locale.ts";
@@ -180,26 +180,36 @@ describe("the page", () => {
     mkdirSync(join(dir, "shots"));
     writeFileSync(join(dir, "shots", "groceries.png"), PNG);
     writeFileSync(data, JSON.stringify(published()));
-    // The texts in the repository still have their placeholders: no pages, no links, and the reason.
-    const waiting = buildGallery({ data, out: join(dir, "waiting") });
-    expect(waiting.legal).toMatch(/^legal: \/privacy and \/terms not built/);
+    // Copies of the texts as the owner will leave them: the Draft note gone, every placeholder filled.
+    const finished = (page: string) =>
+      readFileSync(join(here, "..", "docs", "legal", `${page}.md`), "utf8")
+        .replace(/^> \*\*Draft\.\*\*[^\n]*\n(?:>[^\n]*\n)*/m, "")
+        .replace(/<DATE>/g, "2026-11-01")
+        .replace(/<[A-Z][^<>\n]*>/g, "filled");
+    const texts = (name: string, edit: (page: string, md: string) => string) => {
+      const folder = join(dir, name);
+      mkdirSync(folder);
+      for (const page of ["privacy", "terms"]) writeFileSync(join(folder, `${page}.md`), edit(page, finished(page)));
+      return folder;
+    };
+    // An unfinished copy (one placeholder left): no pages, no links, and the reason.
+    const waiting = buildGallery({ data, out: join(dir, "waiting"), legal: texts("unfinished", (page, md) => (page === "terms" ? `${md}\nWrite to <ABUSE EMAIL>.\n` : md)) });
+    expect(waiting.legal).toMatch(/^legal: \/privacy and \/terms not built: terms\.md still has <ABUSE EMAIL>/);
     expect(existsSync(join(dir, "waiting", "privacy"))).toBe(false);
     expect(readFileSync(join(dir, "waiting", "index.html"), "utf8")).not.toContain('data-t="legalPrivacy"');
     // Finished copies: both pages, their own styles, and the footer links.
-    const legal = join(dir, "legal");
-    mkdirSync(legal);
-    for (const page of ["privacy", "terms"]) {
-      const md = readFileSync(join(here, "..", "docs", "legal", `${page}.md`), "utf8")
-        .replace(/^> \*\*Draft\.\*\*[^\n]*\n(?:>[^\n]*\n)*/m, "")
-        .replace(/<[A-Z][^<>\n]*>/g, "filled");
-      writeFileSync(join(legal, `${page}.md`), md);
-    }
-    const done = buildGallery({ data, out: join(dir, "out"), legal });
+    const done = buildGallery({ data, out: join(dir, "out"), legal: texts("finished", (_, md) => md) });
     expect(done.legal).toBeNull();
-    for (const f of ["privacy/index.html", "terms/index.html", "legal/legal.css", "legal/tokens.css", "legal/fonts/figtree-latin.woff2"]) expect(existsSync(join(dir, "out", f))).toBe(true);
+    for (const f of ["privacy/index.html", "terms/index.html"]) expect(existsSync(join(dir, "out", f))).toBe(true);
+    const files = (sub: string) => readdirSync(join(dir, "out", sub));
+    expect(files("legal").some((f) => /^legal\.[0-9a-f]{10}\.css$/.test(f))).toBe(true);
+    expect(files("legal").some((f) => /^tokens\.[0-9a-f]{10}\.css$/.test(f))).toBe(true);
+    expect(files(join("legal", "fonts")).some((f) => /^figtree-latin\.[0-9a-f]{10}\.woff2$/.test(f))).toBe(true);
     expect(readFileSync(join(dir, "out", "index.html"), "utf8")).toContain('href="privacy/"');
-    // potyro.com's CSP is style-src 'self' and script-src 'self': no inline style, no script.
     const privacy = readFileSync(join(dir, "out", "privacy", "index.html"), "utf8");
+    // On potyro.com, "Open Potyro" is the app, as it is in the gallery's own footer — not potyro.com again.
+    expect(privacy).toContain('<a href="https://potyro.app/">Open Potyro</a>');
+    // potyro.com's CSP is style-src 'self' and script-src 'self': no inline style, no script.
     expect(privacy).not.toMatch(/\sstyle="|<style|<script/);
   });
 

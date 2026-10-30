@@ -384,7 +384,8 @@ export function buildGallery(opts = {}) {
   };
   // The legal pages beside the gallery, at the same paths as on potyro.app — or none, and the
   // footer does not link them (packages/legal).
-  const legal = legalSite({ dir: opts.legal });
+  // "Open Potyro" on them goes to the app, as the gallery's own does: `../` here is potyro.com.
+  const legal = legalSite({ dir: opts.legal, appHref: APP_SITE });
   for (const [path, body] of legal.files) {
     mkdirSync(dirname(join(out, path)), { recursive: true });
     writeFileSync(join(out, path), body);
