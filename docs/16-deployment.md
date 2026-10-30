@@ -915,7 +915,8 @@ sheet should not say "without a preview picture". Check:
 For a notice about illegal content (the terms' "Reporting illegal content", to the report address),
 or anything else the terms say may be removed. **Who may run it:** the operator — whoever holds
 `SHARE_ADMIN_TOKEN` or a shell on the server. Today that is the owner, alone. Say why every time:
-the reason is kept with the takedown.
+the reason is kept with the takedown, with no end date. Keep it to what was decided and why (the
+notice's date, the rule or law); the reporter's name and address stay in the mail, not here.
 
 From anywhere, over HTTPS (Node 18 or later; a whole link is fine, its key after `#` is never sent):
 
