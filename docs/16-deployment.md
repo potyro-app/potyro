@@ -566,17 +566,18 @@ What it accepts and does, so you know what is on the internet:
 | | |
 |---|---|
 | `/complete` | Exactly the payload `readAiPayload` takes: the host's instructions, the parts the app's call named (words, pictures resized to 1600 px, one recording), the JSON Schema for the answer, a token cap, a random device id. The model is `google/gemini-2.5-flash-lite` (or `AI_MODEL`), always; the token cap ≤ 4 000; `data_collection: "deny"`. No tools, no web search. 6 MiB a request; ≤ 4 pictures of ≤ 3 MiB; ≤ 40 000 characters of text; one WAV recording of ≤ 2.7 MB, never with a picture. Too big is refused, never cut. |
-| `/complete` limits | 20 a day and 100 a month per device id, 60 a day per address, 2 at once per device. |
+| `/complete` limits | 20 a day and 100 a month per device id, 60 a day per address, 2 at once per device. A request is counted when it is sent, whatever comes back. |
 | Chat: what passes | `model` (from `AI_CHAT_MODELS` only), `messages`, `tools` and `tool_choice`, `reasoning`, `stream`, the sampling settings, `response_format`, `provider`. Messages, tools, tool calls and reasoning go on unchanged. Any other field is refused, not dropped (a `models` fallback list, a `user` id). |
-| Chat: what the relay decides | `max_tokens` clamped to `AI_CHAT_MAX_TOKENS` (and set to it when absent), `provider.data_collection: "deny"`, `usage.include: true`. OpenRouter's server tools (a tool of type `openrouter:web_search`, `plugins`, `web_search_options`) are refused with `403 plan`, and a `:online` model is not in the list: they cost per call, and only a plan token may ask for them. **No plan exists yet**, so every one is refused; the seam is `planAllows` in `src/chat.ts`, fed by the `x-potyro-plan` header. |
-| Chat: who it is | `Authorization: Bearer potyro-device:<id>`, the same random device id as `/complete`. Anything else is `401 device`; the Studio's OpenRouter engine can point at `/ai/v1` with that token as its key. |
-| Chat: money | Before dispatch, with a reserve (`AI_CHAT_RESERVE_USD`) held for the request: the device's month (`AI_DEVICE_MONTH_USD`), the address's day (`AI_ADDRESS_DAY_USD`, so a fresh device id per request does not get past it), and the service's month. After it, OpenRouter's `usage.cost` (from the final chunk when streamed) replaces the reserve. Unknown cost: the reserve is charged. OpenRouter refusing or failing: nothing. Used up: `429 {"ok":false,"error":"allowance","reason":…}` with `x-potyro-left-usd: 0`. An answer that went out carries `x-potyro-left-usd`: what the device had left before it. |
-| Chat: the answer | Piped, not buffered: a stream and OpenRouter's `: OPENROUTER PROCESSING` lines reach the sender as they come. 300 s for the whole request, body included (the Studio's own timeout). 3 at once per device. A sender that goes away stops the request upstream. 4 MiB a request. Potyro's key refused or out of credit, or OpenRouter down, is `502 upstream`; a refusal the sender can act on (a 400) comes back as it is. |
-| Spending cap | `AI_MONTHLY_CAP_USD` (default **$10**) for the whole service, both routes together, a calendar month (UTC), checked **before** each request. Past it, every device is told "used up" and moves to its own key. |
-| Kill switch | The chat route answers `503 {"ok":false,"error":"off"}` and sends nothing while `AI_CHAT_OFF=1`, or while the file `AI_CHAT_OFF_FILE` names exists. Both are read on every request; the file needs no restart. `/complete` is not affected. |
-| Counts (#118) | `POST /count {"event":"exhausted"\|"own-key"\|"want-plan"\|"visit"}`; `GET /count` returns `{"months":{"2026-10":{…}}}`. Numbers a month and nothing else. An address counts each event once a day and may post 20 times a day (`AI_COUNT_PER_ADDRESS_DAY`), checked in memory under a salted hash a restart forgets. The relay counts `exhausted` itself the first time a device uses up an allowance in a month, so the shell need not post it after the relay's 429. |
-| State | The month's spend, each device's `/complete` count and chat dollars, which devices used theirs up, and the counts per month, in `AI_LEDGER` (a JSON file), written on every change. A file from before the chat route still loads. A file it cannot read stops it starting. Daily limits are in memory. |
-| Addresses | `TRUST_PROXY=caddy` (default): the last `X-Forwarded-For` entry. Caddy's `reverse_proxy` ignores the client's own `X-Forwarded-*` headers unless the peer is in `trusted_proxies` and sets the peer it saw, so with no `trusted_proxies` the header has one entry, and with them the peer is appended, last. A forged entry is never last. `TRUST_PROXY=none` ignores the header (the relay reached directly). |
+| Chat: what the relay decides | `max_tokens` clamped to `AI_CHAT_MAX_TOKENS`, 64 000 by default (and set to it when absent): the Studio's high thinking level asks for that much, and what a request may cost is held to the allowances by the estimate below, not by the clamp; `provider.data_collection: "deny"`, `usage.include: true`. OpenRouter's server tools (a tool of type `openrouter:web_search`, `plugins`, `web_search_options`) are refused with `403 plan`, and a `:online` model is not in the list: they cost per call, and only a plan token may ask for them. **No plan exists yet**, so every one is refused; the seam is `planAllows` in `src/chat.ts`, fed by the `x-potyro-plan` header. |
+| Chat: who it is | `Authorization: Bearer potyro-device:<id>`, the same random device id as `/complete`. Anything else is `401` with code `device`; the Studio's OpenRouter engine can point at `/ai/v1` with that token as its key. |
+| Chat: money | Before dispatch, each with room for the most this request could cost (the **estimate**, below): the service's month and day, the device's month (`AI_DEVICE_MONTH_USD`), the address's day (`AI_ADDRESS_DAY_USD`, so a fresh device id per request does not get past it). That much (at least `AI_CHAT_RESERVE_USD`) is held while the request is out. After it, OpenRouter's `usage.cost` (from the final chunk when streamed) is charged; when the answer does not carry it — the sender went away, a timeout, a cut stream, no usage chunk, an error answer — the estimate is. Used up: `429` with `x-potyro-left-usd: 0` and a code (docs/23 "The chat route's refusals"). An answer that went out carries `x-potyro-left-usd`: what the device had left before it. |
+| The estimate | Input: the body's characters / 4, as tokens, at the model's price per million input tokens; output: the request's `max_tokens` after the clamp at its price per million output tokens. Both on the high side (a picture's base64 counts as text). Prices are a small table in `src/prices.ts` — Gemini 2.5 Flash Lite $0.10/$0.40, DeepSeek V4 Flash $0.14/$0.28 a million tokens — overridden or added to with `AI_MODEL_PRICES`. A model the relay may send without a price stops it starting. A Studio turn at the high thinking level is held for about 2¢. `/complete` uses the same estimate: held while it is out, and charged for a failure, an empty answer or a missing `usage.cost`. |
+| Chat: the answer | Piped, not buffered: a stream and OpenRouter's `: OPENROUTER PROCESSING` lines reach the sender as they come. 300 s for the whole request, body included (the Studio's own timeout). 3 at once per device. A sender that goes away stops the request upstream. 4 MiB a request. Potyro's key refused or out of credit, or OpenRouter down, is `502` with code `upstream`; a refusal the sender can act on (a 400) comes back as it is. Neither carries a `usage.cost`, so both are charged the estimate. |
+| Spending caps | `AI_MONTHLY_CAP_USD` (default **$10**) for the whole service, both routes together, a calendar month (UTC), and `AI_DAY_USD` (default an eighth of it, $1.25) a calendar day (UTC), so one day cannot eat the month. Both are checked **before** each request with its estimate on top of what every request still out on either route holds (`src/budget.ts`). Past either, every device is told "used up" and moves to its own key. A request that settles after its month or day ended is not counted (the ledger never goes back to an ended month); the relay logs how many. |
+| Kill switch | The chat route answers `503` with code `off` and sends nothing while `AI_CHAT_OFF=1`, or while the file `AI_CHAT_OFF_FILE` names exists. Both are read on every request; the file needs no restart. `/complete` is not affected. |
+| Counts (#118) | `POST /count {"event":"exhausted"\|"own-key"\|"want-plan"\|"visit"}`; `GET /count` returns `{"months":{"2026-10":{…}}}`. Numbers a month and nothing else. An address counts each event once a day and may post 20 times a day (`AI_COUNT_PER_ADDRESS_DAY`), checked in memory under a salted hash a restart forgets (an IPv6 address by its /64; at most 100 000 addresses remembered, each forgotten within a day and an hour). The relay counts `exhausted` itself the first time a device uses up an allowance in a month, so the shell need not post it after the relay's 429. |
+| State | The month's spend, the day's spend, each device's `/complete` count and chat dollars, which devices used theirs up, and the counts per month, in `AI_LEDGER` (a JSON file), written on every change. A file from before the chat route still loads. A file it cannot read stops it starting. The per-device and per-address daily limits, and what requests in flight hold, are in memory. |
+| Addresses | `TRUST_PROXY=caddy` (default): the last `X-Forwarded-For` entry. Caddy's `reverse_proxy` ignores the client's own `X-Forwarded-*` headers unless the peer is in `trusted_proxies` and sets the peer it saw, so with no `trusted_proxies` the header has one entry, and with them the peer is appended, last. A forged entry is never last. `TRUST_PROXY=none` ignores the header (the relay reached directly). Every per-address limit counts an IPv4 address as itself and an IPv6 address by its **/64** (`addressKey` in `src/address.ts`): a home or a phone is usually given a whole /64. An IPv4 address written as IPv6 (`::ffff:…`) is the IPv4 one. |
 | CORS | The site's pages are the same origin and need none. The native apps' WebViews (`https://localhost` on Android, `capacitor://localhost` on iOS) are other origins: those, and only those (`AI_CORS_ORIGINS`), are answered, on every route, without credentials. |
 | Logs | The upstream's status or error message only. Never a request's content, a device id or an address. |
 
@@ -596,6 +597,7 @@ sudo install -m 600 /dev/null /etc/potyro/ai.env
 sudoedit /etc/potyro/ai.env
 #   OPENROUTER_API_KEY=sk-or-v1-…
 #   AI_MONTHLY_CAP_USD=10
+#   AI_DAY_USD=1.25
 #   AI_LEDGER=/data/ai-ledger.json
 #   AI_CHAT_MODELS=deepseek/deepseek-v4-flash-0731
 #   AI_DEVICE_MONTH_USD=0.5
@@ -611,9 +613,11 @@ Every variable, with its default, is at the top of `packages/ai-relay/src/server
 |---|---|---|
 | `AI_CHAT_MODELS` | `deepseek/deepseek-v4-flash-0731` | Comma-separated; the only models the chat route sends. |
 | `AI_DEVICE_MONTH_USD` | `0.5` | One device's chat allowance a month. |
-| `AI_ADDRESS_DAY_USD` | `1` | One address's chat spend a day, whatever device ids it sends. |
-| `AI_CHAT_RESERVE_USD` | `0.02` | Held while a chat request is out; charged when its cost is not known. |
-| `AI_CHAT_MAX_TOKENS` | `32000` | The clamp on `max_tokens`. Reasoning comes out of it too. |
+| `AI_DAY_USD` | `AI_MONTHLY_CAP_USD` / 8 | The whole service's spend a calendar day (UTC), both routes. |
+| `AI_MODEL_PRICES` | — | JSON, `{"<model>": {"input": 0.14, "output": 0.28}}` in US dollars a million tokens, over the table in `src/prices.ts`. Use the dearest provider's price on OpenRouter. |
+| `AI_ADDRESS_DAY_USD` | 4 × `AI_DEVICE_MONTH_USD`, at most half of `AI_DAY_USD` | One address's chat spend a day (IPv6: its /64), whatever device ids it sends. A whole home or office shares it. Must be below `AI_DAY_USD`, or it does not start. With the defaults: $0.625. |
+| `AI_CHAT_RESERVE_USD` | `0.02` | The least a chat request is held for while it is out; more when its estimate is more. |
+| `AI_CHAT_MAX_TOKENS` | `64000` | The clamp on `max_tokens`, the Studio's high thinking level. Reasoning comes out of it too. |
 | `AI_CHAT_OFF` | — | `1` turns the chat route off. Changing it needs a new container. |
 | `AI_CHAT_OFF_FILE` | — | While this file exists, the chat route is off. No restart. |
 | `AI_COUNT_PER_ADDRESS_DAY` | `20` | `POST /count` from one address a day. |
@@ -635,7 +639,7 @@ docker run -d --name potyro-ai --restart unless-stopped \
   -v /opt/potyro-ai:/app:ro -v /var/lib/potyro-ai:/data -w /app \
   node:22-bookworm \
   node --experimental-strip-types src/server.ts
-docker logs potyro-ai     # "[ai-relay] google/gemini-2.5-flash-lite; chat deepseek/…; cap $10 a month; proxy caddy; listening on 0.0.0.0:4204"
+docker logs potyro-ai     # "[ai-relay] google/gemini-2.5-flash-lite; chat deepseek/…; cap $10 a month, $1.25 a day; proxy caddy; listening on 0.0.0.0:4204"
 ```
 
 Without `OPENROUTER_API_KEY` it refuses to start.
@@ -695,7 +699,7 @@ ledger's `deviceUsd["check-0001"]` should then hold that cost.
 ### Turning the chat route off
 
 ```bash
-sudo touch /var/lib/potyro-ai/chat-off      # off at once: 503 {"ok":false,"error":"off"}
+sudo touch /var/lib/potyro-ai/chat-off      # off at once: 503 {"error":{"code":"off",…}}
 sudo rm /var/lib/potyro-ai/chat-off         # on again
 ```
 
