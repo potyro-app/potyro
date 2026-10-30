@@ -17,7 +17,7 @@ Last changed: <DATE>
 
 ## Who runs Potyro
 
-Potyro is run by <OWNER NAME>, an individual resident in Italy, not a company.
+Potyro is run by Edgar Zanella Alvarenga, an individual resident in Italy, not a company.
 Write to <CONTACT EMAIL>.
 
 In this text, "we" means that person. We decide how the data described here is handled, so under

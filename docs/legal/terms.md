@@ -8,7 +8,7 @@ Last changed: <DATE>
 
 ## Who you are dealing with
 
-Potyro at potyro.app is run by <OWNER NAME>, an individual resident in Italy, not a company. Write
+Potyro at potyro.app is run by Edgar Zanella Alvarenga, an individual resident in Italy, not a company. Write
 to <CONTACT EMAIL>. In these terms, "we" means that person.
 
 How we handle your data is in the [privacy page](privacy.md). It is part of these terms.

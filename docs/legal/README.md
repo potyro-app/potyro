@@ -16,7 +16,7 @@ review are HTML comments (`<!-- -->`), so they do not show when the page is serv
 
 ## Placeholders
 
-`<OWNER NAME>`, `<CONTACT EMAIL>`, `<ABUSE EMAIL>`, `<DATE>` (the date each text takes effect) and
+`Edgar Zanella Alvarenga`, `<CONTACT EMAIL>`, `<ABUSE EMAIL>`, `<DATE>` (the date each text takes effect) and
 `<RETENTION, to decide>` (how long emails are kept). The hosting location reads "Germany or
 Finland, to confirm" (facts.md F-58: the address looks like Hetzner's Helsinki cloud).
 
