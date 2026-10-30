@@ -11,7 +11,19 @@ import { plural, t } from "@lingui/core/macro";
 import type { AppShape } from "@potyro/runtime";
 import { fmt } from "@potyro/i18n";
 import type { ConversationEntry, GiveUp, PlatformRequest } from "@potyro/generator/agent";
-import { SYSTEM_PROMPT, appLanguage, buildUserMessage, buildRepairInstruction, extractSource, guardedModify, looksLikeApp, questionIn, type Language, type ModifyContext } from "@potyro/generator/backends";
+import {
+  SYSTEM_PROMPT,
+  appLanguage,
+  buildUserMessage,
+  buildRepairInstruction,
+  endpointFailure,
+  extractSource,
+  guardedModify,
+  looksLikeApp,
+  questionIn,
+  type Language,
+  type ModifyContext,
+} from "@potyro/generator/backends";
 import { backendFor, modifyTurn } from "./model-turn.js";
 import { generateViaCli } from "./generate-client.js";
 import { modifyLoopRefusal, startModify } from "./start-modify.js";
@@ -20,6 +32,8 @@ import { loadTrustedModule } from "./trusted-loader.js";
 import type { ModuleSource } from "./package-modules.js";
 import { engineLabel, type EngineConfig } from "./engines.js";
 import { currentLocale } from "./locale.js";
+import { knownNoTools, rememberNoTools } from "./endpoint-tools.js";
+import { unreachableText } from "./endpoint-check.js";
 
 /** What a turn came to. `summary` is what the conversation says happened. */
 export type Outcome =
@@ -59,7 +73,7 @@ export function notChanged(result: { kind: "failed"; reason: string; cause?: Giv
         : cause === "steps"
           ? t`I couldn't make this change: I ran out of tries before finding a version that works. Try asking for a smaller step.`
           : cause === "engine"
-            ? t`I couldn't start on this change: the engine chosen in Engine Settings can't change apps. Choose OpenRouter there, with your own key.`
+            ? t`I couldn't start on this change: the engine chosen in the Studio’s Model settings can't change apps. Choose OpenRouter there, with your own key, or an OpenAI-compatible endpoint.`
             : // The one-turn guard (`guardedModify`): what came back could not be applied to the app.
               t`I couldn't make this change: what came back wasn't a change I could apply to the app. Try saying it another way.`;
   return { kind: "failed", text, detail: result.reason };
@@ -195,46 +209,77 @@ export function studioEngine(
     return t`${applied} Not done yet: ${parts}`;
   };
 
+  /**
+   * An endpoint the request never reached, said as what to check (the same words as Test connection),
+   * or null for any other failure. The error's own words stay as the detail.
+   */
+  const unreachable = (e: unknown): Extract<Outcome, { kind: "failed" }> | null =>
+    endpointFailure(e) === "unreachable"
+      ? { kind: "failed", text: unreachableText(engine.endpoint.baseUrl), detail: e instanceof Error ? e.message : String(e) }
+      : null;
+
+  /**
+   * Did the loop fail because the endpoint's model takes no tools? Then it is remembered for this
+   * session, and the caller makes the request in one plain turn instead — which needs none.
+   */
+  const noTools = (e: unknown): boolean => {
+    if (endpointFailure(e) !== "tools-unsupported") return false;
+    rememberNoTools(engine);
+    return true;
+  };
+
+  /** Whether this request goes through a loop: a chat engine, not already known to take no tools. */
+  const loops = (refused: string | undefined): boolean => !refused && !knownNoTools(engine);
+
+  /** The create loop's outcome, or null when the endpoint's model takes no tools and one plain turn should make it. */
+  const createInLoop = async (brief: string): Promise<Outcome | null> => {
+    try {
+      // A first draft is one long call that says nothing until it is done, so the heartbeat runs
+      // while the model writes; what the loop does in between (a tool, a check) is said instead.
+      let doing: ((elapsed: string) => string) | null = null;
+      const result = await ticking(
+        (elapsed) => doing?.(elapsed) ?? t`Making it via ${label} · ${elapsed}`,
+        () =>
+          startCreate({
+            brief,
+            engine,
+            language,
+            onStep: (step) => {
+              if (step.kind === "thinking") {
+                doing = null;
+                return;
+              }
+              // The tool's own name and arguments are code, not words: they stay as the loop wrote them.
+              const first = step.detail.split("\n")[0]!.slice(0, 80);
+              const line = step.kind === "tool" ? `${step.name}: ${first}` : step.kind === "candidate" && step.passed ? t`Checking it` : t`Asked to try again: ${first}`;
+              doing = () => line;
+              progress(line);
+            },
+          }),
+      );
+      if (result.kind === "question") return { kind: "question", text: result.text };
+      if (result.kind === "platform") {
+        return { kind: "platform", text: t`I didn't make the app: what you asked for needs something Potyro can't do yet.`, request: result.request };
+      }
+      if (result.kind === "failed") return { ...notMade(result), ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}) };
+      if (result.kind === "stopped") return notMade(result);
+      return { kind: "source", source: result.source, summary: "", ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}) };
+    } catch (e) {
+      if (noTools(e)) return null;
+      const away = unreachable(e);
+      if (away) return away;
+      const reason = e instanceof Error ? e.message : String(e);
+      return { kind: "failed", text: t`Could not make it: ${reason}` };
+    }
+  };
+
   const create = async (brief: string): Promise<Outcome> => {
     // A chat engine drives the create LOOP (#262 phase 3): the corpus in the first message, tools,
     // and every candidate checked and run — up to two independent first drafts, the better kept.
-    // Other engines keep the one call below.
-    if (!createLoopRefusal(engine)) {
-      try {
-        // A first draft is one long call that says nothing until it is done, so the heartbeat runs
-        // while the model writes; what the loop does in between (a tool, a check) is said instead.
-        let doing: ((elapsed: string) => string) | null = null;
-        const result = await ticking(
-          (elapsed) => doing?.(elapsed) ?? t`Making it via ${label} · ${elapsed}`,
-          () =>
-            startCreate({
-              brief,
-              engine,
-              language,
-              onStep: (step) => {
-                if (step.kind === "thinking") {
-                  doing = null;
-                  return;
-                }
-                // The tool's own name and arguments are code, not words: they stay as the loop wrote them.
-                const first = step.detail.split("\n")[0]!.slice(0, 80);
-                const line = step.kind === "tool" ? `${step.name}: ${first}` : step.kind === "candidate" && step.passed ? t`Checking it` : t`Asked to try again: ${first}`;
-                doing = () => line;
-                progress(line);
-              },
-            }),
-        );
-        if (result.kind === "question") return { kind: "question", text: result.text };
-        if (result.kind === "platform") {
-          return { kind: "platform", text: t`I didn't make the app: what you asked for needs something Potyro can't do yet.`, request: result.request };
-        }
-        if (result.kind === "failed") return { ...notMade(result), ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}) };
-        if (result.kind === "stopped") return notMade(result);
-        return { kind: "source", source: result.source, summary: "", ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}) };
-      } catch (e) {
-        const reason = e instanceof Error ? e.message : String(e);
-        return { kind: "failed", text: t`Could not make it: ${reason}` };
-      }
+    // Other engines, and an endpoint whose model takes no tools, keep the one call below.
+    if (loops(createLoopRefusal(engine))) {
+      const looped = await createInLoop(brief);
+      if (looped) return looped;
     }
     try {
       const reply = await ticking((elapsed) => t`Making it via ${label} · ${elapsed}`, async () => {
@@ -258,6 +303,8 @@ export function studioEngine(
       if (!looksLikeApp(reply)) return { kind: "failed", text: t`The model answered with an explanation instead of an app. Try again, or say it another way.` };
       return { kind: "source", source: reply, summary: "" };
     } catch (e) {
+      const away = unreachable(e);
+      if (away) return away;
       const reason = e instanceof Error ? e.message : String(e);
       return { kind: "failed", text: t`Could not make it: ${reason}` };
     }
@@ -276,29 +323,62 @@ export function studioEngine(
         if (!u.ok) return notChanged({ kind: "error", error: new Error(u.problem) });
         return { source: u.source, ...(u.changed ? { modules: u.changed } : {}) };
       };
+      /** One turn through the edit guard: every engine but a chat engine, and an endpoint that takes no tools. */
+      const oneTurn = async (): Promise<Outcome> => {
+        const result = await ticking((elapsed) => t`Changing it via ${label} · ${elapsed}`, () =>
+          guardedModify({
+            attempt: (instr) => attempt(shown, instr, aimed),
+            shapeOf: async (text) => {
+              const u = await unpackOrThrow(text, joined, modules);
+              const app = await loadTrustedModule(u.source, u.modules);
+              return { pages: app.pages, entities: app.entities };
+            },
+            before,
+            instruction,
+            source: shown,
+          }),
+        );
+        // An answer, not a failure: red reads as "retry me", which is how the same wrong edit gets
+        // asked for five times.
+        if (result.kind === "diagnosis") return notTheApps(result.text);
+        if (result.kind === "failed") return notChanged(result);
+        const applied =
+          result.via === "edits" ? appliedEdits(result.applied) : t`The model sent the whole file back instead of edits. Check that nothing else changed.`;
+        const summary = describeNotDone(applied, result.notDone);
+        const got = await files(result.source);
+        if ("kind" in got) return got;
+        if (result.loss !== null) return { kind: "loss", ...got, summary, loss: result.loss };
+        return { kind: "source", ...got, summary, notDone: result.notDone };
+      };
       // A chat engine drives the modify LOOP (#131): the model looks declarations up and checks a
       // candidate before sending it, and every candidate must compile, validate and keep the app's
-      // shape. Other engines keep the one-turn guard.
-      if (!modifyLoopRefusal(engine)) {
-        const result = await startModify({
-          modules,
-          joined,
-          source: shown,
-          instruction,
-          context: aimed,
-          before,
-          engine,
-          language,
-          ...(earlier?.length ? { conversation: earlier } : {}),
-          onStep: (step) => {
-            if (step.kind === "thinking") return progress(t`Thinking via ${label}`);
-            // The tool's own name and arguments are code, not words: they stay as the loop wrote them.
-            const first = step.detail.split("\n")[0]!.slice(0, 80);
-            if (step.kind === "tool") progress(`${step.name}: ${first}`);
-            else if (step.kind === "candidate") progress(step.passed ? t`A change passed the check.` : t`A change was turned back: ${first}`);
-            else progress(t`Asked to try again: ${first}`);
-          },
-        });
+      // shape. Other engines, and an endpoint whose model takes no tools, keep the one-turn guard.
+      if (loops(modifyLoopRefusal(engine))) {
+        let result: Awaited<ReturnType<typeof startModify>>;
+        try {
+          result = await startModify({
+            modules,
+            joined,
+            source: shown,
+            instruction,
+            context: aimed,
+            before,
+            engine,
+            language,
+            ...(earlier?.length ? { conversation: earlier } : {}),
+            onStep: (step) => {
+              if (step.kind === "thinking") return progress(t`Thinking via ${label}`);
+              // The tool's own name and arguments are code, not words: they stay as the loop wrote them.
+              const first = step.detail.split("\n")[0]!.slice(0, 80);
+              if (step.kind === "tool") progress(`${step.name}: ${first}`);
+              else if (step.kind === "candidate") progress(step.passed ? t`A change passed the check.` : t`A change was turned back: ${first}`);
+              else progress(t`Asked to try again: ${first}`);
+            },
+          });
+        } catch (e) {
+          if (noTools(e)) return await oneTurn();
+          throw e;
+        }
         if (result.kind === "diagnosis") return notTheApps(result.text);
         if (result.kind === "question") return { kind: "question", text: result.text };
         if (result.kind === "platform") {
@@ -317,33 +397,10 @@ export function studioEngine(
           ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}),
         };
       }
-      const result = await ticking((elapsed) => t`Changing it via ${label} · ${elapsed}`, () =>
-        guardedModify({
-          attempt: (instr) => attempt(shown, instr, aimed),
-          shapeOf: async (text) => {
-            const u = await unpackOrThrow(text, joined, modules);
-            const app = await loadTrustedModule(u.source, u.modules);
-            return { pages: app.pages, entities: app.entities };
-          },
-          before,
-          instruction,
-          source: shown,
-        }),
-      );
-      // An answer, not a failure: red reads as "retry me", which is how the same wrong edit gets
-      // asked for five times.
-      if (result.kind === "diagnosis") return notTheApps(result.text);
-      if (result.kind === "failed") return notChanged(result);
-      const applied =
-        result.via === "edits" ? appliedEdits(result.applied) : t`The model sent the whole file back instead of edits. Check that nothing else changed.`;
-      const summary = describeNotDone(applied, result.notDone);
-      const got = await files(result.source);
-      if ("kind" in got) return got;
-      if (result.loss !== null) return { kind: "loss", ...got, summary, loss: result.loss };
-      return { kind: "source", ...got, summary, notDone: result.notDone };
+      return await oneTurn();
     } catch (e) {
       if (e instanceof Asked) return { kind: "question", text: e.question };
-      return notChanged({ kind: "error", error: e });
+      return unreachable(e) ?? notChanged({ kind: "error", error: e });
     }
   };
 
@@ -358,7 +415,11 @@ export function studioEngine(
       const files = edits ? withEditedModules(modules, await ownModuleCode(edits)) : modules;
       const joined = await joinForModel(source, files);
       const result = await guardedModify({
-        attempt: (instr) => attempt(joined?.text ?? source, instr),
+        // An endpoint it could not reach is said as what to check, after "Could not fix it:".
+        attempt: (instr) =>
+          attempt(joined?.text ?? source, instr).catch((e: unknown) => {
+            throw unreachable(e) ? new Error(unreachableText(engine.endpoint.baseUrl)) : e;
+          }),
         shapeOf: async (text) => {
           const u = await unpackOrThrow(text, joined, files);
           return shapeOrEmpty(u.source, u.modules);

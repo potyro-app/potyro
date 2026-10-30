@@ -7,10 +7,21 @@
 
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
-import { OPENROUTER_MODELS, WEBLLM_MODELS, thinkingOptions, type ReasoningLevel } from "@potyro/generator/backends";
+import { OPENROUTER_MODELS, WEBLLM_MODELS, thinkingOptions, type OpenRouterOptions, type ReasoningLevel } from "@potyro/generator/backends";
 import { i18n } from "@potyro/i18n";
 
-export type Engine = "cli" | "edge" | "builtin" | "anthropic" | "openrouter";
+export type Engine = "cli" | "edge" | "builtin" | "anthropic" | "openrouter" | "endpoint";
+
+/**
+ * A server that speaks the OpenAI chat API (#121): OpenAI itself, Ollama, LM Studio, vLLM. The base
+ * URL is the part before `/chat/completions`, usually ending in `/v1`. The key may be empty: a local
+ * server often takes none.
+ */
+export interface EndpointSetting {
+  baseUrl: string;
+  key: string;
+  model: string;
+}
 
 /**
  * How hard the model thinks (#280), per engine: a level, and whether the modify loop thinks hard for
@@ -31,15 +42,21 @@ export interface EngineConfig {
   openrouterKey: string;
   openrouterModel: string;
   edgeModel: string;
+  /** The OpenAI-compatible endpoint's address, key and model. */
+  endpoint: EndpointSetting;
   /** How hard each engine's model thinks; an engine with no entry uses DEFAULT_THINKING. */
   thinking?: Partial<Record<Engine, ThinkingSetting>>;
 }
 
-export type EngineGroup = "local" | "cloud";
-/** The settings' two headings, in order. */
+export type EngineGroup = "local" | "cloud" | "server";
+/** The settings' headings, in order. */
 export const ENGINE_GROUPS: readonly { id: EngineGroup; label: MessageDescriptor }[] = [
   { id: "local", label: msg({ message: "On this machine", comment: "Model settings heading: engines that run on this computer" }) },
   { id: "cloud", label: msg({ message: "Cloud", comment: "Model settings heading: engines reached over the internet" }) },
+  {
+    id: "server",
+    label: msg({ message: "A server you choose", comment: "Model settings heading: a model server the person names by its address, in the cloud or on their own machine" }),
+  },
 ];
 
 export interface EngineChoice {
@@ -114,6 +131,17 @@ export const ENGINES: readonly EngineChoice[] = [
     // `thinkingOptions` turns a level into OpenRouter's reasoning effort and a token budget.
     canThink: true,
   },
+  {
+    id: "endpoint",
+    label: msg({ message: "OpenAI-compatible endpoint", comment: "Engine name: any server that speaks the OpenAI chat API" }),
+    group: "server",
+    blurb: msg`Any server that speaks the OpenAI chat API: OpenAI, Ollama, LM Studio and others. Give its address, a key if it needs one, and a model.`,
+    // The same ChatEngine as OpenRouter's, in its "openai" dialect: tools and tool_calls pass through
+    // unchanged, so it drives every loop. Whether the model behind it uses tools well is the model's
+    // business; a small local model may not.
+    canInvestigate: true,
+    // No thinking setting: the OpenAI API has no one field for it that every server accepts.
+  },
 ];
 
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
@@ -122,6 +150,7 @@ export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
   openrouterKey: "",
   openrouterModel: OPENROUTER_MODELS[0]!.id,
   edgeModel: WEBLLM_MODELS[1]!.id,
+  endpoint: { baseUrl: "", key: "", model: "" },
 };
 
 /** How hard the current engine's model thinks. */
@@ -134,9 +163,28 @@ export function withThinking(cfg: EngineConfig, patch: Partial<ThinkingSetting>)
   return { ...cfg, thinking: { ...cfg.thinking, [cfg.engine]: { ...thinkingFor(cfg), ...patch } } };
 }
 
-/** Everything an OpenRouter client needs from the config: the key, the model, and how hard it thinks. */
-export function openRouterOptions(cfg: EngineConfig): { apiKey: string; model: string } & ReturnType<typeof thinkingOptions> {
-  return { apiKey: cfg.openrouterKey, model: cfg.openrouterModel, ...thinkingOptions(thinkingFor({ ...cfg, engine: "openrouter" }).level) };
+/** What a chat engine is built from: `createOpenRouterEngine`'s options, with the model always named. */
+export type ChatEngineOptions = OpenRouterOptions & { model: string };
+
+/**
+ * Everything a chat engine needs from the config, for the engines that have one — OpenRouter, and an
+ * OpenAI-compatible endpoint — or null for the rest. The loops (create, modify, fix, Ask) run on any
+ * engine this answers for, so "has a chat engine" is asked here and nowhere else.
+ */
+export function chatEngineOptions(cfg: EngineConfig): ChatEngineOptions | null {
+  if (cfg.engine === "openrouter") {
+    return { apiKey: cfg.openrouterKey, model: cfg.openrouterModel, ...thinkingOptions(thinkingFor({ ...cfg, engine: "openrouter" }).level) };
+  }
+  if (cfg.engine === "endpoint") {
+    const { baseUrl, key, model } = cfg.endpoint;
+    return { dialect: "openai", baseUrl: baseUrl.trim(), apiKey: key.trim(), model: model.trim() };
+  }
+  return null;
+}
+
+/** Can Ask search the web on this engine? The search is OpenRouter's own server tool; no other server has it. */
+export function canSearchWeb(engine: Engine): boolean {
+  return engine === "openrouter";
 }
 
 /** How a level reads on the engine's name. */
@@ -147,6 +195,10 @@ const THINKS: Record<ReasoningLevel, MessageDescriptor | null> = {
   high: msg({ message: "thinks hard", comment: "Shown after the model's name: its reasoning level is high" }),
 };
 
+/**
+ * Does this engine need its own key from the person? An endpoint is not counted: it may be a server on
+ * their own machine, which takes none (`engineReady` asks what it needs instead).
+ */
 export function isCloud(engine: Engine): boolean {
   return engine === "anthropic" || engine === "openrouter";
 }
@@ -163,11 +215,16 @@ export function canInvestigate(engine: Engine): boolean {
 export function keyFor(cfg: EngineConfig): string {
   if (cfg.engine === "anthropic") return cfg.anthropicKey;
   if (cfg.engine === "openrouter") return cfg.openrouterKey;
+  if (cfg.engine === "endpoint") return cfg.endpoint.key;
   return "";
 }
 
-/** Can this engine run right now? Used to gate the one button that drives everything. */
+/**
+ * Can this engine run right now? Used to gate the one button that drives everything. A cloud engine
+ * needs its key; an endpoint needs its address and a model, and a key only if its server says so.
+ */
 export function engineReady(cfg: EngineConfig): boolean {
+  if (cfg.engine === "endpoint") return cfg.endpoint.baseUrl.trim().length > 0 && cfg.endpoint.model.trim().length > 0;
   return !isCloud(cfg.engine) || keyFor(cfg).length > 0;
 }
 
@@ -180,6 +237,10 @@ export function engineLabel(cfg: EngineConfig): string {
     const level = THINKS[thinkingFor(cfg).level];
     const thinks = level ? i18n._(level) : "";
     return `${base} · ${m?.label ?? cfg.openrouterModel}${thinks ? ` · ${thinks}` : ""}`;
+  }
+  if (cfg.engine === "endpoint") {
+    const model = cfg.endpoint.model.trim();
+    return model ? `${base} · ${model}` : base;
   }
   if (cfg.engine === "edge") {
     const m = WEBLLM_MODELS.find((x) => x.id === cfg.edgeModel);

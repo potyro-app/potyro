@@ -41,7 +41,7 @@ describe("the card when a change could not be made", () => {
     ],
     ["the candidates ran out", { kind: "failed", cause: "candidates", reason: "4 candidates failed the check — the candidate budget is spent" }, /^I couldn't make this change: every version I tried failed the app's own checks/],
     ["the steps ran out", { kind: "failed", cause: "steps", reason: "gave up after 12 steps (2 candidates failed the check, 1 reply was not a change)" }, /^I couldn't make this change: I ran out of tries/],
-    ["the engine cannot drive the loop", { kind: "failed", cause: "engine", reason: "cli is a one-shot completion, not a chat engine; it cannot use tools." }, /^I couldn't start on this change: .*Engine Settings/],
+    ["the engine cannot drive the loop", { kind: "failed", cause: "engine", reason: "cli is a one-shot completion, not a chat engine; it cannot use tools." }, /^I couldn't start on this change: .*Model settings/],
   ];
 
   for (const [how, outcome, plain] of giveUps) {

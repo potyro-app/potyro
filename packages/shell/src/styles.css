@@ -11887,6 +11887,22 @@ body:has(.k-tabbar) .k-toasts {
 .k-engine-fields .k-input {
   margin-top: 0;
 }
+/* The endpoint's test (#121): the button, and beside it what the server said. */
+.k-endpoint-test {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.6rem;
+}
+.k-endpoint-result {
+  margin: 0;
+  flex: 1 1 12rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+.k-endpoint-result[data-ok="false"] {
+  color: var(--danger);
+}
 /* How hard it thinks (#280): four levels side by side where there is room, two by two on a phone. */
 .k-thinking {
   margin-top: 0.75rem;

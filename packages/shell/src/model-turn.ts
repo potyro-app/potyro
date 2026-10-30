@@ -17,7 +17,7 @@ import {
   type ModelBackend,
   type ModifyContext,
 } from "@potyro/generator/backends";
-import { engineReady, openRouterOptions, type EngineConfig } from "./engines.js";
+import { chatEngineOptions, engineReady, type EngineConfig } from "./engines.js";
 import { canGenerate, generateViaCli } from "./generate-client.js";
 
 /** The backend for an in-browser engine. `claude -p` has none: it is the dev server's route. */
@@ -31,7 +31,8 @@ export async function backendFor(cfg: EngineConfig, onProgress?: (text: string) 
     case "builtin":
       return (await createGeminiNanoBackend()) as never;
     case "openrouter":
-      return (await createOpenRouterBackend(openRouterOptions(cfg))) as never;
+    case "endpoint":
+      return (await createOpenRouterBackend(chatEngineOptions(cfg)!)) as never;
     case "anthropic":
       return (await createClaudeBackend({ apiKey: cfg.anthropicKey, dangerouslyAllowBrowser: true })) as never;
     default:

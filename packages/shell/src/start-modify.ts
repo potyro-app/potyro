@@ -19,7 +19,7 @@ import {
 } from "@potyro/generator/agent";
 import { createOpenRouterEngine, loadCorpus, regressionGate, type Language, type ModifyContext } from "@potyro/generator/backends";
 import type { AppShape } from "@potyro/runtime";
-import { canInvestigate, isCloud, keyFor, openRouterOptions, thinkingFor, type EngineConfig } from "./engines.js";
+import { canInvestigate, chatEngineOptions, engineReady, thinkingFor, type ChatEngineOptions, type EngineConfig } from "./engines.js";
 import { buildAndValidate, loadDefinition } from "./validate-app.js";
 import { runCandidate } from "./run-candidate.js";
 import { withLibrariesStoodIn, type ModuleSource } from "./package-modules.js";
@@ -51,12 +51,26 @@ export interface StartModifyOpts {
   conversation?: readonly ConversationEntry[];
 }
 
-/** Whether this engine can drive the modify loop at all (a chat engine with a key); else why not. */
+/**
+ * Whether this engine can drive the modify loop at all (a chat engine, set up); else why not. An
+ * engine that is refused here keeps the one-turn path, so these words reach a person only rarely.
+ */
 export function modifyLoopRefusal(cfg: EngineConfig): string | undefined {
   if (!canInvestigate(cfg.engine)) return `${cfg.engine} is a one-shot completion, not a chat engine; it cannot use tools.`;
-  if (isCloud(cfg.engine) && !keyFor(cfg)) return `${cfg.engine} needs your own API key — add one in Engine Settings.`;
-  if (cfg.engine !== "openrouter") return `no client is wired for ${cfg.engine} here; only OpenRouter drives the loop today.`;
+  if (!engineReady(cfg)) {
+    return cfg.engine === "endpoint"
+      ? "the endpoint needs its address and a model. Add them in the Studio’s Model settings."
+      : `${cfg.engine} needs your own API key. Add one in the Studio’s Model settings.`;
+  }
+  if (!chatEngineOptions(cfg)) return `no client is wired for ${cfg.engine} here.`;
   return undefined;
+}
+
+/** The chat engine's options for an engine `modifyLoopRefusal` let through. */
+export function loopEngineOptions(cfg: EngineConfig): ChatEngineOptions {
+  const options = chatEngineOptions(cfg);
+  if (!options) throw new Error(`no client is wired for ${cfg.engine} here.`);
+  return options;
 }
 
 export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutcome> {
@@ -81,10 +95,11 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
   }, opts.source);
   // What `translate` writes a language into, and what the loop's edits then apply to (#302).
   const draft = createDraft(opts.source);
+  const chat = loopEngineOptions(opts.engine);
   return runModifyLoop({
     // How hard the model thinks is the person's setting (#280); the escalation is its own switch.
-    engine: createOpenRouterEngine(openRouterOptions(opts.engine)),
-    model: opts.engine.openrouterModel,
+    engine: createOpenRouterEngine(chat),
+    model: chat.model,
     escalate: thinkingFor(opts.engine).escalate,
     tools: buildDiscoveryTools({ check, run, source: opts.source, draft }),
     // The passages from this release's examples and docs that speak to the request go in the first
