@@ -5,14 +5,43 @@ import { test, expect, type Page } from "./console-guard";
 //
 // 1. The browser counts it installable: the manifest has what Chromium (and Lighthouse) ask for, with
 //    no installability errors.
-// 2. After ONE visit online it works with no network at all: Home, an example app, a record added
-//    and still there after a reload — the promise "works offline" in the install row makes.
+// 2. On Wi-Fi, ONE visit online is enough to work with no network at all: Home, an example app, a
+//    record added and still there after a reload. On a connection the browser says nothing about
+//    (Safari, Firefox, Chrome on a desktop) nothing big is fetched until the person asks for it in
+//    You, and the row says "Everything works offline" only once it is true.
 // 3. The install row in You: there when the browser offers installing (the event is faked — a headless
 //    browser never offers), the two Safari steps on an iPhone, and gone for good after "No thanks".
+//    Every answer in it is 44px tall.
 //
 // The prod project is not part of `pnpm ci:local all`; run it with `pnpm test:e2e:prod`.
 
 const ROW = "Add Potyro to your home screen";
+const KEEP = "Keep Potyro ready offline (about 40 MB)";
+
+/** What `navigator.connection` says, before the page runs: Wi-Fi, or nothing about the type. */
+async function connection(page: Page, info: { type?: string; saveData: boolean }): Promise<void> {
+  await page.addInitScript((value) => {
+    Object.defineProperty(Navigator.prototype, "connection", { get: () => value, configurable: true });
+  }, info);
+}
+
+/** Every file of the build's list, as the page can read it. */
+async function buildFiles(page: Page): Promise<{ build: string; files: string[]; rest: string[] }> {
+  return page.evaluate(async () => {
+    const list = (await (await fetch("/shell-precache.json")).json()) as { build: string; boot: string[]; rest: string[] };
+    return { build: list.build, files: [...list.boot, ...list.rest], rest: list.rest };
+  });
+}
+
+/** How many of these files the worker has not kept. */
+function missing(page: Page, files: string[]): Promise<number> {
+  return page.evaluate(async (all) => (await Promise.all(all.map((f) => caches.match(f)))).filter((k) => !k).length, files);
+}
+
+/** Heights of the row's buttons, rounded down. */
+function buttonHeights(row: ReturnType<Page["getByRole"]>): Promise<number[]> {
+  return row.locator("button").evaluateAll((buttons) => buttons.map((b) => Math.floor(b.getBoundingClientRect().height)));
+}
 
 async function home(page: Page): Promise<void> {
   await expect(page.locator(".k-launcher")).toBeVisible({ timeout: 30_000 });
@@ -65,35 +94,29 @@ test("the browser counts Potyro installable: manifest, icons, a worker that cont
   await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute("content", "Potyro");
 });
 
-test("after one visit online, Potyro opens offline, an example app works, and what you add stays", async ({ page, context }) => {
+test("on Wi-Fi, after one visit online, Potyro opens offline, an example app works, and what you add stays", async ({ page, context }) => {
+  await connection(page, { type: "wifi", saveData: false });
   await page.goto("/");
   await home(page);
   await page.evaluate(() => navigator.serviceWorker.ready);
   // `clients.claim()` in the worker's activate: the page is controlled without a second load.
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)), { timeout: 20_000 }).toBe(true);
-  // The page asks the worker to keep the rest of the build (an app needs files Home never fetches);
-  // wait for every file in the build's list to be kept rather than for a while.
-  const listed = await page.evaluate(async () => {
-    const list = (await (await fetch("/shell-precache.json")).json()) as { boot: string[]; rest: string[] };
-    return [...list.boot, ...list.rest];
-  });
-  expect(listed.length).toBeGreaterThan(20);
-  await expect
-    .poll(
-      () =>
-        page.evaluate(async (files) => {
-          const kept = await Promise.all(files.map((f) => caches.match(f)));
-          return kept.filter((k) => !k).length;
-        }, listed),
-      { timeout: 60_000 },
-    )
-    .toBe(0);
+  // On Wi-Fi the page asks the worker to keep the rest of the build (an app needs files Home never
+  // fetches); wait for every file in the build's list to be kept rather than for a while.
+  const { build, files } = await buildFiles(page);
+  expect(files.length).toBeGreaterThan(20);
+  await expect.poll(() => missing(page, files), { timeout: 60_000 }).toBe(0);
+  // One cache, this build's, named by the id the build stamped into the worker.
+  expect(build).toMatch(/^[0-9a-f]{12}$/);
+  expect(await page.evaluate(() => caches.keys())).toEqual([`potyro-${build}`]);
+  expect(await (await page.request.get("/sw.js")).text()).toContain(`const BUILD = "${build}";`);
 
   await context.setOffline(true);
   await page.reload();
   await home(page);
 
-  // An example app, opened from Home the way a person opens it.
+  // An example app, opened from Home the way a person opens it: a navigation to `/?user=…`, which
+  // offline is answered with the one kept page.
   const all = page.getByRole("tab", { name: "All apps" });
   if (await all.isVisible()) await all.click();
   await page.locator(".k-launch-tile", { hasText: "Groceries" }).first().click();
@@ -112,6 +135,31 @@ test("after one visit online, Potyro opens offline, an example app works, and wh
   await context.setOffline(false);
 });
 
+test("on a connection the browser says nothing about, the rest waits until the person asks for it", async ({ page }) => {
+  await connection(page, { saveData: false });
+  await page.goto("/");
+  await home(page);
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)), { timeout: 20_000 }).toBe(true);
+  const { files, rest } = await buildFiles(page);
+
+  await offerInstall(page);
+  const panel = await openYou(page);
+  const row = panel.getByRole("group", { name: ROW });
+  // What it claims is only what is kept.
+  await expect(row).toContainText("It opens like an app. Home and the apps you have opened work offline.");
+  await expect(row).not.toContainText("Everything works offline");
+  // The bundler's Wasm, the biggest file, was never fetched without asking.
+  const wasm = rest.filter((f) => f.endsWith(".wasm"));
+  expect(wasm.length).toBeGreaterThan(0);
+  expect(await missing(page, wasm)).toBe(wasm.length);
+
+  await row.getByRole("button", { name: KEEP }).click();
+  await expect(row).toContainText("Everything works offline.", { timeout: 60_000 });
+  await expect(row.getByRole("button", { name: KEEP })).toHaveCount(0);
+  expect(await missing(page, files)).toBe(0);
+});
+
 test("You offers adding to the home screen only when the browser does, and No thanks is for good", async ({ page }) => {
   await page.goto("/");
   await home(page);
@@ -126,7 +174,10 @@ test("You offers adding to the home screen only when the browser does, and No th
   panel = await openYou(page);
   const row = panel.getByRole("group", { name: ROW });
   await expect(row).toBeVisible();
-  await expect(row).toContainText("It opens like an app and works offline.");
+  await expect(row).toContainText("It opens like an app.");
+  // A thumb's 44px for every answer, 8px apart.
+  for (const height of await buttonHeights(row)) expect(height).toBeGreaterThanOrEqual(44);
+  expect(await row.locator(".k-identity-install-actions").evaluate((el) => parseFloat(getComputedStyle(el).columnGap))).toBeGreaterThanOrEqual(8);
   await row.getByRole("button", { name: "Add" }).click();
   // The browser's own dialog was asked for; declined (the faked answer), the row is gone.
   await expect.poll(() => page.evaluate(() => (window as unknown as { __prompted?: number }).__prompted ?? 0)).toBe(1);
@@ -154,8 +205,12 @@ test.describe("Safari on iPhone", () => {
     await home(page);
     const panel = await openYou(page);
     const row = panel.getByRole("group", { name: ROW });
-    await expect(row).toContainText("Tap Share, then “Add to Home Screen”.");
+    await expect(row).toContainText("Tap Share, then “Add to Home Screen”. It opens like an app.");
+    // No offline claim: a home-screen web app on iOS keeps its own storage (docs/27 §5.1).
+    await expect(row).not.toContainText("offline");
     await expect(row.getByRole("button", { name: "Add" })).toHaveCount(0);
+    await expect(row.getByRole("button", { name: KEEP })).toHaveCount(0);
+    for (const height of await buttonHeights(row)) expect(height).toBeGreaterThanOrEqual(44);
     await row.getByRole("button", { name: "No thanks" }).click();
     await expect(row).toHaveCount(0);
 
