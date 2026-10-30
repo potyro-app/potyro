@@ -9,15 +9,17 @@ import { memoryVault } from "@potyro/identity";
 
 vi.mock("../src/generate-client.js", async (importOriginal) => ({ ...(await importOriginal<object>()), canGenerate: () => false }));
 
-const { checkFreeEngine, forgetRememberedKey, getEngineConfig, loadRememberedKeys, resetEngineConfig, setEngineConfig, setKeyRemembered } = await import("../src/engine-store.js");
+const { checkFreeEngine, forgetRememberedKey, getEngineConfig, loadRememberedKeys, resetEngineConfig, setEngineConfig, setKeyRemembered, watchFreeEngine } = await import("../src/engine-store.js");
 const { resetRelayMemory } = await import("../src/app-ai.js");
-const { resetFreeAi } = await import("../src/free-ai.js");
+const { getFreeAi, resetFreeAi, subscribeFreeAi } = await import("../src/free-ai.js");
 const { keyId, setVaultForTests, isRemembered } = await import("../src/remembered-keys.js");
 const { deviceId } = await import("../src/device-id.js");
 
 type Seen = { url: string; init: RequestInit };
 let seen: Seen[] = [];
 let healthBody: unknown = { ok: true, chat: true };
+/** /health fails as a network does: no answer at all. */
+let healthDown = false;
 
 beforeEach(() => {
   globalThis.localStorage.clear();
@@ -28,9 +30,11 @@ beforeEach(() => {
   setVaultForTests(null);
   seen = [];
   healthBody = { ok: true, chat: true };
+  healthDown = false;
   vi.stubGlobal("fetch", async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const url = String(input);
     seen.push({ url, init });
+    if (url.endsWith("/ai/health") && healthDown) throw new TypeError("Failed to fetch");
     if (url.endsWith("/ai/health")) return new Response(JSON.stringify(healthBody), { status: 200, headers: { "content-type": "application/json" } });
     if (url.endsWith("/ai/count")) return new Response(JSON.stringify({ ok: true }), { status: 200 });
     throw new TypeError("Failed to fetch");
@@ -45,6 +49,14 @@ describe("the starting engine on a deployed build", () => {
     expect(getEngineConfig().engine).toBe("potyro");
     // Chosen by the shell, not the person: nothing kept in the tab.
     expect(sessionStorage.getItem("potyro:engine-config")).toBeNull();
+  });
+
+  it("picks the engine before the answer is heard: never the answer with the engine from before it", async () => {
+    const seenPairs: string[] = [];
+    const unsubscribe = subscribeFreeAi(() => seenPairs.push(`${getEngineConfig().engine}:${getFreeAi().health?.chat ?? "asking"}`));
+    await checkFreeEngine();
+    unsubscribe();
+    expect(seenPairs).toEqual(["potyro:true"]);
   });
 
   it("stays OpenRouter (which asks for a key) when the relay has no chat route, or is not there", async () => {
@@ -68,6 +80,29 @@ describe("the starting engine on a deployed build", () => {
     healthBody = { ok: true, chat: false };
     await checkFreeEngine();
     expect(getEngineConfig().engine).toBe("openrouter");
+  });
+
+  it("keeps a chosen Potyro when /health gives no answer, or a page that is not the relay's: only a definite 'no' moves it", async () => {
+    setEngineConfig({ ...getEngineConfig(), engine: "potyro" });
+    healthDown = true;
+    await checkFreeEngine();
+    expect(getEngineConfig().engine).toBe("potyro");
+    resetRelayMemory();
+    healthDown = false;
+    healthBody = "<!doctype html>";
+    await checkFreeEngine();
+    expect(getEngineConfig().engine).toBe("potyro");
+  });
+
+  it("is decided at shell start, and asked again when the browser is back online", async () => {
+    healthDown = true;
+    watchFreeEngine();
+    await vi.waitFor(() => expect(seen.filter((s) => s.url.endsWith("/ai/health"))).toHaveLength(1));
+    expect(getEngineConfig().engine).toBe("openrouter");
+    // Back online: no answer is not remembered past it.
+    healthDown = false;
+    globalThis.dispatchEvent(new Event("online"));
+    await vi.waitFor(() => expect(getEngineConfig().engine).toBe("potyro"));
   });
 });
 

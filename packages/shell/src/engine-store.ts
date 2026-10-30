@@ -24,7 +24,9 @@
 // THE STARTING ENGINE (#121, #455). A deployed build has no `claude -p`, so it starts on OpenRouter,
 // which needs a key. When the relay's free chat route serves, it starts on "Potyro" instead (free-ai.ts)
 // — but only for a person who has not chosen: nothing set in this tab, and no key remembered on this
-// device (a remembered key's engine is where they start). `checkFreeEngine` decides, at Studio open.
+// device (a remembered key's engine is where they start). `checkFreeEngine` decides: at shell start
+// on a deployed build (`watchFreeEngine`, so Ask and Fix this start on it too), again when the browser
+// comes back online, and when the Studio or Model settings opens.
 //
 // REMEMBERED KEYS (#455): a key the person asked to remember is in the device's vault
 // (remembered-keys.ts), loaded at start (`loadRememberedKeys`, from main.tsx once the vault is
@@ -187,14 +189,32 @@ export function loadRememberedKeys(): Promise<void> {
 }
 
 /**
- * At Studio open: does the relay's free chat route serve? Then a deployed build whose person has not
- * chosen starts on it. A config left on it when it no longer serves goes back to the build's start.
+ * Does the relay's free chat route serve? Then a deployed build whose person has not chosen starts on
+ * it. A config left on it goes back to the build's start only when the relay definitely said its chat
+ * route does not serve (`ok: true, chat: false`): no answer (offline, slow, unreachable) decides
+ * nothing, and the engine stays, saying it cannot be reached.
  */
-export async function checkFreeEngine(): Promise<void> {
+export async function checkFreeEngine(opts: { again?: boolean } = {}): Promise<void> {
   await remembering;
-  const offered = freeOffered(await checkFreeAi());
-  if (offered && !chosen && !rememberedEngine && !canGenerate() && config.engine !== "potyro") adopt({ ...config, engine: "potyro" });
-  if (!offered && config.engine === "potyro") adopt({ ...config, engine: canGenerate() ? "cli" : "openrouter" });
+  // The engine is picked before the answer is published, so the Studio never renders the answer
+  // with the engine from before it (a flash of the key panel on the way to Potyro).
+  await checkFreeAi(opts, (free) => {
+    if (freeOffered(free) && !chosen && !rememberedEngine && !canGenerate() && config.engine !== "potyro") adopt({ ...config, engine: "potyro" });
+    const notServing = free.health?.ok === true && !free.health.chat;
+    if (notServing && config.engine === "potyro") adopt({ ...config, engine: canGenerate() ? "cli" : "openrouter" });
+  });
+}
+
+let watching = false;
+/**
+ * At shell start on a deployed build: the starting engine is decided now, not when the Studio first
+ * opens, so Ask and Fix this start on Potyro too; and asked again whenever the browser is back online.
+ */
+export function watchFreeEngine(): void {
+  if (canGenerate() || watching) return;
+  watching = true;
+  void checkFreeEngine().catch(() => {});
+  globalThis.addEventListener?.("online", () => void checkFreeEngine({ again: true }).catch(() => {}));
 }
 
 /** Test seam: drop the persisted config and reset to defaults. */

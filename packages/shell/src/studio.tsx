@@ -35,6 +35,7 @@ import { navigateTo } from "./router.js";
 import { listVersions, type VersionOrigin } from "./app-history.js";
 import { EngineSettings } from "./engine-settings.js";
 import { engineLabel, engineLeft, engineReady, isCloud } from "./engines.js";
+import { canGenerate } from "./generate-client.js";
 import { checkFreeEngine, useEngineConfig } from "./engine-store.js";
 import { freeNotNow, useFreeAi } from "./free-ai.js";
 import { FreePanel } from "./free-panel.js";
@@ -259,9 +260,12 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const label = engineLabel(engineCfg);
   const ready = engineReady(engineCfg);
   const busy = working !== null;
+  // A deployed build asks the relay at start which engine a first visit gets (#121): until it answers,
+  // neither the panel nor "needs an API key" shows, since the answer may well be Potyro's free engine.
+  const asking = free.health === null && (!canGenerate() || engineCfg.engine === "potyro");
   // No engine can make an app (#455): no free app making to use, and no key of the person's own. Not
   // while the free route is still being asked about, and not for an endpoint, which says what it lacks.
-  const noWay = !ready && !busy && (isCloud(engineCfg.engine) || (engineCfg.engine === "potyro" && free.health !== null));
+  const noWay = !ready && !busy && !asking && (isCloud(engineCfg.engine) || engineCfg.engine === "potyro");
   // A key already in Model settings, while another engine is chosen: the panel offers it first.
   const ownKey =
     engineCfg.engine !== "openrouter" && engineCfg.openrouterKey.trim()
@@ -993,7 +997,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               {I.settings} {label}
               {engineLeft(engineCfg)}
             </button>
-            {!ready && engineCfg.engine !== "potyro" ? (
+            {!ready && !asking && engineCfg.engine !== "potyro" ? (
               <span className="k-composer-warn">
                 {engineCfg.engine === "endpoint" ? <Trans>needs an address and a model</Trans> : <Trans>needs an API key</Trans>}
               </span>

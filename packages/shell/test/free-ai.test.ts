@@ -13,6 +13,7 @@ import {
   FreeAiRefusal,
   checkFreeAi,
   freeFetch,
+  freeNotNow,
   freeOffered,
   getFreeAi,
   isStop,
@@ -23,7 +24,7 @@ import {
   stoppedNow,
   type FreeCode,
 } from "../src/free-ai.js";
-import { CHAT_MESSAGES } from "../../ai-relay/src/chat.ts";
+import { CHAT_MESSAGES, NOT_ENOUGH_LEFT } from "../../ai-relay/src/chat.ts";
 
 const json = (status: number, body: unknown, headers: Record<string, string> = {}): Response =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
@@ -52,9 +53,12 @@ describe("the relay's refusals, in words", () => {
     expect(refusalText("service-month")).toMatch(/your own key/);
   });
 
-  it("says the relay's own words about this network today", () => {
-    expect(refusalText("address-day", "Free AI is busy on this network today; it is back tomorrow.")).toBe("Free AI is busy on this network today; it is back tomorrow.");
-    expect(refusalText("address-day")).toMatch(/this network today/);
+  it("says this network's day in the shell's own words, never the relay's English", async () => {
+    const send = freeFetch(async () => refusal("address-day", CHAT_MESSAGES["address-day"], "0"));
+    await expect(send("x")).rejects.toThrow("Free app making is busy on this network today. It's back tomorrow, or add your own key.");
+    expect(refusalText(stoppedNow()!.code)).toBe("Free app making is busy on this network today. It's back tomorrow, or add your own key.");
+    // The code and the day, nothing of what the relay said.
+    expect(JSON.parse(localStorage.getItem("potyro:free-ai-stop")!)).toEqual({ code: "address-day", until: new Date().toISOString().slice(0, 10) });
   });
 
   it("stops for the month, the day, or the pause — not for a busy device or a request it could not take", () => {
@@ -133,6 +137,65 @@ describe("the free engine", () => {
     await checkFreeAi({ url: HEALTH, fetch: health({ ok: true, chat: true }), online: () => true });
     expect(stoppedNow()).toBeNull();
     expect(engineReady(potyro)).toBe(true);
+  });
+
+  it("an allowance refusal with more than the least hold left is this request too big, not a used-up month", async () => {
+    await checkFreeAi({ url: HEALTH, fetch: health({ ok: true, chat: true }), online: () => true });
+    const send = freeFetch(async () => refusal("allowance", NOT_ENOUGH_LEFT, "0.31"));
+    await expect(send("x")).rejects.toThrow("This conversation is too long for the free allowance. Start a new app, or add your own key.");
+    // Nothing kept, nothing stopped: a shorter request may still go, and what is left is as the relay said.
+    expect(stoppedNow()).toBeNull();
+    expect(localStorage.getItem("potyro:free-ai-stop")).toBeNull();
+    expect(getFreeAi().left).toBe("plenty");
+    expect(engineReady(potyro)).toBe(true);
+    // No header at all: not known to be used up either.
+    await expect(freeFetch(async () => refusal("allowance", NOT_ENOUGH_LEFT))("x")).rejects.toThrow(/too long for the free allowance/);
+    expect(stoppedNow()).toBeNull();
+    // Under the least hold ($0.02): used up for the month.
+    await expect(freeFetch(async () => refusal("allowance", CHAT_MESSAGES.allowance, "0.015"))("x")).rejects.toThrow(/^This month's free app making is used up/);
+    expect(stoppedNow()?.code).toBe("allowance");
+  });
+
+  it("a day's stop is over at the day's end, a month's at the month's end", async () => {
+    let now = Date.parse("2026-10-30T23:00:00Z");
+    resetFreeAi(() => now);
+    await checkFreeAi({ url: HEALTH, fetch: health({ ok: true, chat: true }), online: () => true });
+    for (const code of ["service-day", "address-day"] as const) {
+      now = Date.parse("2026-10-30T23:00:00Z");
+      await expect(freeFetch(async () => refusal(code, "x", "0"))("x")).rejects.toThrow(FreeAiRefusal);
+      expect(stoppedNow()?.code).toBe(code);
+      now = Date.parse("2026-10-31T00:00:01Z");
+      expect(stoppedNow()).toBeNull();
+      expect(engineReady(potyro)).toBe(true);
+    }
+    now = Date.parse("2026-10-30T23:00:00Z");
+    await expect(freeFetch(async () => refusal("service-month", "x", "0"))("x")).rejects.toThrow(FreeAiRefusal);
+    now = Date.parse("2026-10-31T12:00:00Z");
+    expect(stoppedNow()?.code).toBe("service-month");
+    now = Date.parse("2026-11-01T00:00:01Z");
+    expect(stoppedNow()).toBeNull();
+  });
+
+  it("no answer from /health is unknown, not 'no free route', and is asked again after a minute", async () => {
+    let now = 1_000_000;
+    let asked = 0;
+    const down = (async () => {
+      asked++;
+      throw new TypeError("Failed to fetch");
+    }) as unknown as typeof fetch;
+    await checkFreeAi({ url: HEALTH, fetch: down, online: () => true, now: () => now });
+    expect(getFreeAi().health).toMatchObject({ ok: false, chat: false, unknown: true });
+    expect(freeNotNow()).toBe("Free app making can't be reached right now. Check your connection and try again, or add your own key.");
+    now += 30_000;
+    await checkFreeAi({ url: HEALTH, fetch: down, online: () => true, now: () => now });
+    expect(asked).toBe(1);
+    now += 31_000;
+    await checkFreeAi({ url: HEALTH, fetch: health({ ok: true, chat: true }), online: () => true, now: () => now });
+    expect(freeOffered()).toBe(true);
+    // Offline: unknown, and not remembered at all.
+    resetRelayMemory();
+    await checkFreeAi({ url: HEALTH, fetch: down, online: () => false, now: () => now });
+    expect(getFreeAi().health?.unknown).toBe(true);
   });
 
   it("a pause is for this page, and makes /health be asked again", async () => {
