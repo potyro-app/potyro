@@ -21,7 +21,7 @@ import { placeByAddress } from "./ask-geocode.js";
 import { MaterialField, type Material } from "./ask-material.js";
 import { addSpend, formatSpend, spentIn } from "./ask-spend.js";
 import { setAskEnabled } from "./ask-setting.js";
-import { canSearchWeb, engineLabel, type EngineConfig } from "./engines.js";
+import { canSearchWeb, chatEngineOptions, engineLabel, type EngineConfig } from "./engines.js";
 import { askRefusal, startAsk, type StartAskOutcome } from "./start-ask.js";
 import { currentLocale } from "./locale.js";
 import { currentVault } from "@potyro/identity";
@@ -71,6 +71,27 @@ function webPreference(): boolean {
 function rememberWeb(on: boolean): void {
   try {
     globalThis.localStorage?.setItem(WEB_KEY, on ? "1" : "0");
+  } catch {
+    // remembered for this dialog only
+  }
+}
+
+/**
+ * Looking proposed places up on OpenStreetMap's map (ask-geocode.ts), on an engine with no web search:
+ * the addresses leave this device for a service the person may not expect, so it is a choice of its
+ * own, per device. On OpenRouter it goes with the web search, one choice for both.
+ */
+const PLACES_KEY = "potyro:ask-places";
+function placesPreference(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(PLACES_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+function rememberPlaces(on: boolean): void {
+  try {
+    globalThis.localStorage?.setItem(PLACES_KEY, on ? "1" : "0");
   } catch {
     // remembered for this dialog only
   }
@@ -146,6 +167,13 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
   // The search is OpenRouter's own; on another engine there is none to offer, whatever was chosen before.
   const searchable = canSearchWeb(engine.engine);
   const web = webWanted && searchable;
+  const [placesWanted, setPlaces] = useState(placesPreference);
+  // Elsewhere the map lookup is offered on its own, on any engine that runs Ask.
+  const offersPlaces = !searchable && chatEngineOptions(engine) !== null;
+  const lookUpPlaces = searchable ? web : offersPlaces && placesWanted;
+  // What a request cost is OpenRouter's figure, out of the person's OpenRouter credit. Another server
+  // either bills nothing or bills elsewhere: no line, and nothing added to the OpenRouter total.
+  const priced = engine.engine === "openrouter";
   const [searchDown, setSearchDown] = useState(false);
   const [reply, setReply] = useState("");
   /** Something the person brought — a paste or a file another AI made — to turn into records. */
@@ -183,7 +211,7 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
 
   const land = async (outcome: StartAskOutcome): Promise<void> => {
     const spent = "spent" in outcome ? outcome.spent : undefined;
-    if (typeof spent === "number") {
+    if (typeof spent === "number" && priced) {
       addSpend(appId, spent);
       setAppSpent(spentIn(appId));
       setLastCost((c) => (c ?? 0) + spent);
@@ -191,8 +219,8 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
     if (outcome.kind === "proposal") {
       const r = await review(outcome.proposal);
       // Addresses become pins at the real address (ask-geocode.ts) — an online lookup, so only when
-      // the person allowed web search.
-      if (web) {
+      // the person allowed it: the web search on OpenRouter, the map lookup elsewhere.
+      if (lookUpPlaces) {
         r.review = { ...r.review, rows: await placeByAddress(def, r.review.rows, { http: sourceHttp, area: context().area, onProgress: (done, of) => setPlacing({ done, of }) }) };
         setPlacing(null);
       }
@@ -377,7 +405,7 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
                 {privacyLine(engineLabel(engine), hasMaterial, Boolean(area && sendArea))}
               </p>
             )}
-            {appSpent > 0 ? <p className="k-ask-cost">{t`Ask has used ${spentHere} of your OpenRouter credit in this app, on this device.`}</p> : null}
+            {priced && appSpent > 0 ? <p className="k-ask-cost">{t`Ask has used ${spentHere} of your OpenRouter credit in this app, on this device.`}</p> : null}
             <div className="k-ask-context" aria-label={t`Sent with your request`}>
               {area && sendArea ? (
                 <span className="k-ask-chip">
@@ -398,6 +426,19 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
                     }}
                   />
                   <span aria-hidden><Glyph icon="search" size={16} /></span> <Trans>Search the web when needed · about 2¢</Trans>
+                </label>
+              ) : offersPlaces ? (
+                <label className="k-ask-chip k-ask-chip-toggle" data-on={lookUpPlaces || undefined}>
+                  <input
+                    type="checkbox"
+                    checked={lookUpPlaces}
+                    onChange={(e) => {
+                      setPlaces(e.target.checked);
+                      rememberPlaces(e.target.checked);
+                    }}
+                  />
+                  <span aria-hidden><Glyph icon="map" size={16} /></span>{" "}
+                  <Trans comment="Ask: a switch; the addresses it proposes are looked up on OpenStreetMap to put their pins in the right place">Look up places on the map</Trans>
                 </label>
               ) : null}
             </div>
@@ -536,7 +577,7 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
           </div>
         ) : null}
 
-        {lastCost !== null && phase.kind !== "compose" && phase.kind !== "working" && phase.kind !== "saving" ? (
+        {priced && lastCost !== null && phase.kind !== "compose" && phase.kind !== "working" && phase.kind !== "saving" ? (
           <p className="k-ask-cost">{t`This request cost ${lastSpent} of your OpenRouter credit.`}</p>
         ) : null}
       </div>

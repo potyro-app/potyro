@@ -10,7 +10,8 @@
 // `AGREE_KM` of the model's guess; otherwise the guess stays and the review says it is approximate.
 //
 // What leaves the device: the addresses the model proposed — never the person's records. Only when
-// the person has web search on. One request a second, as the geocoder's usage policy asks.
+// the person allowed it: web search on OpenRouter, "Look up places on the map" on any other engine.
+// One request a second, as the geocoder's usage policy asks.
 
 import { t } from "@lingui/core/macro";
 import type { AppDefinition } from "potyro";
