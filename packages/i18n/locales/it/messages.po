@@ -628,6 +628,10 @@ msgid "{label} minutes"
 msgstr "{label}: minuti"
 
 #: ../shell/src/studio.tsx
+msgid "{label} needs an address and a model — open Model settings"
+msgstr "{label} ha bisogno di un indirizzo e di un modello: apri le impostazioni del modello"
+
+#: ../shell/src/studio.tsx
 msgid "{label} needs an API key — open Model settings"
 msgstr "{label} ha bisogno di una chiave API: apri le impostazioni del modello"
 
@@ -4440,6 +4444,10 @@ msgstr "Dai un nome a questo gruppo"
 #: ../shell/src/engine-settings.tsx
 msgid "needs a WebGPU browser"
 msgstr "richiede un browser con WebGPU"
+
+#: ../shell/src/studio.tsx
+msgid "needs an address and a model"
+msgstr "richiede un indirizzo e un modello"
 
 #: ../shell/src/studio.tsx
 msgid "needs an API key"

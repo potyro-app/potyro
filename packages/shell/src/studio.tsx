@@ -955,7 +955,13 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               type="button"
               className="k-composer-send"
               aria-label={hasApp ? t`Modify the app` : t`Create the app`}
-              title={ready ? t`Send to ${label}` : t`${label} needs an API key — open Model settings`}
+              title={
+                ready
+                  ? t`Send to ${label}`
+                  : engineCfg.engine === "endpoint"
+                    ? t`${label} needs an address and a model — open Model settings`
+                    : t`${label} needs an API key — open Model settings`
+              }
               disabled={!description.trim() || busy || !ready || voice.phase === "working"}
               onClick={() => void send()}
             >
@@ -968,7 +974,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
             </button>
             {!ready ? (
               <span className="k-composer-warn">
-                <Trans>needs an API key</Trans>
+                {engineCfg.engine === "endpoint" ? <Trans>needs an address and a model</Trans> : <Trans>needs an API key</Trans>}
               </span>
             ) : null}
             {canOpen && hasApp ? (
