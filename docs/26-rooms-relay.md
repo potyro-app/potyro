@@ -7,7 +7,8 @@ order: 26
 
 # Rooms: a relay for real-time multiplayer apps
 
-Status: built (`packages/rooms`), **deployed on potyro.app since 2026-10-16** — see docs/16 "Rooms for multiplayer apps".
+Status: built (`packages/rooms`), first deployed 2026-10-16, and **running on potyro.app** (`/rooms/health`
+answered ok on 2026-10-30) — see docs/16 "Rooms for multiplayer apps".
 Owner decision 2026-10-15: apps get WebSockets through `ctx.caps.network.socket(url)` (built:
 docs/28, which also gives apps `ctx.caps.network.room(id)` over this relay), and real-time multiplayer apps — the first is a draw-and-guess game
 (`apps/draw-guess`, whose rooms are joined by a 12-character code — its README says why a code and
@@ -20,7 +21,7 @@ sends, the others get. The relay keeps nothing, reads nothing, and knows nobody.
 ## 1. Joining a room
 
 ```
-wss://apps.vaz.io/rooms/<roomId>?name=<display name>
+wss://potyro.app/rooms/<roomId>?name=<display name>
 ```
 
 - **`roomId`**: 22–64 characters of base64url (`A–Z a–z 0–9 _ -`). The app makes it: 128 random
@@ -147,9 +148,11 @@ high-rate input (pointer moves) into one message per animation frame or two.
   frames it forwards (it just does not look). An app that needs the relay itself unable to read its
   messages encrypts them with a key carried in the share link's fragment, which never reaches a
   server — the same idea as Potyro's sync.
-- **Origin check.** Browsers may connect only from the origins the operator lists (by default the
-  site, `https://apps.vaz.io`, and the Android app, `https://localhost`, plus `capacitor://localhost`
-  for an iOS build). A request without an `Origin` header (not a browser) is allowed: anything that
+- **Origin check.** Browsers may connect only from the origins the operator lists in
+  `ROOMS_ORIGINS`. Unset, the code's default is the first site, `https://apps.vaz.io`, the Android
+  app, `https://localhost`, and `capacitor://localhost` for an iOS build (`DEFAULT_ORIGINS` in
+  `packages/rooms/src/server.ts`); the potyro.app deployment accepts `https://potyro.app` and refuses
+  `https://apps.vaz.io` (checked 2026-10-30). A request without an `Origin` header (not a browser) is allowed: anything that
   is not a browser can claim any origin anyway, so the check only stops other websites from using the
   relay through their visitors' browsers.
 
@@ -168,6 +171,7 @@ shell, reads the envelope with `readServerEvent`, and gives the app `me`, `membe
   surface `welcome`/`join`/`leave` as typed events and peer frames as plain messages, so app authors
   never write the prefix test themselves. `@potyro/rooms` (`isServerEvent`, `readServerEvent`, the
   types) is browser-safe and depends on no Potyro package, for exactly that.
-- **The basic-auth gate** on `apps.vaz.io` covers `/rooms/` for the site (same origin: the browser
-  replays the credentials on the upgrade), but not for the Android app, which is another origin
-  (docs/16).
+- **No gate on potyro.app.** The site is public, so `/rooms/` is reached without credentials. On a
+  deployment behind basic auth, as `apps.vaz.io` was, the gate covers `/rooms/` for the site (same
+  origin: the browser replays the credentials on the upgrade) but not for the native apps, which are
+  other origins (docs/16).
