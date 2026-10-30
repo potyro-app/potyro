@@ -4,8 +4,8 @@
 // nothing at all: an app from the gallery, made your own.
 //
 // When it is here because free app making stopped, that comes first, in the relay's terms said as
-// words (free-ai.ts `refusalText`). "Tell me when there is a paid plan" is a count and nothing more
-// (demand-counts.ts, #118): no email, nothing about the person.
+// words (free-ai.ts `refusalText`). "I'd pay for a plan" is a count and nothing more (demand-counts.ts,
+// #118): no email, nothing about the person, and nothing promised back.
 
 import { useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -13,11 +13,13 @@ import { galleryUrl } from "./gallery-link.js";
 import { freeUnreachable, refusalText, type FreeAi, stoppedNow } from "./free-ai.js";
 import { countOnce, countedThisMonth } from "./demand-counts.js";
 
-/** Where each service hands out keys. Names are the services' own. */
+/**
+ * Where each service hands out keys, for the engines Model settings has by name. Names are the
+ * services' own. Any other server that speaks the OpenAI API goes in as an endpoint, said in a line.
+ */
 const KEY_PAGES: readonly { name: string; href: string }[] = [
   { name: "OpenRouter", href: "https://openrouter.ai/keys" },
   { name: "Anthropic", href: "https://console.anthropic.com/settings/keys" },
-  { name: "OpenAI", href: "https://platform.openai.com/api-keys" },
 ];
 
 interface Props {
@@ -60,7 +62,7 @@ export function FreePanel({ free, onAddKey, ownKey }: Props) {
       </p>
       <p className="k-free-panel-get">
         <span className="k-muted">
-          <Trans comment="Followed by links to the services' key pages: OpenRouter, Anthropic, OpenAI">Get a key from</Trans>
+          <Trans comment="Followed by links to the services' key pages: OpenRouter, Anthropic">Get a key from</Trans>
         </span>{" "}
         {KEY_PAGES.map((p, i) => (
           <span key={p.name}>
@@ -70,6 +72,9 @@ export function FreePanel({ free, onAddKey, ownKey }: Props) {
             </a>
           </span>
         ))}
+      </p>
+      <p className="k-free-panel-other k-muted">
+        <Trans comment="After the key links: a server of the person's own that speaks the OpenAI API also works">or any OpenAI-compatible server, in Model settings</Trans>
       </p>
       <div className="k-free-panel-actions">
         {ownKey ? (
@@ -92,7 +97,7 @@ export function FreePanel({ free, onAddKey, ownKey }: Props) {
           </span>
         ) : (
           <button type="button" className="k-free-panel-plan-btn" onClick={() => void wantPlan()}>
-            <Trans comment="Button: count one more person who wants a paid plan; no email is asked">Tell me when there is a paid plan</Trans>
+            <Trans comment="Button: counts, anonymously, one more person who would pay for a plan; nothing is asked and nothing is promised back">I'd pay for a plan</Trans>
           </button>
         )}
       </p>

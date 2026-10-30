@@ -3,7 +3,7 @@
 // (packages/ai-relay/src/counts.ts); it never learns which device, or who.
 //
 //   own-key    the first time a key is typed into Model settings, this month
-//   want-plan  "Tell me when there is a paid plan", pressed, this month
+//   want-plan  "I'd pay for a plan", pressed, this month
 //   exhausted  NOT sent from here: the relay counts it itself when a device uses up its month
 //
 // Each goes at most once a calendar month per device, which a flag in localStorage holds
@@ -12,7 +12,8 @@
 // app or the person. It goes only to a relay that answered `/health` as itself, so a site without
 // one is never sent anything.
 //
-// Off in You ("Send anonymous counts"): then nothing is sent, from anywhere.
+// Off in You ("Count me anonymously"): then neither of the two is sent, from anywhere. `exhausted` is
+// the relay's own, part of keeping the allowance, and the switch does not reach it (docs/23 "Counts").
 
 import { aiRelayEndpoint, relayHealth } from "./app-ai.js";
 

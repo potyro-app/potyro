@@ -100,11 +100,16 @@ test("used up: the relay's refusal opens the panel, and Start from an app opens 
   await expect(panel.getByRole("status").first()).toHaveText(used);
   await expect(panel).toContainText("usually a few cents an app");
   await expect(panel.getByRole("link", { name: "OpenRouter" })).toHaveAttribute("href", "https://openrouter.ai/keys");
+  // Only the services Model settings has by name; any other server is an endpoint, said in a line.
+  await expect(panel.getByRole("link", { name: "OpenAI" })).toHaveCount(0);
+  await expect(panel).toContainText("or any OpenAI-compatible server, in Model settings");
   await expect(studio.getByRole("textbox", { name: "Describe the app" })).toBeHidden();
   await expect(studio.getByRole("button", { name: "Model settings" })).toBeHidden();
 
-  // "Tell me when there is a paid plan": a count, the event and nothing else.
-  await panel.getByRole("button", { name: "Tell me when there is a paid plan" }).click();
+  // "I'd pay for a plan": a count, the event and nothing else — and a 44px target.
+  const plan = panel.getByRole("button", { name: "I'd pay for a plan" });
+  expect((await plan.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await plan.click();
   await expect(panel).toContainText("Counted, thanks. Nothing about you was sent.");
   const counts = sent.filter((s) => s.path === "/ai/count");
   expect(counts.map((c) => c.body)).toEqual([{ event: "want-plan" }]);
