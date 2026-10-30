@@ -225,17 +225,21 @@ export function syncRelayUrl(): string | undefined {
 }
 
 /**
+ * Was this device told who it is with the recovery words? Then its account exists somewhere else,
+ * and every opening of the device's node says so (`expectExisting`) — the page shares one node, and
+ * whichever caller opens it first must not be the one that mints a second copy of the account.
+ */
+export function linkedDevice(): boolean {
+  return globalThis.localStorage?.getItem("potyro:identity:origin") === "passphrase";
+}
+
+/**
  * Whether this browser can run the CRDT store at all.
  *
  * `openJazzStore` needs the OPFS sync-access-handle pool. Firefox and Safari do not have it, and
  * without this check they got a raw `Missing required OPFS APIs` from deep inside sqlite-wasm.
  * Callers use it to say something true instead.
  */
-/** Was this device told who it is with the recovery words? Then its account exists somewhere else. */
-function linkedDevice(): boolean {
-  return globalThis.localStorage?.getItem("potyro:identity:origin") === "passphrase";
-}
-
 export function canSync(): boolean {
   // OPFS is preferred but no longer required: the store falls back to an IndexedDB-backed SQLite.
   // The previous check demanded `createSyncAccessHandle`, which is worker-only in many Chrome
