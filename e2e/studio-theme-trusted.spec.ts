@@ -1,4 +1,5 @@
 import { test, expect } from "./console-guard";
+import { grantClipboard } from "./engines";
 
 // The Studio's quick adjustments, the two left from DESIGN.md §10 (#423): an app's own theme —
 // light, dark or the system's — chosen beside the colour clock and worn by the phone frame while
@@ -45,8 +46,8 @@ test("Dark on the switch: the phone's screen goes dark, the Studio stays light, 
   await expect(page.locator(".k-studio .k-preview-screen")).not.toHaveClass(/k-theme-/);
 });
 
-test("once a link is published, Publish becomes Copy link, and copying says so", async ({ page, context }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+test("once a link is published, Publish becomes Copy link, and copying says so", async ({ page, context, browserName }) => {
+  await grantClipboard(context, browserName);
   const studio = await openStudio(page);
   const publish = studio.getByRole("button", { name: "Publish" });
   await expect(publish).toBeVisible();
