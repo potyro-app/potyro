@@ -820,7 +820,7 @@ What the service accepts and does:
 | Routes | `POST /share-api/shares`, `GET /share-api/shares/<id>/payload`, `DELETE /share-api/shares/<id>` (with `x-delete-token`), `DELETE /share-api/admin/shares/<id>` (the operator's takedown, [below](#taking-a-link-down)), `GET /share-api/health`, `GET /s/<id>` (the shell's `index.html` with the link's Open Graph and Twitter meta written in), `GET /s/<id>/preview.jpg`. |
 | What it holds | Per link: the **sealed** app package (AES-GCM, ≤ 2 MiB). The key is in the link's fragment and never reaches the service. Beside it, what the sharer's device made public for the preview: a title (the app's name), one line, a language, and a 1200×630 JPEG or PNG of ≤ 300 KB drawn from **demo** records. It also keeps the sha256 of the token that takes the link down. For a link the operator took down: only the time and the reason. |
 | Checks | Body size before parsing, then each part. The picture is checked by its first bytes (JPEG/PNG only). Meta text is cleaned and capped, and HTML-escaped where it goes into the page. Ids are 128 random bits. |
-| Limits | Per address and per day, in memory: 30 links made, 300 packages fetched, 2000 link pages and pictures ([below](#limits-per-address)). |
+| Limits | Per address and per day, in memory: 30 links made, 300 packages fetched, 2000 link pages and pictures; an IPv6 /48 eight times that. For the whole service: 2 GB of new links a day, and none while the disk would have under 1 GB free ([below](#limits-per-address)). |
 | Pages | `noindex, nofollow` (header and meta). A link is for whoever it was sent to. |
 | It never | runs app code or reads a package. It has no accounts and no list of links. |
 
@@ -840,7 +840,6 @@ docker run -d --name potyro-share-links --restart unless-stopped \
   -e POTYRO_SHARES_DIR=/data -e POTYRO_SHELL_INDEX=/site/index.html \
   -e POTYRO_PUBLIC_ORIGIN=https://apps.vaz.io \
   -e TRUST_PROXY=caddy \
-  -e 'SHARE_ABUSE_CONTACT=<ABUSE EMAIL>' \
   --env-file /etc/potyro/share-links.env \
   -v /opt/potyro-share-links:/app:ro -v /var/lib/potyro/shares:/data -v /var/www/karta:/site:ro -w /app \
   node:22-bookworm \
@@ -851,8 +850,12 @@ docker logs potyro-share-links   # "[share-links] keeping shares in /data, page 
 `POTYRO_PUBLIC_ORIGIN` is what preview URLs are built on. Crawlers need absolute `https://` URLs,
 and Apache does not tell the service which scheme it was reached by.
 
-`/etc/potyro/share-links.env` (mode 600, owned by root) holds the one secret:
-`SHARE_ADMIN_TOKEN=…`, made with `openssl rand -base64 33`. It is the operator's token for taking a
+`/etc/potyro/share-links.env` (mode 600, owned by root) holds the one secret,
+`SHARE_ADMIN_TOKEN=…` (made with `openssl rand -base64 33`), and the report address: a line
+`SHARE_ABUSE_CONTACT=` with the real address the terms name after it (the same one as `abuse` in
+`packages/shell/src/contacts.json`). Until it is set — or while it is still a placeholder like
+`<ABUSE EMAIL>`, which the service says in its log at start — a taken-down link's page names
+`contact@potyro.com`. The token is the operator's token for taking a
 link down over HTTPS ([below](#taking-a-link-down)); at least 32 characters, or the service will not
 start. Leave it out and the takedown route does not exist; links are then taken down on the server
 itself. It is in a file, not on the command line, so it is not in `ps`, the shell's history or
@@ -908,7 +911,8 @@ sheet should not say "without a preview picture". Check:
 - Pasting the link into a chat shows the card, once the gate allows it (§3).
 
 **Disk:** links are never expired. Budget about 20–60 KB per link (sealed package + picture);
-`du -sh /var/lib/potyro/shares` to watch it.
+`du -sh /var/lib/potyro/shares` to watch it. No more than 2 GB of new links a day are kept, and none
+while the disk would have under 1 GB free ([Limits per address](#limits-per-address)).
 
 ### Taking a link down
 
@@ -918,12 +922,16 @@ or anything else the terms say may be removed. **Who may run it:** the operator 
 the reason is kept with the takedown, with no end date. Keep it to what was decided and why (the
 notice's date, the rule or law); the reporter's name and address stay in the mail, not here.
 
-From anywhere, over HTTPS (Node 18 or later; a whole link is fine, its key after `#` is never sent):
+From anywhere, over HTTPS (Node 18 or later; a whole link is fine, its key after `#` is never sent).
+Paste the token at the silent prompt, so it is in neither the screen nor the shell's history. The
+script sends it only to an `https://` site (or to this machine):
 
 ```bash
-SHARE_ADMIN_TOKEN=… node packages/share-links/scripts/takedown.mjs \
+read -rs SHARE_ADMIN_TOKEN && export SHARE_ADMIN_TOKEN
+node packages/share-links/scripts/takedown.mjs \
   'https://potyro.app/s/<id>#k=…' --reason "notice of 2026-11-02 from …: …" --site https://potyro.app
 # Taken down: <id>. The link now answers 410.
+unset SHARE_ADMIN_TOKEN
 ```
 
 On the server, straight into the shares folder (no token needed):
@@ -939,11 +947,15 @@ first, then its `meta.json`, `payload.bin` and `preview` are removed. From then 
   app behind it was removed from Potyro. If you think this was a mistake, write to
   `SHARE_ABUSE_CONTACT`." — in the visitor's language (English, Portuguese, German, Spanish, Italian,
   Polish), with no script and nothing of the link: no title, no picture, no preview tags. Without
-  `SHARE_ABUSE_CONTACT` it names no address.
+  `SHARE_ABUSE_CONTACT` (or with a placeholder in it) it names `contact@potyro.com`.
 - The package and the picture answer 410 too, and the sharer's own `DELETE` answers 410: it cannot
   bring the link back or turn it into a 404.
-- A device with the shell cached still opens `/s/<id>`, gets the 410 from the package, and its
-  splash says the link was taken down and where to write.
+- Where the shell itself opens the link instead of this page (a shell already running, a build
+  whose pages are on the device), it gets the 410 from the package, and its splash says the link
+  was taken down and where to write. No device answers either from its own cache: the service
+  worker never serves `/s/…` or `/share-api/…` from its cache. That rule comes with the PWA work
+  (`packages/shell/public/sw.js`), which this needs: until it is in, a device that opened the link
+  before can keep opening the package it kept.
 
 Check: `curl -s -o /dev/null -w '%{http_code}' https://potyro.app/s/<id>` → `410`. The record:
 `cat /var/lib/potyro/shares/<first two characters of id>/<id>/taken-down.json`.
@@ -960,7 +972,9 @@ answering the reporter) is the operator's, and the DSA note on it still applies.
 ### Limits per address
 
 Each address (an IPv6 address counts as its /64: one home or phone is usually given a whole /64)
-gets, per calendar day in UTC, in memory:
+gets, per calendar day in UTC, in memory. An IPv6 /48 is counted as well, at eight times each
+limit for all its /64s together: a household is often given a /56 and a server a /48, which would
+otherwise be hundreds or thousands of "addresses".
 
 | What | Default | Env | Code when it is reached |
 |---|---|---|---|
@@ -971,6 +985,21 @@ gets, per calendar day in UTC, in memory:
 
 A refusal is `429` with `retry-after` (seconds to midnight UTC) and JSON:
 `{"ok":false,"code":"too-many-opens","error":"Too many apps were opened from this address today. Try again tomorrow."}`.
+The shell says it in the person's language — "Too many apps were opened from this network today.
+Try again tomorrow, or on another network." — with Try again. A link's own page (`GET /s/<id>`),
+which a person opened in a browser, is not JSON: it is a short page in their language, with no
+script, saying how many hours until they can try again. An address out of wrong-token tries is
+refused whatever token it sends, the right one too: the limit is on guesses, not on error messages.
+
+For the whole service, from every address together:
+
+| What | Default | Env | Code when it is reached |
+|---|---|---|---|
+| Bytes of new links (package + picture) kept a day | 2 000 000 000 | `SHARE_STORED_BYTES_DAY` | `full-today` (503, `retry-after` to midnight UTC) |
+| Free disk left after a new link, at least | 1 000 000 000 | `SHARE_MIN_FREE_BYTES` | `no-room` (503, `retry-after: 3600`) |
+
+Either says so in the service's log, at most once an hour. Links already made keep opening; only
+new ones are refused, and the sharer's device then makes the link that carries the app itself.
 `/share-api/health` is never limited. At most 100 000 addresses are counted at once; past that the
 one counted longest ago starts its day again. A restart starts every count again. The pages limit is
 high on purpose: one chat service's crawler fetches the cards of everyone who pastes a link there.
