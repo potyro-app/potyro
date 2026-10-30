@@ -9,71 +9,75 @@ order: 6
 
 ## Storage model
 
-**Primary impl: SQLite WASM (OPFS-backed) + JSON1.** Chosen because the author is fluent in
-SQL, it gives real query pushdown for filters, and OPFS gives durable local storage. One
-SQLite database file **per app definition** (namespaced by `definition.id`).
+How the stores are chosen and why is docs/00 "Storage". In short: a local-only app gets
+**`SqliteStore`**, SQLite WASM over OPFS in a dedicated worker, one database per app (namespaced by
+`definition.id`); a synced app gets **`JazzStore`**, the CRDT store (docs/00 "Sync, CRDT and
+identity"); `LocalStore` is the fallback where a worker cannot get storage. All of them implement
+the one `Store` interface (`packages/store/src/types.ts`).
 
-### Table strategy: generic document table (v1)
+### `SqliteStore`'s tables: a generic document table
+
+As created by `packages/store/src/sqlite-store.ts`:
 
 ```sql
-CREATE TABLE records (
-  entity     TEXT NOT NULL,
-  id         TEXT NOT NULL,
-  data       TEXT NOT NULL,          -- JSON object of field values
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  PRIMARY KEY (entity, id)
+CREATE TABLE IF NOT EXISTS records(
+  seq    INTEGER PRIMARY KEY AUTOINCREMENT,
+  entity TEXT NOT NULL,
+  id     TEXT NOT NULL,
+  doc    TEXT NOT NULL,             -- the record as JSON, createdAt/updatedAt inside it
+  UNIQUE(entity, id)
 );
-CREATE INDEX idx_records_entity ON records(entity);
-
-CREATE TABLE blobs (
-  key  TEXT PRIMARY KEY,
-  mime TEXT NOT NULL,
-  bytes BLOB NOT NULL,
-  w INTEGER, h INTEGER
-);
-
-CREATE TABLE meta ( k TEXT PRIMARY KEY, v TEXT );  -- stores stored schema/app version
+CREATE INDEX IF NOT EXISTS ix_records_entity ON records(entity, seq);
+CREATE TABLE IF NOT EXISTS blobs(key TEXT PRIMARY KEY, mime TEXT NOT NULL, bytes BLOB NOT NULL);
+CREATE TABLE IF NOT EXISTS kv(k TEXT PRIMARY KEY, v TEXT NOT NULL);     -- ctx.storage, __appVersion
+CREATE TABLE IF NOT EXISTS files(id TEXT PRIMARY KEY, doc TEXT NOT NULL); -- the app's folder (#252)
+CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT NOT NULL);   -- schemaVersion
 ```
 
-Filters push down via `json_extract(data,'$.field')` in `WHERE`/`ORDER BY`. **Hot-field
-promotion (later):** frequently filtered/sorted fields can be materialized into generated
-columns + indexes without changing the record shape:
+A record is read and written as a document, so adding a field is not a schema change in SQLite.
+Filters are the app's own JS predicates (docs/04), run over the records, not SQL. **Not built:**
+promoting a hot field into a generated column with an index, without changing the record shape:
 
 ```sql
 ALTER TABLE records ADD COLUMN f_nextWatering TEXT
-  GENERATED ALWAYS AS (json_extract(data,'$.nextWatering')) VIRTUAL;
-CREATE INDEX idx_recipe_next ON records(f_nextWatering) WHERE entity='plant';
+  GENERATED ALWAYS AS (json_extract(doc,'$.nextWatering')) VIRTUAL;
+CREATE INDEX idx_plant_next ON records(f_nextWatering) WHERE entity='plant';
 ```
 
-Keep this an optimization, not a requirement; the generic table keeps migrations simple.
-
-### Alternative impl
-
-`TinyBase` or `PGlite` behind the same `Store` interface are acceptable. Do not let the
-choice leak past `packages/store`.
+Keep it an optimisation if it is ever done; the generic table keeps migrations simple. Whatever the
+store, its choice does not leak past `packages/store`.
 
 ## Media
 
-- `media` fields store a `MediaRef { key }`; bytes live in `blobs` (or OPFS files for large
-  media). Thumbnail on capture; keep a size budget per app (setting). Export bundles media
-  as base64 or a zip alongside the data JSON.
+- A `media` field stores a `MediaRef` (`{ key, mime, w?, h? }`, `packages/schema/src/types/core.ts`).
+  The bytes are a row in `blobs` in `SqliteStore`, and in `JazzStore` a `FileStream` CoValue of their
+  own, fetched when someone opens the photo (ADR 0001 D5).
+- A picture is re-encoded at 2048 px on its longest edge before it is stored, unless the field says
+  `full: true` (`packages/views/src/image-scale.ts`).
+- An export carries the bytes, not just the references: they are in its `data.sqlite`
+  (`e2e/media-trusted.spec.ts`).
 
 ## Computed fields
 
-Never stored. Resolved on read by the runtime via `expr`. This means changing a computed
-formula needs no data migration — a key reason computed values are not persisted.
+Never stored. Resolved on read by calling the app's own `computed` functions (docs/04). This means
+changing a computed formula needs no data migration — a key reason computed values are not
+persisted.
 
 ## Schema evolution — the hard part
 
-Definitions carry `version` (app semver) and the DB stores the version its data was written
-under (`meta.app_version`, `meta.schema_version`). On load:
+Definitions carry `version` (app semver) and `schemaVersion`. The store keeps the app version its
+data was written under (`__appVersion`, in `kv`) and the schema version (`meta`). On load
+(`packages/shell/src/migrate-on-load.ts`):
 
-1. If `meta.schema_version < definition.schemaVersion` → run **format migrations** (built
-   into the runtime; rare, versioned with the format).
-2. If `meta.app_version < definition.version` → run the definition's **`migrations`** in
-   order. Data is migrated lazily-eligible but by default eagerly on open (personal-scale
-   data is small).
+1. If the stored `schemaVersion` is newer than the definition's, nothing runs and nothing is
+   recorded: an older copy of the app must not rewrite a newer one's data (KA-22).
+2. Otherwise the definition's **`migrations`** are walked from the stored `__appVersion`, each
+   migration's `to` becoming the next one's `from` (`migrationChain` in `packages/store`), so a device
+   two versions behind runs both, in order, and a current one runs none. They run eagerly on open
+   (personal-scale data is small), and the new version is recorded.
+
+In a shared app the version gate decides first whether this copy may migrate the shared data at all
+(`packages/shell/src/version-gate.ts`, ADR 0001 D7).
 
 ### Migrations — declarative ops, with a code escape hatch
 
@@ -106,7 +110,9 @@ a value-mapping **function**), `renameEntity`, `setDefaultForExisting`, `addRela
 (`{ entity, id, values }` — a record under a fixed id that existing records can then point at: the
 first list when items start belonging to lists; nothing happens if it is there already). For
 anything the ops don't cover, a migration step may be a plain function
-`transform: (record, ctx) => record` run per record. (This is safe: migrations run in the same
+`transform: (record, ctx) => record`, run over every record of every entity
+(`applyMigrationStep` in `packages/store/src/migrate.ts`; the `ctx` it is given there is a
+placeholder, so a transform should not rely on it). (This is safe: migrations run in the same
 trust context as the app whose data they migrate.)
 
 ### North star (not v1)
@@ -116,13 +122,30 @@ for two people on different definition versions exchanging data. v1 does **one-d
 in-order** migrations only. Design the migration records so a lens layer could later consume
 them, but do not build it now.
 
-## Backup / portability
+## Backup and portability
 
-- **App** export/import: the bundled `*.app.js` (the shareable artifact; runs untrusted on
-  import — docs/07).
-- **Data** export/import: `{ appId, appVersion, records, blobs, kv }` JSON (+ media). This is the
-  user's backup and cross-device move path. The `Store` and `FileCap` provide the primitives;
-  the shell provides the UI. Mirrors the JSON backup already built into the workout PWA.
+- **Export** (`⋯` → Export, `exportApp` in `packages/shell/src/main.tsx`) writes one `.potyro.zip`
+  (`packages/store/src/export.ts`): `data.sqlite`, a real SQLite copy of the app's records, photos,
+  files and `ctx.storage`; `data.json` and `csv/<entity>.csv`; `manifest.json`; the source; and the
+  app's libraries and modules with their lock (docs/00 "The export bundle"). It is a **snapshot** of
+  the current values: a synced app's CRDT history does not go into it.
+- **`mergeable` does not exist yet.** `ExportMode` in `export.ts` names `"snapshot" | "mergeable"`,
+  but every export writes `mode: "snapshot"`, and nothing reads the mode back.
+- **Import** (`⋯` → Import) **replaces** the app's records with the bundle's: the records it replaces
+  are removed first, so what you import is what you have (`replaceWithBundle` in `main.tsx`). It does
+  not merge. Merging two devices' edits is what sync does, not a file.
+- **Adding an app from a bundle** (Add an app) reads the bundle as an app package and installs it,
+  sealed, with its data; that is how a backup reaches a device that never had the app (docs/00 "The
+  app package").
+- **Moving to a new home** (`packages/shell/src/move-*.ts`, docs/16 "Moving to a new home") carries
+  every app as the same snapshot, `apps/<id>.sqlite` in a `potyro-move/1` archive. On arrival records
+  keep their ids and are **upserted** into an app with the same code ("merge, never duplicate",
+  `move-plan.ts`), so the same move run twice ends with one of everything; an app changed differently
+  on both sides comes in beside the one there instead. This is a merge of whole records by id, not
+  of fields: a record on both sides ends as the incoming one (`copyStoreData` inserts with the
+  record's own id, and `SqliteStore`'s insert is an upsert on entity and id).
+- **The backup switch** (`packages/shell/src/backup-all.ts`) is not a file: it turns sync on for every
+  app, so a second device signed in with the recovery words brings them all back.
 - **Your account** holds what is yours rather than an app's, in maps owned by a group whose only
   member is your account (so only your devices can read them), each named on the account CoMap:
   `potyroApps` — your apps and where their data is (`store/src/account-apps.ts`) — and
@@ -139,6 +162,7 @@ them, but do not build it now.
 
 ## Consistency & undo
 
-- All writes go through `Store.transaction` where multi-record.
-- Keep an append-only `ops` log (optional, feature-flagged) to enable undo and to smooth a
-  future CRDT migration (ops replay). Not required for M1.
+- All multi-record writes go through `Store.transaction`.
+- There is no undo of data and no operations log. History (`packages/shell/src/app-history.ts`) is
+  the app's *source* versions, not its records; in a synced app the CRDT keeps each field's edits,
+  which the activity view reads (docs/00 "Sync, CRDT and identity").
