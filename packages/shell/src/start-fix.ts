@@ -18,7 +18,7 @@ import {
   type LoopStep,
 } from "@potyro/generator/agent";
 import { createOpenRouterEngine, type Language } from "@potyro/generator/backends";
-import { canInvestigate, isCloud, keyFor, openRouterOptions, type EngineConfig } from "./engines.js";
+import { canInvestigate, chatEngineOptions, engineReady, type EngineConfig } from "./engines.js";
 import { verifyCandidate } from "./verify-candidate.js";
 import type { ModuleSource } from "./package-modules.js";
 import { joinForModel, unpackCandidate } from "./joined-app.js";
@@ -63,10 +63,13 @@ function refusal(cfg: EngineConfig): LoopOutcome | undefined {
       text: t`${engine} cannot investigate this — it has no transcript to hang a multi-step tool loop off of (claude -p is a one-shot completion, not a chat engine). Pick a cloud engine, like OpenRouter, to drive the loop.`,
     };
   }
-  if (isCloud(engine) && !keyFor(cfg)) {
+  if (!engineReady(cfg)) {
     return {
       kind: "refused",
-      text: t`${engine} needs your own API key to investigate — add one in Engine Settings.`,
+      text:
+        engine === "endpoint"
+          ? t`The endpoint needs its address and a model to investigate. Add them in the Studio’s Model settings.`
+          : t`${engine} needs your own API key to investigate. Add one in the Studio’s Model settings.`,
     };
   }
   return undefined;
@@ -155,35 +158,31 @@ export async function startFix(opts: StartFixOpts): Promise<FixOutcome> {
     target,
     theCase: opts.theCase,
     // Shapes and counts only — never the user's raw records. `access: { locality: "cloud" }` is the
-    // only variant this function may construct: the only engine that can drive this loop IS a cloud
-    // one (that's what `canInvestigate` encodes above), so raw access is never justifiable here.
+    // only variant this function may construct: the engines that drive this loop reach a server, and
+    // even an endpoint on the person's own machine is an address they typed, which may be anyone's —
+    // so raw access is never justifiable here.
     records: (entity) => opts.runtime.ctx.query(entity),
     access: { locality: "cloud" },
   });
 
-  // `refusal()` above checks THAT the engine can investigate and THAT a cloud key exists — never
-  // WHICH cloud engine. Below this line the ONLY client this function knows how to build is
-  // OpenRouter's. `canInvestigate` and "there is a client for this engine" are two separate facts
-  // today (see engines.ts): if a future engine (say, "anthropic") flips `canInvestigate: true`,
-  // `refusal()` would wave it through — `isCloud` is still true and `keyFor` still returns a real
-  // key — straight into `createOpenRouterEngine({ apiKey: opts.engine.openrouterKey, ... })` with an
-  // EMPTY `openrouterKey`. That function's own fallback is `apiKey ?? readEnv(...) ?? ""`, and `??`
-  // does not catch an empty string, so it would send `Authorization: Bearer ` to OpenRouter — an
-  // unhandled rejection escaping `runAgentLoop`, and therefore this function's never-throw contract.
-  // (Or, with a stale `openrouterKey` lying around, it would succeed SILENTLY against a provider and
-  // model the person never chose.) This guard is the one line that keeps those two facts from
-  // silently disagreeing.
-  if (opts.engine.engine !== "openrouter") {
+  // `refusal()` above checks THAT the engine can investigate and THAT it is set up — never that a
+  // client exists for it. `canInvestigate` and "there is a client for this engine" are two separate
+  // facts (see engines.ts): if a future engine (say, "anthropic") flips `canInvestigate: true`,
+  // `refusal()` would wave it through, and building OpenRouter's client for it would send the wrong
+  // key — or an empty one, `Authorization: Bearer ` — to a provider the person never chose. Only
+  // `chatEngineOptions` says which engines have a client, so this asks it, and refuses the rest.
+  const chat = chatEngineOptions(opts.engine);
+  if (!chat) {
     const engine = opts.engine.engine;
     return {
       kind: "refused",
-      text: t`${engine} claims it can investigate this, but startFix has no client wired for it — only OpenRouter does today. This is a configuration bug, not a problem with your app.`,
+      text: t`${engine} claims it can investigate this, but startFix has no client wired for it. This is a configuration bug, not a problem with your app.`,
     };
   }
 
   const outcome = await runAgentLoop({
-    engine: createOpenRouterEngine(openRouterOptions(opts.engine)),
-    model: opts.engine.openrouterModel,
+    engine: createOpenRouterEngine(chat),
+    model: chat.model,
     tools,
     system: AGENT_SYSTEM_PROMPT,
     task,

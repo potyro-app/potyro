@@ -279,6 +279,11 @@ msgstr "{0, plural, one {and # more} other {and # more}}"
 msgid "{0, plural, one {Bring this app in?} other {Bring these # apps in?}}"
 msgstr "{0, plural, one {Bring this app in?} other {Bring these # apps in?}}"
 
+#. placeholder {0}: models.length
+#: ../shell/src/endpoint-check.ts
+msgid "{0, plural, one {Connected. The server lists # model.} other {Connected. The server lists # models.}}"
+msgstr "{0, plural, one {Connected. The server lists # model.} other {Connected. The server lists # models.}}"
+
 #. placeholder {0}: lines.length
 #: ../shell/src/studio.tsx
 msgid "{0, plural, one {Fetch the library this version uses?} other {Fetch the libraries this version uses?}}"
@@ -499,12 +504,12 @@ msgid "{engine} cannot investigate this — it has no transcript to hang a multi
 msgstr "{engine} cannot investigate this — it has no transcript to hang a multi-step tool loop off of (claude -p is a one-shot completion, not a chat engine). Pick a cloud engine, like OpenRouter, to drive the loop."
 
 #: ../shell/src/start-fix.ts
-msgid "{engine} claims it can investigate this, but startFix has no client wired for it — only OpenRouter does today. This is a configuration bug, not a problem with your app."
-msgstr "{engine} claims it can investigate this, but startFix has no client wired for it — only OpenRouter does today. This is a configuration bug, not a problem with your app."
+msgid "{engine} claims it can investigate this, but startFix has no client wired for it. This is a configuration bug, not a problem with your app."
+msgstr "{engine} claims it can investigate this, but startFix has no client wired for it. This is a configuration bug, not a problem with your app."
 
 #: ../shell/src/start-fix.ts
-msgid "{engine} needs your own API key to investigate — add one in Engine Settings."
-msgstr "{engine} needs your own API key to investigate — add one in Engine Settings."
+msgid "{engine} needs your own API key to investigate. Add one in the Studio’s Model settings."
+msgstr "{engine} needs your own API key to investigate. Add one in the Studio’s Model settings."
 
 #: ../shell/src/ask-panel.tsx
 msgid "{engine} sees how this app is organised, what you type and paste, and the area on your map. Nothing already in the app is sent. You choose what gets added."
@@ -623,6 +628,10 @@ msgid "{label} minutes"
 msgstr "{label} minutes"
 
 #: ../shell/src/studio.tsx
+msgid "{label} needs an address and a model — open Model settings"
+msgstr "{label} needs an address and a model — open Model settings"
+
+#: ../shell/src/studio.tsx
 msgid "{label} needs an API key — open Model settings"
 msgstr "{label} needs an API key — open Model settings"
 
@@ -717,6 +726,10 @@ msgstr "{library} uses a feature shared apps don’t have yet: {words}. Apps in 
 #: ../shell/src/case-report.tsx
 msgid "{lostSteps, plural, one {Part of this recording was lost — # step could not be captured.} other {Part of this recording was lost — # steps could not be captured.}}"
 msgstr "{lostSteps, plural, one {Part of this recording was lost — # step could not be captured.} other {Part of this recording was lost — # steps could not be captured.}}"
+
+#: ../shell/src/start-ask.ts
+msgid "{model} can’t use tools, and Ask needs them. Choose another model in the Studio’s Model settings."
+msgstr "{model} can’t use tools, and Ask needs them. Choose another model in the Studio’s Model settings."
 
 #: ../shell/src/ask-panel.tsx
 msgid "{more, plural, one {Found on {sites} and # more} other {Found on {sites} and # more}}"
@@ -944,6 +957,10 @@ msgstr "{who} set {field} to {to} on {record}"
 msgid "{why} What was already done is in the app; asking again will mark what is already there."
 msgstr "{why} What was already done is in the app; asking again will mark what is already there."
 
+#: ../shell/src/endpoint-check.ts
+msgid "{why} You can test the connection in the Studio’s Model settings."
+msgstr "{why} You can test the connection in the Studio’s Model settings."
+
 #: ../shell/src/inline-edit.tsx
 msgid "← Earlier"
 msgstr "← Earlier"
@@ -1107,6 +1124,11 @@ msgstr "A separate copy, starting empty."
 #: ../shell/src/live-connections-setting.tsx
 msgid "A server on the internet"
 msgstr "A server on the internet"
+
+#. Model settings heading: a model server the person names by its address, in the cloud or on their own machine
+#: ../shell/src/engines.ts
+msgid "A server you choose"
+msgstr "A server you choose"
 
 #: ../shell/src/identity-panel.tsx
 msgid "A short list of words is the only way back to it if you lose this device — and the only way to use it on another one. Nobody can recover them for you."
@@ -1530,6 +1552,10 @@ msgstr "Anthropic"
 msgid "Anthropic API key"
 msgstr "Anthropic API key"
 
+#: ../shell/src/engines.ts
+msgid "Any server that speaks the OpenAI chat API: OpenAI, Ollama, LM Studio and others. Give its address, a key if it needs one, and a model."
+msgstr "Any server that speaks the OpenAI chat API: OpenAI, Ollama, LM Studio and others. Give its address, a key if it needs one, and a model."
+
 #: ../shell/src/backup-switch.tsx
 msgid "Anything you make later goes too. The relay only ever sees encrypted data."
 msgstr "Anything you make later goes too. The relay only ever sees encrypted data."
@@ -1682,8 +1708,12 @@ msgid "Ask has used {spentHere} of your OpenRouter credit in this app, on this d
 msgstr "Ask has used {spentHere} of your OpenRouter credit in this app, on this device."
 
 #: ../shell/src/start-ask.ts
-msgid "Ask needs a cloud model. Choose OpenRouter in the Studio’s Model settings."
-msgstr "Ask needs a cloud model. Choose OpenRouter in the Studio’s Model settings."
+msgid "Ask needs a model that can use tools. Choose OpenRouter or an OpenAI-compatible endpoint in the Studio’s Model settings."
+msgstr "Ask needs a model that can use tools. Choose OpenRouter or an OpenAI-compatible endpoint in the Studio’s Model settings."
+
+#: ../shell/src/start-ask.ts
+msgid "Ask needs the endpoint’s address and a model. Add them in the Studio’s Model settings."
+msgstr "Ask needs the endpoint’s address and a model. Add them in the Studio’s Model settings."
 
 #: ../shell/src/start-ask.ts
 msgid "Ask needs your OpenRouter key. Add it in the Studio’s Model settings."
@@ -2344,6 +2374,10 @@ msgstr "Confirm"
 msgid "Confirmed"
 msgstr "Confirmed"
 
+#: ../shell/src/endpoint-check.ts
+msgid "Connected, but the server does not list {model}. Check the model name."
+msgstr "Connected, but the server does not list {model}. Check the model name."
+
 #: ../shell/src/sync-status.tsx
 msgid "Connecting"
 msgstr "Connecting"
@@ -2931,6 +2965,18 @@ msgstr "Edit: {noun}"
 msgid "edited the code by hand"
 msgstr "edited the code by hand"
 
+#: ../shell/src/endpoint-settings.tsx
+msgid "Endpoint address"
+msgstr "Endpoint address"
+
+#: ../shell/src/endpoint-settings.tsx
+msgid "Endpoint API key"
+msgstr "Endpoint API key"
+
+#: ../shell/src/endpoint-settings.tsx
+msgid "Endpoint model"
+msgstr "Endpoint model"
+
 #. The list of model engines to choose from
 #: ../shell/src/engine-settings.tsx
 msgid "Engine"
@@ -3290,6 +3336,10 @@ msgstr "Give it a different colour and icon"
 msgid "Give it a name."
 msgstr "Give it a name."
 
+#: ../shell/src/endpoint-check.ts
+msgid "Give the server’s address first."
+msgstr "Give the server’s address first."
+
 #: ../shell/src/studio.tsx
 msgid "Go back"
 msgstr "Go back"
@@ -3492,8 +3542,8 @@ msgid "I couldn't make this change: what came back wasn't a change I could apply
 msgstr "I couldn't make this change: what came back wasn't a change I could apply to the app. Try saying it another way."
 
 #: ../shell/src/studio-engine.ts
-msgid "I couldn't start on this change: the engine chosen in Engine Settings can't change apps. Choose OpenRouter there, with your own key."
-msgstr "I couldn't start on this change: the engine chosen in Engine Settings can't change apps. Choose OpenRouter there, with your own key."
+msgid "I couldn't start on this change: the engine chosen in the Studio’s Model settings can't change apps. Choose OpenRouter there, with your own key, or an OpenAI-compatible endpoint."
+msgstr "I couldn't start on this change: the engine chosen in the Studio’s Model settings can't change apps. Choose OpenRouter there, with your own key, or an OpenAI-compatible endpoint."
 
 #: ../shell/src/studio-engine.ts
 msgid "I didn't change the app: this isn't something it can change. {text}"
@@ -3878,6 +3928,10 @@ msgstr "Key"
 msgid "Key for {sourceName}"
 msgstr "Key for {sourceName}"
 
+#: ../shell/src/endpoint-settings.tsx
+msgid "Key, if the server needs one"
+msgstr "Key, if the server needs one"
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Keys stay on this device, in its secure store. Apps never see them."
 msgstr "Keys stay on this device, in its secure store. Apps never see them."
@@ -4111,6 +4165,11 @@ msgstr "Look at it"
 #: ../shell/src/ask-panel.tsx
 msgid "Look it over"
 msgstr "Look it over"
+
+#. Ask: a switch; the addresses it proposes are looked up on OpenStreetMap to put their pins in the right place
+#: ../shell/src/ask-panel.tsx
+msgid "Look up places on the map"
+msgstr "Look up places on the map"
 
 #. Reasoning level
 #: ../shell/src/thinking-settings.tsx
@@ -4400,6 +4459,10 @@ msgid "needs a WebGPU browser"
 msgstr "needs a WebGPU browser"
 
 #: ../shell/src/studio.tsx
+msgid "needs an address and a model"
+msgstr "needs an address and a model"
+
+#: ../shell/src/studio.tsx
 msgid "needs an API key"
 msgstr "needs an API key"
 
@@ -4487,6 +4550,14 @@ msgstr "no"
 #: ../views/src/summary.ts
 msgid "No"
 msgstr "No"
+
+#: ../shell/src/endpoint-check.ts
+msgid "No answer from {base}. Check the server is running and the address is right. A server on your own machine must also allow requests from this page (for Ollama, set OLLAMA_ORIGINS)."
+msgstr "No answer from {base}. Check the server is running and the address is right. A server on your own machine must also allow requests from this page (for Ollama, set OLLAMA_ORIGINS)."
+
+#: ../shell/src/endpoint-check.ts
+msgid "No answer from {base}. This page is https, so it can only reach an http server on this same computer. Use an https address for this server."
+msgstr "No answer from {base}. This page is https, so it can only reach an http server on this same computer. Use an https address for this server."
 
 #: ../shell/src/main.tsx
 msgid "No app \"{appId}\" installed to import into."
@@ -4706,6 +4777,10 @@ msgstr "Nothing about {label} yet."
 #: ../shell/src/ask-review.tsx
 msgid "Nothing approved"
 msgstr "Nothing approved"
+
+#: ../shell/src/endpoint-check.ts
+msgid "Nothing at {base}/models. Check the address: it usually ends in /v1."
+msgstr "Nothing at {base}/models. Check the address: it usually ends in /v1."
 
 #: ../shell/src/move-page.tsx
 msgid "Nothing came in"
@@ -5033,6 +5108,11 @@ msgstr "Open app"
 #: ../shell/src/move-page.tsx
 msgid "Open your apps"
 msgstr "Open your apps"
+
+#. Engine name: any server that speaks the OpenAI chat API
+#: ../shell/src/engines.ts
+msgid "OpenAI-compatible endpoint"
+msgstr "OpenAI-compatible endpoint"
 
 #: ../shell/src/splash.tsx
 msgid "Opening"
@@ -6392,6 +6472,15 @@ msgstr "Tap the map to place a point"
 msgid "Tap the part you mean"
 msgstr "Tap the part you mean"
 
+#: ../shell/src/endpoint-settings.tsx
+msgid "Test connection"
+msgstr "Test connection"
+
+#. Button while it asks the server
+#: ../shell/src/endpoint-settings.tsx
+msgid "Testing…"
+msgstr "Testing…"
+
 #. Point chip: a thing inside an app's screen, lower case
 #: ../shell/src/point-target.ts
 msgid "text"
@@ -6446,6 +6535,10 @@ msgstr "That file is no longer in this app"
 msgid "That is not a link"
 msgstr "That is not a link"
 
+#: ../shell/src/endpoint-check.ts
+msgid "That is not a web address. It looks like http://localhost:11434/v1."
+msgstr "That is not a web address. It looks like http://localhost:11434/v1."
+
 #: ../shell/src/identity-panel.tsx
 msgid "That is not a websocket URL. It needs to start with wss:// or ws://."
 msgstr "That is not a websocket URL. It needs to start with wss:// or ws://."
@@ -6474,6 +6567,10 @@ msgstr "the \"{shownTitle}\" page"
 #: ../shell/src/move-banner.tsx
 msgid "The {site} window was closed before it finished. Bring them over again when you are ready: nothing is doubled, and whatever was left out comes in."
 msgstr "The {site} window was closed before it finished. Bring them over again when you are ready: nothing is doubled, and whatever was left out comes in."
+
+#: ../shell/src/endpoint-check.ts
+msgid "The address has to start with http:// or https://."
+msgstr "The address has to start with http:// or https://."
 
 #: ../shell/src/app-ai.ts
 msgid "The AI service could not answer this time. Try again."
@@ -6564,6 +6661,10 @@ msgstr "The docs link must be an https:// address."
 #: ../shell/src/ask-sources-panel.tsx
 msgid "The endpoint must be an https:// address."
 msgstr "The endpoint must be an https:// address."
+
+#: ../shell/src/start-fix.ts
+msgid "The endpoint needs its address and a model to investigate. Add them in the Studio’s Model settings."
+msgstr "The endpoint needs its address and a model to investigate. Add them in the Studio’s Model settings."
 
 #: ../shell/src/file-viewer.tsx
 msgid "The file as it is now is kept as an earlier copy, so you can change your mind."
@@ -6693,6 +6794,18 @@ msgstr "the repair was declined: {why}"
 #: ../shell/src/backup-switch.tsx
 msgid "The rest are on the relay; nothing was lost. Try again, or turn sync on for them one at a time."
 msgstr "The rest are on the relay; nothing was lost. Try again, or turn sync on for them one at a time."
+
+#: ../shell/src/endpoint-check.ts
+msgid "The server answered with an error ({status})."
+msgstr "The server answered with an error ({status})."
+
+#: ../shell/src/endpoint-check.ts
+msgid "The server answered, but not with a list of models. Check the address: it usually ends in /v1."
+msgstr "The server answered, but not with a list of models. Check the address: it usually ends in /v1."
+
+#: ../shell/src/endpoint-check.ts
+msgid "The server refused the key ({status}). Check the key."
+msgstr "The server refused the key ({status}). Check the key."
 
 #: ../shell/src/version-notes.ts
 msgid "the source before history was kept"
@@ -7100,6 +7213,10 @@ msgstr "This screen could not be worked out: {error}"
 #: ../views/src/custom.tsx
 msgid "This screen is built with the app’s own code, so it only runs when the app runs as yours."
 msgstr "This screen is built with the app’s own code, so it only runs when the app runs as yours."
+
+#: ../shell/src/endpoint-check.ts
+msgid "This server needs a key. Add one above."
+msgstr "This server needs a key. Add one above."
 
 #: ../shell/src/app-source.ts
 msgid "this source could not be parsed"

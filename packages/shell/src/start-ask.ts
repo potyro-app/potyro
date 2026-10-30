@@ -1,8 +1,9 @@
 // The one place Ask's (#213) pieces meet: the person's request, the app's definition, and a model.
 //
 // Same engine rules as `startFix` (start-fix.ts), for the same reasons: the loop needs a chat engine
-// that can call tools, and today the only client wired for that is OpenRouter's. Refusals come back
-// as an outcome, never a throw, so the panel renders one shape for "this cannot run".
+// that can call tools — OpenRouter, or an OpenAI-compatible endpoint (#121). Web search is
+// OpenRouter's own server tool, so it is asked for only there. Refusals come back as an outcome,
+// never a throw, so the panel renders one shape for "this cannot run".
 //
 // Only the DEFINITION goes in. No store, no runtime, no records: the model sees how the app is
 // organised and nothing that is in it (packages/generator/src/agent/ask.ts). Outside data comes
@@ -12,16 +13,35 @@ import { t } from "@lingui/core/macro";
 import type { AppDefinition } from "potyro";
 import { runAskLoop, type AskContext, type AskOutcome, type AskSource, type AskStep, type SourceFetch } from "@potyro/generator/agent";
 import type { ChatMessage } from "@potyro/generator/agent";
-import { createOpenRouterEngine } from "@potyro/generator/backends";
-import { openRouterOptions, type EngineConfig } from "./engines.js";
+import { createOpenRouterEngine, endpointFailure } from "@potyro/generator/backends";
+import { canSearchWeb, chatEngineOptions, engineReady, type EngineConfig } from "./engines.js";
+import { unreachableText } from "./endpoint-check.js";
 
 export type StartAskOutcome = AskOutcome | { kind: "refused"; text: string };
 
 /** Why Ask cannot run on this engine, in words for the person — or null when it can. */
 export function askRefusal(cfg: EngineConfig): string | null {
-  if (cfg.engine !== "openrouter") return t`Ask needs a cloud model. Choose OpenRouter in the Studio’s Model settings.`;
-  if (!cfg.openrouterKey) return t`Ask needs your OpenRouter key. Add it in the Studio’s Model settings.`;
+  if (!chatEngineOptions(cfg)) return t`Ask needs a model that can use tools. Choose OpenRouter or an OpenAI-compatible endpoint in the Studio’s Model settings.`;
+  if (!engineReady(cfg)) {
+    return cfg.engine === "endpoint"
+      ? t`Ask needs the endpoint’s address and a model. Add them in the Studio’s Model settings.`
+      : t`Ask needs your OpenRouter key. Add it in the Studio’s Model settings.`;
+  }
   return null;
+}
+
+/**
+ * Why Ask stopped, as the person reads it. An endpoint it could not reach, or whose model takes no
+ * tools, is said as what to do; any other error keeps its own words.
+ */
+function failedReason(e: unknown, cfg: EngineConfig): string {
+  const failure = endpointFailure(e);
+  if (failure === "unreachable") return unreachableText(cfg.endpoint.baseUrl);
+  if (failure === "tools-unsupported") {
+    const model = cfg.endpoint.model.trim();
+    return t`${model} can’t use tools, and Ask needs them. Choose another model in the Studio’s Model settings.`;
+  }
+  return e instanceof Error ? e.message : String(e);
 }
 
 export async function startAsk(opts: {
@@ -43,17 +63,19 @@ export async function startAsk(opts: {
   signal?: AbortSignal;
 }): Promise<StartAskOutcome> {
   const refused = askRefusal(opts.engine);
-  if (refused) return { kind: "refused", text: refused };
+  const chat = chatEngineOptions(opts.engine);
+  if (refused || !chat) return { kind: "refused", text: refused ?? "" };
   try {
     return await runAskLoop({
-      engine: createOpenRouterEngine(openRouterOptions(opts.engine)),
-      model: opts.engine.openrouterModel,
+      engine: createOpenRouterEngine(chat),
+      model: chat.model,
       definition: opts.definition,
       request: opts.request,
       sources: opts.sources,
       fetchSource: opts.fetchSource,
       context: opts.context,
-      webSearch: opts.webSearch,
+      // Asked for elsewhere, the search would be dropped on the way out while the prompt promised it.
+      webSearch: Boolean(opts.webSearch) && canSearchWeb(opts.engine.engine),
       resumeFrom: opts.resumeFrom,
       material: opts.material,
       onStep: opts.onStep,
@@ -63,6 +85,6 @@ export async function startAsk(opts: {
     const spent = (e as { spent?: number } | null)?.spent;
     const cost = typeof spent === "number" ? { spent } : {};
     if (opts.signal?.aborted) return { kind: "stopped", ...cost };
-    return { kind: "failed", reason: e instanceof Error ? e.message : String(e), ...cost };
+    return { kind: "failed", reason: failedReason(e, opts.engine), ...cost };
   }
 }
