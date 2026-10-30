@@ -278,6 +278,21 @@ iOS version and the model with every result.
 | 16 | A full-screen app (a game) | Status bar hides; the ✕ leaves | — |
 | 17 | On-device model (New app → describe → On-device) | Works if WebKit's WebGPU is on in WKWebView, else a clear error | Either answer is useful |
 
+### 5.1 Owed: the web app added to the home screen from Safari (#123)
+
+Not the native app: potyro.app in Safari, then Share → Add to Home Screen, which You offers on an
+iPhone (`packages/shell/src/install-row.tsx`). WebKit is reported to give a home-screen web app its
+own storage, apart from Safari's. If that holds, the installed Potyro opens with none of the apps
+or records made in Safari, and with a new identity, and You should say so before offering it (or
+offer it only before anything is made). Nobody has checked on a real device yet; until then the
+row says only the two steps and makes no offline claim. Write the result here, with the iOS version
+and model:
+
+| Do | Expect | Result |
+|---|---|---|
+| In Safari, make an app and add a record. Add to Home Screen, open it from the icon | Is the app and its record there? Is the name in You the same? | not checked |
+| From the icon, open Home and one example app, then turn on flight mode and reopen | Home and that app open; You → Offline says what is kept | not checked |
+
 ## 6. Known risks, ranked
 
 | # | Severity | Risk | Fallback that exists | What would fix it |
