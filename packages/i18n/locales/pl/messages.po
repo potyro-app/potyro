@@ -508,8 +508,8 @@ msgid "{engine} claims it can investigate this, but startFix has no client wired
 msgstr "{engine} twierdzi, że może to zbadać, ale startFix nie ma dla niego klienta. To błąd konfiguracji, nie problem z twoją aplikacją."
 
 #: ../shell/src/start-fix.ts
-msgid "{engine} needs your own API key to investigate — add one in Engine Settings."
-msgstr "{engine} potrzebuje twojego własnego klucza API, aby to zbadać — dodaj go w ustawieniach silnika."
+msgid "{engine} needs your own API key to investigate. Add one in the Studio’s Model settings."
+msgstr "{engine} potrzebuje twojego własnego klucza API, żeby to zbadać. Dodaj go w ustawieniach modelu w Studio."
 
 #: ../shell/src/ask-panel.tsx
 msgid "{engine} sees how this app is organised, what you type and paste, and the area on your map. Nothing already in the app is sent. You choose what gets added."
@@ -726,6 +726,10 @@ msgstr "{library} używa funkcji, której udostępnione aplikacje jeszcze nie ma
 #: ../shell/src/case-report.tsx
 msgid "{lostSteps, plural, one {Part of this recording was lost — # step could not be captured.} other {Part of this recording was lost — # steps could not be captured.}}"
 msgstr "{lostSteps, plural, one {Część tego nagrania przepadła — nie udało się zarejestrować # kroku.} few {Część tego nagrania przepadła — nie udało się zarejestrować # kroków.} many {Część tego nagrania przepadła — nie udało się zarejestrować # kroków.} other {Część tego nagrania przepadła — nie udało się zarejestrować # kroku.}}"
+
+#: ../shell/src/start-ask.ts
+msgid "{model} can’t use tools, and Ask needs them. Choose another model in the Studio’s Model settings."
+msgstr "{model} nie umie używać narzędzi, a Ask ich potrzebuje. Wybierz inny model w ustawieniach modelu w Studio."
 
 #: ../shell/src/ask-panel.tsx
 msgid "{more, plural, one {Found on {sites} and # more} other {Found on {sites} and # more}}"
@@ -952,6 +956,10 @@ msgstr "{who} ustawia {field} na {to} w: {record}"
 #: ../shell/src/ask-panel.tsx
 msgid "{why} What was already done is in the app; asking again will mark what is already there."
 msgstr "{why} To, co już zrobiono, jest w aplikacji; jeśli poprosisz ponownie, zaznaczone zostanie to, co już tam jest."
+
+#: ../shell/src/endpoint-check.ts
+msgid "{why} You can test the connection in the Studio’s Model settings."
+msgstr "{why} Połączenie możesz sprawdzić w ustawieniach modelu w Studio."
 
 #: ../shell/src/inline-edit.tsx
 msgid "← Earlier"
@@ -3534,8 +3542,8 @@ msgid "I couldn't make this change: what came back wasn't a change I could apply
 msgstr "Nie udało się wprowadzić tej zmiany: to, co wróciło, nie było zmianą, którą da się zastosować do aplikacji. Powiedz to inaczej."
 
 #: ../shell/src/studio-engine.ts
-msgid "I couldn't start on this change: the engine chosen in Engine Settings can't change apps. Choose OpenRouter there, with your own key."
-msgstr "Nie da się zacząć tej zmiany: silnik wybrany w ustawieniach silnika nie potrafi zmieniać aplikacji. Wybierz tam OpenRouter, z własnym kluczem."
+msgid "I couldn't start on this change: the engine chosen in the Studio’s Model settings can't change apps. Choose OpenRouter there, with your own key, or an OpenAI-compatible endpoint."
+msgstr "Nie mogłem zacząć tej zmiany: silnik wybrany w ustawieniach modelu w Studio nie umie zmieniać aplikacji. Wybierz tam OpenRouter z własnym kluczem albo endpoint zgodny z OpenAI."
 
 #: ../shell/src/studio-engine.ts
 msgid "I didn't change the app: this isn't something it can change. {text}"
@@ -4158,6 +4166,11 @@ msgstr "Zobacz"
 msgid "Look it over"
 msgstr "Przejrzyj"
 
+#. Ask: a switch; the addresses it proposes are looked up on OpenStreetMap to put their pins in the right place
+#: ../shell/src/ask-panel.tsx
+msgid "Look up places on the map"
+msgstr "Wyszukaj miejsca na mapie"
+
 #. Reasoning level
 #: ../shell/src/thinking-settings.tsx
 msgid "Low"
@@ -4541,6 +4554,10 @@ msgstr "Nie"
 #: ../shell/src/endpoint-check.ts
 msgid "No answer from {base}. Check the server is running and the address is right. A server on your own machine must also allow requests from this page (for Ollama, set OLLAMA_ORIGINS)."
 msgstr "Brak odpowiedzi z {base}. Sprawdź, czy serwer działa i czy adres jest poprawny. Serwer na twoim komputerze musi też przyjmować żądania z tej strony (w Ollama ustaw OLLAMA_ORIGINS)."
+
+#: ../shell/src/endpoint-check.ts
+msgid "No answer from {base}. This page is https, so it can only reach an http server on this same computer. Use an https address for this server."
+msgstr "Brak odpowiedzi od {base}. Ta strona działa na https, więc dociera do serwera http tylko na tym samym komputerze. Użyj adresu https dla tego serwera."
 
 #: ../shell/src/main.tsx
 msgid "No app \"{appId}\" installed to import into."
@@ -6646,8 +6663,8 @@ msgid "The endpoint must be an https:// address."
 msgstr "Punkt końcowy musi być adresem https://."
 
 #: ../shell/src/start-fix.ts
-msgid "The endpoint needs its address and a model to investigate — add them in Engine Settings."
-msgstr "Endpoint potrzebuje adresu i modelu, aby to zbadać — dodaj je w ustawieniach silnika."
+msgid "The endpoint needs its address and a model to investigate. Add them in the Studio’s Model settings."
+msgstr "Endpoint potrzebuje adresu i modelu, żeby to zbadać. Dodaj je w ustawieniach modelu w Studio."
 
 #: ../shell/src/file-viewer.tsx
 msgid "The file as it is now is kept as an earlier copy, so you can change your mind."
@@ -7196,6 +7213,10 @@ msgstr "Nie udało się obliczyć tego ekranu: {error}"
 #: ../views/src/custom.tsx
 msgid "This screen is built with the app’s own code, so it only runs when the app runs as yours."
 msgstr "Ten ekran jest zbudowany własnym kodem aplikacji, więc działa tylko wtedy, gdy aplikacja działa jako twoja."
+
+#: ../shell/src/endpoint-check.ts
+msgid "This server needs a key. Add one above."
+msgstr "Ten serwer potrzebuje klucza. Dodaj go powyżej."
 
 #: ../shell/src/app-source.ts
 msgid "this source could not be parsed"
