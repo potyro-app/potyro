@@ -13,11 +13,15 @@
 // - **Anywhere else**, and wherever Potyro is already installed (opened from the home screen, or
 //   the native app), nothing is shown.
 //
+// Once added, the rest of Potyro is fetched for offline use straight away (offline-ready.ts), and
+// You shows the offline row instead (install-row.tsx).
+//
 // Never twice: "No thanks" is remembered on this device, and so is declining the browser's dialog —
 // Chrome would not offer it again for months anyway. The memory is a per-viewer convenience, so
 // `localStorage` is right for it; a browser that refuses storage just shows the row again next time.
 
 import { useSyncExternalStore } from "react";
+import { keepOfflineAfterInstall } from "./offline-ready.js";
 
 /** The event Chromium fires when the site can be installed. Not in TypeScript's DOM types. */
 export interface InstallPromptEvent extends Event {
@@ -71,7 +75,14 @@ let installedNow = false;
 /** Declined during this visit: holds even where the browser will not let it be written down. */
 let dismissedNow = false;
 let listening = false;
-let snapshot: InstallOffer = null;
+/** What the row reads: the offer, and whether Potyro is on the home screen already. */
+interface InstallSnapshot {
+  offer: InstallOffer;
+  /** On the home screen (opened from it, or added during this visit) — not the native app. */
+  installed: boolean;
+}
+const NOTHING: InstallSnapshot = { offer: null, installed: false };
+let snapshot: InstallSnapshot = NOTHING;
 const listeners = new Set<() => void>();
 
 function readDismissed(): boolean {
@@ -119,7 +130,11 @@ export function readInstallEnv(win: Window = window): InstallEnv {
 }
 
 function changed(): void {
-  snapshot = typeof window === "undefined" ? null : installOfferFor(readInstallEnv(window));
+  if (typeof window === "undefined") snapshot = NOTHING;
+  else {
+    const env = readInstallEnv(window);
+    snapshot = { offer: installOfferFor(env), installed: !env.native && (env.standalone || env.installed) };
+  }
   for (const cb of listeners) cb();
 }
 
@@ -139,6 +154,7 @@ export function listenForInstall(win: Window = window): void {
   win.addEventListener("appinstalled", () => {
     held = null;
     installedNow = true;
+    keepOfflineAfterInstall();
     changed();
   });
   changed();
@@ -154,7 +170,10 @@ export async function acceptInstall(): Promise<void> {
     await event.prompt();
     const { outcome } = await event.userChoice;
     if (outcome === "dismissed") rememberDismissed();
-    else installedNow = true;
+    else {
+      installedNow = true;
+      keepOfflineAfterInstall();
+    }
   } catch {
     // The browser refused to show it (already shown, or no longer installable): nothing to offer.
   }
@@ -167,16 +186,25 @@ export function dismissInstall(): void {
   changed();
 }
 
-/** The offer, kept current as the browser offers, the person answers, or the app gets installed. */
-export function useInstallOffer(): InstallOffer {
+function useSnapshot(): InstallSnapshot {
   return useSyncExternalStore(
     (cb) => {
       listeners.add(cb);
       return () => listeners.delete(cb);
     },
     () => snapshot,
-    () => null,
+    () => NOTHING,
   );
+}
+
+/** The offer, kept current as the browser offers, the person answers, or the app gets installed. */
+export function useInstallOffer(): InstallOffer {
+  return useSnapshot().offer;
+}
+
+/** Is Potyro on this device's home screen? (Not the native app, which keeps its own files.) */
+export function useOnHomeScreen(): boolean {
+  return useSnapshot().installed;
 }
 
 /** Tests only: forget everything this module has seen. */
@@ -185,6 +213,6 @@ export function resetInstallOfferForTests(): void {
   installedNow = false;
   dismissedNow = false;
   listening = false;
-  snapshot = null;
+  snapshot = NOTHING;
   listeners.clear();
 }

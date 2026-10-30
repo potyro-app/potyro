@@ -258,7 +258,7 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
               </small>
             </div>
           </div>
-          {/* Only where the browser can do it and Potyro is not on the home screen yet (#123). */}
+          {/* Adding to the home screen where the browser can do it; once added, offline use (#123). */}
           <InstallRow />
           {words ? (
             <div className="k-identity-words">

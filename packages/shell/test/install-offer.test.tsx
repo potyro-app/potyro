@@ -2,7 +2,9 @@
 //
 // The You panel's "Add Potyro to your home screen" row (#123): shown only when the browser offers
 // installing (a faked `beforeinstallprompt` here) or on Safari for iPhone, never once installed,
-// never again after "No thanks", and never as the browser's own banner.
+// never again after "No thanks", and never as the browser's own banner. And the offline half: the
+// row claims offline only for what the worker has kept, offers keeping the rest on demand, fetches
+// it once after an install, and on the home screen becomes a row of its own.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -16,6 +18,7 @@ import {
   type InstallEnv,
 } from "../src/install-offer.js";
 import { InstallRow } from "../src/install-row.js";
+import { connectOffline, resetOfflineForTests } from "../src/offline-ready.js";
 
 const IPHONE_SAFARI =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1";
@@ -49,8 +52,28 @@ function setStandalone(on: boolean): void {
     ({ matches: on && query === "(display-mode: standalone)", media: query, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList) as typeof window.matchMedia;
 }
 
+/** A worker that is ready: what the page posts to it, and a way for it to answer. */
+function fakeWorker() {
+  const posted: unknown[] = [];
+  let listener: ((event: MessageEvent) => void) | null = null;
+  const container = { addEventListener: (_type: "message", l: (event: MessageEvent) => void) => void (listener = l), startMessages: () => {} };
+  const reg = { active: { postMessage: (m: unknown) => void posted.push(m) } };
+  const say = (data: unknown) => act(() => listener!({ data, source: null } as unknown as MessageEvent));
+  return { container, reg, posted, say };
+}
+
+function connectWorker() {
+  const worker = fakeWorker();
+  connectOffline(worker.container, worker.reg, "/assets/index-abc.js");
+  return worker;
+}
+
+const KEEP = "Keep Potyro ready offline (about 40 MB)";
+const warms = (posted: unknown[]) => posted.filter((m) => (m as { type: string }).type === "warm").length;
+
 beforeEach(() => {
   resetInstallOfferForTests();
+  resetOfflineForTests();
   localStorage.clear();
   setUserAgent(ANDROID_CHROME);
   setStandalone(false);
@@ -112,7 +135,9 @@ describe("the row in the You panel", () => {
     act(() => void window.dispatchEvent(event));
     expect(event.defaultPrevented).toBe(true);
     expect(screen.getByRole("group", { name: "Add Potyro to your home screen" })).toBeTruthy();
-    expect(screen.getByText("It opens like an app and works offline.")).toBeTruthy();
+    // No worker (as in dev): no claim about offline at all.
+    expect(screen.getByText("It opens like an app.")).toBeTruthy();
+    expect(screen.queryByText(/offline/)).toBeNull();
   });
 
   it("Add replays the browser's dialog; once accepted the row is gone and nothing is remembered as declined", async () => {
@@ -177,6 +202,8 @@ describe("the row in the You panel", () => {
     expect(screen.getByRole("group", { name: "Add Potyro to your home screen" })).toBeTruthy();
     expect(screen.getByText(/Tap Share, then “Add to Home Screen”/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+    // Nothing about offline there: a home-screen app on iOS keeps its own files, apart from Safari's.
+    expect(screen.queryByText(/offline/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "No thanks" }));
     expect(screen.queryByRole("group", { name: "Add Potyro to your home screen" })).toBeNull();
   });
@@ -199,5 +226,98 @@ describe("the row in the You panel", () => {
       spy.mockRestore();
       set.mockRestore();
     }
+  });
+});
+
+describe("offline, in the row", () => {
+  it("claims only what is kept, and Keep Potyro ready offline fetches the rest on demand", () => {
+    const worker = connectWorker();
+    // No connection info here: nothing fetched without asking.
+    expect(warms(worker.posted)).toBe(0);
+    listenForInstall(window);
+    render(<InstallRow />);
+    act(() => void window.dispatchEvent(fakePromptEvent()));
+    expect(screen.getByText(/Home and the apps you have opened work offline\./)).toBeTruthy();
+    expect(screen.queryByText(/Everything works offline/)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: KEEP }));
+    expect(warms(worker.posted)).toBe(1);
+    const busy = screen.getByRole("button", { name: "Getting ready offline…" }) as HTMLButtonElement;
+    expect(busy.disabled).toBe(true);
+
+    // How much was kept, asked at load, crossing the request: still getting ready.
+    worker.say({ type: "offline", ready: false, warming: false, done: false });
+    expect(screen.getByRole("button", { name: "Getting ready offline…" })).toBeTruthy();
+
+    worker.say({ type: "offline", ready: true, warming: false, done: true });
+    expect(screen.getByText(/Everything works offline\./)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: KEEP })).toBeNull();
+  });
+
+  it("says when not everything downloaded, and offers it again", () => {
+    const worker = connectWorker();
+    listenForInstall(window);
+    render(<InstallRow />);
+    act(() => void window.dispatchEvent(fakePromptEvent()));
+    fireEvent.click(screen.getByRole("button", { name: KEEP }));
+    worker.say({ type: "offline", ready: false, warming: false, done: true });
+    expect(screen.getByText(/Not everything downloaded\. Try again when you have a good connection\./)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: KEEP }));
+    expect(warms(worker.posted)).toBe(2);
+  });
+
+  it("fetches the rest once Potyro is added, by the row's button or the browser's own menu", async () => {
+    const worker = connectWorker();
+    listenForInstall(window);
+    render(<InstallRow />);
+    act(() => void window.dispatchEvent(fakePromptEvent("accepted")));
+    await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Add" })));
+    expect(warms(worker.posted)).toBe(1);
+    cleanup();
+
+    resetInstallOfferForTests();
+    resetOfflineForTests();
+    const again = connectWorker();
+    listenForInstall(window);
+    act(() => void window.dispatchEvent(new Event("appinstalled")));
+    expect(warms(again.posted)).toBe(1);
+  });
+
+  it("not after an install when everything is kept already", () => {
+    const worker = connectWorker();
+    worker.say({ type: "offline", ready: true, warming: false, done: false });
+    listenForInstall(window);
+    act(() => void window.dispatchEvent(new Event("appinstalled")));
+    expect(warms(worker.posted)).toBe(0);
+  });
+
+  it("on the home screen, a row of its own in You → This device", () => {
+    setStandalone(true);
+    const worker = connectWorker();
+    listenForInstall(window);
+    render(<InstallRow />);
+    expect(screen.queryByRole("group", { name: "Add Potyro to your home screen" })).toBeNull();
+    const row = screen.getByRole("group", { name: "Offline" });
+    expect(row.textContent).toContain("Home and the apps you have opened work offline.");
+    fireEvent.click(screen.getByRole("button", { name: KEEP }));
+    expect(warms(worker.posted)).toBe(1);
+    worker.say({ type: "offline", ready: true, warming: false, done: true });
+    expect(screen.getByRole("group", { name: "Offline" }).textContent).toContain("Everything works offline.");
+    expect(screen.queryByRole("button", { name: KEEP })).toBeNull();
+  });
+
+  it("on the home screen with no worker, or in a browser tab, no offline row", () => {
+    setStandalone(true);
+    listenForInstall(window);
+    render(<InstallRow />);
+    expect(screen.queryByRole("group", { name: "Offline" })).toBeNull();
+    cleanup();
+
+    setStandalone(false);
+    resetInstallOfferForTests();
+    connectWorker();
+    listenForInstall(window);
+    render(<InstallRow />);
+    expect(screen.queryByRole("group", { name: "Offline" })).toBeNull();
   });
 });

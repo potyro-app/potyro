@@ -3040,6 +3040,10 @@ msgstr "Todo lo que contiene se elimina también ({inside})."
 msgid "Everything is still here too. Changed something here since? Bring them over again: what is already there is never doubled."
 msgstr "Aquí sigue todo también. ¿Cambiaste algo aquí desde entonces? Llévalas otra vez: lo que ya está allí nunca se duplica."
 
+#: ../shell/src/install-row.tsx
+msgid "Everything works offline."
+msgstr "Todo funciona sin conexión."
+
 #. A version's note in History: the app came with Potyro
 #: ../shell/src/version-notes.ts
 msgid "example app"
@@ -3322,6 +3326,11 @@ msgstr "Conocimiento general"
 msgid "Getting it from the shared app now — it opens here when it arrives, and stays on this device after."
 msgstr "Se está trayendo desde la app compartida — se abre aquí cuando llegue y después se queda en este dispositivo."
 
+#. Button, while Potyro's files download for offline use
+#: ../shell/src/install-row.tsx
+msgid "Getting ready offline…"
+msgstr "Preparando para usar sin conexión…"
+
 #: ../views/src/media-input.tsx
 msgid "Getting the photo"
 msgstr "Obteniendo la foto"
@@ -3480,6 +3489,10 @@ msgstr "Ocupa"
 #: ../shell/src/launcher.tsx
 msgid "Home"
 msgstr "Inicio"
+
+#: ../shell/src/install-row.tsx
+msgid "Home and the apps you have opened work offline."
+msgstr "Inicio y las apps que ya abriste funcionan sin conexión."
 
 #. The launcher's two panes: the tile wall and the list of all apps
 #. Which style the home screen has
@@ -3759,8 +3772,8 @@ msgid "It needs to know one thing"
 msgstr "Necesita saber una cosa"
 
 #: ../shell/src/install-row.tsx
-msgid "It opens like an app and works offline."
-msgstr "Se abre como una app y funciona sin conexión."
+msgid "It opens like an app."
+msgstr "Se abre como una app."
 
 #: ../shell/src/share-sheet.tsx
 msgid "It opens the app right away in any browser, with sample records. No account, nothing to install. None of your records go with it."
@@ -3895,6 +3908,11 @@ msgstr "¿Conservarla de todos modos? Esta versión: {loss}."
 #: ../shell/src/device-files.tsx
 msgid "Keep it on this device only"
 msgstr "Guardarlo solo en este dispositivo"
+
+#. Button: download the rest of Potyro so every app works without a connection. MB is megabytes
+#: ../shell/src/install-row.tsx
+msgid "Keep Potyro ready offline (about 40 MB)"
+msgstr "Tener Potyro listo sin conexión (unos 40 MB)"
 
 #: ../views/src/checklist.tsx
 msgid "Keep them"
@@ -4704,6 +4722,10 @@ msgstr "Sin confirmar"
 msgid "Not downloaded — tap to get it"
 msgstr "No descargado: toca para obtenerlo"
 
+#: ../shell/src/install-row.tsx
+msgid "Not everything downloaded. Try again when you have a good connection."
+msgstr "No se descargó todo. Vuelve a intentarlo cuando tengas buena conexión."
+
 #: ../views/src/detail.tsx
 #: ../views/src/steps.tsx
 msgid "Not found."
@@ -4945,6 +4967,12 @@ msgstr "Desactivado"
 #: ../shell/src/tile-editor.tsx
 msgid "Offer “Ask” in this app, to add records with AI."
 msgstr "Ofrecer “Ask” en esta app, para añadir registros con IA."
+
+#. Heading of the row about using Potyro without a connection
+#: ../shell/src/install-row.tsx
+#: ../shell/src/install-row.tsx
+msgid "Offline"
+msgstr "Sin conexión"
 
 #: ../shell/src/sync-status.tsx
 msgid "Offline · changes saved here"
@@ -6478,8 +6506,8 @@ msgstr "Toca el texto resaltado para cambiarlo."
 
 #. Safari on iPhone/iPad. Share and Add to Home Screen are what Safari itself calls the button and the menu entry: use the names Safari shows in your language
 #: ../shell/src/install-row.tsx
-msgid "Tap Share, then “Add to Home Screen”. It opens like an app and works offline."
-msgstr "Toca Compartir y luego “Añadir a pantalla de inicio”. Se abre como una app y funciona sin conexión."
+msgid "Tap Share, then “Add to Home Screen”. It opens like an app."
+msgstr "Toca Compartir y luego “Añadir a pantalla de inicio”. Se abre como una app."
 
 #: ../views/src/field-input.tsx
 msgid "Tap the map to place a point"
