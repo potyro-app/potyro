@@ -29,32 +29,59 @@ Finland, to confirm" (facts.md F-58: the address looks like Hetzner's Helsinki c
 - `https://potyro.com/privacy` and `https://potyro.com/terms`
 
 Today both paths on potyro.app answer with the app itself (the SPA fallback, facts.md F-65). The
-pages should be plain static HTML built from these files, outside the shell, so they load with no
-JavaScript and stay readable when the app does not start. Each page keeps a date at the top and the
-earlier versions stay reachable (for example `/privacy/2026-11-01`).
+pages are plain static HTML built from these files, so they load with no JavaScript and stay
+readable when the app does not start. Each page keeps a date at the top. Earlier versions are not
+reachable yet (for example `/privacy/2026-11-01`): nothing builds them.
+
+### How they are built (`packages/legal`, #117)
+
+- **The gate.** While either text still has a placeholder (`<LIKE THIS>`, outside comments and code)
+  or still starts with the **Draft.** note, no page is built and the build prints one line saying
+  what is left (`legal: /privacy and /terms not built: …`). The app and the gallery link the pages
+  only when they were built, so main deploys as it is and the pages and links appear with the first
+  build after the texts are finished. `packages/legal/test/legal.test.ts` holds the gate.
+- **The shell.** `packages/legal/src/vite.mjs` serves the pages in `pnpm dev`, emits them into
+  `packages/shell/dist` and sets `import.meta.env.VITE_POTYRO_LEGAL` for the links
+  (`packages/shell/src/legal-links.tsx`).
+- **The gallery.** `pnpm gallery:build` writes them into `dist/gallery` beside the landing page and
+  links them from its footer.
+- **What is emitted:** `privacy/index.html` and `privacy.html` (the same page, for servers that map a
+  folder and for those that try `.html`), the same for terms, and `legal/` (the stylesheet, the
+  design system's tokens and fonts, the logo). Every path in a page starts with `../`, so it works at
+  `/privacy` and at `/privacy/`.
+- **Headings are anchors.** The app links sections by their heading (`#voice`,
+  `#links-anyone-can-try` …, `PRIVACY_SECTIONS` in legal-links.tsx). Renaming a heading in
+  privacy.md fails `packages/shell/test/legal-links.test.tsx` until the link is moved too.
+- **A preview with the texts filled in:** `POTYRO_LEGAL_DIR=<folder with privacy.md and terms.md>
+  pnpm dev`, then open `/privacy`. The browser test does this with copies
+  (`e2e/legal-pages-trusted.spec.ts`).
 
 ## Where the app must link them
 
-| Place | Link | Why there |
-|---|---|---|
-| The footer of potyro.com and of the gallery | Privacy, Terms | The first page people see |
-| The You panel | Privacy, Terms | Where identity, sync and the relay are |
-| The share sheet | Privacy, beside "A link anyone can try" | The link's title, line and picture become public |
-| The space invite ("Use it together") | Privacy | The relay starts holding the app |
-| "Back up my apps" | Privacy | The same |
-| AI settings (Model settings) and the AI prompt in Edit tile | Privacy, the AI section | Data goes to OpenRouter and Google |
-| The voice question | Privacy, the voice section | Speech may leave the device |
-| The request card in the Studio, and wording suggestions | Privacy, the requests section | It becomes a public GitHub issue |
-| The Android and iOS store listings | Privacy | The stores require a policy URL (#123) |
+| Place | Link | Why there | In the code (shown once the pages are built) |
+|---|---|---|---|
+| The footer of potyro.com and of the gallery | Privacy, Terms | The first page people see | `gallery/src/build.mjs` footer |
+| The You panel | Privacy, Terms | Where identity, sync and the relay are | `identity-panel.tsx` (`LegalLinks`) |
+| The share sheet | Privacy, beside "A link anyone can try" | The link's title, line and picture become public | `share-sheet.tsx`, `#links-anyone-can-try` |
+| The space invite ("Use it together") | Privacy | The relay starts holding the app | `share-sheet.tsx`, `#sync-sharing-with-people-and-backup` |
+| "Back up my apps" | Privacy | The same | `backup-switch.tsx`, under the switch and in its question |
+| AI settings (Model settings) and the AI prompt | Privacy, the AI section | Data goes to OpenRouter and Google | `engine-settings.tsx` (`#building-apps-in-the-studio-and-ask`); the AI question (`app-ai.ts`, `#ai-inside-apps-and-the-free-allowance`) |
+| The voice question | Privacy, the voice section | Speech may leave the device | `app-speech.ts`, `studio-voice.ts`, `#voice` |
+| The request card in the Studio, and wording suggestions | Privacy, the requests section | It becomes a public GitHub issue | `platform-request-card.tsx`, `suggest-wording.tsx` |
+| The Android and iOS store listings | Privacy | The stores require a policy URL (#123) | not in the code: the listings |
 
-None of these links exists yet. Adding them is shell work, with words through Lingui.
+The AI switch in Edit tile (`tile-editor.tsx`) has no link of its own: the question asked before an
+app's first AI request has it. A link opens the page beside Potyro (a new tab).
 
 ## Found while checking, to fix in the code
 
-- `packages/shell/src/backup-switch.tsx` says turning sync off for an app takes it "back off the
-  relay". It does not: `toggle-sync.ts` deletes nothing, and the relay keeps everything (F-20). The
-  same switch says "The relay only ever sees encrypted data", but names and who-shares-with-whom
-  are readable there (F-16, F-17).
+- ~~`packages/shell/src/backup-switch.tsx` says turning sync off for an app takes it "back off the
+  relay"~~, and ~~"The relay only ever sees encrypted data"~~. Fixed (#117): the switch now says
+  turning sync off deletes nothing (F-20), and that the apps' contents are encrypted while the name
+  and who shares with whom can be seen on the relay (F-16, F-17). The You panel's relay line says
+  "It cannot read your records" instead of "only ever sees encrypted data".
+- The request card said "a public list of requests"; it now says the request is posted publicly on
+  GitHub, and the wording form says the same (F-51a).
 - `docs/16-deployment.md` said the link and request services were not deployed. All four services
   answer on potyro.app (F-32, F-41, F-51b, F-54a); docs/16 says so since the #458 pass (2026-10-30).
 - There is no button to take a demo link down, though the device keeps its delete token (F-29).
@@ -96,4 +123,7 @@ None of these links exists yet. Adding them is shell work, with words through Li
 - The owner fills the placeholders and confirms the mailboxes exist.
 - Counsel reads both texts and the open points above. Record the date here.
 - The F-07 logging question is settled and the page says it.
-- The pages are served at the four URLs, and the links above are in the app.
+- The pages are served at the four URLs (the build makes them once the placeholders are filled;
+  potyro.app's Caddy must serve `privacy.html` or `privacy/index.html` at `/privacy`, docs/16), and
+  the links above show in the app.
+- The pages are English only. Which other languages, and which text prevails, is open point 13.
