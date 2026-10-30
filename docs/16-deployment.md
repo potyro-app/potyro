@@ -869,7 +869,7 @@ What it accepts and does, so you know what you are putting on the internet:
 | What it reads | Each frame's size and rate, and whether a text frame begins with the envelope's reserved prefix. Never the payload. |
 | Limits | 64 KiB a message, 16 members a room, 8 rooms and 64 connections at once per address, 30 messages/s (bursts of 60) and 64 KiB/s (bursts of 256 KiB) per connection, 1 MiB queued for a slow member, 2000 rooms and 5000 connections in all; a room with no message for 30 minutes is closed. Each one closes with its own code (docs/26 §3). |
 | Address | The **last** `X-Forwarded-For` entry — the one Apache appends. The first entry is whatever the client sent, so it is never used for limits. |
-| Origins | Browsers only from `ROOMS_ORIGINS`; unset, `https://apps.vaz.io`, `https://localhost` (the Android app) and `capacitor://localhost` (`DEFAULT_ORIGINS`). Anything else gets HTTP 403 on the upgrade. potyro.app's accepts `https://potyro.app`. |
+| Origins | By default browsers only from `https://potyro.app`, `https://localhost` (the Android app) and `capacitor://localhost` (`DEFAULT_ORIGINS` in `src/server.ts`; `https://apps.vaz.io` until #458); anything else gets HTTP 403 on the upgrade. potyro.app's accepts `https://potyro.app`. |
 | Keepalive | A ping every 30 s; a member that has not answered the last one is dropped. That also keeps Apache's `ProxyTimeout 600` from cutting a quiet room. |
 | Logs | Its own start and stop. Never a payload, a room id, a name or an address. |
 
@@ -894,7 +894,7 @@ docker run -d --name potyro-rooms --restart unless-stopped \
   -v /opt/potyro-rooms:/app:ro -w /app \
   node:22-bookworm \
   node --experimental-strip-types src/server.ts
-docker logs potyro-rooms   # "[rooms] origins https://apps.vaz.io https://localhost capacitor://localhost, listening on 0.0.0.0:4205"
+docker logs potyro-rooms   # "[rooms] origins https://potyro.app https://localhost capacitor://localhost, listening on 0.0.0.0:4205"
 ```
 
 No secrets, so no env file. `-p 127.0.0.1:…` keeps it reachable only through Apache, for the same
@@ -905,7 +905,9 @@ internet with no gate in front of it. `--exclude node_modules` keeps the server'
 Every limit is an environment variable (`ROOMS_MAX_MEMBERS`, `ROOMS_MESSAGES_PER_SECOND`, …, the
 full list at the top of `src/server.ts`); a value that is not a positive number stops it starting.
 `ROOMS_ORIGINS` replaces the origin list (comma-separated, or `*`). Add `-e NAME=value` to the
-`docker run` and re-create the container to change one.
+`docker run` and re-create the container to change one. The default named `https://apps.vaz.io`
+until #458: a relay re-created from a later commit for a site that still serves pages from there
+needs `-e ROOMS_ORIGINS=https://apps.vaz.io,https://localhost,capacitor://localhost`.
 
 ### 2. Put it behind the site's gate, with the upgrade
 

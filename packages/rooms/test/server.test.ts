@@ -18,7 +18,7 @@ describe("configuration from the environment", () => {
 
   it("allows the site and the Android app by default, a list, or any origin", () => {
     expect(originsFromEnv(undefined)).toEqual(DEFAULT_ORIGINS);
-    expect(DEFAULT_ORIGINS).toEqual(["https://apps.vaz.io", "https://localhost", "capacitor://localhost"]);
+    expect(DEFAULT_ORIGINS).toEqual(["https://potyro.app", "https://localhost", "capacitor://localhost"]);
     expect(originsFromEnv(" https://a.example , https://b.example ")).toEqual(["https://a.example", "https://b.example"]);
     expect(originsFromEnv("*")).toBe("*");
   });
