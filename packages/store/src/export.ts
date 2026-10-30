@@ -16,7 +16,11 @@ import type { PotyroRecord } from "potyro";
 import type { AppDeclaration } from "./app-declaration.js";
 import { MODULES_DIR, SRC_DIR, type AppLock } from "./app-lock.js";
 
-export type ExportMode = "snapshot" | "mergeable";
+/**
+ * Every export is a snapshot: the current values, with no sync history. Merging two devices' edits
+ * is what sync does, not a file, and import replaces the app's records with the bundle's.
+ */
+export type ExportMode = "snapshot";
 
 export interface ExportManifest {
   format: "potyro-bundle/1";
@@ -25,7 +29,7 @@ export interface ExportManifest {
   schemaVersion: number;
   provenance: string;
   grantedCaps: string[];
-  /** `snapshot` = stripped, human-friendly, one-way. `mergeable` = full state (CRDT once KA-08). */
+  /** Always `snapshot`. Reading a bundle normalises whatever an older build wrote here to it. */
   mode: ExportMode;
   exportedAt: string;
   entities: string[];
@@ -130,6 +134,9 @@ export function unpackBundle(zip: Uint8Array): UnpackedBundle {
   const manifest = JSON.parse(strFromU8(manifestBytes)) as ExportManifest;
   if (!isBundleFormat(manifest.format)) throw new Error(`bundle: unsupported format "${manifest.format}"`);
   manifest.format = "potyro-bundle/1"; // one name from here on, whichever build wrote it
+  // The type once also named a `mergeable` mode that no build ever produced; a file that says so,
+  // or says nothing, is read as what every export is: a snapshot.
+  manifest.mode = "snapshot";
   const app = files[APP];
   return { manifest, sqlite, appSource: app ? strFromU8(app) : undefined };
 }
