@@ -24,6 +24,8 @@ vi.mock("../src/ask-geocode.js", () => ({
 }));
 
 const { AskPanel } = await import("../src/ask-panel.js");
+const { checkFreeAi, resetFreeAi } = await import("../src/free-ai.js");
+const { resetRelayMemory } = await import("../src/app-ai.js");
 const { spentIn } = await import("../src/ask-spend.js");
 
 const openrouter: EngineConfig = { ...DEFAULT_ENGINE_CONFIG, engine: "openrouter", openrouterKey: "sk-or" };
@@ -42,6 +44,8 @@ const chip = (name: RegExp) => screen.queryByRole("checkbox", { name }) as HTMLI
 
 beforeEach(() => {
   localStorage.clear();
+  resetRelayMemory();
+  resetFreeAi();
   seen.placed = 0;
   seen.asks.length = 0;
 });
@@ -103,5 +107,29 @@ describe("what Ask cost, per engine", () => {
     await ask();
     expect(screen.queryByText(/OpenRouter credit/)).toBeNull();
     expect(spentIn("places")).toBeCloseTo(0.5);
+  });
+});
+
+describe("Ask on Potyro's free engine", () => {
+  const potyro: EngineConfig = { ...DEFAULT_ENGINE_CONFIG, engine: "potyro" };
+  const serving = (async () => new Response(JSON.stringify({ ok: true, chat: true }), { status: 200 })) as unknown as typeof fetch;
+
+  it("follows what the relay says: refused before /health answers, ready the moment it does", async () => {
+    open(potyro);
+    // The panel's own loading done: nothing of its own left to re-render it.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(screen.getByRole("note").textContent).toMatch(/isn't available right now/);
+    await act(async () => {
+      await checkFreeAi({ url: "https://apps.test/ai/health", fetch: serving, online: () => true });
+    });
+    expect(screen.queryByRole("note")).toBeNull();
+  });
+
+  it("says where the request goes: through Potyro, to OpenRouter and the model it picks", async () => {
+    await checkFreeAi({ url: "https://apps.test/ai/health", fetch: serving, online: () => true });
+    open(potyro);
+    expect(screen.getByText(/^Potyro sees how this app is organised/).textContent).toMatch(/Potyro passes all of this to OpenRouter and the model it picks\.$/);
   });
 });
