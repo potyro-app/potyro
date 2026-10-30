@@ -9,7 +9,9 @@ order: 23
 
 Status: built, and the free allowance's relay is deployed on potyro.app (`/ai/health` answers ok,
 checked 2026-10-30). Where it is not running, apps use the person's own OpenRouter key, and say
-plainly when there is none (docs/16 "AI for apps").
+plainly when there is none (docs/16 "AI for apps"). The relay's chat route for the Studio and Ask
+(#468) is merged but not running there yet: on 2026-10-30 `POST https://potyro.app/ai/v1/chat/completions`
+answered 404, and nothing in the shell sends it.
 
 ## Why
 
@@ -104,13 +106,17 @@ Owner decision 2026-10-15: **both**, free first.
    monthly and a daily spending cap for the whole service, checked before every dispatch** with the
    most the request could cost on top of every request still out. A device id is random and says nothing about the
    person.
-   The same relay also serves **the Studio and Ask**, once the shell has the engine for it (E1/E3):
-   `POST /ai/v1/chat/completions` takes an OpenAI-shaped chat request (its messages, tools and
-   reasoning as the Studio's loop writes them), sends it on only for an allowlisted model, with the
-   token cap clamped and `data_collection: "deny"` forced, pipes the answer back as it streams, and
-   holds each device to a monthly allowance in US dollars, debited from OpenRouter's `usage.cost`.
-   Web search is refused there until a paid plan exists (none does). Both routes share the
-   monthly and the daily cap. Deployment and every limit: docs/16 "AI for apps".
+   Deployment and every limit: docs/16 "AI for apps".
+
+   **The chat route** (#468, `packages/ai-relay/src/chat.ts`) is the same relay's passthrough for
+   the Studio and Ask, not for apps: `POST /ai/v1/chat/completions` takes an OpenAI-shaped chat
+   request (messages, tools, reasoning), sends it on only for an allowlisted model with the token cap
+   clamped and `data_collection: "deny"` forced, pipes the answer back as it streams, and holds each
+   device to a monthly allowance in US dollars, debited from OpenRouter's `usage.cost`. Web search is
+   refused until a paid plan exists (none does). It shares the service's monthly and daily caps with
+   `/complete`. It is in the code and its tests, not yet in the running relay, and the shell does not
+   call it yet (the E1/E3 engine); docs/16 "AI for apps" has its limits, its kill switch and how to
+   check it once it runs.
 2. **Then the person's own key** — the OpenRouter key in Model settings (session-only, as for Ask)
    — when the allowance is used up, the relay is not reachable, or it is not deployed.
 3. **Neither:** the call throws, in words the shell shows as the action's failure:

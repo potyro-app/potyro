@@ -61,7 +61,9 @@ engine, behind a watchdog and a crash-loop guard (docs/22 §11, docs/05 "Custom 
   never has them). Self-navigation: the sandbox lets the frame navigate itself and its own CSP
   cannot stop it, so **the shell is served with `frame-src 'none'`** — a `<meta>` in
   `shell/index.html` (all the Capacitor WebView gets), and the same policy as a header from the dev
-  server and `vite preview` (`shell/vite.config.ts`) and Apache (`deploy/apps.vaz.io.conf`). A
+  server and `vite preview` (`shell/vite.config.ts`), Apache (`deploy/apps.vaz.io.conf`, the first site)
+  and potyro.app's own server (its config is not in the repository; `curl -I https://potyro.app/`
+  shows the header, checked 2026-10-30). A
   srcdoc is not a fetch, so the realm still loads. `e2e/shell-csp-*.spec.ts` checks it where it is
   served, with a control page that has no policy.
 - **Limits, by a watchdog** (`RealmLoadedApp`). Each call has a deadline (1 s, paused while a

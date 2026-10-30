@@ -42,8 +42,8 @@ Two forms, one viewer:
 
 | Form | Looks like | Needs | Preview card |
 |---|---|---|---|
-| **Hosted** (default) | `https://apps.vaz.io/s/<id>#k=<key>` | the share service (§4) | yes |
-| **Inline** (fallback) | `https://apps.vaz.io/#try=<package>` | nothing — a static site | no (the site's own) |
+| **Hosted** (default) | `https://potyro.app/s/<id>#k=<key>` | the share service (§4) | yes |
+| **Inline** (fallback) | `https://potyro.app/#try=<package>` | nothing — a static site | no (the site's own) |
 
 Both carry the same thing: a **demo package**, an ordinary `potyro-app/1` zip (#253) holding
 
@@ -266,9 +266,9 @@ land beside the demo:
 
 | Form | Looks like |
 |---|---|
-| Hosted demo + target | `https://apps.vaz.io/s/<id>#k=<key>&app=<line>&to=<page>&p.<name>=<value>…` |
-| Inline demo + target | `https://apps.vaz.io/#try=<package>&app=<line>&to=<page>&p.<name>=<value>…` |
-| Target only | `https://apps.vaz.io/#app=<line>&to=<page>&p.<name>=<value>…` — when no demo could be made |
+| Hosted demo + target | `https://potyro.app/s/<id>#k=<key>&app=<line>&to=<page>&p.<name>=<value>…` |
+| Inline demo + target | `https://potyro.app/#try=<package>&app=<line>&to=<page>&p.<name>=<value>…` |
+| Target only | `https://potyro.app/#app=<line>&to=<page>&p.<name>=<value>…` — when no demo could be made |
 
 All of it is in the fragment, so no server sees a game's code. `remix=1` still means Make it mine and
 may stand beside a target.
