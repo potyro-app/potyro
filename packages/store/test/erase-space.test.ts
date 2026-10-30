@@ -102,6 +102,7 @@ let world: World;
 let crypto: Crypto;
 
 beforeAll(async () => {
+  if (!hasNodeSqlite) return;
   crypto = await WasmCrypto.create();
   const dir = mkdtempSync(join(tmpdir(), "erase-space-"));
   const file = join(dir, "sync.db");
@@ -164,6 +165,7 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(() => {
+  if (!hasNodeSqlite) return;
   if (world?.dir) rmSync(world.dir, { recursive: true, force: true });
 });
 
