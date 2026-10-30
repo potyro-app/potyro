@@ -16,10 +16,10 @@ const RECEIPT = {
 const PHOTO = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3])], { type: "image/jpeg" });
 
 function setup(opts: { provenance?: "trusted" | "untrusted"; permissions?: PermissionManifest; answer?: boolean; ai?: AiCap; replies?: Array<string | Error> } = {}) {
-  const asked: Array<{ message: string; detail?: string }> = [];
+  const asked: Array<{ message: string; detail?: string; privacy?: string }> = [];
   const ui: UiBridge = {
     toast: () => {},
-    confirm: async (message, o) => (asked.push({ message, detail: o?.detail }), opts.answer ?? true),
+    confirm: async (message, o) => (asked.push({ message, detail: o?.detail, ...(o?.privacy ? { privacy: o.privacy } : {}) }), opts.answer ?? true),
     prompt: async () => null,
     pick: async () => null,
   };
@@ -197,6 +197,18 @@ describe("who may use it", () => {
     expect(asked[0]!.message).toMatch(/send some text/);
     expect(ai.calls).toHaveLength(0);
     expect(ai.standing()).toBeUndefined();
+  });
+
+  it("the platform's words may link the privacy page's AI section; the fallback links nothing (#117)", async () => {
+    const plain = setup({ replies: ["a"] });
+    await plain.mediated.ai!.ask("one");
+    expect(plain.asked[0]!.privacy).toBeUndefined();
+    const ai = Object.assign(new FakeAi(["a"]), {
+      consentWords: () => ({ message: "May it?", detail: "Only this.", ok: "Allow", cancel: "Not now", privacy: "ai" as const }),
+    });
+    const linked = setup({ ai });
+    await linked.mediated.ai!.ask("one");
+    expect(linked.asked).toEqual([{ message: "May it?", detail: "Only this.", privacy: "ai" }]);
   });
 
   it("two calls at once ask one question", async () => {

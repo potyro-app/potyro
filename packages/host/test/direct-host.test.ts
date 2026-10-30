@@ -298,6 +298,16 @@ describe("ctx.ui questions", () => {
     expect(form).toHaveBeenCalledOnce();
   });
 
+  it("confirm hands on the app's words and options, never a link to Potyro's privacy page (#117)", async () => {
+    const confirm = vi.fn(async () => true);
+    const ctx = await base({ confirm });
+    // A sealed app's options arrive as whatever it sent: `privacy` is the platform's to set.
+    await ctx.ui.confirm({ en: "Delete it?" }, { detail: "Gone for good", ok: "Delete", destructive: true, privacy: "ai" } as never);
+    expect(confirm).toHaveBeenLastCalledWith("Delete it?", { detail: "Gone for good", ok: "Delete", cancel: undefined, destructive: true });
+    await ctx.ui.confirm("Sure?");
+    expect(confirm).toHaveBeenLastCalledWith("Sure?", undefined);
+  });
+
   it("share hands on checked words and an http(s) link, and is `false` headless", async () => {
     expect(await (await base({})).ui.share({ text: "hi" })).toBe(false);
     const share = vi.fn(async () => true);

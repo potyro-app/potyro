@@ -516,8 +516,18 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       // Words in, strings out: a map shows in `ctx.locale`, so `toast({ en, pl })` never reads
       // "[object Object]" (#302).
       toast: (msg) => ui.toast(say(msg)),
+      // Field by field, never the app's object spread: a sealed app's options arrive as whatever it
+      // sent, and `privacy` (a link to Potyro's own privacy page) is the platform's to give (#117).
       confirm: (msg, opts) =>
-        ui.confirm(say(msg), opts && { ...opts, detail: opts.detail === undefined ? undefined : say(opts.detail), ok: opts.ok === undefined ? undefined : say(opts.ok), cancel: opts.cancel === undefined ? undefined : say(opts.cancel) }),
+        ui.confirm(
+          say(msg),
+          opts && {
+            detail: opts.detail === undefined ? undefined : say(opts.detail),
+            ok: opts.ok === undefined ? undefined : say(opts.ok),
+            cancel: opts.cancel === undefined ? undefined : say(opts.cancel),
+            ...(opts.destructive === undefined ? {} : { destructive: opts.destructive }),
+          },
+        ),
       prompt: (msg, opts) => ui.prompt(say(msg), opts && { default: opts.default }),
       pick: (items, opts) => ui.pick(items, opts),
       sheet: async <T,>(opts: { title?: Words; items: UiItem<T>[] }) => (ui.sheet ? ui.sheet(checkItems(opts, say)) : null),
