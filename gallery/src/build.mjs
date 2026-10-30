@@ -13,6 +13,8 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync,
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { hourOf, LANGUAGES, readGallery, remixLink, shownApps, SOURCE_LANGUAGE } from "./data.mjs";
+// The privacy page and the terms of use (#117): built only once docs/legal has no placeholder left.
+import { legalSite } from "../../packages/legal/src/build.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const GALLERY_DIR = resolve(here, "..");
@@ -145,7 +147,8 @@ const ICON = {
  * The page, as HTML. Pure: everything it says comes from its arguments.
  * @param {import("./data.mjs").Gallery} gallery
  * @param {Record<string, Record<string, string>>} strings
- * @param {{ css: string; js: string; shots: Record<string, { width: number; height: number }>; logos?: Record<string, string> }} assets
+ * @param {{ css: string; js: string; shots: Record<string, { width: number; height: number }>; logos?: Record<string, string>; legal?: boolean }} assets
+ *   `legal`: the folder has /privacy and /terms, so the footer links them.
  */
 export function renderPage(gallery, strings, assets) {
   const s = strings[SOURCE_LANGUAGE];
@@ -302,7 +305,13 @@ export function renderPage(gallery, strings, assets) {
     <p class="privacy" data-t="privacy">${e(s.privacy)}</p>
     <nav class="foot-links" aria-label="Potyro">
       <a href="${APP_SITE}" data-t="open">${e(s.open)}</a>
-      <a href="${e(mail)}" data-mail="${e(CONTACT)}" data-t="report">${e(s.report)}</a>
+      <a href="${e(mail)}" data-mail="${e(CONTACT)}" data-t="report">${e(s.report)}</a>${
+        assets.legal
+          ? `
+      <a href="privacy/" data-t="legalPrivacy">${e(s.legalPrivacy)}</a>
+      <a href="terms/" data-t="legalTerms">${e(s.legalTerms)}</a>`
+          : ""
+      }
     </nav>
     <p class="made">${symbol} <span data-t="made">${e(s.made)}</span></p>
   </footer>
@@ -334,7 +343,8 @@ export function imageSize(b) {
  * Build the gallery into `out`: index.html, its stylesheets (the design system's tokens, the hours,
  * the page's own), script, favicon, fonts, logo files and the screenshots it shows. `out` is emptied
  * first, so a screenshot dropped from the gallery is dropped from the site.
- * @param {{ data?: string; shots?: string; out?: string; allowLocal?: boolean }} [opts]
+ * @param {{ data?: string; shots?: string; out?: string; allowLocal?: boolean; legal?: string }} [opts]
+ *   `legal`: the folder of legal texts (default docs/legal, or `POTYRO_LEGAL_DIR`).
  */
 export function buildGallery(opts = {}) {
   const dataPath = resolve(opts.data ?? join(GALLERY_DIR, "gallery.json"));
@@ -372,9 +382,16 @@ export function buildGallery(opts = {}) {
     "wordmark-large": readFileSync(join(DESIGN, "logo", "wordmark-large.svg"), "utf8"),
     tagline: readFileSync(join(DESIGN, "logo", "tagline.svg"), "utf8"),
   };
-  const html = renderPage(gallery, strings, { css: shortHash(Buffer.concat([tokens, Buffer.from(hours), css])), js: shortHash(js), shots, logos });
+  // The legal pages beside the gallery, at the same paths as on potyro.app — or none, and the
+  // footer does not link them (packages/legal).
+  const legal = legalSite({ dir: opts.legal });
+  for (const [path, body] of legal.files) {
+    mkdirSync(dirname(join(out, path)), { recursive: true });
+    writeFileSync(join(out, path), body);
+  }
+  const html = renderPage(gallery, strings, { css: shortHash(Buffer.concat([tokens, Buffer.from(hours), css])), js: shortHash(js), shots, logos, legal: legal.ready });
   writeFileSync(join(out, "index.html"), html);
-  return { out, published: published.length, soon: shownApps(gallery).soon.length };
+  return { out, published: published.length, soon: shownApps(gallery).soon.length, legal: legal.ready ? null : legal.notice };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -388,6 +405,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   try {
     const done = buildGallery({ data: at(take("--data")), shots: at(take("--shots")), out: at(take("--out")), allowLocal: args.includes("--allow-local") });
     console.log(`gallery: ${done.published} apps and ${done.soon} coming soon → ${done.out}`);
+    if (done.legal) console.log(done.legal);
   } catch (e) {
     console.error(e instanceof Error ? e.message : e);
     process.exit(1);
