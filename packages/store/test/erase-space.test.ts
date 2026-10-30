@@ -324,7 +324,7 @@ describe.skipIf(!hasNodeSqlite)("what erasing on the relay cannot do", () => {
   }, 30_000);
 });
 
-describe("erasing an account from the relay's database", () => {
+describe.skipIf(!hasNodeSqlite)("erasing an account from the relay's database", () => {
   it("an account that shares nothing: the account, its profile and its spaces all go", async () => {
     const file = copyOfDb();
     const all = ids(file);
