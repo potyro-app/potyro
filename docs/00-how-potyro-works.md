@@ -121,7 +121,7 @@ Power and safety are different axes. The same source runs direct when it is your
 it is not, and the code does not know which. The rest of this page is those two axes, layer by layer.
 
 ```mermaid
-flowchart LR
+flowchart TB
   A["App module<br/>shape as data + logic as functions"] --> S["Schema<br/>validates the shape (Zod)"]
   S --> H["Host<br/>chooses the boundary, builds ctx"]
   H --> R["Runtime<br/>runs the logic with ctx"]
@@ -285,8 +285,8 @@ sequenceDiagram
   V->>R: runAction(entity, key, id, input)
   R->>H: callAction(record, ctx)
   H->>A: action(record, ctx)
-  A->>S: ctx.data.update(...)  (through the mediated ctx when sealed)
-  S-->>R: subscribe: entity changed
+  A->>S: ctx.data.update(…) through ctx
+  S-->>R: entity changed
   R-->>V: re-query, re-render
 ```
 
@@ -445,15 +445,15 @@ JSON blob inside a CoMap it would collapse to whole-record last-write-wins, the 
 disqualified Evolu.
 
 ```mermaid
-flowchart TB
-  G[Group: the space, members and roles] --> root[root CoMap]
-  root --> ent["entities: CoMap&lt;entity, index&gt;"]
-  ent --> idx["index: CoMap&lt;recordId, record&gt;"]
-  idx --> rec["record CoMap: field → value (per-key merge)"]
-  root --> kv["kv: ctx.storage, and the published app source"]
-  root --> blobs["blobs: photos, files' bytes"]
-  root --> meta["meta: schemaVersion, appVersion"]
-  root --> chat["chat: messages beside the data, never reachable from ctx"]
+flowchart LR
+  G["Group<br/>the space: members and roles"] --> root["root CoMap"]
+  root --> ent["entities<br/>CoMap&lt;entity, index&gt;"]
+  ent --> idx["index<br/>CoMap&lt;recordId, record&gt;"]
+  idx --> rec["record CoMap<br/>field → value<br/>(per-key merge)"]
+  root --> kv["kv<br/>ctx.storage, and the<br/>published app source"]
+  root --> blobs["blobs<br/>photos, files' bytes"]
+  root --> meta["meta<br/>schemaVersion, appVersion"]
+  root --> chat["chat<br/>messages beside the data,<br/>never reachable from ctx"]
 ```
 
 Chat sits beside the entity tree. It is in the space, so it syncs and is encrypted to the members,
@@ -643,7 +643,7 @@ sequenceDiagram
   participant New as new site (opened at /?move=channel)
   New-->>Old: hello
   Old->>New: offer: manifest + digest
-  Note over New: shown to the person; nothing taken yet
+  Note over New: shown to the person, nothing taken yet
   New-->>Old: send (only after "Bring them in")
   Old->>New: archive (accepted only if its digest is the offer's)
   New-->>Old: done | failed
@@ -930,9 +930,9 @@ person's records. Building it opens the person's store only to copy files the ap
 and, when the app has a lock, to read its own modules.
 
 ```mermaid
-flowchart LR
-  dev[the sharer's device] -- "ciphertext (AES-GCM, fresh key per link)<br/>+ title and preview image" --> svc[share service<br/>packages/share-links]
-  dev -- "https://site/s/&lt;id&gt;#k=&lt;key&gt;" --> chat[a chat]
+flowchart TB
+  dev[the sharer's device] -- "ciphertext (AES-GCM, a fresh<br/>key per link) + title and<br/>preview image" --> svc[share service<br/>packages/share-links]
+  dev -- "the link: /s/&lt;id&gt;, with the<br/>key in its fragment" --> chat[a chat]
   chat --> viewer[the viewer's device]
   svc -- ciphertext --> viewer
   viewer -- "decrypts with the key from the fragment,<br/>installs sealed with its demo records" --> app[the app, running]
