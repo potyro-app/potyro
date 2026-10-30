@@ -1,7 +1,7 @@
 // The gallery's data and page (docs/24 §10): the data is checked before anything is built or
 // published, the words are in all six languages, and the page asks nothing of anyone else.
 import { describe, expect, it } from "vitest";
-import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LOCALES } from "../../packages/i18n/src/locale.ts";
@@ -165,6 +165,42 @@ describe("the page", () => {
     expect(page).toContain('src="shots/groceries.png" width="1" height="1"');
     expect(() => readFileSync(join(dir, "out", "shots", "stray.png"))).toThrow();
     for (const f of ["gallery.css", "gallery.js", "favicon.svg", "shots/groceries.png"]) expect(readFileSync(join(dir, "out", f)).length).toBeGreaterThan(0);
+  });
+
+  it("links the privacy page and the terms only when it has them (#117)", () => {
+    expect(html()).not.toMatch(/href="(privacy|terms)\//);
+    const page = renderPage(published(), readStrings(strings), { css: "c", js: "j", shots: {}, legal: true });
+    expect(page).toContain('<a href="privacy/" data-t="legalPrivacy">Privacy</a>');
+    expect(page).toContain('<a href="terms/" data-t="legalTerms">Terms of use</a>');
+  });
+
+  it("builds the legal pages beside the page only once their texts are finished", () => {
+    const dir = mkdtempSync(join(tmpdir(), "gallery-test-"));
+    const data = join(dir, "gallery.json");
+    mkdirSync(join(dir, "shots"));
+    writeFileSync(join(dir, "shots", "groceries.png"), PNG);
+    writeFileSync(data, JSON.stringify(published()));
+    // The texts in the repository still have their placeholders: no pages, no links, and the reason.
+    const waiting = buildGallery({ data, out: join(dir, "waiting") });
+    expect(waiting.legal).toMatch(/^legal: \/privacy and \/terms not built/);
+    expect(existsSync(join(dir, "waiting", "privacy"))).toBe(false);
+    expect(readFileSync(join(dir, "waiting", "index.html"), "utf8")).not.toContain('data-t="legalPrivacy"');
+    // Finished copies: both pages, their own styles, and the footer links.
+    const legal = join(dir, "legal");
+    mkdirSync(legal);
+    for (const page of ["privacy", "terms"]) {
+      const md = readFileSync(join(here, "..", "docs", "legal", `${page}.md`), "utf8")
+        .replace(/^> \*\*Draft\.\*\*[^\n]*\n(?:>[^\n]*\n)*/m, "")
+        .replace(/<[A-Z][^<>\n]*>/g, "filled");
+      writeFileSync(join(legal, `${page}.md`), md);
+    }
+    const done = buildGallery({ data, out: join(dir, "out"), legal });
+    expect(done.legal).toBeNull();
+    for (const f of ["privacy/index.html", "terms/index.html", "legal/legal.css", "legal/tokens.css", "legal/fonts/figtree-latin.woff2"]) expect(existsSync(join(dir, "out", f))).toBe(true);
+    expect(readFileSync(join(dir, "out", "index.html"), "utf8")).toContain('href="privacy/"');
+    // potyro.com's CSP is style-src 'self' and script-src 'self': no inline style, no script.
+    const privacy = readFileSync(join(dir, "out", "privacy", "index.html"), "utf8");
+    expect(privacy).not.toMatch(/\sstyle="|<style|<script/);
   });
 
   it("refuses to build a published app without its screenshot", () => {
