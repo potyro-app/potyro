@@ -11,7 +11,10 @@ test("every language chunk is precached, and switching language works offline", 
   await page.evaluate(() => navigator.serviceWorker.ready);
 
   const listed = await page.evaluate(async () => ((await (await fetch("/i18n-precache.json")).json()) as { files: string[] }).files);
-  expect(listed.length).toBe(5); // pt-BR, de, es, pl, it — English is in the main chunk
+  // Five language chunks — pt-BR, de, es, pl, it; English is in the main chunk — plus the apps' icon
+  // table (#425), which the same manifest precaches so an app first opened on a plane has its icons.
+  expect(listed.filter((f) => /\/messages-/.test(f)).length).toBe(5);
+  expect(listed.filter((f) => /lucide-paths/.test(f)).length).toBe(1);
   await expect
     .poll(async () => page.evaluate(async (files) => {
       const cached = await Promise.all(files.map((f) => caches.match(f)));
