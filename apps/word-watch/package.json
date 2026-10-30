@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Word Watch: words you pick, found live in Bluesky's public firehose (Jetstream) \u2014 matches, who and what, per-minute counts (ctx.caps.network.socket, docs/28)",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs word-watch.app.ts -o dist/word-watch.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",

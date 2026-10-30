@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "A small canvas game: Breakout, with its levels shipped as a file",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs breakout.app.ts levels.json -o dist/breakout.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",

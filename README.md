@@ -113,3 +113,24 @@ To write an app outside this repo: `npm create potyro@latest my-app`, then
 The strategy is docs/09 and the one-page summary is in
 [How Potyro works](docs/00-how-potyro-works.md#testing-in-one-page). To try Potyro and give feedback,
 see docs/12.
+
+## What is open, what is hosted
+
+Everything in this repository is open source under the Apache License 2.0: the runtime, the shell,
+the Studio, the apps, and the servers around them — the sync relay's setup, the AI relay, the rooms
+relay, the share-link service, and the paid plan's service when it is built (it is not yet, and
+nothing is sold). potyro.app (the app) and potyro.com (the gallery) are hosted instances of this
+code, run by the maintainer. You can run your own: [docs/16](docs/16-deployment.md) says how.
+
+## Security
+
+Shared apps run sealed; [docs/31](docs/31-security-model.md) explains the box, what our servers can
+see and what is not protected. To report a vulnerability, see [SECURITY.md](SECURITY.md); please do
+not open a public issue.
+
+## Licence and contributing
+
+Apache License 2.0: [LICENSE](LICENSE), with third-party material listed in [NOTICE](NOTICE). The
+tutorial code and the `npm create potyro` template are MIT No Attribution, so the apps you start from
+them carry no notice of ours. Contributions are welcome under the terms in
+[CONTRIBUTING.md](CONTRIBUTING.md); [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) applies.

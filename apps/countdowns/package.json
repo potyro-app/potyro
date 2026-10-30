@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Countdowns: days until each thing that matters — the nearest one big, the rest in a row, the past folded away",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs countdowns.app.tsx -o dist/countdowns.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",

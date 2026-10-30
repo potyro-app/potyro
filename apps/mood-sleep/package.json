@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "How did you sleep? A daily check-in, charted with chart.js loaded by URL (#266)",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs mood-sleep.app.ts --seed seed.json -o dist/mood-sleep.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",

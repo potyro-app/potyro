@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Notes that are markdown files in the app's own folder: bring them in, read them rendered, edit, save a copy",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs notes.app.tsx --files files --seed seed.json -o dist/markdown-notes.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",

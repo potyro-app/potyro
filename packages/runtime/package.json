@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "description": "Runtime core (WP5): computed runner, JS-predicate query, action runner, reminder reconciler, ctx wiring + React hooks.",
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts"
   },

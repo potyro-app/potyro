@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Write Potyro apps: defineApp(), the ctx types, and `potyro pack` to make the package Add an app installs",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "homepage": "https://potyro.app",
   "keywords": [
     "potyro",

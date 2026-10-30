@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "description": "Capabilities interface + FakeCapabilities (WP4). Web/Capacitor impls land later.",
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts"
   },
