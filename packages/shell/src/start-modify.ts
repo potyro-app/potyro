@@ -59,8 +59,8 @@ export function modifyLoopRefusal(cfg: EngineConfig): string | undefined {
   if (!canInvestigate(cfg.engine)) return `${cfg.engine} is a one-shot completion, not a chat engine; it cannot use tools.`;
   if (!engineReady(cfg)) {
     return cfg.engine === "endpoint"
-      ? "the endpoint needs its address and a model — add them in Engine Settings."
-      : `${cfg.engine} needs your own API key — add one in Engine Settings.`;
+      ? "the endpoint needs its address and a model. Add them in the Studio’s Model settings."
+      : `${cfg.engine} needs your own API key. Add one in the Studio’s Model settings.`;
   }
   if (!chatEngineOptions(cfg)) return `no client is wired for ${cfg.engine} here.`;
   return undefined;

@@ -68,8 +68,8 @@ function refusal(cfg: EngineConfig): LoopOutcome | undefined {
       kind: "refused",
       text:
         engine === "endpoint"
-          ? t`The endpoint needs its address and a model to investigate — add them in Engine Settings.`
-          : t`${engine} needs your own API key to investigate — add one in Engine Settings.`,
+          ? t`The endpoint needs its address and a model to investigate. Add them in the Studio’s Model settings.`
+          : t`${engine} needs your own API key to investigate. Add one in the Studio’s Model settings.`,
     };
   }
   return undefined;
