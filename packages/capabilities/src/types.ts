@@ -105,7 +105,12 @@ export interface AiConsentWords {
   detail: string;
   ok: string;
   cancel: string;
+  /** The section of Potyro's privacy page about where this goes, for the question to link (#117). The shell's words set it; an app cannot. */
+  privacy?: PrivacyTopic;
 }
+
+/** A section of Potyro's privacy page a platform question can point to: AI requests, or voice. */
+export type PrivacyTopic = "ai" | "voice";
 
 export interface Capabilities {
   camera: CameraCap | null;

@@ -22,7 +22,7 @@ import type {
   UiProgress,
   ViewProps,
 } from "potyro";
-import type { Capabilities } from "@potyro/capabilities";
+import type { Capabilities, PrivacyTopic } from "@potyro/capabilities";
 import type { GuestBook } from "./guests.js";
 import type { TimerBridge } from "./timers.js";
 import type { Store } from "@potyro/store";
@@ -56,7 +56,8 @@ export type ShownUiItem<T> = Omit<UiItem<T>, "label" | "detail"> & { label: stri
  */
 export interface UiBridge {
   toast(msg: string): void;
-  confirm(msg: string, opts?: { detail?: string; ok?: string; cancel?: string; destructive?: boolean }): Promise<boolean>;
+  /** `privacy`: the platform's own questions (AI, voice) link that section of Potyro's privacy page; `ctx` never passes an app's (#117). */
+  confirm(msg: string, opts?: { detail?: string; ok?: string; cancel?: string; destructive?: boolean; privacy?: PrivacyTopic }): Promise<boolean>;
   /** `detail`, `ok`, `cancel`, `placeholder`: the shell's own questions (a home device's address, docs/28); an app's prompt passes `default` only. */
   prompt(msg: string, opts?: { default?: string; detail?: string; ok?: string; cancel?: string; placeholder?: string }): Promise<string | null>;
   pick<T>(items: T[], opts?: { label?: (t: T) => string; multi?: boolean }): Promise<T | T[] | null>;
