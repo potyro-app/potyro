@@ -2,7 +2,7 @@
 //
 //   POTYRO_SHARES_DIR      required — where shares are kept (one folder each)
 //   POTYRO_SHELL_INDEX     the built shell's index.html — default /var/www/karta/index.html
-//   POTYRO_PUBLIC_ORIGIN   https://apps.vaz.io — what preview URLs are built on
+//   POTYRO_PUBLIC_ORIGIN   https://potyro.app — what preview URLs are built on
 //   PORT                   default 4203
 //   HOST                   default 127.0.0.1 — reachable only through the proxy in front of it
 //
