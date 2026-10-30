@@ -6,20 +6,26 @@
 //
 // Nothing that names anyone is kept or logged: no device id, no address, no time finer than the month.
 // To keep one address from inflating a number, it counts each event once a day and may post a few
-// times a day; that check is held in memory, under a salted hash of the address that a restart
-// forgets, and is gone after a day. A repeat is answered like a first, without being counted.
+// times a day; that check is held in memory, under a salted hash of the address (an IPv6 one by its
+// /64, address.ts) that a restart forgets, and is gone after a day (window.ts: each post looks at its
+// own address only, the rest is swept now and then, and the map is capped). A repeat is answered
+// like a first, without being counted.
 //
 // `exhausted` is also counted by the relay itself, the first time a device uses up its allowance in a
 // month (ledger.ts `markExhausted`): the shell need not post it after the relay's own 429.
 
 import { createHash, randomBytes } from "node:crypto";
+import { addressKey } from "./address.ts";
 import { COUNT_EVENTS, memoryLedger, monthOf, type CountEvent, type Ledger } from "./ledger.ts";
+import { dayWindow } from "./window.ts";
 
 export interface CountDeps {
   now: () => number;
   ledger?: Ledger;
   /** POSTs a day from one address; past it, 429. */
   perAddressDay?: number;
+  /** The most addresses remembered at once (window.ts). */
+  maxKeys?: number;
 }
 
 export interface CountRequest {
@@ -33,26 +39,17 @@ export interface CountReply {
   body: Record<string, unknown>;
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 export function createCounts(deps: CountDeps): { handle: (req: CountRequest) => CountReply } {
   const ledger = deps.ledger ?? memoryLedger();
   const perAddressDay = deps.perAddressDay ?? 20;
   const salt = randomBytes(16);
-  const hashed = (ip: string): string => createHash("sha256").update(salt).update(ip).digest("base64url");
-  // Per hashed address: when it posted, and what it counted, in the last day.
-  const seen = new Map<string, Array<{ at: number; event: CountEvent | null }>>();
+  const hashed = (ip: string): string => createHash("sha256").update(salt).update(addressKey(ip)).digest("base64url");
+  // Per hashed address: what each post in the last day counted (null: a repeat, or not an event).
+  const seen = dayWindow<CountEvent | null>(deps.now, deps.maxKeys === undefined ? {} : { maxKeys: deps.maxKeys });
 
   const post = (raw: string, ip: string): CountReply => {
     const key = hashed(ip);
-    const since = deps.now() - DAY_MS;
-    // Forget what is a day old, everywhere, so the map holds at most a day.
-    for (const [k, list] of seen) {
-      const kept = list.filter((s) => s.at > since);
-      if (kept.length) seen.set(k, kept);
-      else seen.delete(k);
-    }
-    const mine = seen.get(key) ?? [];
+    const mine = seen.get(key);
     if (mine.length >= perAddressDay) return { status: 429, body: { ok: false, error: "busy" } };
     let event: unknown;
     try {
@@ -64,8 +61,8 @@ export function createCounts(deps: CountDeps): { handle: (req: CountRequest) => 
     }
     if (!(COUNT_EVENTS as readonly unknown[]).includes(event)) return { status: 400, body: { ok: false, error: "event" } };
     const e = event as CountEvent;
-    const fresh = !mine.some((s) => s.event === e);
-    seen.set(key, [...mine, { at: deps.now(), event: fresh ? e : null }]);
+    const fresh = !mine.includes(e);
+    seen.add(key, fresh ? e : null);
     if (fresh) ledger.addEvent(monthOf(deps.now()), e);
     return { status: 200, body: { ok: true } };
   };

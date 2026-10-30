@@ -37,6 +37,32 @@ describe("the counts route", () => {
     expect(counts.handle(post("visit", "5.6.7.8")).status).toBe(200);
   });
 
+  it("counts an IPv6 sender by its /64", () => {
+    const ledger = memoryLedger();
+    const counts = createCounts({ now: () => NOW, ledger, perAddressDay: 2 });
+    counts.handle(post("visit", "2001:db8:5:6::1"));
+    counts.handle(post("visit", "2001:db8:5:6::2"));
+    expect(counts.handle(post("visit", "2001:db8:5:6::3")).status).toBe(429);
+    expect(ledger.events()["2026-10"]).toEqual({ visit: 1 });
+    expect(counts.handle(post("visit", "2001:db8:5:7::1")).status).toBe(200);
+  });
+
+  it("remembers at most so many addresses, and forgets the rest within a day and an hour", () => {
+    let now = NOW;
+    const ledger = memoryLedger();
+    const counts = createCounts({ now: () => now, ledger, maxKeys: 2 });
+    counts.handle(post("visit", "1.1.1.1"));
+    counts.handle(post("visit", "2.2.2.2"));
+    counts.handle(post("visit", "3.3.3.3"));
+    // 1.1.1.1 was let go to make room: its repeat counts again.
+    counts.handle(post("visit", "1.1.1.1"));
+    expect(ledger.events()["2026-10"]).toEqual({ visit: 4 });
+    now += 25 * 60 * 60 * 1000;
+    counts.handle(post("visit", "4.4.4.4"));
+    counts.handle(post("visit", "4.4.4.4"));
+    expect(ledger.events()["2026-10"]).toEqual({ visit: 5 });
+  });
+
   it("refuses what is not one known event, and anything carried with it", () => {
     const counts = createCounts({ now: () => NOW });
     expect(counts.handle(post("bought")).status).toBe(400);
