@@ -161,6 +161,29 @@ describe("Remember on this device", () => {
     expect(getEngineConfig()).toMatchObject({ engine: "endpoint", endpoint });
   });
 
+  it("writes a key typed fast in order, so the vault ends with the last one, whatever each write takes", async () => {
+    const vault = slowVault();
+    setVaultForTests(() => vault);
+    setEngineConfig({ ...getEngineConfig(), engine: "openrouter", openrouterKey: "sk-or-a" });
+    expect(await setKeyRemembered("openrouter", true)).toBe(true);
+    // Each write slower than the one after it: unordered, the first would land last.
+    for (const k of ["sk-or-ab", "sk-or-abc", "sk-or-abcd"]) setEngineConfig({ ...getEngineConfig(), openrouterKey: k });
+    await settled();
+    expect(vault.map.get(keyId("openrouter"))).toBe("sk-or-abcd");
+  });
+
+  it("Forget wins over a write still out: the key is not left in the vault, nor shown as remembered", async () => {
+    const vault = slowVault();
+    setVaultForTests(() => vault);
+    setEngineConfig({ ...getEngineConfig(), engine: "openrouter", openrouterKey: "sk-or-a" });
+    await setKeyRemembered("openrouter", true);
+    setEngineConfig({ ...getEngineConfig(), openrouterKey: "sk-or-ab" });
+    await forgetRememberedKey("openrouter");
+    await settled();
+    expect(vault.map.has(keyId("openrouter"))).toBe(false);
+    expect(isRemembered("openrouter")).toBe(false);
+  });
+
   it("is not offered where there is no vault: nothing is kept", async () => {
     setVaultForTests(() => undefined);
     setEngineConfig({ ...getEngineConfig(), openrouterKey: "sk-or-x" });
@@ -168,6 +191,29 @@ describe("Remember on this device", () => {
     expect(isRemembered("openrouter")).toBe(false);
   });
 });
+
+/** Every write out has landed: longer than the slowest vault write below. */
+const settled = () => new Promise((r) => setTimeout(r, 200));
+
+/** A vault whose writes take longer the earlier they were asked (as an encrypt can), and whose removes are at once. */
+function slowVault() {
+  const map = new Map<string, string>();
+  let delay = 60;
+  return {
+    map,
+    available: async () => true,
+    get: async (id: string) => map.get(id) ?? null,
+    set: async (id: string, value: string) => {
+      const wait = delay;
+      delay = Math.max(0, delay - 20);
+      await new Promise((r) => setTimeout(r, wait));
+      map.set(id, value);
+    },
+    remove: async (id: string) => {
+      map.delete(id);
+    },
+  } as unknown as ReturnType<typeof memoryVault>;
+}
 
 describe("the own-key count", () => {
   it("goes once a month, when a key is first typed, carrying nothing that names the device", async () => {
