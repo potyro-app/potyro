@@ -18033,6 +18033,7 @@ html:has(.k-check-add) {
 }
 .k-free-panel-what,
 .k-free-panel-get,
+.k-free-panel-other,
 .k-free-panel-plan {
   margin: 0;
   font-size: 0.9rem;
@@ -18053,6 +18054,10 @@ html:has(.k-check-add) {
   text-decoration: none;
 }
 .k-free-panel-plan-btn {
+  /* A link-looking button, still a 44px target. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   padding: 0;
   border: 0;
   background: transparent;
