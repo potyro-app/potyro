@@ -12,13 +12,18 @@
 //     get past it), and two requests at once per device;
 //   - a MONTHLY SPENDING CAP for the whole service, checked before every dispatch with room for the
 //     request about to go out; what each request really cost (OpenRouter's `usage.cost`) is added
-//     after it. The month's spend and each device's count are kept in a `Ledger`, which the server
-//     writes to a file, so a restart does not hand out a second month's allowance.
+//     after it. The month's spend and each device's count are kept in a `Ledger` (ledger.ts), which
+//     the server writes to a file, so a restart does not hand out a second month's allowance.
+//
+// The chat route for the Studio and Ask is chat.ts; the demand counts are counts.ts.
 //
 // A device id is random (shell `deviceId()`), says nothing about the person, and is never logged.
 // Pure apart from `upstream` and the ledger; server.ts is the thin HTTP part.
 
+import { memoryLedger, monthOf, type Ledger } from "./ledger.ts";
 import { AI_LIMITS, AI_MODEL, openRouterBody, readAiPayload, type UpstreamReply } from "./request.ts";
+
+export { memoryLedger, persistentLedger, type Ledger, type LedgerState } from "./ledger.ts";
 
 export interface Limits {
   perDeviceDay: number;
@@ -42,56 +47,6 @@ export const DEFAULT_LIMITS: Limits = {
 
 /** What a request is counted as when OpenRouter does not say what it cost: well above a receipt. */
 export const UNPRICED_USD = 0.005;
-
-/** The month's spend and counts. Kept in memory by default; server.ts keeps it in a file. */
-export interface Ledger {
-  spent(month: string): number;
-  addSpend(month: string, usd: number): void;
-  count(month: string, device: string): number;
-  addCount(month: string, device: string): void;
-}
-
-export function memoryLedger(initial?: LedgerState | null): Ledger & { snapshot(): LedgerState } {
-  let state: LedgerState = readState(initial) ?? { month: "", spent: 0, devices: {} };
-  const at = (month: string): LedgerState => (state.month === month ? state : (state = { month, spent: 0, devices: {} }));
-  return {
-    spent: (m) => at(m).spent,
-    addSpend: (m, usd) => void (at(m).spent += usd),
-    count: (m, d) => at(m).devices[d] ?? 0,
-    addCount: (m, d) => void (at(m).devices[d] = (at(m).devices[d] ?? 0) + 1),
-    snapshot: () => state,
-  };
-}
-
-/** The ledger's whole state: one month, its spend and a count per device id. */
-export interface LedgerState {
-  month: string;
-  spent: number;
-  devices: Record<string, number>;
-}
-
-/** A saved state, if it is one; a damaged file is not a reason to start the month at zero silently — the server refuses to start. */
-function readState(s: unknown): LedgerState | null {
-  if (s == null) return null;
-  const o = s as Partial<LedgerState>;
-  if (typeof o.month !== "string" || typeof o.spent !== "number" || !Number.isFinite(o.spent) || typeof o.devices !== "object" || o.devices === null) {
-    throw new Error("the ledger file is not a ledger");
-  }
-  const devices: Record<string, number> = {};
-  for (const [d, n] of Object.entries(o.devices)) if (typeof n === "number" && Number.isFinite(n)) devices[d] = n;
-  return { month: o.month, spent: o.spent, devices };
-}
-
-/** A memory ledger that starts from `initial` and calls `save` after every change. */
-export function persistentLedger(initial: LedgerState | null, save: (s: LedgerState) => void): Ledger {
-  const mem = memoryLedger(initial);
-  return {
-    spent: mem.spent,
-    count: mem.count,
-    addSpend: (m, usd) => (mem.addSpend(m, usd), save(mem.snapshot())),
-    addCount: (m, d) => (mem.addCount(m, d), save(mem.snapshot())),
-  };
-}
 
 export interface RelayDeps {
   /** Sends one OpenRouter body with Potyro's key. */
@@ -134,8 +89,6 @@ function dayCounter(now: () => number) {
   };
 }
 
-const monthOf = (ms: number): string => new Date(ms).toISOString().slice(0, 7);
-
 /** "Used up" — the shell then tries the person's own key, and says so when there is none. */
 const usedUp = (reason: string): RelayResponse => ({ status: 429, body: { ok: false, error: "allowance", reason } });
 
@@ -163,7 +116,10 @@ export function createAiRelay(deps: RelayDeps): { handle: (req: RelayRequest) =>
 
     // Every limit before anything is sent; the cap with room for this request.
     if (ledger.spent(month) + limits.reserveUsd > limits.monthlyUsd) return usedUp("service-month");
-    if (ledger.count(month, p.device) >= limits.perDeviceMonth) return usedUp("device-month");
+    if (ledger.count(month, p.device) >= limits.perDeviceMonth) {
+      ledger.markExhausted(month, p.device);
+      return usedUp("device-month");
+    }
     if (daily.count(device) >= limits.perDeviceDay) return usedUp("device-day");
     if (daily.count(address) >= limits.perAddressDay) return usedUp("address-day");
     if ((inFlight.get(p.device) ?? 0) >= limits.concurrentPerDevice) return { status: 429, body: { ok: false, error: "busy" } };
@@ -179,6 +135,8 @@ export function createAiRelay(deps: RelayDeps): { handle: (req: RelayRequest) =>
       }
       ledger.addSpend(month, reply.cost ?? UNPRICED_USD);
       ledger.addCount(month, p.device);
+      // The request that uses the last of the month is when the device crossed its allowance.
+      if (ledger.count(month, p.device) >= limits.perDeviceMonth) ledger.markExhausted(month, p.device);
       return { status: 200, body: { ok: true, text: reply.text, model, left: Math.max(0, limits.perDeviceMonth - ledger.count(month, p.device)) } };
     } catch (e) {
       deps.onError?.(e);
