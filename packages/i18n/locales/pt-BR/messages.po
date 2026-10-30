@@ -2611,6 +2611,11 @@ msgstr "Não deu pra mandar ainda. Está salvo neste aparelho, e a gente manda d
 msgid "Couldn't share it. Save a copy instead."
 msgstr "Não deu pra compartilhar. Salva uma cópia."
 
+#. You panel: a switch; turns off two anonymous counts, nothing about who
+#: ../shell/src/counts-switch.tsx
+msgid "Count me anonymously"
+msgstr "Me contar de forma anônima"
+
 #: ../shell/src/free-panel.tsx
 #: ../shell/src/free-panel.tsx
 msgid "Counted, thanks. Nothing about you was sent."
@@ -3251,6 +3256,10 @@ msgstr "Correção encontrada"
 msgid "Fix this"
 msgstr "Corrigir"
 
+#: ../shell/src/App.tsx
+msgid "Fix this couldn't start: {reason}. Reload Potyro and try again."
+msgstr "O “Corrigir” não conseguiu começar: {reason}. Recarrega o Potyro e tenta de novo."
+
 #: ../shell/src/studio-engine.ts
 msgid "Fixing it via {label} · {elapsed}"
 msgstr "Corrigindo com {label} · {elapsed}"
@@ -3299,6 +3308,10 @@ msgstr "Sex"
 #: ../shell/src/app-ai.ts
 msgid "Free AI isn't available yet — add your own key in Model settings."
 msgstr "A IA grátis ainda não está aqui. Coloca sua chave nos ajustes do modelo."
+
+#: ../shell/src/free-ai.ts
+msgid "Free app making can't be reached right now. Check your connection and try again, or add your own key."
+msgstr "Não deu pra alcançar a criação grátis de apps agora. Confere a internet e tenta de novo, ou coloca sua própria chave."
 
 #: ../shell/src/free-ai.ts
 msgid "Free app making couldn't reach the model just now. Try again in a minute."
@@ -3404,7 +3417,7 @@ msgstr "Não achou uma correção"
 msgid "General knowledge"
 msgstr "Conhecimento geral"
 
-#. Followed by links to the services' key pages: OpenRouter, Anthropic, OpenAI
+#. Followed by links to the services' key pages: OpenRouter, Anthropic
 #: ../shell/src/free-panel.tsx
 msgid "Get a key from"
 msgstr "Pega uma chave em"
@@ -3667,6 +3680,11 @@ msgstr "Não fiz o app: o que você pediu precisa de algo que o Potyro ainda nã
 #: ../shell/src/add-app-dialog.tsx
 msgid "I wrote this. Run it as mine."
 msgstr "Fui eu que fiz. Rodar como meu."
+
+#. Button: counts, anonymously, one more person who would pay for a plan; nothing is asked and nothing is promised back
+#: ../shell/src/free-panel.tsx
+msgid "I'd pay for a plan"
+msgstr "Eu pagaria por um plano"
 
 #: ../shell/src/guests-panel.tsx
 msgid "I’m not on the list"
@@ -5131,10 +5149,6 @@ msgstr "No aparelho"
 msgid "On-device model"
 msgstr "Modelo no aparelho"
 
-#: ../shell/src/counts-switch.tsx
-msgid "Once a month at most: that someone added their own key, or asked for a paid plan. Nothing about you or your apps."
-msgstr "No máximo uma vez por mês: que alguém colocou a própria chave, ou pediu um plano pago. Nada sobre você ou seus apps."
-
 #: ../shell/src/add-app-dialog.tsx
 msgid "Once it is added you can let it run as yours. Only do that if you know who made it."
 msgstr "Depois de adicionar, você pode deixar ele rodar como seu. Só faz isso se souber quem fez."
@@ -5281,6 +5295,11 @@ msgstr "Chave de API do OpenRouter"
 #: ../shell/src/engine-settings.tsx
 msgid "OpenRouter model"
 msgstr "Modelo do OpenRouter"
+
+#. After the key links: a server of the person's own that speaks the OpenAI API also works
+#: ../shell/src/free-panel.tsx
+msgid "or any OpenAI-compatible server, in Model settings"
+msgstr "ou qualquer servidor compatível com OpenAI, nos ajustes do modelo"
 
 #. An hour of the colour clock
 #: ../shell/src/studio.tsx
@@ -5480,6 +5499,10 @@ msgstr "O Potyro está aberto em outra aba deste site. Toca em “Usar aqui”: 
 #: ../shell/src/realm-probe-screen.tsx
 msgid "Potyro itself busy (calibration)"
 msgstr "O próprio Potyro ocupado (calibração)"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Potyro passes all of this to OpenRouter and the model it picks."
+msgstr "O Potyro passa tudo isso para o OpenRouter e para o modelo que ele escolhe."
 
 #: ../shell/src/look-panel.tsx
 msgid "Potyro pink"
@@ -6126,11 +6149,6 @@ msgstr "O seed.json não está escrito em JSON válido. {why}"
 msgid "Send"
 msgstr "Enviar"
 
-#. You panel: a switch; counts like 'someone added their own key this month', nothing about who
-#: ../shell/src/counts-switch.tsx
-msgid "Send anonymous counts"
-msgstr "Enviar contagens anônimas"
-
 #: ../shell/src/fix-panel.tsx
 msgid "Send answer"
 msgstr "Enviar resposta"
@@ -6657,11 +6675,6 @@ msgstr "Toca no mapa pra marcar um ponto"
 msgid "Tap the part you mean"
 msgstr "Toca na parte que você quer"
 
-#. Button: count one more person who wants a paid plan; no email is asked
-#: ../shell/src/free-panel.tsx
-msgid "Tell me when there is a paid plan"
-msgstr "Me avisa quando tiver um plano pago"
-
 #. Demo bar: what the Report link does
 #: ../shell/src/demo.tsx
 msgid "Tell the Potyro team about this link, if you think it is illegal"
@@ -6725,6 +6738,10 @@ msgstr "Não deu certo: {reason} Nada mudou aqui. Tenta de novo: nada duplica."
 #: ../shell/src/app-folder.ts
 msgid "That file is no longer in this app"
 msgstr "Esse arquivo não está mais neste app"
+
+#: ../shell/src/counts-switch.tsx
+msgid "That I used my own key, or that I'd pay for a plan. Once a month at most, and nothing about you or your apps."
+msgstr "Que usei minha própria chave, ou que eu pagaria por um plano. No máximo uma vez por mês, e nada sobre você ou seus apps."
 
 #: ../shell/src/add-app.ts
 msgid "That is not a link"
@@ -6954,6 +6971,10 @@ msgstr "o microfone, pra ouvir o que você fala"
 #: ../shell/src/studio-engine.ts
 msgid "The model answered with an explanation instead of an app. Try again, or say it another way."
 msgstr "O modelo respondeu com uma explicação em vez de um app. Tenta de novo ou fala de outro jeito."
+
+#: ../shell/src/start-fix.ts
+msgid "The model couldn't answer: {reason}. Try again in a minute, or choose another model in the Studio’s Model settings."
+msgstr "O modelo não conseguiu responder: {reason}. Tenta de novo daqui a um minuto, ou escolhe outro modelo nos ajustes do modelo do Studio."
 
 #: ../shell/src/studio-engine.ts
 msgid "The model sent the whole file back instead of edits."
@@ -7277,6 +7298,10 @@ msgstr "Não deu pra salvar esta conversa. {reason}"
 #: ../shell/src/free-ai.ts
 msgid "This conversation is too long for free app making. Start a new app, or add your own key."
 msgstr "Esta conversa está longa demais para a criação grátis de apps. Começa um app novo, ou coloca sua própria chave."
+
+#: ../shell/src/free-ai.ts
+msgid "This conversation is too long for the free allowance. Start a new app, or add your own key."
+msgstr "Esta conversa está longa demais para a cota grátis. Começa um app novo, ou coloca sua própria chave."
 
 #: ../shell/src/remove-app.ts
 msgid "This deletes the app AND its data — every record you have added to it. It cannot be undone."
