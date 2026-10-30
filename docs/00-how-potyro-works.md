@@ -578,8 +578,8 @@ Export packs an app's logic and data into one `.potyro.zip` (`packages/store/src
 | `app.ts` | the app's source |
 | `lock.json`, `files/.modules/`, `src/` | the app's code beyond its source: its libraries' bytes and its own modules, with a lock naming every file and its digest |
 
-Every export is a `snapshot`: the current values, with no sync history. The manifest's type also
-names a `mergeable` mode, which nothing produces yet. Import reads the bundle back and **replaces**
+Every export is a `snapshot`: the current values, with no sync history; the manifest's `mode` says
+so, and a bundle that says otherwise is read as one. Import reads the bundle back and **replaces**
 the app's records with the bundle's; it does not merge them (docs/06 "Backup and portability"). Because the code travels with
 its lock, adding an app from a bundle on a device that never had it fetches nothing, and a file that
 is not what the lock says is refused by name. A shared app's files whose bytes were never on the
