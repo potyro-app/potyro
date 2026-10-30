@@ -1257,7 +1257,8 @@ tap one card's **Try it** (the app opens sealed) and **Make it mine** (the Make 
 ## The privacy page and the terms (#117): built, not yet served
 
 `/privacy` and `/terms` are static pages made from `docs/legal/privacy.md` and `terms.md` by
-`packages/legal` (docs/legal/README.md). **While either text still has a placeholder or its Draft
+`packages/legal` (docs/legal/README.md). **While either text still has a placeholder, an open point
+in words ("to confirm", "to decide", "to verify"), no `Effective: YYYY-MM-DD` line, or its Draft
 note, no build makes them**: `vite build` and `pnpm gallery:build` print one line instead
 (`legal: /privacy and /terms not built: …`) and the app and the gallery link nothing. That is the
 state of main today, and both sites deploy as they always have.
@@ -1275,8 +1276,10 @@ Once the owner has filled the texts, the next build of each site has them, with 
   them to the no-cache rule: `@page path / /index.html /privacy/* /terms/*`.
 
 The service worker serves a navigation network first, so `/privacy` comes from the server whenever
-the device is online; offline it is the copy from the last visit, or the app if there is none. The
-stylesheet is named by version (`legal.css?v=…`), so its cache-first copy is never stale.
+the device is online; offline it is the copy from the last visit, or the app if there is none. Every
+file a page loads (the stylesheets, the fonts, the logo) is named by a hash of its bytes
+(`legal/legal.<hash>.css`, `legal/fonts/figtree-latin.<hash>.woff2`, with `tokens.css` rewritten to
+those names), so the worker's cache-first copy of one is never stale.
 
 ```bash
 curl -s https://potyro.app/privacy | grep -c 'data-legal="privacy"'   # 1, not the app's index.html

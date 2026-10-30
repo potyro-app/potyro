@@ -127,7 +127,7 @@ that names and who shares with whom can be seen on the relay.
 | # | Claim | Proof | Status |
 |---|---|---|---|
 | F-07 | What the web server in front of potyro.app (Caddy, by its `alt-svc: h3` header) logs, and for how long; whether `jazz-run` logs addresses. | The server's config is not in the repository. `deploy/apps.vaz.io.conf` (the old site) keeps Apache `combined` access logs, which hold IP addresses and full paths. | **to verify**. The public text says only that the server receives the IP address |
-| F-58 | Hosting is Hetzner. The box is `65.109.228.5`. | docs/16 §8 table. RIPE RDAP for that address: netname `CLOUD-HEL1`, country `FI`, which points to Hetzner Cloud, Helsinki. | observed; the location to confirm in the Hetzner console. The public text says "Germany or Finland, to confirm" as asked |
+| F-58 | Hosting is Hetzner. The box is `65.109.228.5`. | docs/16 §8 table. RIPE RDAP for that address: netname `CLOUD-HEL1`, country `FI`, which points to Hetzner Cloud, Helsinki. | observed; the location to confirm in the Hetzner console. The public text has the placeholder `<HOSTING LOCATION>` until then |
 | F-59 | One relay, no backup yet. | #214 open: no nightly backup, no offsite copy, no restore drill. docs/16 mentions backups only as planned. | doc |
 | F-60 | The sync relay on potyro.app is live. | `/sync` did not answer a plain GET within 10 s (it expects a websocket). | **to verify** |
 | F-61 | Mail for potyro.com and potyro.app goes to Gandi. | `dig MX potyro.com` → `spool.mail.gandi.net`, `fb.mail.gandi.net` (same for potyro.app) | observed. Whether privacy@, abuse@, security@ exist: **to verify** |

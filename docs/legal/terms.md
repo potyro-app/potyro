@@ -4,7 +4,7 @@
 > (see [README.md](README.md)). The facts behind it are in [facts.md](facts.md). Notes in `<!-- -->`
 > comments are for the review and are not shown.
 
-Last changed: <DATE>
+Effective: <DATE>
 
 ## Who you are dealing with
 

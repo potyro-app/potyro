@@ -103,7 +103,7 @@ a:hover {
 .foot a {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 var(--space-4);
   border: var(--stroke) solid var(--line);
   border-radius: var(--radius-pill);
