@@ -15,6 +15,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { enrolEveryApp, localOnlyApps, type EnrolProgress } from "./backup-all.js";
 import { backupEnabled, setBackupEnabled } from "./backup-setting.js";
 import { shellDialogs } from "./dialog.js";
+import { LegalLink } from "./legal-links.js";
 
 export function BackupSwitch() {
   const { t } = useLingui();
@@ -34,7 +35,11 @@ export function BackupSwitch() {
               other: "# apps still live only on this device and will be copied there now.",
             }) +
             " " +
-            t`Anything you make later goes too. The relay only ever sees encrypted data.`,
+            t`Anything you make later goes too.`,
+      // What the relay can and cannot see (docs/legal/facts.md F-15–F-17): the apps' contents are
+      // encrypted on the device, the name and who shares with whom are not. "Only ever sees
+      // encrypted data" said more than that (#117).
+      { detail: t`What is in your apps is encrypted on this device, so the relay cannot read it. Your name and who you share with can be seen there.`, privacy: "sync" },
     );
     if (!ok) return;
 
@@ -68,7 +73,10 @@ export function BackupSwitch() {
     const ok = await shellDialogs.confirm(
       t`Stop putting new apps on the relay?` +
         "\n\n" +
-        t`The apps already there stay there — this is not a delete. Turn sync off for an app individually to take it back off the relay.`,
+        // Turning sync off for one app deletes nothing either (toggle-sync.ts; facts.md F-20): it used
+        // to say it took the app "back off the relay" (#117).
+        t`The apps already there stay there. This deletes nothing, and neither does turning sync off for one app.`,
+      { privacy: "rights" },
     );
     if (!ok) return;
     setBackupEnabled(false);
@@ -108,6 +116,9 @@ export function BackupSwitch() {
           {outcome}
         </p>
       ) : null}
+      <LegalLink section="sync" block>
+        <Trans comment="Link under the backup switch to the privacy page's section on sync and backup">What backup keeps on Potyro’s server</Trans>
+      </LegalLink>
     </div>
   );
 }
