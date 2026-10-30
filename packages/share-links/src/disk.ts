@@ -1,8 +1,9 @@
 // Shares on disk: one folder per share, `<dir>/<first two of id>/<id>/`, holding `meta.json`,
-// `payload.bin` and `preview` (when there is one). The sharer's "stop sharing" removes the folder.
+// `payload.bin` and `preview` (when there is one). The sharer's "stop sharing" removes those three, and
+// then the folder only if nothing else is in it.
 // An operator's takedown (docs/16, "Taking a link down") writes `taken-down.json` into it FIRST — so
 // the link answers 410 from that moment — and then removes the other three. The record is what stays.
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, rmdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ShareStore, StoredShare, TakenDown } from "./store.ts";
 import { ID_RE } from "./wire.ts";
@@ -50,7 +51,18 @@ export function diskShareStore(dir: string): ShareStore {
       const b = await read(id, "preview");
       return b ? new Uint8Array(b) : null;
     },
-    remove: (id) => rm(folder(id), { recursive: true, force: true }),
+    // The share's own files, then the folder only when it is empty: a takedown that lands while the
+    // sharer's delete is under way leaves `taken-down.json`, which an `rm -rf` would have taken with it.
+    async remove(id) {
+      const at = folder(id);
+      for (const file of SHARE_FILES) await rm(join(at, file), { force: true });
+      try {
+        await rmdir(at);
+      } catch (e) {
+        const code = (e as NodeJS.ErrnoException).code;
+        if (code !== "ENOTEMPTY" && code !== "EEXIST" && code !== "ENOENT") throw e;
+      }
+    },
     async takeDown(id, record) {
       const at = folder(id);
       await mkdir(at, { recursive: true });
