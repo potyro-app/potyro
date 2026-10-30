@@ -609,7 +609,9 @@ for as long as it spins; the protections below bound what that can cost.
   bottom (Workout's Finish) below the screen, out of reach. Inside the frame `--k-chrome-bottom`,
   `--k-safe-top` and `--k-safe-bottom` are 0: the frame already stops clear of the shell's bars.
 - **Theme.** Every custom property where the view sits, its `color-scheme`, font and ink, at mount and
-  again when the theme, the colour scheme or the app's accent changes; a few rules (`.k-add`,
+  again when the theme, the colour scheme or the app's accent changes. The names are every one the
+  page declares (its sheets, the inline styles above the view) as well as the computed style's own
+  list, which Gecko gets wrong under an element that overrides inherited ones (#463); a few rules (`.k-add`,
   `.k-muted`, `.k-primary-action`) make a view written against the shell's classes look native.
 - **Input and focus.** Pointer, touch and keys go to the frame as to any iframe; the frame has a
   title (the app's and the page's names); Tab enters and leaves it.
