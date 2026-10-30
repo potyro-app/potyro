@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Personal piano practice app: the plan is data (plan.json), the UI reads it",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs piano.app.tsx plan.json -o dist/piano.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",

@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "description": "Potyro's own words in the person's language (#297/#298): locale matching, the Lingui instance, catalogs, Intl format helpers, the pseudo-language. Shared by shell and views; depends on no Potyro package.",
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts",
     "./locale": "./src/locale.ts",

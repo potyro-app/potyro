@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Which is cheaper: two prices and two sizes, and it says the cost per unit and which one wins",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs which-is-cheaper.app.tsx --seed seed.json -o dist/which-is-cheaper.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",

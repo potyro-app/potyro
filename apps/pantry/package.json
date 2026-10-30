@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "What's in my kitchen: photograph groceries, a fridge shelf or a receipt and get a pantry list by expiry, reminders, a waste tally and ideas for what expires first (ctx.caps.ai, docs/23)",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs pantry.app.ts -o dist/pantry.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",

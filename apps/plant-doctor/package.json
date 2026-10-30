@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Plant Doctor: photograph a plant and get the likely plant and problem in plain words, a care plan with reminders, and a timeline of check-ups (ctx.caps.ai, docs/23)",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs plant-doctor.app.ts -o dist/plant-doctor.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",

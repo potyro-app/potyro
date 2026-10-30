@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "description": "Requests to the Potyro team for what Potyro itself lacks (#263): the payload the Studio sends (browser-safe), and the small server-side relay that files them as GitHub issues in fuzue/potyro, labelled platform-request, rate-limited per device, size-capped and grouped by duplicates. Depends on no Potyro package. Deployment: docs/16.",
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/request.ts",
     "./relay": "./src/relay.ts"

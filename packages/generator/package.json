@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "description": "AI generator eval harness (KA-06): score generated .app.ts sources (compile/validate/render) against a prompt corpus and a pluggable model backend. The measurable base for KA-05/KA-07.",
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts",
     "./backends": "./src/backends.ts",

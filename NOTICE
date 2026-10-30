@@ -1,0 +1,55 @@
+Potyro
+Copyright 2026 <OWNER NAME>
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The name "Potyro" and the Potyro logo are not licensed by the Apache License: section 6 of the
+licence grants no right to use them. The logo files are in packages/design/logo and
+packages/design/source.
+
+------------------------------------------------------------------------------------------------
+Third-party material in this repository
+------------------------------------------------------------------------------------------------
+
+Fonts, in packages/design/fonts (Google Fonts' woff2 files, latin and latin-ext, unchanged):
+
+  Quicksand  Copyright 2011 The Quicksand Project Authors
+             (https://github.com/andrew-paglinawan/QuicksandFamily),
+             with Reserved Font Name "Quicksand".
+  Figtree    Copyright 2022 The Figtree Project Authors (https://github.com/erikdkennedy/figtree)
+  DM Mono    Copyright 2020 The DM Mono Project Authors (https://www.github.com/googlefonts/dm-mono)
+
+  Each is licensed under the SIL Open Font License, Version 1.1. The full text is beside the
+  fonts: packages/design/fonts/OFL-Quicksand.txt, OFL-Figtree.txt, OFL-DMMono.txt.
+
+MediaPipe Face Landmarker model, packages/shell/faces/face_landmarker.task (unchanged):
+
+  Copyright Google LLC. Licensed under the Apache License, Version 2.0, as each of its models'
+  cards states. See packages/shell/faces/README.md.
+
+  The shell also serves the runtime of the npm package @mediapipe/tasks-vision (Apache-2.0,
+  The MediaPipe Authors) from its builds.
+
+Lucide icons, packages/design/src/lucide-paths.generated.ts (the icon paths, generated from the
+lucide package):
+
+  Copyright (c) Lucide Icons and Contributors, ISC License. Some icons are derived from Feather,
+  Copyright (c) 2013-present Cole Bemis, MIT License. Both texts:
+  packages/design/src/LICENSE-lucide.txt.
+
+Pictures of the example apps, examples/files:
+
+  From Wikimedia Commons, in the public domain or dedicated to it under CC0. Source and author of
+  each: examples/files/CREDITS.md.
+
+Map tiles in the gallery's screenshots (gallery/shots/places.jpg, gallery/shots/earthquakes.jpg):
+
+  Map data (c) OpenStreetMap contributors, available under the Open Database License (ODbL).
+  See https://www.openstreetmap.org/copyright.
+
+The code under docs/tutorials/code and packages/create-potyro/template is meant to be copied into
+your own apps. It is licensed under MIT No Attribution instead: docs/tutorials/code/LICENSE and
+packages/create-potyro/LICENSE.
+
+Dependencies that pnpm installs are not part of this repository. Each carries its own licence, and
+builds of the shell bundle some of them.

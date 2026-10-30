@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Mirror Monsters: the live camera as a mirror with a monster in it \u2014 googly eyes, twins, kaleidoscope, trails, pixels (docs/25)",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs mirror-monsters.app.ts -o dist/mirror-monsters.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",

@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "description": "Shell + PWA target (WP7): app switcher, nav, trust prompts, composition root, dev harness.",
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts"
   },

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Earthquakes, live: EMSC's public WebSocket on a map and a list, the strongest of the day, the ones near you and an alert (ctx.caps.network.socket, docs/28)",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs earthquakes.app.ts -o dist/earthquakes.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",
