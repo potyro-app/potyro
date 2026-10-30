@@ -1,3 +1,10 @@
+---
+title: Voice input
+description: The Studio's microphone and ctx.caps.speech.
+status: current
+order: 29
+---
+
 # 29 — Voice input: the Studio's microphone and `ctx.caps.speech`
 
 Status: built (2026-10-16), draft for the owner's review (§9). Potyro's audience does not code, and

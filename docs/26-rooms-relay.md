@@ -1,6 +1,13 @@
+---
+title: Rooms relay
+description: A relay for real-time multiplayer apps: joining, messages and events, limits, what it does not do.
+status: current
+order: 26
+---
+
 # Rooms: a relay for real-time multiplayer apps
 
-Status: built (`packages/rooms`), **not deployed yet** — see docs/16 "Rooms for multiplayer apps".
+Status: built (`packages/rooms`), **deployed on potyro.app since 2026-10-16** — see docs/16 "Rooms for multiplayer apps".
 Owner decision 2026-10-15: apps get WebSockets through `ctx.caps.network.socket(url)` (built:
 docs/28, which also gives apps `ctx.caps.network.room(id)` over this relay), and real-time multiplayer apps — the first is a draw-and-guess game
 (`apps/draw-guess`, whose rooms are joined by a 12-character code — its README says why a code and

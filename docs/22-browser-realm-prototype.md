@@ -1,4 +1,14 @@
+---
+title: Browser realm
+description: Shared apps in a sandboxed iframe and Worker: the prototype's measurements and what shipped.
+status: current
+order: 22
+---
+
 # 22 · Browser-realm prototype — shared apps in a sandboxed iframe + Worker (#272)
+
+> **§0–§9 are the prototype report (2026-10-13); §10–§11 describe what shipped.** The current
+> overview is docs/00 "Security isolation"; this page is the deep reference it links to.
 
 **Status: phase 1 shipped (2026-10-14), phase 3 shipped (2026-10-16). Shared apps' logic runs in the
 realm, and so do their custom views** — each view in a sandboxed frame of its own, on every engine,

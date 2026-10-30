@@ -1,3 +1,10 @@
+---
+title: Persistence & Migrations
+description: The storage model, media, computed fields, schema evolution and the migration steps.
+status: current
+order: 6
+---
+
 # 06 · Persistence & Migrations
 
 ## Storage model

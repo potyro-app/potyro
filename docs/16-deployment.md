@@ -1,3 +1,10 @@
+---
+title: Deployment
+description: Deploying the shell, the sync relay and the optional services on your own domain, as it was done.
+status: current
+order: 16
+---
+
 # Deploying Potyro on your own domain (KA-34)
 
 **`https://apps.vaz.io` is live and this is how it was done** — a real recipe, not a sketch. It was
@@ -19,11 +26,11 @@ Two things, and only two:
 Everything else — the store, the runtime, the isolate, identity — runs in the browser. An app keeps
 working with the relay down; it just stops reaching other people until it comes back.
 
-Optional services sit beside them, none deployed yet: the [request relay](#requests-to-the-potyro-team-263--not-deployed-yet),
-the [free AI allowance](#ai-for-apps-docs23--not-deployed-yet) for apps, the [share links](#demo-links-and-their-previews-docs24-not-deployed-yet)
-and the [rooms relay](#rooms-for-multiplayer-apps-docs26-not-deployed-yet) for multiplayer apps.
-Without them requests wait on the device, apps' AI runs on the person's own key, links carry the
-whole app, and multiplayer apps cannot meet.
+Optional services sit beside them: the [request relay](#requests-to-the-potyro-team-263--not-deployed-yet),
+the [free AI allowance](#ai-for-apps-docs23-deployed-on-potyroapp) for apps, the [share links](#demo-links-and-their-previews-docs24-not-deployed-yet)
+and the [rooms relay](#rooms-for-multiplayer-apps-docs26-deployed-2026-10-16) for multiplayer apps.
+Each section says whether it is deployed. Without them requests wait on the device, apps' AI runs on
+the person's own key, links carry the whole app, and multiplayer apps cannot meet.
 
 ## The live deployment, as configured
 
@@ -248,8 +255,9 @@ If sync never connects, check the relay URL first: **⌾ You → Sync relay** sh
 
 ## Redeploying
 
-**It is automatic:** every commit that lands on `main` goes live once it passes the local CI — see
-[§8](#8-merging-and-deploying-through-the-ci-machine). By hand, from a clean checkout of `origin/main`:
+**It is by hand.** Since 2026-10-25 nothing deploys main by itself: see
+[§8](#8-merging-and-deploying-by-hand-since-2026-10-25). From a clean checkout of `origin/main`
+that has passed the gate in that same checkout:
 
 ```bash
 pnpm ci:local all --post     # the gate; `deploy` refuses anything that has not passed it
@@ -266,37 +274,59 @@ No restart, no reload. The relay only needs touching when `cojson` changes versi
 which case bump the pin in `/opt/potyro-relay/package.json`, re-run the `npm install` container, and
 `docker restart potyro-relay`.
 
-## 8. Merging and deploying: the ship gate on GitHub Actions
+## 8. Merging and deploying: by hand, since 2026-10-25
 
-Since 2026-10-19 the gate runs on GitHub Actions, on Blacksmith's runners (GitHub's own are blocked
-by the account's billing; third-party runners are not). Two tiers, measured on the first run:
+Every GitHub Actions workflow is off. The owner disabled them by hand on 2026-10-25 (`ci.yml`,
+`ship.yml`, `bench.yml`, `baselines.yml`), because Blacksmith's runners cost too much. A push runs
+nothing, and `pnpm ship` fails: GitHub refuses to dispatch a disabled workflow. Do not turn one back
+on without the owner.
 
-| | When | What | Wall time |
-|---|---|---|---|
-| **CI** (`ci.yml`) | every push to a branch | the checks (unit, typecheck, lint) and a ten-file browser smoke | **~4 min** |
-| **Ship gate** (`ship.yml`) | `pnpm ship <pr>`, and every push to main | the checks, and the browser specs the change needs (below); on main, always everything, then the deploy | **under 4 min** for everything (16 shards, 2026-10-20) |
+A pull request ships in four steps:
 
-**What a change needs** is decided by `scripts/ci-select.mjs` from the files it touches: the full
-suite as sixteen shards (ci-local's deal by measured duration, `e2e/timings.json` — refreshed from a
-main run's own measurements with `node scripts/ci-timings.mjs <run-id>`) when it touches
-what every spec boots — `packages/{shell,views,runtime,host,store,schema,i18n,capabilities,
-identity,share-links}`, the e2e helpers, the configs; a named few for one app (`apps/<id>` → its
-specs), one example (its specs, the languages sweep, the gallery, the launcher's home), one surface
-(`packages/generator` → the Studio and Ask specs, `packages/rooms` → the rooms specs); none for
-docs, words and the servers the browser never reaches. Anything unknown → the full suite.
+1. **Rebase** the branch on `origin/main`, so the gate judges what main will be.
+2. **Run the gate** on that head: `pnpm ci:local all --post`. Every step, the whole browser suite
+   as parallel shards ([below](#the-browser-suite-runs-as-parallel-shards)); `--post` puts a
+   `local-ci` status on the commit, so the PR shows the result. Run it on the CI machine, `vazio`.
+   A laptop takes ~45 minutes, and under that load some shards fail on timeouts: re-run a failed
+   spec alone (`pnpm exec playwright test <file> --workers=1`) before calling it real.
+3. **Merge** the PR on GitHub with a merge commit (`gh pr merge <pr> --merge`).
+4. **Deploy** main. The merge commit is new, so `pnpm ci:local deploy` refuses it until the gate has
+   run on it too. Either run `pnpm ci:local all` on main and then `deploy`, or do by hand what the
+   workflow's deploy job did, which is §2's upload with the current target:
 
-**Merge with `pnpm ship <pr-number>`** (scripts/ship.mjs): it dispatches the gate on the PR's head
-(which must build on main as it is), waits, and merges when green — `gh pr merge --match-head-commit`,
-a merge commit as before. Red → nothing merged. Main's push then runs the whole suite once more and
-deploys potyro.app: `vite build`, `version.json`, rsync as the site's `deploy` user with the
-`POTYRO_DEPLOY_KEY` repository secret (an rsync-only key, `rrsync /srv/potyro/site`). Without the
-secret the run is green but says it did not deploy. Benchmarks of the runner types, and the script
-that produced them, are in `scripts/bench-ci.sh` and `.github/workflows/bench.yml`.
+   ```bash
+   git fetch -q origin && git checkout -q --detach origin/main     # a clean checkout, not your work
+   pnpm install --frozen-lockfile
+   pnpm --filter @potyro/shell exec vite build
+   echo "{\"commit\":\"$(git rev-parse HEAD)\",\"deployedAt\":\"$(date -u +%FT%TZ)\"}" \
+     > packages/shell/dist/version.json
+   rsync -az --delete packages/shell/dist/ potyro-deploy:
+   curl -s https://potyro.app/version.json                          # names the commit
+   ```
+
+   `potyro-deploy` is the ssh alias for `deploy@65.109.228.5`, whose key `rrsync` locks to the web
+   root `/srv/potyro/site` (the table below). The target is relative to that root.
+
+`node scripts/ci-select.mjs` still says which browser specs a change touches. Nothing runs it now;
+the gate runs everything.
+
+### How it was: the ship gate on GitHub Actions (2026-10-19 to 2026-10-25)
+
+For six days the gate ran on GitHub Actions, on Blacksmith's runners (GitHub's own were blocked by
+the account's billing). Every push to a branch ran `ci.yml`: the checks and a ten-file browser smoke,
+~4 min. `pnpm ship <pr>` (`scripts/ship.mjs`) dispatched `ship.yml` on the PR's head, waited, and
+merged when green with `gh pr merge --match-head-commit`. `ship.yml` ran the checks and the browser
+specs `scripts/ci-select.mjs` picked from the files the change touched: all of them as sixteen
+shards when it touched what every spec boots (the shell, views, runtime, host, store, schema and
+the e2e helpers), a named few for one app or one surface, none for docs. On main it ran everything,
+then built and rsynced the shell to potyro.app with the `POTYRO_DEPLOY_KEY` repository secret.
+The whole suite took under 4 min, and it cost too much to keep. The workflows and
+`scripts/bench-ci.sh` are still in the repository.
 
 ### How it was: vazio as the gate (until 2026-10-19)
 
-While vazio runs its cron again it would deploy too: disable that cron line, or point it at nothing,
-before it comes back. The hooks and `ci-local` still work for a full run on any machine.
+If vazio's cron line (below) runs again, it deploys main by itself: keep it off, or point it at
+nothing, while main ships by hand. The hooks and `ci-local` still work for a full run on any machine.
 
 GitHub Actions was unavailable, so the CI machine (`vazio`) was both the gate and the deployer.
 **Merge with `pnpm ship <pr-number>`** meant:
@@ -513,14 +543,15 @@ lifted or the route is exempted from it (with the rate limit as its only guard).
 its index of open issues are in memory; a restart forgets them, and the index is read again from
 GitHub on the next request.
 
-## AI for apps (docs/23) — NOT deployed yet
+## AI for apps (docs/23): deployed on potyro.app
 
 Apps can read a photo or a text with AI (`ctx.caps.ai`). Who pays: a **free allowance** first,
 through a small relay that holds Potyro's OpenRouter key (`packages/ai-relay`), then the person's
-own OpenRouter key from Model settings. **Until the relay below is running**, apps work on the
-person's own key, and without one the action fails with "Free AI isn't available yet — add your
-own key in Model settings." Nothing else changes: the shell asks `/ai/complete`, gets the site's
-own page or a 404 back, and does not ask again for ten minutes.
+own OpenRouter key from Model settings. **It runs on potyro.app**: `https://potyro.app/ai/health`
+answers `{"ok":true}` (checked 2026-10-30). On a site without it, apps work on the person's own key,
+and without one the action fails with "Free AI isn't available yet — add your own key in Model
+settings." Nothing else changes: the shell asks `/ai/complete`, gets the site's own page or a 404
+back, and does not ask again for ten minutes. The recipe below was written on apps.vaz.io.
 
 What it accepts and does, so you know what you are putting on the internet:
 

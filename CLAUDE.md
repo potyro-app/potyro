@@ -100,15 +100,17 @@ pnpm test:e2e:firefox      # the same specs in Firefox (POTYRO_FIREFOX=1), conso
 pnpm conformance    # web vs native capability parity (docs/09)
 pnpm lint:boundaries
 
-# CI is GitHub Actions on Blacksmith's runners (docs/16 §8). Every push to a branch gets the checks
-# and a ten-file browser smoke (~5 min). `pnpm ship` runs the ship gate on the PR's head — the
-# browser specs the change needs, all 202 files as 8 shards when it touches the shell (~9 min) —
-# and merges when green; main then runs everything again and deploys potyro.app.
-pnpm ship <pr>                 # dispatch the gate, wait, merge when green
-node scripts/ci-select.mjs     # which browser specs a change needs (what the gate will run)
-# The same steps on your own machine (slow on a laptop: ~45 min for everything):
-pnpm ci:local all              # every step; `ci:local e2e:3` one shard; `ci:local e2e:firefox` the
-                               # specs in Firefox (not in the gate; run it before merging UI work)
+# CI on GitHub is OFF: the owner disabled every workflow on 2026-10-25 (cost), so a push runs
+# nothing and `pnpm ship` fails. Never turn a workflow back on without the owner. Shipping is by hand
+# (docs/16 §8): rebase on origin/main, `pnpm ci:local all` green on that head (the browser suite on
+# the CI machine, vazio; a laptop is slow and flaky under the load), merge the PR with a merge
+# commit, then deploy main by rsync (docs/16 §8 has the commands; the GitHub Actions gate of
+# 2026-10-19 to 10-25 is history there).
+pnpm ci:local all --post       # the gate: every step; --post marks the commit green on GitHub
+                               # `ci:local e2e:3` one shard; `ci:local e2e:firefox` the specs in
+                               # Firefox (not in the gate; run it before merging UI work)
+pnpm ci:local deploy           # main on potyro.app — only a commit that passed `all` in this checkout
+node scripts/ci-select.mjs     # which browser specs a change touches (to pick what to run first)
 
 # writing apps outside this repo (docs/tutorials): `npm create potyro <dir>` (packages/create-potyro,
 # its template/) and `potyro pack` (packages/schema/cli/pack.mjs — `pnpm pack:app` is the same code).

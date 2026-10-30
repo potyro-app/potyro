@@ -1,3 +1,10 @@
+---
+title: Live camera
+description: ctx.caps.camera.live(): a live video stream and the faces in it, for trusted apps.
+status: current
+order: 25
+---
+
 # 25 · Live camera — `ctx.caps.camera.live()`
 
 Status: built (this branch). Owner decision 2026-10-15: apps can make camera toys — face stickers,
