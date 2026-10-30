@@ -27,6 +27,7 @@ Start with [How Potyro works](00-how-potyro-works.md). The rest goes deeper, one
 - [Live connections](28-sockets.md) — ctx.caps.network.socket and .room: WebSockets and rooms from app code, with permission and limits.
 - [Voice input](29-voice.md) — The Studio's microphone and ctx.caps.speech.
 - [App translations](30-app-translations.md) — One language in the source, catalogs beside it: how an app carries its words in other languages.
+- [Security model](31-security-model.md) — What keeps a shared app in its box, what the servers can see, what is not protected, and how to report a hole.
 
 ## Historical
 
