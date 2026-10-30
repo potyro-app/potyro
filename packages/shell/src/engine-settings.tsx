@@ -16,6 +16,7 @@ import { OPENROUTER_MODELS, WEBLLM_MODELS } from "@potyro/generator/backends";
 import { ENGINES, ENGINE_GROUPS, canInvestigate, engineLabel, type Engine, type EngineConfig } from "./engines.js";
 import { canGenerate } from "./generate-client.js";
 import { ThinkingSettings } from "./thinking-settings.js";
+import { EndpointSettings } from "./endpoint-settings.js";
 
 /**
  * Where the microphone's words are made on this device (docs/29): voice uses none of the engines
@@ -198,6 +199,8 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
                         </p>
                       </div>
                     ) : null}
+
+                    {active && e.id === "endpoint" ? <EndpointSettings config={config} onChange={onChange} /> : null}
 
                     {/* How hard it thinks (#280): only where a client sends it. */}
                     {active && e.canThink ? <ThinkingSettings config={config} onChange={onChange} /> : null}

@@ -279,6 +279,11 @@ msgstr "{0, plural, one {e # altro} other {e altri #}}"
 msgid "{0, plural, one {Bring this app in?} other {Bring these # apps in?}}"
 msgstr "{0, plural, one {Portare qui questa app?} other {Portare qui queste # app?}}"
 
+#. placeholder {0}: models.length
+#: ../shell/src/endpoint-check.ts
+msgid "{0, plural, one {Connected. The server lists # model.} other {Connected. The server lists # models.}}"
+msgstr "{0, plural, one {Connesso. Il server elenca # modello.} other {Connesso. Il server elenca # modelli.}}"
+
 #. placeholder {0}: lines.length
 #: ../shell/src/studio.tsx
 msgid "{0, plural, one {Fetch the library this version uses?} other {Fetch the libraries this version uses?}}"
@@ -499,8 +504,8 @@ msgid "{engine} cannot investigate this — it has no transcript to hang a multi
 msgstr "{engine} non può indagare su questo: non ha una conversazione a cui agganciare un ciclo di strumenti in più passi (claude -p è una risposta singola, non un motore di chat). Scegli un motore cloud, come OpenRouter, per guidare il ciclo."
 
 #: ../shell/src/start-fix.ts
-msgid "{engine} claims it can investigate this, but startFix has no client wired for it — only OpenRouter does today. This is a configuration bug, not a problem with your app."
-msgstr "{engine} dice di poter indagare, ma startFix non ha un client collegato per lui: oggi ce l’ha solo OpenRouter. È un errore di configurazione, non un problema della tua app."
+msgid "{engine} claims it can investigate this, but startFix has no client wired for it. This is a configuration bug, not a problem with your app."
+msgstr "{engine} dice di poter indagare, ma startFix non ha un client collegato. È un errore di configurazione, non un problema della tua app."
 
 #: ../shell/src/start-fix.ts
 msgid "{engine} needs your own API key to investigate — add one in Engine Settings."
@@ -1108,6 +1113,11 @@ msgstr "Una copia separata, che parte vuota."
 msgid "A server on the internet"
 msgstr "Un server su internet"
 
+#. Model settings heading: a model server the person names by its address, in the cloud or on their own machine
+#: ../shell/src/engines.ts
+msgid "A server you choose"
+msgstr "Un server a tua scelta"
+
 #: ../shell/src/identity-panel.tsx
 msgid "A short list of words is the only way back to it if you lose this device — and the only way to use it on another one. Nobody can recover them for you."
 msgstr "Una breve lista di parole è l’unico modo per ritrovarla se perdi questo dispositivo, e l’unico modo per usarla su un altro. Nessuno può recuperarle al posto tuo."
@@ -1530,6 +1540,10 @@ msgstr "Anthropic"
 msgid "Anthropic API key"
 msgstr "Chiave API di Anthropic"
 
+#: ../shell/src/engines.ts
+msgid "Any server that speaks the OpenAI chat API: OpenAI, Ollama, LM Studio and others. Give its address, a key if it needs one, and a model."
+msgstr "Qualsiasi server che parli l’API chat di OpenAI: OpenAI, Ollama, LM Studio e altri. Indica l’indirizzo, una chiave se serve, e un modello."
+
 #: ../shell/src/backup-switch.tsx
 msgid "Anything you make later goes too. The relay only ever sees encrypted data."
 msgstr "Anche tutto ciò che crei dopo ci va. Il relay vede solo dati cifrati."
@@ -1682,8 +1696,12 @@ msgid "Ask has used {spentHere} of your OpenRouter credit in this app, on this d
 msgstr "Ask ha usato {spentHere} del tuo credito OpenRouter in quest’app, su questo dispositivo."
 
 #: ../shell/src/start-ask.ts
-msgid "Ask needs a cloud model. Choose OpenRouter in the Studio’s Model settings."
-msgstr "Ask ha bisogno di un modello cloud. Scegli OpenRouter nelle impostazioni del modello dello Studio."
+msgid "Ask needs a model that can use tools. Choose OpenRouter or an OpenAI-compatible endpoint in the Studio’s Model settings."
+msgstr "Ask ha bisogno di un modello che sappia usare strumenti. Scegli OpenRouter o un endpoint compatibile con OpenAI nelle impostazioni del modello dello Studio."
+
+#: ../shell/src/start-ask.ts
+msgid "Ask needs the endpoint’s address and a model. Add them in the Studio’s Model settings."
+msgstr "Ask ha bisogno dell’indirizzo dell’endpoint e di un modello. Aggiungili nelle impostazioni del modello dello Studio."
 
 #: ../shell/src/start-ask.ts
 msgid "Ask needs your OpenRouter key. Add it in the Studio’s Model settings."
@@ -2344,6 +2362,10 @@ msgstr "Conferma"
 msgid "Confirmed"
 msgstr "Confermato"
 
+#: ../shell/src/endpoint-check.ts
+msgid "Connected, but the server does not list {model}. Check the model name."
+msgstr "Connesso, ma il server non elenca {model}. Controlla il nome del modello."
+
 #: ../shell/src/sync-status.tsx
 msgid "Connecting"
 msgstr "Connessione"
@@ -2931,6 +2953,18 @@ msgstr "Modifica: {noun}"
 msgid "edited the code by hand"
 msgstr "ha modificato il codice a mano"
 
+#: ../shell/src/endpoint-settings.tsx
+msgid "Endpoint address"
+msgstr "Indirizzo dell’endpoint"
+
+#: ../shell/src/endpoint-settings.tsx
+msgid "Endpoint API key"
+msgstr "Chiave API dell’endpoint"
+
+#: ../shell/src/endpoint-settings.tsx
+msgid "Endpoint model"
+msgstr "Modello dell’endpoint"
+
 #. The list of model engines to choose from
 #: ../shell/src/engine-settings.tsx
 msgid "Engine"
@@ -3289,6 +3323,10 @@ msgstr "Dalle un altro colore e un’altra icona"
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Give it a name."
 msgstr "Dalle un nome."
+
+#: ../shell/src/endpoint-check.ts
+msgid "Give the server’s address first."
+msgstr "Indica prima l’indirizzo del server."
 
 #: ../shell/src/studio.tsx
 msgid "Go back"
@@ -3877,6 +3915,10 @@ msgstr "Chiave"
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Key for {sourceName}"
 msgstr "Chiave per {sourceName}"
+
+#: ../shell/src/endpoint-settings.tsx
+msgid "Key, if the server needs one"
+msgstr "Chiave, se il server la chiede"
 
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Keys stay on this device, in its secure store. Apps never see them."
@@ -4488,6 +4530,10 @@ msgstr "no"
 msgid "No"
 msgstr "No"
 
+#: ../shell/src/endpoint-check.ts
+msgid "No answer from {base}. Check the server is running and the address is right. A server on your own machine must also allow requests from this page (for Ollama, set OLLAMA_ORIGINS)."
+msgstr "Nessuna risposta da {base}. Controlla che il server sia acceso e che l’indirizzo sia giusto. Un server sul tuo computer deve anche accettare richieste da questa pagina (per Ollama, imposta OLLAMA_ORIGINS)."
+
 #: ../shell/src/main.tsx
 msgid "No app \"{appId}\" installed to import into."
 msgstr "Nessuna app “{appId}” installata in cui importare."
@@ -4706,6 +4752,10 @@ msgstr "Ancora niente su {label}."
 #: ../shell/src/ask-review.tsx
 msgid "Nothing approved"
 msgstr "Niente approvato"
+
+#: ../shell/src/endpoint-check.ts
+msgid "Nothing at {base}/models. Check the address: it usually ends in /v1."
+msgstr "Niente su {base}/models. Controlla l’indirizzo: di solito finisce con /v1."
 
 #: ../shell/src/move-page.tsx
 msgid "Nothing came in"
@@ -5033,6 +5083,11 @@ msgstr "Apri l’app"
 #: ../shell/src/move-page.tsx
 msgid "Open your apps"
 msgstr "Apri le tue app"
+
+#. Engine name: any server that speaks the OpenAI chat API
+#: ../shell/src/engines.ts
+msgid "OpenAI-compatible endpoint"
+msgstr "Endpoint compatibile con OpenAI"
 
 #: ../shell/src/splash.tsx
 msgid "Opening"
@@ -6392,6 +6447,15 @@ msgstr "Tocca la mappa per posizionare un punto"
 msgid "Tap the part you mean"
 msgstr "Tocca la parte che intendi"
 
+#: ../shell/src/endpoint-settings.tsx
+msgid "Test connection"
+msgstr "Prova la connessione"
+
+#. Button while it asks the server
+#: ../shell/src/endpoint-settings.tsx
+msgid "Testing…"
+msgstr "Prova in corso…"
+
 #. Point chip: a thing inside an app's screen, lower case
 #: ../shell/src/point-target.ts
 msgid "text"
@@ -6446,6 +6510,10 @@ msgstr "Quel file non è più in questa app"
 msgid "That is not a link"
 msgstr "Non è un link"
 
+#: ../shell/src/endpoint-check.ts
+msgid "That is not a web address. It looks like http://localhost:11434/v1."
+msgstr "Questo non è un indirizzo web. Ha questa forma: http://localhost:11434/v1."
+
 #: ../shell/src/identity-panel.tsx
 msgid "That is not a websocket URL. It needs to start with wss:// or ws://."
 msgstr "Non è un URL websocket. Deve iniziare con wss:// o ws://."
@@ -6474,6 +6542,10 @@ msgstr "la pagina “{shownTitle}”"
 #: ../shell/src/move-banner.tsx
 msgid "The {site} window was closed before it finished. Bring them over again when you are ready: nothing is doubled, and whatever was left out comes in."
 msgstr "La finestra di {site} è stata chiusa prima di finire. Portale di nuovo quando vuoi: niente viene duplicato e ciò che mancava arriva."
+
+#: ../shell/src/endpoint-check.ts
+msgid "The address has to start with http:// or https://."
+msgstr "L’indirizzo deve iniziare con http:// o https://."
 
 #: ../shell/src/app-ai.ts
 msgid "The AI service could not answer this time. Try again."
@@ -6564,6 +6636,10 @@ msgstr "Il link alla documentazione deve essere un indirizzo https://."
 #: ../shell/src/ask-sources-panel.tsx
 msgid "The endpoint must be an https:// address."
 msgstr "L’endpoint deve essere un indirizzo https://."
+
+#: ../shell/src/start-fix.ts
+msgid "The endpoint needs its address and a model to investigate — add them in Engine Settings."
+msgstr "L’endpoint ha bisogno dell’indirizzo e di un modello per indagare: aggiungili nelle impostazioni del motore."
 
 #: ../shell/src/file-viewer.tsx
 msgid "The file as it is now is kept as an earlier copy, so you can change your mind."
@@ -6693,6 +6769,18 @@ msgstr "la riparazione è stata rifiutata: {why}"
 #: ../shell/src/backup-switch.tsx
 msgid "The rest are on the relay; nothing was lost. Try again, or turn sync on for them one at a time."
 msgstr "Le altre sono sul relay; non si è perso nulla. Riprova, o attiva la sincronizzazione per loro una alla volta."
+
+#: ../shell/src/endpoint-check.ts
+msgid "The server answered with an error ({status})."
+msgstr "Il server ha risposto con un errore ({status})."
+
+#: ../shell/src/endpoint-check.ts
+msgid "The server answered, but not with a list of models. Check the address: it usually ends in /v1."
+msgstr "Il server ha risposto, ma non con un elenco di modelli. Controlla l’indirizzo: di solito finisce con /v1."
+
+#: ../shell/src/endpoint-check.ts
+msgid "The server refused the key ({status}). Check the key."
+msgstr "Il server ha rifiutato la chiave ({status}). Controlla la chiave."
 
 #: ../shell/src/version-notes.ts
 msgid "the source before history was kept"

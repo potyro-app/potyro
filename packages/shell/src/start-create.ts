@@ -10,10 +10,10 @@
 
 import { runCreateLoop, buildCreateTools, CREATE_AGENT_SYSTEM_PROMPT, type CreateLoopOutcome, type LoopStep } from "@potyro/generator/agent";
 import { createOpenRouterEngine, loadCorpus, type Language } from "@potyro/generator/backends";
-import { openRouterOptions, thinkingFor, type EngineConfig } from "./engines.js";
+import { thinkingFor, type EngineConfig } from "./engines.js";
 import { buildAndValidate } from "./validate-app.js";
 import { runCandidate } from "./run-candidate.js";
-import { modifyLoopRefusal } from "./start-modify.js";
+import { loopEngineOptions, modifyLoopRefusal } from "./start-modify.js";
 
 export interface StartCreateOpts {
   /** What the person asked for: everything said since the app last changed, questions and answers included. */
@@ -35,10 +35,11 @@ export async function startCreate(opts: StartCreateOpts): Promise<CreateLoopOutc
   if (refused) return { kind: "failed", reason: refused, cause: "engine" };
   const check = (source: string): Promise<string[]> => buildAndValidate(source);
   const run = (source: string) => runCandidate(source);
+  const chat = loopEngineOptions(opts.engine);
   return runCreateLoop({
     // How hard the model thinks is the person's setting (#280); the escalation is its own switch.
-    engine: createOpenRouterEngine(openRouterOptions(opts.engine)),
-    model: opts.engine.openrouterModel,
+    engine: createOpenRouterEngine(chat),
+    model: chat.model,
     escalate: thinkingFor(opts.engine).escalate,
     tools: buildCreateTools({ check, run, corpus: loadCorpus }),
     // The passages from this release's examples and docs that speak to the request go in the first message.

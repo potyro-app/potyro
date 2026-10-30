@@ -21,7 +21,7 @@ import { placeByAddress } from "./ask-geocode.js";
 import { MaterialField, type Material } from "./ask-material.js";
 import { addSpend, formatSpend, spentIn } from "./ask-spend.js";
 import { setAskEnabled } from "./ask-setting.js";
-import { engineLabel, type EngineConfig } from "./engines.js";
+import { canSearchWeb, engineLabel, type EngineConfig } from "./engines.js";
 import { askRefusal, startAsk, type StartAskOutcome } from "./start-ask.js";
 import { currentLocale } from "./locale.js";
 import { currentVault } from "@potyro/identity";
@@ -142,7 +142,10 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
   // What goes with the request besides the app's structure, shown before sending and removable.
   const area = useSyncExternalStore(subscribeMapArea, mapArea);
   const [sendArea, setSendArea] = useState(true);
-  const [web, setWeb] = useState(webPreference);
+  const [webWanted, setWeb] = useState(webPreference);
+  // The search is OpenRouter's own; on another engine there is none to offer, whatever was chosen before.
+  const searchable = canSearchWeb(engine.engine);
+  const web = webWanted && searchable;
   const [searchDown, setSearchDown] = useState(false);
   const [reply, setReply] = useState("");
   /** Something the person brought — a paste or a file another AI made — to turn into records. */
@@ -384,17 +387,19 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
                   </button>
                 </span>
               ) : null}
-              <label className="k-ask-chip k-ask-chip-toggle" data-on={web || undefined}>
-                <input
-                  type="checkbox"
-                  checked={web}
-                  onChange={(e) => {
-                    setWeb(e.target.checked);
-                    rememberWeb(e.target.checked);
-                  }}
-                />
-                <span aria-hidden><Glyph icon="search" size={16} /></span> <Trans>Search the web when needed · about 2¢</Trans>
-              </label>
+              {searchable ? (
+                <label className="k-ask-chip k-ask-chip-toggle" data-on={web || undefined}>
+                  <input
+                    type="checkbox"
+                    checked={web}
+                    onChange={(e) => {
+                      setWeb(e.target.checked);
+                      rememberWeb(e.target.checked);
+                    }}
+                  />
+                  <span aria-hidden><Glyph icon="search" size={16} /></span> <Trans>Search the web when needed · about 2¢</Trans>
+                </label>
+              ) : null}
             </div>
             <SourcesSection state={sources} keys={keys} onChange={loadSources} />
             <footer className="k-ask-actions">
