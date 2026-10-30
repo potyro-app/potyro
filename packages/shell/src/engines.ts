@@ -248,16 +248,21 @@ export function engineReady(cfg: EngineConfig): boolean {
   return !isCloud(cfg.engine) || keyFor(cfg).length > 0;
 }
 
+/**
+ * What the free engine has left this month, in words, for the engine button (" · plenty left this
+ * month"), once the relay has said; "" for every other engine, and before it has.
+ */
+export function engineLeft(cfg: EngineConfig): string {
+  if (cfg.engine !== "potyro") return "";
+  const free = getFreeAi();
+  const left = stoppedNow(free) ? "none" : free.left;
+  return left ? ` · ${leftWords(left)}` : "";
+}
+
 /** How the engine names itself in the UI — on the settings button and in every progress line. */
 export function engineLabel(cfg: EngineConfig): string {
   const choice = ENGINES.find((e) => e.id === cfg.engine);
   const base = choice ? i18n._(choice.label) : cfg.engine;
-  if (cfg.engine === "potyro") {
-    // How much is left, in words, once the relay has said (free-ai.ts `leftWords`).
-    const free = getFreeAi();
-    const left = stoppedNow(free) ? "none" : free.left;
-    return left ? `${base} · ${leftWords(left)}` : base;
-  }
   if (cfg.engine === "openrouter") {
     const m = OPENROUTER_MODELS.find((x) => x.id === cfg.openrouterModel);
     const level = THINKS[thinkingFor(cfg).level];

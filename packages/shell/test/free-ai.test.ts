@@ -5,8 +5,9 @@
 // answers. No request reaches a network: `fetch` is a script.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { DEFAULT_ENGINE_CONFIG, chatEngineOptions, engineLabel, engineReady } from "../src/engines.js";
+import { DEFAULT_ENGINE_CONFIG, chatEngineOptions, engineLabel, engineLeft, engineReady } from "../src/engines.js";
 import { resetRelayMemory } from "../src/app-ai.js";
+import { backendFor } from "../src/model-turn.js";
 import {
   FREE_CODES,
   FreeAiRefusal,
@@ -90,15 +91,23 @@ describe("the free engine", () => {
     expect(options.reasoning).toEqual({ effort: "none" });
   });
 
+  it("answers a one-turn change and a repair too, not only the loops", async () => {
+    await checkFreeAi({ url: HEALTH, fetch: health({ ok: true, chat: true }), online: () => true });
+    const backend = await backendFor(potyro);
+    expect(backend.name).toBe("openrouter:deepseek/deepseek-v4-flash-0731+reasoning=none");
+  });
+
   it("reads what is left off each answer, and names it on the engine", async () => {
     await checkFreeAi({ url: HEALTH, fetch: health({ ok: true, chat: true }), online: () => true });
     expect(engineLabel(potyro)).toBe("Potyro");
+    expect(engineLeft(potyro)).toBe("");
     const send = freeFetch(async () => json(200, { choices: [] }, { "x-potyro-left-usd": "0.42" }));
     await send("https://apps.test/ai/v1/chat/completions");
     expect(getFreeAi().left).toBe("plenty");
-    expect(engineLabel(potyro)).toBe("Potyro · plenty left this month");
+    expect(engineLeft(potyro)).toBe(" · plenty left this month");
+    expect(engineLeft({ ...potyro, engine: "openrouter" })).toBe("");
     await freeFetch(async () => json(200, { choices: [] }, { "x-potyro-left-usd": "0.05" }))("x");
-    expect(engineLabel(potyro)).toBe("Potyro · a little left this month");
+    expect(engineLeft(potyro)).toBe(" · a little left this month");
   });
 
   it("turns a used-up month into a refusal in words, kept for the month, and the engine stops being ready", async () => {
@@ -108,7 +117,7 @@ describe("the free engine", () => {
     await expect(send("x")).rejects.toThrow(/^This month's free app making is used up on this device/);
     expect(stoppedNow()?.code).toBe("allowance");
     expect(engineReady(potyro)).toBe(false);
-    expect(engineLabel(potyro)).toBe("Potyro · used up this month");
+    expect(engineLeft(potyro)).toBe(" · used up this month");
     // Kept on this device for the month (the month and the code, nothing else).
     expect(JSON.parse(localStorage.getItem("potyro:free-ai-stop")!)).toEqual({ code: "allowance", until: new Date().toISOString().slice(0, 7) });
   });

@@ -34,9 +34,9 @@ import { confirmAndRemoveApp } from "./remove-app.js";
 import { navigateTo } from "./router.js";
 import { listVersions, type VersionOrigin } from "./app-history.js";
 import { EngineSettings } from "./engine-settings.js";
-import { engineLabel, engineReady, isCloud } from "./engines.js";
+import { engineLabel, engineLeft, engineReady, isCloud } from "./engines.js";
 import { checkFreeEngine, useEngineConfig } from "./engine-store.js";
-import { useFreeAi } from "./free-ai.js";
+import { freeNotNow, useFreeAi } from "./free-ai.js";
 import { FreePanel } from "./free-panel.js";
 import { shellDialogs } from "./dialog.js";
 import { followChat, syncChat } from "./chat-sync.js";
@@ -976,7 +976,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               title={
                 ready
                   ? t`Send to ${label}`
-                  : engineCfg.engine === "endpoint"
+                  : engineCfg.engine === "potyro"
+                    ? freeNotNow()
+                    : engineCfg.engine === "endpoint"
                     ? t`${label} needs an address and a model — open Model settings`
                     : t`${label} needs an API key — open Model settings`
               }
@@ -989,8 +991,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           <div className="k-composer-meta" hidden={noWay}>
             <button type="button" className="k-composer-engine" aria-label={t`Model settings`} title={t`Choose which model writes and edits your app`} onClick={() => setSettingsOpen(true)}>
               {I.settings} {label}
+              {engineLeft(engineCfg)}
             </button>
-            {!ready ? (
+            {!ready && engineCfg.engine !== "potyro" ? (
               <span className="k-composer-warn">
                 {engineCfg.engine === "endpoint" ? <Trans>needs an address and a model</Trans> : <Trans>needs an API key</Trans>}
               </span>
