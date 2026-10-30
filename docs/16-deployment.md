@@ -26,11 +26,11 @@ Two things, and only two:
 Everything else — the store, the runtime, the isolate, identity — runs in the browser. An app keeps
 working with the relay down; it just stops reaching other people until it comes back.
 
-Optional services sit beside them, none deployed yet: the [request relay](#requests-to-the-potyro-team-263--not-deployed-yet),
-the [free AI allowance](#ai-for-apps-docs23--not-deployed-yet) for apps, the [share links](#demo-links-and-their-previews-docs24-not-deployed-yet)
-and the [rooms relay](#rooms-for-multiplayer-apps-docs26-not-deployed-yet) for multiplayer apps.
-Without them requests wait on the device, apps' AI runs on the person's own key, links carry the
-whole app, and multiplayer apps cannot meet.
+Optional services sit beside them: the [request relay](#requests-to-the-potyro-team-263--not-deployed-yet),
+the [free AI allowance](#ai-for-apps-docs23-deployed-on-potyroapp) for apps, the [share links](#demo-links-and-their-previews-docs24-not-deployed-yet)
+and the [rooms relay](#rooms-for-multiplayer-apps-docs26-deployed-2026-10-16) for multiplayer apps.
+Each section says whether it is deployed. Without them requests wait on the device, apps' AI runs on
+the person's own key, links carry the whole app, and multiplayer apps cannot meet.
 
 ## The live deployment, as configured
 
@@ -520,14 +520,15 @@ lifted or the route is exempted from it (with the rate limit as its only guard).
 its index of open issues are in memory; a restart forgets them, and the index is read again from
 GitHub on the next request.
 
-## AI for apps (docs/23) — NOT deployed yet
+## AI for apps (docs/23): deployed on potyro.app
 
 Apps can read a photo or a text with AI (`ctx.caps.ai`). Who pays: a **free allowance** first,
 through a small relay that holds Potyro's OpenRouter key (`packages/ai-relay`), then the person's
-own OpenRouter key from Model settings. **Until the relay below is running**, apps work on the
-person's own key, and without one the action fails with "Free AI isn't available yet — add your
-own key in Model settings." Nothing else changes: the shell asks `/ai/complete`, gets the site's
-own page or a 404 back, and does not ask again for ten minutes.
+own OpenRouter key from Model settings. **It runs on potyro.app**: `https://potyro.app/ai/health`
+answers `{"ok":true}` (checked 2026-10-30). On a site without it, apps work on the person's own key,
+and without one the action fails with "Free AI isn't available yet — add your own key in Model
+settings." Nothing else changes: the shell asks `/ai/complete`, gets the site's own page or a 404
+back, and does not ask again for ten minutes. The recipe below was written on apps.vaz.io.
 
 What it accepts and does, so you know what you are putting on the internet:
 
