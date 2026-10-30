@@ -97,15 +97,15 @@ so in the PR.
 | Service | Derived address | Override | Works from the iOS app today? |
 |---|---|---|---|
 | Sync relay (websocket) | `wss://apps.vaz.io/sync` | `VITE_POTYRO_RELAY` | **No** — apps.vaz.io is behind HTTP basic auth, and a WebView websocket cannot send it |
-| AI for apps | `https://apps.vaz.io/ai/complete` | `VITE_POTYRO_AI` | **No** — the gate, and the service sends no CORS headers (it assumes same origin) |
-| Platform requests | `https://apps.vaz.io/requests/…` | `VITE_POTYRO_REQUESTS` | **No** — same two reasons |
+| AI for apps | `https://potyro.app/ai` (`/complete`, `/v1/chat/completions`) — set it, apps.vaz.io has no AI relay | `VITE_POTYRO_AI=https://potyro.app/ai` | **Yes** — potyro.app is not behind the basic-auth gate, and the relay answers the WebViews' origins (`capacitor://localhost` on iOS, `https://localhost` on Android; `AI_CORS_ORIGINS`) with CORS, without credentials (docs/16 "AI for apps") |
+| Platform requests | `https://apps.vaz.io/requests/…` | `VITE_POTYRO_REQUESTS` | **No** — the gate, and the service sends no CORS headers (it assumes same origin) |
 | Hosted demo links | `https://apps.vaz.io/share-api` | `VITE_POTYRO_SHARE` | Falls back to an inline link (the health check fails) |
 | Invite and demo links people send | `https://apps.vaz.io/#join=…` | — | The link is right; opening it in the app needs Universal Links (§9) |
 
 The same is true of the Android build. Everything local works without any of it: apps, records,
 reminders, camera, sharing between apps on the phone. AI still works with the person's own
 OpenRouter key (Model settings), which is called directly and allows browser origins. Fixing the
-three "No"s is an owner decision (§7, decision 1); do not work around it in the app.
+two "No"s is an owner decision (§7, decision 1); do not work around it in the app.
 
 ## 3. The audit: what WKWebView changes, subsystem by subsystem
 
@@ -281,7 +281,7 @@ iOS version and the model with every result.
 | R1 | **High** | OPFS sync access handles unavailable in WKWebView on some iOS versions | The store falls back to IndexedDB (whole-file rewrite per save: slow as data grows, but nothing is lost) | A native SQLite VFS bridged through a Capacitor plugin, or wa-sqlite's IDB batch-atomic VFS; decide only on evidence from checklist #2 |
 | R2 | **High** | Access handles closed while the app is suspended in the background (reported on Capacitor iOS) | Killing and reopening the app reopens the pool | Reopen the pool on `visibilitychange`/`App` resume when a handle throws `InvalidStateError`; needs the error text from checklist #4 |
 | R3 | **High (distribution)** | App Review: Guideline 2.5.2 (no downloaded code that changes features) and 4.7 (HTML5/JS mini apps allowed, but 4.7.2 "may not extend or expose native platform APIs … without prior permission", 4.7.3 per-instance consent, 4.7.4 an index with universal links, 4.7.5 age gating). Potyro gives apps camera, location and notifications through `ctx`. | TestFlight **internal** testing needs no review | Owner decision 2 (§7) |
-| R4 | **High** | Services unreachable from the app (basic-auth gate + no CORS for `capacitor://localhost`) | Local everything; AI with the person's own key; inline demo links | Owner decision 1 (§7) |
+| R4 | **High** | Services unreachable from the app (basic-auth gate + no CORS for `capacitor://localhost`) | Local everything; AI through `https://potyro.app/ai` (CORS for the WebViews) or the person's own key; inline demo links | Owner decision 1 (§7) |
 | R5 | Medium | 64 pending notifications per app | Soonest 64 kept (`makeRoom`); the rest come back when their app reconciles | A background refresh task that reconciles every app (§9) |
 | R6 | Medium | A sealed frame reaching the camera through Capacitor's blanket `.grant` | WebKit Permissions Policy should refuse a cross-origin frame | Override `requestMediaCapturePermissionFor` to grant the main frame only — needs checklist #6 |
 | R7 | Medium | Memory: a heavy app or the face model gets the WebContent process killed | Capacitor reloads the page; data is in SQLite | Per-Worker limits (docs/22 §6.1) |
@@ -292,8 +292,9 @@ iOS version and the model with every result.
 
 ## 7. Decisions the owner has to make
 
-1. **Services from the native apps** (iOS and Android alike). Either (a) the three Node services
-   send `Access-Control-Allow-Origin` for `capacitor://localhost` and `https://localhost`, Apache
+1. **Services from the native apps** (iOS and Android alike). Either (a) the Node services
+   send `Access-Control-Allow-Origin` for `capacitor://localhost` and `https://localhost` (the AI
+   relay on potyro.app already does, §2.1), Apache
    lets `OPTIONS` through the gate, and the routes the apps use are exempt from basic auth (rate
    limits as their guard) — the sync relay too; or (b) the app sends those calls through
    `CapacitorHttp` (no CORS), which still leaves the gate. Until then the native apps are local-only.
