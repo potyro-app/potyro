@@ -4,7 +4,7 @@
 > (see [README.md](README.md)). Every statement here is listed in [facts.md](facts.md) with the code
 > or document that proves it. Notes in `<!-- -->` comments are for the review and are not shown.
 
-Last changed: <DATE>
+Effective: <DATE>
 
 ## The short version
 
@@ -191,7 +191,7 @@ We do not use your data for ads, profiles or anything you did not ask for.
 
 | Who | What for | Where |
 |---|---|---|
-| Hetzner Online GmbH | Hosts potyro.app: the site, the sync relay, links, rooms, the AI and request relays | Germany or Finland, to confirm |
+| Hetzner Online GmbH | Hosts potyro.app: the site, the sync relay, links, rooms, the AI and request relays | <HOSTING LOCATION> |
 | OpenRouter | Passes free allowance and Firefox voice requests to the model's provider | |
 | Google | Runs the model behind the free allowance (Gemini 2.5 Flash Lite), through OpenRouter | |
 | GitHub | Holds requests and wording suggestions, as public issues | |

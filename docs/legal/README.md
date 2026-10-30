@@ -22,6 +22,10 @@ review are HTML comments (`<!-- -->`), so they do not show when the page is serv
 `SHARE_ABUSE_CONTACT` (the page of a link taken down; until it is set, that page names
 `contact@potyro.com`): fill in all three together. The hosting location reads "Germany or
 Finland, to confirm" (facts.md F-58: the address looks like Hetzner's Helsinki cloud).
+`Edgar Zanella Alvarenga`, `<CONTACT EMAIL>`, `<ABUSE EMAIL>`, `<DATE>` (the day each text takes
+effect, on its `Effective:` line, written `YYYY-MM-DD`), `<RETENTION, to decide>` (how long emails
+are kept) and `<HOSTING LOCATION>` (where Hetzner hosts potyro.app; facts.md F-58: the address looks
+like Hetzner's Helsinki cloud, to confirm in the Hetzner console).
 
 ## Where they will be served
 
@@ -35,11 +39,14 @@ reachable yet (for example `/privacy/2026-11-01`): nothing builds them.
 
 ### How they are built (`packages/legal`, #117)
 
-- **The gate.** While either text still has a placeholder (`<LIKE THIS>`, outside comments and code)
-  or still starts with the **Draft.** note, no page is built and the build prints one line saying
+- **The gate.** While either text still has a placeholder (`<LIKE THIS>`, outside comments and code),
+  an open point in words ("to confirm", "to decide", "to verify", in any case, outside comments and
+  code), no `Effective: YYYY-MM-DD` line with a real day, or still starts with the **Draft.** note,
+  no page is built and the build prints one line saying
   what is left (`legal: /privacy and /terms not built: …`). The app and the gallery link the pages
   only when they were built, so main deploys as it is and the pages and links appear with the first
-  build after the texts are finished. `packages/legal/test/legal.test.ts` holds the gate.
+  build after the texts are finished. `packages/legal/test/legal.test.ts` holds the gate, on copies
+  of the texts: no test depends on whether these files are finished yet.
 - **The shell.** `packages/legal/src/vite.mjs` serves the pages in `pnpm dev`, emits them into
   `packages/shell/dist` and sets `import.meta.env.VITE_POTYRO_LEGAL` for the links
   (`packages/shell/src/legal-links.tsx`).
@@ -47,8 +54,10 @@ reachable yet (for example `/privacy/2026-11-01`): nothing builds them.
   links them from its footer.
 - **What is emitted:** `privacy/index.html` and `privacy.html` (the same page, for servers that map a
   folder and for those that try `.html`), the same for terms, and `legal/` (the stylesheet, the
-  design system's tokens and fonts, the logo). Every path in a page starts with `../`, so it works at
-  `/privacy` and at `/privacy/`.
+  design system's tokens and fonts, the logo), each named by a hash of its bytes so a cache-first
+  service worker never keeps an old one. Every path in a page starts with `../`, so it works at
+  `/privacy` and at `/privacy/`. "Open Potyro" goes to the app: `../` on potyro.app,
+  `https://potyro.app/` beside the gallery on potyro.com.
 - **Headings are anchors.** The app links sections by their heading (`#voice`,
   `#links-anyone-can-try` …, `PRIVACY_SECTIONS` in legal-links.tsx). Renaming a heading in
   privacy.md fails `packages/shell/test/legal-links.test.tsx` until the link is moved too.

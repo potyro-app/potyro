@@ -2,9 +2,9 @@
 // the app reads to know whether to link them.
 //
 // `import.meta.env.VITE_POTYRO_LEGAL` is "1" when the pages exist in this build and "" when they do
-// not (docs/legal still has a placeholder, or still says it is a draft). The shell shows its Privacy
-// and Terms links only when it is "1" (packages/shell/src/legal-links.tsx), so no build ever links a
-// page it does not have. `POTYRO_LEGAL_DIR` points the build at another folder of texts (the browser
+// not (docs/legal is not finished: a placeholder, an open point, no Effective date, or the Draft
+// note; build.mjs). The shell shows its Privacy and Terms links only when it is "1"
+// (packages/shell/src/legal-links.tsx), so no build ever links a page it does not have. `POTYRO_LEGAL_DIR` points the build at another folder of texts (the browser
 // test's filled-in copies); unset, it is docs/legal.
 
 import { legalSite } from "./build.mjs";
