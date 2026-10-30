@@ -80,13 +80,16 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
   }, [config.engine]);
 
   // An engine the browser cannot run is shown, disabled, with the reason — hiding it makes the
-  // Studio look different on different machines with nothing to explain why.
+  // Studio look different on different machines with nothing to explain why. `claude -p` is the one
+  // exception: it is the dev server's route, a developer's tool, so a deployed site or a native build
+  // never lists it at all (owner, 2026-10-30) — shown() below.
   const unavailable = (id: Engine): string | null => {
-    if (id === "cli" && !canGenerate()) return t`only while the dev server runs`;
     if (id === "edge" && !hasWebGPU) return t`needs a WebGPU browser`;
     if (id === "builtin" && !hasBuiltIn) return t`not available in this browser`;
     return null;
   };
+  /** Every engine but the dev server's own route, which exists only while `pnpm dev` runs. */
+  const shown = (id: Engine): boolean => id !== "cli" || canGenerate();
 
   const label = engineLabel(config);
   const noteOf = (m: { id: string; note?: string }): string => {
@@ -129,7 +132,7 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
           {ENGINE_GROUPS.map((group) => (
             <section key={group.id} className="k-engine-group">
               <h3 className="k-field-label">{t(group.label)}</h3>
-              {ENGINES.filter((e) => e.group === group.id).map((e) => {
+              {ENGINES.filter((e) => e.group === group.id && shown(e.id)).map((e) => {
                 const why = unavailable(e.id);
                 const active = config.engine === e.id;
                 return (

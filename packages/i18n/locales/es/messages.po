@@ -5064,10 +5064,6 @@ msgstr "Solo se envía lo que la app envía: esta foto y su pregunta, nada más 
 msgid "Only what the app sends goes: this text and its question — nothing else in the app."
 msgstr "Solo se envía lo que la app envía: este texto y su pregunta, nada más de la app."
 
-#: ../shell/src/engine-settings.tsx
-msgid "only while the dev server runs"
-msgstr "solo mientras se ejecuta el servidor de desarrollo"
-
 #. Board card menu: open the record
 #. Files: open a file in the viewer
 #. Map pin: open the place's page
