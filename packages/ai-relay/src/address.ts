@@ -35,3 +35,57 @@ export function clientAddress(forwardedFor: string | string[] | undefined, peer:
   }
   return peer || "unknown";
 }
+
+/**
+ * What the per-address limits count under. An IPv4 address is itself. An IPv6 address is its /64:
+ * one home or phone is usually handed a whole /64, so the full address would give one sender
+ * 2^64 fresh "addresses" for nothing. An IPv4 address written as IPv6 (`::ffff:1.2.3.4`) is the
+ * IPv4 address. Anything that is not an address (`unknown`) is kept as it is.
+ *
+ * Used by every route's per-address limit (relay.ts, chat.ts, counts.ts), so they cannot disagree.
+ */
+export function addressKey(ip: string): string {
+  const raw = ip.trim().toLowerCase().replace(/^\[|\]$/g, "");
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(raw)) return raw;
+  const groups = ipv6Groups(raw);
+  if (!groups) return raw;
+  // ::ffff:a.b.c.d — an IPv4 client on a dual-stack socket.
+  if (groups.slice(0, 5).every((g) => g === 0) && groups[5] === 0xffff) {
+    return [groups[6]! >> 8, groups[6]! & 0xff, groups[7]! >> 8, groups[7]! & 0xff].join(".");
+  }
+  return `${groups
+    .slice(0, 4)
+    .map((g) => g.toString(16))
+    .join(":")}::/64`;
+}
+
+/** The eight 16-bit groups of an IPv6 address, or null when it is not one. */
+function ipv6Groups(s: string): number[] | null {
+  const text = s.split("%")[0]!; // a zone ("fe80::1%eth0") is not part of the address
+  if (!text.includes(":")) return null;
+  const parts = text.split("::");
+  if (parts.length > 2) return null;
+  const side = (half: string): number[] | null => {
+    if (half === "") return [];
+    const out: number[] = [];
+    const pieces = half.split(":");
+    for (let i = 0; i < pieces.length; i++) {
+      const p = pieces[i]!;
+      if (i === pieces.length - 1 && p.includes(".")) {
+        const quad = p.split(".");
+        if (quad.length !== 4 || !quad.every((q) => /^\d{1,3}$/.test(q) && Number(q) < 256)) return null;
+        const [a, b, c, d] = quad.map(Number) as [number, number, number, number];
+        out.push((a << 8) | b, (c << 8) | d);
+      } else if (/^[0-9a-f]{1,4}$/.test(p)) out.push(parseInt(p, 16));
+      else return null;
+    }
+    return out;
+  };
+  const head = side(parts[0]!);
+  const tail = parts.length === 2 ? side(parts[1]!) : [];
+  if (!head || !tail) return null;
+  if (parts.length === 1) return head.length === 8 ? head : null;
+  const gap = 8 - head.length - tail.length;
+  if (gap < 1) return null;
+  return [...head, ...new Array<number>(gap).fill(0), ...tail];
+}
