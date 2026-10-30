@@ -1005,7 +1005,7 @@ changing the engine changes the model and nothing else:
 | OpenRouter | a gateway to hosted models behind one key (DeepSeek, Qwen, Llama); DeepSeek V4 Flash is the measured default | cloud | yes |
 | OpenAI-compatible endpoint | any server speaking the OpenAI chat API (OpenAI, Ollama, LM Studio, vLLM), named by base URL, optional key and model; sent none of OpenRouter's fields | the person's choice | yes |
 
-All five implement one contract, `ModelBackend` (`packages/generator/src/backend.ts`): turn a
+All six implement one contract, `ModelBackend` (`packages/generator/src/backend.ts`): turn a
 request into a source, repair a failing source, or reply to a change request. A hybrid backend
 composes two of them and escalates from the on-device model to the cloud when the local repair loop
 has not converged. Keys are kept in the tab's sessionStorage, gone when the tab closes, never in
