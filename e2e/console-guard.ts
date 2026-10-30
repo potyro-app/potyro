@@ -44,6 +44,12 @@ const ALLOWED: readonly Allowed[] = [
   // no engine honours it yet, the frame deletes the WebRTC constructors anyway, and the directive is
   // there for the engine that one day does. Chromium says it does not know it, once per realm frame.
   { pattern: /^Unrecognized Content-Security-Policy directive 'webrtc'\.?\s*$/, why: "a CSP3 directive kept for the engines that will honour it" },
+  // Playwright's Firefox (Juggler) loads its own instrumentation into every worker the page starts
+  // (`loadSubScript` of chrome://juggler/…/Runtime.js and SimpleChannel.js, WorkerMain.js lines 6–7).
+  // A page that is left while one of its workers is still starting — the launcher's storage worker,
+  // when a test goes straight on to an app — tears that worker down mid-load, and Juggler's own load
+  // reports the abort as an error of the page. Only Juggler's file: the page's own aborts still count.
+  { pattern: /^\[JavaScript Error: "NS_BINDING_ABORTED: " \{file: "chrome:\/\/juggler\/content\/content\/WorkerMain\.js" line: \d+\}\]$/, why: "Playwright's Firefox instrumentation, interrupted in a worker the page's navigation ended" },
 ];
 
 /**
