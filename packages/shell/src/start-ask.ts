@@ -13,8 +13,9 @@ import { t } from "@lingui/core/macro";
 import type { AppDefinition } from "potyro";
 import { runAskLoop, type AskContext, type AskOutcome, type AskSource, type AskStep, type SourceFetch } from "@potyro/generator/agent";
 import type { ChatMessage } from "@potyro/generator/agent";
-import { createOpenRouterEngine } from "@potyro/generator/backends";
+import { createOpenRouterEngine, endpointFailure } from "@potyro/generator/backends";
 import { canSearchWeb, chatEngineOptions, engineReady, type EngineConfig } from "./engines.js";
+import { unreachableText } from "./endpoint-check.js";
 
 export type StartAskOutcome = AskOutcome | { kind: "refused"; text: string };
 
@@ -27,6 +28,20 @@ export function askRefusal(cfg: EngineConfig): string | null {
       : t`Ask needs your OpenRouter key. Add it in the Studio’s Model settings.`;
   }
   return null;
+}
+
+/**
+ * Why Ask stopped, as the person reads it. An endpoint it could not reach, or whose model takes no
+ * tools, is said as what to do; any other error keeps its own words.
+ */
+function failedReason(e: unknown, cfg: EngineConfig): string {
+  const failure = endpointFailure(e);
+  if (failure === "unreachable") return unreachableText(cfg.endpoint.baseUrl);
+  if (failure === "tools-unsupported") {
+    const model = cfg.endpoint.model.trim();
+    return t`${model} can’t use tools, and Ask needs them. Choose another model in the Studio’s Model settings.`;
+  }
+  return e instanceof Error ? e.message : String(e);
 }
 
 export async function startAsk(opts: {
@@ -70,6 +85,6 @@ export async function startAsk(opts: {
     const spent = (e as { spent?: number } | null)?.spent;
     const cost = typeof spent === "number" ? { spent } : {};
     if (opts.signal?.aborted) return { kind: "stopped", ...cost };
-    return { kind: "failed", reason: e instanceof Error ? e.message : String(e), ...cost };
+    return { kind: "failed", reason: failedReason(e, opts.engine), ...cost };
   }
 }
