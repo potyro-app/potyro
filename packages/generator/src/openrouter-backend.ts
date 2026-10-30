@@ -112,9 +112,24 @@ export interface ProviderOptions {
   allow_fallbacks?: boolean;
 }
 
+/**
+ * Which server the engine speaks to. `openrouter` sends OpenRouter's own fields (provider routing,
+ * reasoning, attribution headers, its server tools) and a large `max_tokens`. `openai` is the plain
+ * OpenAI chat API that OpenAI, Ollama, LM Studio and many others serve: none of those fields, and no
+ * `max_tokens` unless one is set. OpenAI answers an unknown field with a 400 ("Unrecognized request
+ * argument supplied"), and its newer models refuse `max_tokens` outright, so leaving them out is
+ * the only body every such server takes.
+ */
+export type Dialect = "openrouter" | "openai";
+
+/** A key, or something that gives the current one: a token that is refreshed later. */
+export type ApiKey = string | (() => string | Promise<string>);
+
 export interface OpenRouterOptions {
-  /** Falls back to `OPENROUTER_API_KEY` in the environment. */
-  apiKey?: string;
+  /** Falls back to `OPENROUTER_API_KEY` in the environment, under the `openrouter` dialect only. Read per request. */
+  apiKey?: ApiKey;
+  /** `openrouter` when absent. */
+  dialect?: Dialect;
   model?: string;
   maxTokens?: number;
   /** Defaults to `{ effort: "none" }` — see DEFAULT_REASONING for why. */
@@ -167,12 +182,12 @@ function stripKeepAlive(text: string): string {
  * The body, or an error once `ms` pass without it finishing. The request is aborted on the way out so
  * the stalled connection is released rather than left open for the process's lifetime.
  */
-async function readBody(res: Response, ms: number, abort: () => void): Promise<string> {
+async function readBody(res: Response, ms: number, abort: () => void, who = "OpenRouter"): Promise<string> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const stalled = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
       abort();
-      reject(new Error(`OpenRouter: no more of the response arrived for ${Math.round(ms / 1000)}s after the headers — the body stalled`));
+      reject(new Error(`${who}: no more of the response arrived for ${Math.round(ms / 1000)}s after the headers — the body stalled`));
     }, ms);
   });
   try {
@@ -194,7 +209,15 @@ function errorMessage(body: unknown): string | null {
  * to compile, blaming the model for what was actually a bad key or a dead upstream.
  */
 export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine {
-  const apiKey = opts.apiKey ?? readEnv(opts.env)?.OPENROUTER_API_KEY ?? "";
+  const dialect: Dialect = opts.dialect ?? "openrouter";
+  const plain = dialect === "openai";
+  // Who failed, in the error: a local server's 404 is not OpenRouter's.
+  const who = plain ? "The endpoint" : "OpenRouter";
+  const keyOf = async (): Promise<string> => {
+    const k = opts.apiKey;
+    if (typeof k === "function") return (await k()) ?? "";
+    return k ?? (plain ? "" : (readEnv(opts.env)?.OPENROUTER_API_KEY ?? ""));
+  };
   const baseUrl = (opts.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
   const doFetch = opts.fetch ?? ((url, init) => globalThis.fetch(url, init));
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -209,50 +232,61 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
     const r = raised(req);
     return r ? thinkingOptions(r).reasoning : base;
   };
-  const maxTokensFor = (req: ChatRequest): number => {
+  const maxTokensFor = (req: ChatRequest): number | undefined => {
+    if (plain) return req.max_tokens ?? opts.maxTokens;
+    if (req.max_tokens !== undefined) return req.max_tokens;
     const r = raised(req);
     const own = opts.maxTokens ?? DEFAULT_MAX_TOKENS;
     return r ? Math.max(own, thinkingOptions(r).maxTokens) : own;
   };
 
-  const create = async (req: ChatRequest) => {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": opts.referer ?? "https://github.com/fuzue/potyro",
-      "X-Title": opts.appTitle ?? "Potyro",
+  /** The request body, in the dialect's shape. `temperature: false` leaves the temperature out. */
+  const bodyOf = (req: ChatRequest, reasoning: ReasoningOptions | undefined, temperature: boolean): Record<string, unknown> => {
+    const maxTokens = maxTokensFor(req);
+    // A server tool runs on OpenRouter's side; any other server has none, so only our own functions go.
+    const tools = plain ? (req.tools ?? []) : [...(req.tools ?? []), ...(req.serverTools ?? [])];
+    return {
+      model: req.model ?? opts.model ?? DEFAULT_MODEL,
+      messages: req.messages,
+      ...(req.temperature === undefined || !temperature ? {} : { temperature: req.temperature }),
+      ...(maxTokens === undefined ? {} : { max_tokens: maxTokens }),
+      ...(plain ? {} : { ...(reasoning ? { reasoning } : {}), provider: opts.provider ?? DEFAULT_PROVIDER }),
+      ...(tools.length ? { tools, tool_choice: req.tool_choice ?? "auto" } : {}),
     };
-    const post = async (reasoning: ReasoningOptions | undefined): Promise<{ res: Response; text: string }> => {
+  };
+
+  const create = async (req: ChatRequest) => {
+    const apiKey = await keyOf();
+    const headers: Record<string, string> = {
+      // A local server (Ollama, LM Studio) takes no key: then no header at all, rather than an empty one.
+      ...(apiKey || !plain ? { Authorization: `Bearer ${apiKey}` } : {}),
+      "Content-Type": "application/json",
+      ...(plain ? {} : { "HTTP-Referer": opts.referer ?? "https://github.com/fuzue/potyro", "X-Title": opts.appTitle ?? "Potyro" }),
+    };
+    const post = async (reasoning: ReasoningOptions | undefined, temperature = true): Promise<{ res: Response; text: string }> => {
       const controller = typeof AbortController !== "undefined" ? new AbortController() : undefined;
       const whole = controller ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
       try {
         const res = await doFetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        model: req.model ?? opts.model ?? DEFAULT_MODEL,
-        messages: req.messages,
-        ...(req.temperature === undefined ? {} : { temperature: req.temperature }),
-        max_tokens: req.max_tokens ?? maxTokensFor(req),
-        ...(reasoning ? { reasoning } : {}),
-        provider: opts.provider ?? DEFAULT_PROVIDER,
-        ...(req.tools || req.serverTools
-          ? { tools: [...(req.tools ?? []), ...(req.serverTools ?? [])], tool_choice: req.tool_choice ?? "auto" }
-          : {}),
-      }),
+      body: JSON.stringify(bodyOf(req, reasoning, temperature)),
       ...(controller ? { signal: controller.signal } : {}),
         });
-        return { res, text: await readBody(res, bodyTimeoutMs, () => controller?.abort()) };
+        return { res, text: await readBody(res, bodyTimeoutMs, () => controller?.abort(), who) };
       } finally {
         clearTimeout(whole);
       }
     };
 
-    let { res, text } = await post(reasoningFor(req));
+    let { res, text } = await post(plain ? undefined : reasoningFor(req));
     // Some models cannot think less than they do (Gemini 3.6 Flash: "Reasoning is mandatory for this
     // endpoint and cannot be disabled"). Turning it off is a speed preference, not a requirement:
     // ask again with the model's own default rather than failing the request.
-    if (res.status === 400 && /reasoning is mandatory/i.test(text)) ({ res, text } = await post(undefined));
+    if (!plain && res.status === 400 && /reasoning is mandatory/i.test(text)) ({ res, text } = await post(undefined));
+    // OpenAI's reasoning models take only their default temperature ("Unsupported value: 'temperature'
+    // does not support 0.2"). The temperature is a preference too: ask again without it.
+    if (plain && res.status === 400 && req.temperature !== undefined && /temperature/i.test(text)) ({ res, text } = await post(undefined, false));
     let body: unknown;
     try {
       body = JSON.parse(stripKeepAlive(text)) as unknown;
@@ -261,11 +295,11 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
     }
 
     if (!res.ok) {
-      throw new Error(`OpenRouter ${res.status}: ${errorMessage(body) ?? text.slice(0, 500)}`);
+      throw new Error(`${who} ${res.status}: ${errorMessage(body) ?? text.slice(0, 500)}`);
     }
     // A 200 carrying an `error` is how an upstream provider failure arrives.
     const upstream = errorMessage(body);
-    if (upstream) throw new Error(`OpenRouter: ${upstream}`);
+    if (upstream) throw new Error(`${who}: ${upstream}`);
 
     const choices = (
       body as {
@@ -297,7 +331,7 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
           : choice?.finish_reason
             ? ` (finish_reason: ${choice.finish_reason})`
             : " — the model replied with no content.";
-      throw new Error(`OpenRouter returned no completion${why}`);
+      throw new Error(`${who} returned no completion${why}`);
     }
     const u = (body as { usage?: { cost?: unknown; prompt_tokens?: unknown; completion_tokens?: unknown } })?.usage;
     const usage = u
@@ -327,20 +361,23 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
 
 export class OpenRouterBackend extends ChatBackend {
   readonly name: string;
-  private readonly maxTokens: number;
+  /** Undefined under the `openai` dialect with none set: the server's own default applies. */
+  private readonly maxTokens: number | undefined;
 
   constructor(
     private readonly engine: ChatEngine,
     private readonly model: string = DEFAULT_MODEL,
-    opts: { maxTokens?: number; reasoning?: ReasoningOptions } = {},
+    opts: { maxTokens?: number; reasoning?: ReasoningOptions; dialect?: Dialect } = {},
   ) {
     super();
-    this.maxTokens = opts.maxTokens ?? DEFAULT_MAX_TOKENS;
+    const plain = opts.dialect === "openai";
+    this.maxTokens = opts.maxTokens ?? (plain ? undefined : DEFAULT_MAX_TOKENS);
     // The reasoning effort changes both the cost and the quality of a run, so a report that does not
     // name it cannot be compared with another — including a default run, where reasoning is OFF.
     // Naming only an explicitly-passed effort silently dropped that fact from report.json.
     const effort = opts.reasoning?.effort ?? DEFAULT_REASONING.effort;
-    this.name = `openrouter:${model}+reasoning=${effort}`;
+    // An OpenAI-compatible server is sent no reasoning, so there is none to name.
+    this.name = plain ? `openai:${model}` : `openrouter:${model}+reasoning=${effort}`;
   }
 
   protected async ask(messages: ChatMessage[], temperature: number): Promise<string> {
@@ -349,7 +386,7 @@ export class OpenRouterBackend extends ChatBackend {
         model: this.model,
         messages,
         temperature,
-        max_tokens: this.maxTokens,
+        ...(this.maxTokens === undefined ? {} : { max_tokens: this.maxTokens }),
       }),
     );
   }
@@ -361,8 +398,16 @@ export class OpenRouterBackend extends ChatBackend {
  *
  * Browser-safe — OpenRouter allows cross-origin calls, and the key is the user's own, held in memory
  * for their local tool only.
+ *
+ * Under the `openai` dialect a key is not required (Ollama and LM Studio take none), but a model is:
+ * there is no default model on someone else's server.
  */
 export async function createOpenRouterBackend(opts: OpenRouterOptions = {}): Promise<OpenRouterBackend> {
+  if (opts.dialect === "openai") {
+    if (!opts.model) throw new Error("An OpenAI-compatible endpoint needs a model name.");
+    const engine = createOpenRouterEngine(opts);
+    return new OpenRouterBackend(engine, opts.model, { dialect: "openai", ...(opts.maxTokens === undefined ? {} : { maxTokens: opts.maxTokens }) });
+  }
   const apiKey = opts.apiKey || readEnv(opts.env)?.OPENROUTER_API_KEY;
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY is not set (or pass apiKey). Get one at https://openrouter.ai/keys");

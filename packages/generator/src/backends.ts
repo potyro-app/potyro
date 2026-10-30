@@ -17,6 +17,8 @@ export {
   thinkingOptions,
   REASONING_LEVELS,
   OPENROUTER_MODELS,
+  type ApiKey,
+  type Dialect,
   type OpenRouterModel,
   type OpenRouterOptions,
   type ProviderOptions,

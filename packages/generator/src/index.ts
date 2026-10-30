@@ -28,6 +28,8 @@ export {
   createOpenRouterBackend,
   createOpenRouterEngine,
   OPENROUTER_MODELS,
+  type ApiKey,
+  type Dialect,
   type FetchLike,
   type OpenRouterModel,
   type OpenRouterOptions,
