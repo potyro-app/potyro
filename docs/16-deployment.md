@@ -7,12 +7,16 @@ order: 16
 
 # Deploying Potyro on your own domain (KA-34)
 
-**`https://apps.vaz.io` is live and this is how it was done** — a real recipe, not a sketch. It was
-written by deploying it, so the awkward parts below are the ones that actually bit.
+**`https://potyro.app` is the live deployment**: public, with no gate in front of it, the shell, the
+sync relay and all four optional services answering there (each section below says what was checked,
+and when). It runs on its own server behind Caddy, whose configuration is not in this repository.
 
-This is the **private-test** shape: the site is gated at the proxy so only people you invite can
-reach it, and the relay is not exposed on its own. Read
-[What this does NOT protect](#what-this-does-not-protect) before pointing anyone at it.
+The recipe below was **written by deploying `https://apps.vaz.io`**, the first site and a private
+test: Apache, gated with basic auth so only invited people could reach it, the relay not exposed on
+its own. It is a real recipe, not a sketch — the awkward parts are the ones that actually bit — and
+it is how to put Potyro on a domain of your own; its paths and hostnames are that deployment's.
+`apps.vaz.io` itself has not been updated since 2026-10-17 ([Redeploying](#redeploying)). Read
+[What this does NOT protect](#what-this-does-not-protect) before pointing anyone at either shape.
 
 ## What actually has to run
 
@@ -26,13 +30,19 @@ Two things, and only two:
 Everything else — the store, the runtime, the isolate, identity — runs in the browser. An app keeps
 working with the relay down; it just stops reaching other people until it comes back.
 
-Optional services sit beside them: the [request relay](#requests-to-the-potyro-team-263--not-deployed-yet),
-the [free AI allowance](#ai-for-apps-docs23-deployed) for apps and the Studio, the [share links](#demo-links-and-their-previews-docs24-not-deployed-yet)
-and the [rooms relay](#rooms-for-multiplayer-apps-docs26-deployed-2026-10-16) for multiplayer apps.
-Each section says whether it is deployed. Without them requests wait on the device, apps' AI runs on
+Optional services sit beside them: the [request relay](#requests-to-the-potyro-team-263-deployed),
+the [free AI allowance](#ai-for-apps-docs23-deployed) for apps, the [share links](#demo-links-and-their-previews-docs24-deployed)
+and the [rooms relay](#rooms-for-multiplayer-apps-docs26-deployed) for multiplayer apps.
+Each section says what is running on potyro.app. Without them requests wait on the device, apps' AI runs on
 the person's own key, links carry the whole app, and multiplayer apps cannot meet.
 
-## The live deployment, as configured
+## The deployments, as configured
+
+**potyro.app** (live): host `65.109.228.5`, web root `/srv/potyro/site` (§8), Caddy in front, no
+gate. Checked 2026-10-30: `/` answers 200 without credentials, `/sync` upgrades, and `/ai/health`,
+`/share-api/health`, `/rooms/health` and `/requests/health` answer ok.
+
+**apps.vaz.io** (the private test this recipe was written on; not updated since 2026-10-17):
 
 | | |
 |---|---|
@@ -58,10 +68,10 @@ Build-time knobs, all optional:
 |---|---|---|
 | `VITE_POTYRO_RELAY` | same origin, `/sync` | Only if the relay is on a different host. |
 | `VITE_POTYRO_GENERATOR` | unset | Only once a deployment can actually reach a model — see [The agent](#the-agent). |
-| `VITE_POTYRO_SITE` | the page's own origin | **Native builds only** (Android, iOS): the site the app belongs to, e.g. `https://apps.vaz.io`. The relay, `/ai`, `/requests`, `/share-api` and the links people send are derived from it (`shell/src/site.ts`, docs/27 §2.1); the per-service variables still win. |
+| `VITE_POTYRO_SITE` | the page's own origin | **Native builds only** (Android, iOS): the site the app belongs to, e.g. `https://potyro.app`. The relay, `/ai`, `/requests`, `/share-api` and the links people send are derived from it (`shell/src/site.ts`, docs/27 §2.1); the per-service variables still win. |
 
-`apps.vaz.io` sets **neither**. The build derives `wss://apps.vaz.io/sync` from the origin it is
-served from, which is the whole point of the default: proxy one path and sync works with no
+Neither site sets **either** of the first two: potyro.app's build is the watcher's plain `vite build`
+(§8). The build derives `wss://potyro.app/sync` from the origin it is served from, which is the whole point of the default: proxy one path and sync works with no
 build-time configuration at all.
 
 ## 2. Upload it
@@ -255,9 +265,9 @@ If sync never connects, check the relay URL first: **⌾ You → Sync relay** sh
 
 ## Redeploying
 
-**It is by hand.** Since 2026-10-25 nothing deploys main by itself: see
-[§8](#8-merging-and-deploying-by-hand-since-2026-10-25). From a clean checkout of `origin/main`
-that has passed the gate in that same checkout:
+**The CI machine does it.** Every five minutes a cron watcher on `vazio` looks at GitHub's `main`; when
+it is new, it runs the gate on it and deploys it when green ([§8](#8-merging-and-deploying-the-gate-on-vazio)).
+By hand, from a clean checkout of `origin/main` that has passed the gate in that same checkout:
 
 ```bash
 pnpm ci:local all --post     # the gate; `deploy` refuses anything that has not passed it
@@ -274,12 +284,15 @@ No restart, no reload. The relay only needs touching when `cojson` changes versi
 which case bump the pin in `/opt/potyro-relay/package.json`, re-run the `npm install` container, and
 `docker restart potyro-relay`.
 
-## 8. Merging and deploying: by hand, since 2026-10-25
+## 8. Merging and deploying: the gate on vazio
 
 Every GitHub Actions workflow is off. The owner disabled them by hand on 2026-10-25 (`ci.yml`,
 `ship.yml`, `bench.yml`, `baselines.yml`), because Blacksmith's runners cost too much. A push runs
 nothing, and `pnpm ship` fails: GitHub refuses to dispatch a disabled workflow. Do not turn one back
-on without the owner.
+on without the owner. The gate is `pnpm ci:local all`, and the CI machine, `vazio`, runs it on every
+new `main` and deploys `main` when it is green: its cron watcher (below) is on again (checked
+2026-10-30: `crontab -l` has the line, and `~/ci-watch.log` shows `8dda1fc` gated and deployed that
+afternoon).
 
 A pull request ships in four steps:
 
@@ -290,9 +303,11 @@ A pull request ships in four steps:
    A laptop takes ~45 minutes, and under that load some shards fail on timeouts: re-run a failed
    spec alone (`pnpm exec playwright test <file> --workers=1`) before calling it real.
 3. **Merge** the PR on GitHub with a merge commit (`gh pr merge <pr> --merge`).
-4. **Deploy** main. The merge commit is new, so `pnpm ci:local deploy` refuses it until the gate has
-   run on it too. Either run `pnpm ci:local all` on main and then `deploy`, or do by hand what the
-   workflow's deploy job did, which is §2's upload with the current target:
+4. **Deploy** main. The watcher does it within a few minutes of the merge, once the gate is green on
+   the merge commit (`ssh vazio tail -f ci-watch.log` to follow it). By hand: the merge commit is
+   new, so `pnpm ci:local deploy` refuses it until the gate has run on it too. Either run
+   `pnpm ci:local all` on main and then `deploy`, or do what the workflow's deploy job did, which is
+   §2's upload with the current target:
 
    ```bash
    git fetch -q origin && git checkout -q --detach origin/main     # a clean checkout, not your work
@@ -323,13 +338,12 @@ then built and rsynced the shell to potyro.app with the `POTYRO_DEPLOY_KEY` repo
 The whole suite took under 4 min, and it cost too much to keep. The workflows and
 `scripts/bench-ci.sh` are still in the repository.
 
-### How it was: vazio as the gate (until 2026-10-19)
+### vazio as the gate and the deployer
 
-If vazio's cron line (below) runs again, it deploys main by itself: keep it off, or point it at
-nothing, while main ships by hand. The hooks and `ci-local` still work for a full run on any machine.
-
-GitHub Actions was unavailable, so the CI machine (`vazio`) was both the gate and the deployer.
-**Merge with `pnpm ship <pr-number>`** meant:
+Until 2026-10-19 GitHub Actions was unavailable, so the CI machine (`vazio`) was both the gate and
+the deployer, and since the workflows went off it is again. Of what follows, the **cron watcher** is
+what runs today. The push path through `pnpm ship` is history: `scripts/ship.mjs` now dispatches
+the disabled `ship.yml`. Until 2026-10-19, **merge with `pnpm ship <pr-number>`** meant:
 
 ```
 laptop:  pnpm ship 232          merge commit on GitHub's main, pushed to vazio:appinator.git
@@ -415,31 +429,39 @@ files are dealt by index. The deal is written to
 `.ci-local/<sha>/e2e-plan.json` the first time and reused, so a resumed or re-run shard runs exactly
 the files it ran before.
 
-The hook and the crontab installed on vazio before the rename still say `KARTA_DEPLOY_TARGET`;
-`ci-local.mjs` reads either name, so they keep working until they are reinstalled from `deploy/`.
+What was installed on vazio before the rename may still say `KARTA_DEPLOY_TARGET` (the crontab no
+longer does: it says `POTYRO_DEPLOY_TARGET`, checked 2026-10-30); `ci-local.mjs` reads either name.
 
 `POTYRO_DEPLOY_TARGET=potyro-deploy:` is relative to the web root, because `rrsync` anchors every path
 there. After changing a hook in `deploy/vazio-hooks/`, copy it to `~/appinator.git/hooks/` on vazio.
 
 ## The agent
 
-**A deployed build has no Studio and no AI editing.** `/__generate` is a Vite *dev-server*
-middleware, so the route does not exist in a build. Rather than offer buttons that fail with "Is
-`pnpm dev` still running?", the shell hides them (`canGenerate`).
+**A deployed build has the Studio, but not the `claude -p` engine.** `/__generate`, which `claude -p`
+goes through, is a Vite *dev-server* middleware, so the route does not exist in a build, and the
+shell offers that engine only where it does (`canGenerate` in `packages/shell/src/generate-client.ts`).
+Everything else works on any build: the Studio opens (its source editor and History need no model),
+and the agent writes and changes apps through whichever other engine the person chose in Model
+settings — their own Anthropic or OpenRouter key, an OpenAI-compatible endpoint, the on-device model
+or Chrome's built-in one (docs/00 "Engines"). A deployed build starts on OpenRouter
+(`packages/shell/src/engine-store.ts`).
 
-Structural editing (✎ Edit's controls) and History are **not** affected — neither calls a model.
+`VITE_POTYRO_GENERATOR=1` at build time is the switch for a deployment that stands up its own
+`/__generate`. That is a piece of work, not a flag: an API key held server-side, plus auth and rate
+limiting in front of it, or it is your bill and anyone's to spend. The free allowance meant for the
+Studio and Ask is the AI relay's chat route instead ([AI for apps](#ai-for-apps-docs23-deployed)),
+which the shell does not call yet.
 
-Turning generation on needs a real endpoint and then `VITE_POTYRO_GENERATOR=1` at build time. That is
-a piece of work, not a flag: an API key held server-side, plus auth and rate limiting in front of it,
-or it is your bill and anyone's to spend. `ClaudeBackend` in `packages/generator` is the client half;
-the server half does not exist yet.
+## Requests to the Potyro team (#263): deployed
 
-## Requests to the Potyro team (#263) — NOT deployed yet
+**Running on potyro.app** (`/requests/health` answered `{"ok":true}` on 2026-10-30). The setup below
+is as it was written for apps.vaz.io, behind its gate.
+
 
 When the Studio's agent finds that what someone asked for needs something Potyro itself lacks, it
 writes a request in their words and the Studio offers to send it. People have no GitHub account, so
 a small relay files it as an issue in `fuzue/potyro`, labelled `platform-request`
-(`packages/platform-requests`). **Until the relay below is running, nothing is lost:** the Studio
+(`packages/platform-requests`). **When the relay is not reachable, nothing is lost:** the Studio
 says "couldn't send, saved to send later", keeps the request on the device, and sends it the next
 time the Studio opens and `/requests/` answers.
 
@@ -546,7 +568,9 @@ GitHub on the next request.
 ## AI for apps (docs/23): deployed
 
 **Running at `https://potyro.app/ai/`** behind Caddy (`/ai/health` answered `{"ok":true}` on
-2026-10-30). Who pays: a **free allowance** first, through a small relay that holds Potyro's
+2026-10-30). The running relay predates the chat route and the counts (#468): on 2026-10-30
+`POST /ai/v1/chat/completions` and `GET /ai/count` answered 404 there, so only `/complete` and
+`/health` are live until the container is updated. Who pays: a **free allowance** first, through a small relay that holds Potyro's
 OpenRouter key (`packages/ai-relay`), then the person's own key from Model settings. It serves two
 kinds of request:
 
@@ -717,11 +741,16 @@ it is `AI_CHAT_MODELS`; the Studio must ask for a model in that list.
 
 **Updating it:** rsync the package again and `docker restart potyro-ai`. The ledger survives.
 
-## Demo links and their previews (docs/24): NOT deployed yet
+## Demo links and their previews (docs/24): deployed
+
+**Running on potyro.app** (`/share-api/health` answered `{"ok":true}` on 2026-10-30). The setup below
+is as it was written for apps.vaz.io, behind its gate; potyro.app has none, so §3 does not apply
+there.
+
 
 A demo link opens an app running in the browser with sample records, and a chat shows a preview
 card for it (title, one line, a picture). The site is static, so the preview needs a small service
-beside the relay: `packages/share-links`. **Until it runs, nothing breaks:** the shell sees no
+beside the relay: `packages/share-links`. **Where it is not running, nothing breaks:** the shell sees no
 `/share-api/health` and makes the *inline* form of the link (`/#try=…`). That form carries the
 whole app in the fragment, works on the static site as it is, and has no preview. Each link is
 10–20 KB, and some messengers cut a link that long (Telegram stops at 4096 characters).
@@ -815,11 +844,16 @@ notice-and-action path). The folder and the `rm` above are that path's mechanism
 **Disk:** links are never expired. Budget about 20–60 KB per link (sealed package + picture);
 `du -sh /var/lib/potyro/shares` to watch it.
 
-## Rooms for multiplayer apps (docs/26): deployed 2026-10-16
+## Rooms for multiplayer apps (docs/26): deployed
+
+First deployed 2026-10-16; **running on potyro.app** (`/rooms/health` answered ok on 2026-10-30, and
+an upgrade with `Origin: https://potyro.app` got 101 where `https://apps.vaz.io` got 403). The setup
+below is as it was written for apps.vaz.io.
+
 
 Real-time multiplayer apps (the first is a draw-and-guess game whose rooms are joined by a share
 link) need a server that passes messages between the people in a room. `packages/rooms` is that
-server: `wss://apps.vaz.io/rooms/<roomId>`, every frame one member sends goes as-is to the others,
+server: `wss://<site>/rooms/<roomId>`, every frame one member sends goes as-is to the others,
 plus a small presence envelope (who is here, who joined, who left). The protocol, written for app
 authors, is [docs/26](26-rooms-relay.md). Apps reach it through `ctx.caps.network.room(id)`
 (docs/28), which connects to the site's own `/rooms/` — the native app to its `VITE_POTYRO_SITE`'s;
@@ -835,7 +869,7 @@ What it accepts and does, so you know what you are putting on the internet:
 | What it reads | Each frame's size and rate, and whether a text frame begins with the envelope's reserved prefix. Never the payload. |
 | Limits | 64 KiB a message, 16 members a room, 8 rooms and 64 connections at once per address, 30 messages/s (bursts of 60) and 64 KiB/s (bursts of 256 KiB) per connection, 1 MiB queued for a slow member, 2000 rooms and 5000 connections in all; a room with no message for 30 minutes is closed. Each one closes with its own code (docs/26 §3). |
 | Address | The **last** `X-Forwarded-For` entry — the one Apache appends. The first entry is whatever the client sent, so it is never used for limits. |
-| Origins | Browsers only from `https://apps.vaz.io`, `https://localhost` (the Android app) and `capacitor://localhost`; anything else gets HTTP 403 on the upgrade. |
+| Origins | Browsers only from `ROOMS_ORIGINS`; unset, `https://apps.vaz.io`, `https://localhost` (the Android app) and `capacitor://localhost` (`DEFAULT_ORIGINS`). Anything else gets HTTP 403 on the upgrade. potyro.app's accepts `https://potyro.app`. |
 | Keepalive | A ping every 30 s; a member that has not answered the last one is dropped. That also keeps Apache's `ProxyTimeout 600` from cutting a quiet room. |
 | Logs | Its own start and stop. Never a payload, a room id, a name or an address. |
 
@@ -1060,8 +1094,9 @@ tap one card's **Try it** (the app opens sealed) and **Make it mine** (the Make 
 
 Be straight with anyone you invite:
 
-- **The relay is unauthenticated** (KA-29). The basic-auth gate is the only thing in front of it.
-  Anyone past it can push and fetch CoValues by id — they cannot *read* them (everything is
+- **The relay is unauthenticated** (KA-29). On a gated site the basic-auth gate is the only thing in
+  front of it; on potyro.app, which has no gate, nothing is (`/sync` upgrades without credentials,
+  checked 2026-10-30). Anyone who reaches it can push and fetch CoValues by id — they cannot *read* them (everything is
   encrypted to the space's members, and the decryption key travels in a URL fragment that never
   reaches the server), but they can consume storage.
 - **You can see the social graph** (KA-33). Transactions are encrypted; group and account metadata
