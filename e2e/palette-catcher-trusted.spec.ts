@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "./console-guard";
 import { addAsMine, count, near, packApp, pixelsOf } from "./library-demos";
+import { grantClipboard } from "./engines";
 
 // apps/palette-catcher, packed as its build packs it and added as the person's own app. The photo
 // goes in the way a phone's would: ctx.caps.camera on the web is a file input, so the test answers
@@ -54,8 +55,8 @@ const close = (a: RGB, b: RGB, tol = 12) => a.every((v, i) => Math.abs(v - b[i]!
 
 test.use({ viewport: { width: 1280, height: 900 }, colorScheme: "light" });
 
-test("Palette Catcher: a photo becomes a palette with markers where each colour is; copy, rename, save, share and the gallery", async ({ page, context }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+test("Palette Catcher: a photo becomes a palette with markers where each colour is; copy, rename, save, share and the gallery", async ({ page, context, browserName }) => {
+  await grantClipboard(context, browserName);
   const { card } = await addAsMine(page, "palette-catcher.potyro-app.zip", packApp("palette-catcher", "palette-catcher.app.ts"));
   expect(card).toMatch(/Asks for camera/);
 
