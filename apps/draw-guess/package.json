@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Draw and Guess: a Pictionary-style party game, live in a room on Potyro's rooms relay (docs/26, docs/28)",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs draw-guess.app.ts -o dist/draw-guess.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Receipt Split: photograph a receipt and its lines become items — the smallest app using ctx.caps.ai (docs/23)",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs receipt-split.app.ts --seed seed.json -o dist/receipt-split.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Start a Potyro app: `npm create potyro my-app`",
-  "license": "MIT AND MIT-0",
+  "license": "Apache-2.0 AND MIT-0",
   "homepage": "https://potyro.app",
   "keywords": [
     "potyro",

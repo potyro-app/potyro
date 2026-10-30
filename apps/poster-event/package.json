@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Poster to Calendar: photograph a poster and it becomes an event with a reminder, a calendar file and a message for friends (ctx.caps.ai, docs/23)",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs poster-event.app.ts -o dist/poster-event.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",

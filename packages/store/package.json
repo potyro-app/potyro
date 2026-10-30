@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "description": "Store interface + MemoryStore/LocalStore/SqliteStore + JazzStore (CRDT, ADR 0001).",
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts"
   },

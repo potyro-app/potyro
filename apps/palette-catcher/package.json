@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Palette Catcher: a photo becomes a palette of 5–8 colours, chosen in OKLab, to copy, keep and share",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "mkdir -p dist && node ../../scripts/pack-app.mjs palette-catcher.app.ts -o dist/palette-catcher.potyro-app.zip",
     "typecheck": "tsc --noEmit -p tsconfig.json",
