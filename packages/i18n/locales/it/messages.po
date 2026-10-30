@@ -1222,9 +1222,11 @@ msgstr "aggiungi"
 #. Add one more photo or file to a field that holds several
 #. App bar: add an app someone sent you; one short word
 #. Board: add a card to this column
+#. Button: add Potyro to the home screen
 #. Checklist: add the typed item
 #. Link another record
 #. Picker: add the chosen items
+#: ../shell/src/install-row.tsx
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/picker.tsx
 #: ../views/src/board.tsx
@@ -1365,6 +1367,11 @@ msgstr "aggiungi foto"
 #: ../views/src/media-input.tsx
 msgid "Add photo"
 msgstr "Aggiungi foto"
+
+#: ../shell/src/install-row.tsx
+#: ../shell/src/install-row.tsx
+msgid "Add Potyro to your home screen"
+msgstr "Aggiungi Potyro alla schermata Home"
 
 #: ../shell/src/guests-panel.tsx
 msgid "Add someone who hasn’t joined"
@@ -3751,6 +3758,10 @@ msgstr "Per aprirsi le serve una libreria da internet, e hai detto non ora."
 msgid "It needs to know one thing"
 msgstr "Deve sapere una cosa"
 
+#: ../shell/src/install-row.tsx
+msgid "It opens like an app and works offline."
+msgstr "Si apre come un’app e funziona offline."
+
 #: ../shell/src/share-sheet.tsx
 msgid "It opens the app right away in any browser, with sample records. No account, nothing to install. None of your records go with it."
 msgstr "Apre subito l’app in qualsiasi browser, con dati di esempio. Nessun account, niente da installare. Nessuno dei tuoi dati viene inviato."
@@ -4645,6 +4656,11 @@ msgstr "nessuna capacità speciale"
 #: ../views/src/steps.tsx
 msgid "No steps yet."
 msgstr "Ancora nessun passo."
+
+#. Button: stop offering to add Potyro to the home screen on this device
+#: ../shell/src/install-row.tsx
+msgid "No thanks"
+msgstr "No, grazie"
 
 #: ../shell/src/history.tsx
 msgid "No versions yet. The next change you save — in the Studio or with Edit mode — is recorded here."
@@ -6459,6 +6475,11 @@ msgstr "Tocca un riquadro per cambiarlo, o trascinalo."
 #: ../shell/src/inline-edit.tsx
 msgid "Tap highlighted text to change it."
 msgstr "Tocca il testo evidenziato per cambiarlo."
+
+#. Safari on iPhone/iPad. Share and Add to Home Screen are what Safari itself calls the button and the menu entry: use the names Safari shows in your language
+#: ../shell/src/install-row.tsx
+msgid "Tap Share, then “Add to Home Screen”. It opens like an app and works offline."
+msgstr "Tocca Condividi, poi “Aggiungi alla schermata Home”. Si apre come un’app e funziona offline."
 
 #: ../views/src/field-input.tsx
 msgid "Tap the map to place a point"
