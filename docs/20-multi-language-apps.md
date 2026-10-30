@@ -1,3 +1,9 @@
+---
+title: Multi-language apps (inline maps)
+description: The first design for an app's translations, as inline maps; replaced by docs/30.
+status: historical
+---
+
 # 20 · Multi-language apps — an app carries translations of its own words
 
 > **Replaced (2026-10-19) by docs/30:** the owner rejected inline maps. An app's source is in one

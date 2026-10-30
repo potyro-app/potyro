@@ -1,3 +1,10 @@
+---
+title: Glossary
+description: Potyro's own words in six languages.
+status: current
+order: 21
+---
+
 # 21 — Glossary: Potyro's own words in six languages
 
 Potyro's UI is written in English and translated into Brazilian Portuguese, German, Spanish, Polish

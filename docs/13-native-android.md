@@ -1,7 +1,14 @@
+---
+title: Native Android
+description: Running Potyro on an Android device through Capacitor: build, install, the device checklist.
+status: current
+order: 13
+---
+
 # 13 · Native Android (Capacitor) — run Potyro on a device
 
 The Capacitor target wraps the **shell's web build** into a native Android app. Nothing about the app
-code, the QuickJS isolate, or the capability seam changes — the composition root just swaps
+code, the sealed box (the browser realm; QuickJS-WASM behind a flag), or the capability seam changes — the composition root just swaps
 `WebCapabilities` for **`CapacitorCapabilities`** when it detects the native runtime
 (`packages/native/src/index.ts` → `maybeCreateNativeCapabilities()`). The payoff is the one thing web
 can't do: an **exact, offline reminder that fires with the app closed**.

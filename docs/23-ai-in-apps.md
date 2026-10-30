@@ -1,7 +1,15 @@
+---
+title: AI in apps
+description: ctx.caps.ai: the API, the permission, who pays, the model, where each part lives.
+status: current
+order: 23
+---
+
 # 23 · AI in apps — `ctx.caps.ai` (#213, part 3)
 
-Status: built (this branch). The free allowance's relay is **not deployed**; until it is, apps use
-the person's own OpenRouter key, and say plainly when there is none (docs/16 "AI for apps").
+Status: built, and the free allowance's relay is deployed on potyro.app (`/ai/health` answers ok,
+checked 2026-10-30). Where it is not running, apps use the person's own OpenRouter key, and say
+plainly when there is none (docs/16 "AI for apps").
 
 ## Why
 

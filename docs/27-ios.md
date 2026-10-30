@@ -1,3 +1,10 @@
+---
+title: iOS
+description: Potyro on iPhone through Capacitor: the handoff for the iOS developer.
+status: current
+order: 27
+---
+
 # 27 · iOS (Capacitor) — handoff for the iOS developer
 
 Potyro on iPhone is the **same codebase** as the web app and the Android APK: Capacitor wraps the

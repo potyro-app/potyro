@@ -1,4 +1,13 @@
+---
+title: Concurrency hazards
+description: What breaks when an app is shared: the two bugs found in the first public test and the classes behind them.
+status: historical
+---
+
 # What breaks when an app is shared, and what to do about it
+
+> **Written 2026-08-10, kept as a record.** The hazards are still real; the current description of
+> how sync merges and what the Studio checks for is docs/00 "Sync, CRDT and identity".
 
 Written 2026-08-10, after the **first** app shared in a public test turned out to have **two**
 independent instances of this problem — neither of which produced an error, a warning, or any visible

@@ -1,3 +1,9 @@
+---
+title: ADR 0001: Sync engine and identity
+description: Why Jazz (cojson), the identity model, spaces, the relay, and the alternatives measured.
+status: historical
+---
+
 # ADR 0001 · Sync engine and identity model
 
 - **Status:** Proposed
@@ -6,6 +12,9 @@
 - **Satisfies:** `docs/10-backlog.md#ka-08` ("Evaluate + choose … Decision recorded (ADR)")
 - **Supersedes:** nothing
 - **Related:** KA-09 (presence), KA-10/11 (community), KA-04 (export `mode: "mergeable"`)
+
+> **How it is built today** is in docs/00 "Sync, CRDT and identity"; this record keeps the decision
+> and the alternatives, including the superseded Yjs reasoning.
 
 ## Context
 
