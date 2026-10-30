@@ -11,7 +11,8 @@ Status: built, and the free allowance's relay is deployed on potyro.app (`/ai/he
 checked 2026-10-30). Where it is not running, apps use the person's own OpenRouter key, and say
 plainly when there is none (docs/16 "AI for apps"). The relay's chat route for the Studio and Ask
 (#468) is merged but not running there yet: on 2026-10-30 `POST https://potyro.app/ai/v1/chat/completions`
-answered 404, and nothing in the shell sends it.
+answered 404. The shell's "Potyro" engine sends it (#121, below), and offers itself only once the
+relay's `/health` says `chat: true`, so until then nothing changes for anyone.
 
 ## Why
 
@@ -114,9 +115,8 @@ Owner decision 2026-10-15: **both**, free first.
    clamped and `data_collection: "deny"` forced, pipes the answer back as it streams, and holds each
    device to a monthly allowance in US dollars, debited from OpenRouter's `usage.cost`. Web search is
    refused until a paid plan exists (none does). It shares the service's monthly and daily caps with
-   `/complete`. It is in the code and its tests, not yet in the running relay, and the shell does not
-   call it yet (the E1/E3 engine); docs/16 "AI for apps" has its limits, its kill switch and how to
-   check it once it runs.
+   `/complete`. The Studio and Ask reach it as the **Potyro engine** (below); docs/16 "AI for apps"
+   has its limits, its kill switch and how to check it once it runs.
 2. **Then the person's own key** — the OpenRouter key in Model settings (session-only, as for Ask)
    — when the allowance is used up, the relay is not reachable, or it is not deployed.
 3. **Neither:** the call throws, in words the shell shows as the action's failure:
@@ -158,6 +158,49 @@ Every `429` but `busy` carries `x-potyro-left-usd`. A refusal from OpenRouter it
 can act on (a 400 such as "reasoning is mandatory") is passed back as OpenRouter sent it.
 `/complete` keeps its own shape (`429 {"ok":false,"error":"allowance","reason":…}`, with
 `service-day` among the reasons), which the shell already reads.
+
+### The Potyro engine: the Studio's free path (#121, #455)
+
+- **Offered only when it serves.** `GET /ai/health` answers `{ok, chat, model}`: `chat` is true while
+  the chat route is wired and its kill switch is not thrown, and `model` is the one it sends. The
+  Studio asks at open, through the same look as an app's consent question (`relayHealth` in
+  `app-ai.ts`, remembered ten minutes). With `chat: true`, Model settings lists **Potyro** first under
+  Cloud; otherwise it is not there.
+- **What it is.** The ordinary chat engine (OpenRouter's request shape, which the relay passes on) at
+  `{site}/ai/v1`, with `Authorization: Bearer potyro-device:<id>` (the random device id) and the model
+  `/health` named; thinking off. No key, no model choice. Ask's web search is not offered on it.
+- **The starting engine** on a deployed build (no `claude -p`), for a person who has not chosen in
+  this tab and has no key remembered on this device (`engine-store.ts` `checkFreeEngine`). Otherwise
+  today's start: OpenRouter, which asks for a key.
+- **What is left**, from `x-potyro-left-usd`, in words on the engine button and in Model settings:
+  *plenty left* from $0.10, *a little left* under it, *used up* under $0.02 (the relay's least hold,
+  `AI_CHAT_RESERVE_USD`, so no request fits). Never dollars or cents (`free-ai.ts` `leftOf`).
+- **Refusals in words** (`refusalText`), each with what to do next. `allowance`, `service-day`,
+  `service-month`, `address-day` (the relay's own sentence) and `off` stop free app making: the
+  Studio shows the **no-dead-end panel** in place of the composer, the stop's sentence first. A
+  month's stop (`allowance`, `service-month`) or a day's is kept on the device until it is over
+  (`potyro:free-ai-stop`: the code and the month or day, nothing else); `off` lasts the page, and
+  makes `/health` be asked again. `busy`, `plan`, `too-big`, `upstream` are said and nothing stops;
+  `device`, `model`, `request`, `method` say to reload.
+- **The panel** shows whenever no engine can make an app (no free route and no key, or it stopped):
+  one line on what a key is and costs, links to get one (OpenRouter, Anthropic, OpenAI), Add a key
+  (or "Use your OpenRouter key" when one is already in Model settings), **Start from an app in the
+  gallery** (the gallery's Make it mine needs no key), and "Tell me when there is a paid plan".
+- **Remember on this device** (#455): an opt-in switch under each key field, off by default. On, the
+  key goes into the device's secret vault (the identity's: the platform keystore, or a non-extractable
+  AES key in the browser), never localStorage; an endpoint is kept whole. Forget takes it out of the
+  vault and the field. Loaded at start; a remembered key's engine is where that person starts. No
+  vault, no switch (`remembered-keys.ts`).
+
+### Counts (#118)
+
+The shell posts `{"event": "own-key"}` the first time a key is typed into Model settings in a month,
+and `{"event": "want-plan"}` when "Tell me when there is a paid plan" is pressed — each at most once a
+calendar month per device (`potyro:counted:<event>:<month>`), only to a relay whose `/health`
+answered, with no device id, no cookies (`credentials: "omit"`), no referrer and no header but the
+content type (`demand-counts.ts`, tested). `exhausted` is counted by the relay itself. **You →
+Counts → Send anonymous counts** (on by default) turns all of it off. Nothing is shown to a device
+that pressed "Tell me" yet: the notice when `/health` reports a plan (#118 item 3) is not built.
 
 **On the person's key** two guards run on the device before dispatch: 20 calls a minute per app (a
 loop in an app's code must not empty a wallet) and $1 a month per app. Past either, the call
@@ -203,6 +246,7 @@ environment variable.
 | free first, own key, resize, offline, timeouts, guards, spend, on/off | `@potyro/shell` `app-ai.ts` | holds the key and the person's choices |
 | wire format, OpenRouter body, relay, server | `@potyro/ai-relay` | browser-safe format + Node relay, no Potyro dependencies |
 | the Studio's and Ask's chat route, its dollar allowance, the demand counts | `@potyro/ai-relay` `chat.ts`, `counts.ts`, `ledger.ts` | the same key, the same cap, the same ledger |
+| the Potyro engine, its refusals in words, the panel, remembered keys, counts | `@potyro/shell` `free-ai.ts`, `engines.ts`, `engine-store.ts`, `free-panel.tsx`, `remembered-keys.ts`, `demand-counts.ts` | the Studio's engine is the shell's choice |
 
 ## What this does not do
 

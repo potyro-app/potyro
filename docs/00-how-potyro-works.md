@@ -994,7 +994,7 @@ counts only when it passes a gate**, and every exit that is not a pass says so.
 
 ### Engines
 
-Six engines answer the Studio, chosen in one place (`packages/shell/src/engines.ts`) so that
+Seven engines answer the Studio, chosen in one place (`packages/shell/src/engines.ts`) so that
 changing the engine changes the model and nothing else:
 
 | Engine | What it is | Where it runs | Tools |
@@ -1002,15 +1002,20 @@ changing the engine changes the model and nothing else:
 | `claude -p` | Claude Code's command line, on this machine, through the dev server | local | no |
 | On-device | a small coder model in the browser on WebGPU, the browser's GPU API, through the WebLLM runtime; offline once the weights are cached | local | no |
 | Chrome built-in | Gemini Nano, nothing to download | local | no |
+| Potyro | Potyro's free monthly allowance of app making, through the relay's chat route (docs/23 "The Potyro engine"); listed, and the starting engine on a deployed build, only while the relay's `/health` says `chat: true` | cloud | yes |
 | Anthropic | Claude with the person's own API key | cloud | no |
 | OpenRouter | a gateway to hosted models behind one key (DeepSeek, Qwen, Llama); DeepSeek V4 Flash is the measured default | cloud | yes |
 | OpenAI-compatible endpoint | any server speaking the OpenAI chat API (OpenAI, Ollama, LM Studio, vLLM), named by base URL, optional key and model; sent none of OpenRouter's fields | the person's choice | yes |
 
-All six implement one contract, `ModelBackend` (`packages/generator/src/backend.ts`): turn a
+All seven implement one contract, `ModelBackend` (`packages/generator/src/backend.ts`): turn a
 request into a source, repair a failing source, or reply to a change request. A hybrid backend
 composes two of them and escalates from the on-device model to the cloud when the local repair loop
 has not converged. Keys are kept in the tab's sessionStorage, gone when the tab closes, never in
-localStorage. OpenRouter and an OpenAI-compatible endpoint carry tool calls end to end, so they can
+localStorage — unless the person turns on **Remember on this device** beside a key, which puts it in
+the device's secret vault. With no engine that can run (no free allowance and no key), the Studio
+shows what a key is and where to get one, and the gallery, instead of a disabled button. The shell
+counts, anonymously and at most once a month, a key typed and a press of "Tell me when there is a
+paid plan" (docs/23 "Counts"; off in You). Potyro, OpenRouter and an OpenAI-compatible endpoint carry tool calls end to end, so they can
 investigate and run the loops below; the others get one turn with the reference and the
 capability passages, and a repair round. Ask's web search is OpenRouter's own server tool and is
 offered only there. How hard a model thinks is a setting per engine, off by default:

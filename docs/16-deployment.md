@@ -634,11 +634,13 @@ kinds of request:
 
 - **`POST /ai/complete`** — apps' AI (`ctx.caps.ai`): read a photo, a text or a recording. The relay
   decides everything but the parts. This is what the shell uses today.
-- **`POST /ai/v1/chat/completions`** — the Studio and Ask, once the shell has the engine for it
-  (E1/E3). An OpenAI-shaped chat request, piped to OpenRouter, held to a per-device allowance in US
-  dollars. Until the shell sends it, nothing calls it.
+- **`POST /ai/v1/chat/completions`** — the Studio and Ask, through the shell's Potyro engine (#121,
+  docs/23). An OpenAI-shaped chat request, piped to OpenRouter, held to a per-device allowance in US
+  dollars. The shell offers that engine only while `/health` says `chat: true`.
 
-Beside them, `GET /ai/health`, and `POST`/`GET /ai/count` for the demand counts (below).
+Beside them, `GET /ai/health` (`{"ok":true,"chat":…,"model":…}`: `chat` is the chat route on and
+its kill switch not thrown, `model` the one it sends), and `POST`/`GET /ai/count` for the demand
+counts (below).
 
 If the relay is down, the shell gets the site's own page or a 404 back, and apps fall back to the
 person's own key: "Free AI isn't available yet — add your own key in Model settings."
@@ -757,7 +759,7 @@ once. Leave `trusted_proxies` unset unless something (a CDN) stands in front of 
 ### 4. Check it
 
 ```bash
-curl -s https://potyro.app/ai/health                                                # {"ok":true}
+curl -s https://potyro.app/ai/health                                                # {"ok":true,"chat":true,"model":"…"}
 curl -s -X POST https://potyro.app/ai/complete -d '{}' -H 'content-type: application/json'   # 400 {"ok":false,…}
 curl -s -X POST https://potyro.app/ai/v1/chat/completions -d '{}' \
   -H 'content-type: application/json'                                               # 401 {"ok":false,"error":"device"}
