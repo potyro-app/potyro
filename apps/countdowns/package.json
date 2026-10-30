@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-countdowns",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Countdowns: days until each thing that matters — the nearest one big, the rest in a row, the past folded away",

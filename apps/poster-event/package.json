@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-poster-event",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Poster to Calendar: photograph a poster and it becomes an event with a reminder, a calendar file and a message for friends (ctx.caps.ai, docs/23)",

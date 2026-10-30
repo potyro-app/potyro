@@ -131,7 +131,7 @@ not open a public issue.
 
 ## Licence and contributing
 
-Apache License 2.0: [LICENSE](LICENSE), with third-party material listed in [NOTICE](NOTICE). The
+© 2026 Edgar Zanella Alvarenga. Apache License 2.0: [LICENSE](LICENSE), with third-party material listed in [NOTICE](NOTICE). The
 tutorial code and the `npm create potyro` template are MIT No Attribution, so the apps you start from
 them carry no notice of ours. Contributions are welcome under the terms in
 [CONTRIBUTING.md](CONTRIBUTING.md); [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) applies.

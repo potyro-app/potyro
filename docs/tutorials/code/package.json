@@ -1,6 +1,7 @@
 {
   "name": "@potyro/tutorials-code",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "The code in docs/tutorials, checked: every stage of every tutorial's app is valid, packs, typechecks, and its tests pass",

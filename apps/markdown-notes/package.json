@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-markdown-notes",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Notes that are markdown files in the app's own folder: bring them in, read them rendered, edit, save a copy",

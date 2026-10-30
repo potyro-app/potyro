@@ -1,6 +1,7 @@
 {
   "name": "@potyro/shell",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "type": "module",
   "description": "Shell + PWA target (WP7): app switcher, nav, trust prompts, composition root, dev harness.",
   "license": "Apache-2.0",

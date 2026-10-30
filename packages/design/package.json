@@ -1,6 +1,7 @@
 {
   "name": "@potyro/design",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "type": "module",
   "description": "Potyro's design system: the designer's tokens, the colour clock, the logo, the fonts and the guides (DESIGN.md, REDACAO.md). Depends on no Potyro package.",
   "license": "Apache-2.0",

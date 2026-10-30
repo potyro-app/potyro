@@ -1,6 +1,7 @@
 {
   "name": "@potyro/host",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "type": "module",
   "description": "Loading, execution & trust (WP2): DirectHost runner, makeCtx + capability mediation, and the untrusted runners — the browser realm (./realm) and the QuickJS-WASM isolate (./isolate, the fallback).",
   "license": "Apache-2.0",

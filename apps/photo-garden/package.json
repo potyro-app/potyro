@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-photo-garden",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Photo Garden: a photo becomes a living generative artwork, drawn with p5.js loaded by URL (#266)",

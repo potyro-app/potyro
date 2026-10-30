@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-draw-guess",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Draw and Guess: a Pictionary-style party game, live in a room on Potyro's rooms relay (docs/26, docs/28)",
