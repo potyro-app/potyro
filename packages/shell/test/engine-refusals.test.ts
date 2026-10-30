@@ -11,10 +11,10 @@ import { modifyLoopRefusal } from "../src/start-modify.js";
 import { createLoopRefusal } from "../src/start-create.js";
 import { askRefusal, startAsk } from "../src/start-ask.js";
 import { startFix } from "../src/start-fix.js";
-import { checkFreeAi, resetFreeAi } from "../src/free-ai.js";
+import { FreeAiRefusal, checkFreeAi, refusalText, resetFreeAi } from "../src/free-ai.js";
 import { resetRelayMemory } from "../src/app-ai.js";
 
-const mocks = vi.hoisted(() => ({ engines: [] as OpenRouterOptions[], askDeps: [] as Array<Record<string, unknown>>, loopDeps: [] as Array<Record<string, unknown>>, askError: null as Error | null }));
+const mocks = vi.hoisted(() => ({ engines: [] as OpenRouterOptions[], askDeps: [] as Array<Record<string, unknown>>, loopDeps: [] as Array<Record<string, unknown>>, askError: null as Error | null, loopError: null as Error | null }));
 
 vi.mock("@potyro/generator/backends", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@potyro/generator/backends")>();
@@ -38,6 +38,7 @@ vi.mock("@potyro/generator/agent", async (importOriginal) => {
     },
     runAgentLoop: async (deps: Record<string, unknown>) => {
       mocks.loopDeps.push(deps);
+      if (mocks.loopError) throw mocks.loopError;
       return { kind: "stopped" };
     },
   };
@@ -75,6 +76,7 @@ beforeEach(async () => {
   mocks.askDeps.length = 0;
   mocks.loopDeps.length = 0;
   mocks.askError = null;
+  mocks.loopError = null;
 });
 
 describe("the refusal matrix", () => {
@@ -169,5 +171,27 @@ describe("Ask on an endpoint that fails", () => {
     mocks.askError = new Error("The endpoint 500: out of memory");
     const out = await startAsk({ definition: { pages: [] } as never, request: "add a city", engine: ready.endpoint });
     expect(out.kind === "failed" && out.reason).toBe("The endpoint 500: out of memory");
+  });
+});
+
+describe("the fix loop when the model's service says no", () => {
+  it("on Potyro: the relay's refusal comes back as a refusal in words, never a throw", async () => {
+    mocks.loopError = new FreeAiRefusal("service-day", refusalText("service-day"));
+    const out = await startFix({ source: "x", theCase: theCase(), runtime, store: null as never, engine: ready.potyro });
+    expect(out).toEqual({ kind: "refused", text: "Free app making is used up for today. It's back tomorrow, or add your own key." });
+  });
+
+  it("any other failure: said, with what to do, never a throw", async () => {
+    mocks.loopError = new Error("OpenRouter 401: no such key");
+    const out = await startFix({ source: "x", theCase: theCase(), runtime, store: null as never, engine: ready.openrouter });
+    expect(out.kind === "refused" && out.text).toBe("The model couldn't answer: OpenRouter 401: no such key. Try again in a minute, or choose another model in the Studio’s Model settings.");
+  });
+
+  it("stopped by the person: a stop, not a failure", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    mocks.loopError = new DOMException("aborted", "AbortError");
+    const out = await startFix({ source: "x", theCase: theCase(), runtime, store: null as never, engine: ready.openrouter, signal: controller.signal });
+    expect(out).toEqual({ kind: "stopped" });
   });
 });
