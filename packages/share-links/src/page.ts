@@ -91,6 +91,70 @@ export function pageLanguage(acceptLanguage: string | undefined): WordsLang {
   return "en";
 }
 
+/** The words of the page a link answers with when too many were opened from one network today. */
+const TOO_MANY_WORDS: Record<WordsLang, { title: string; again: (hours: number) => string }> = {
+  en: {
+    title: "Too many links were opened from this network today.",
+    again: (n) => (n === 1 ? "Try again in about an hour, or on another network." : `Try again in about ${n} hours, or on another network.`),
+  },
+  "pt-BR": {
+    title: "Muitos links foram abertos desta rede hoje.",
+    again: (n) => (n === 1 ? "Tente de novo daqui a mais ou menos uma hora, ou em outra rede." : `Tente de novo daqui a umas ${n} horas, ou em outra rede.`),
+  },
+  de: {
+    title: "Aus diesem Netz wurden heute zu viele Links geöffnet.",
+    again: (n) => (n === 1 ? "Versuch es in etwa einer Stunde noch einmal oder in einem anderen Netz." : `Versuch es in etwa ${n} Stunden noch einmal oder in einem anderen Netz.`),
+  },
+  es: {
+    title: "Hoy se abrieron demasiados enlaces desde esta red.",
+    again: (n) => (n === 1 ? "Vuelve a intentarlo en más o menos una hora, o desde otra red." : `Vuelve a intentarlo en unas ${n} horas, o desde otra red.`),
+  },
+  it: {
+    title: "Oggi sono stati aperti troppi link da questa rete.",
+    again: (n) => (n === 1 ? "Riprova tra circa un’ora, o da un’altra rete." : `Riprova tra circa ${n} ore, o da un’altra rete.`),
+  },
+  pl: {
+    title: "Z tej sieci otwarto dziś zbyt wiele linków.",
+    again: (n) => (n === 1 ? "Spróbuj ponownie za mniej więcej godzinę albo w innej sieci." : `Spróbuj ponownie za około ${n} ${polishHours(n)} albo w innej sieci.`),
+  },
+};
+
+/** 2 godziny, 5 godzin, 22 godziny: Polish counts take one of two forms past one. */
+function polishHours(n: number): string {
+  const tens = n % 100;
+  const ones = n % 10;
+  return ones >= 2 && ones <= 4 && (tens < 12 || tens > 14) ? "godziny" : "godzin";
+}
+
+/** A whole page of a few lines, with no script and nothing fetched: what the service says on its own. */
+function plainPage(lang: WordsLang, title: string, paragraphs: string[]): string {
+  return `<!doctype html>
+<html lang="${lang}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font: 17px/1.5 system-ui, sans-serif; margin: 0; padding: 3rem 1rem; background: Canvas; color: CanvasText; }
+      main { max-width: 32rem; margin: 0 auto; }
+      h1 { font-size: 1.4rem; line-height: 1.25; margin: 0 0 0.75rem; }
+      p { margin: 0 0 0.75rem; }
+      a { color: LinkText; }
+      a.home { display: inline-block; min-height: 44px; line-height: 44px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>${escapeHtml(title)}</h1>
+      ${paragraphs.join("\n      ")}
+    </main>
+  </body>
+</html>
+`;
+}
+
 /**
  * The whole page a link the operator took down answers with (410). It is not the shell: nothing of
  * the old link — its title, its picture, its package — and no script. Only what happened, who to
@@ -103,30 +167,14 @@ export function takenDownPage(opts: { lang: WordsLang; contact?: string; home: s
         .split("{email}")
         .join(`<a href="mailto:${escapeHtml(opts.contact)}">${escapeHtml(opts.contact)}</a>`)}</p>`
     : "";
-  return `<!doctype html>
-<html lang="${opts.lang}">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="robots" content="noindex, nofollow" />
-    <title>${escapeHtml(w.title)}</title>
-    <style>
-      :root { color-scheme: light dark; }
-      body { font: 17px/1.5 system-ui, sans-serif; margin: 0; padding: 3rem 1rem; background: Canvas; color: CanvasText; }
-      main { max-width: 32rem; margin: 0 auto; }
-      h1 { font-size: 1.4rem; line-height: 1.25; margin: 0 0 0.75rem; }
-      p { margin: 0 0 0.75rem; }
-      a { color: LinkText; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>${escapeHtml(w.title)}</h1>
-      <p>${escapeHtml(w.line)}</p>
-      ${contact}
-      <p><a href="${escapeHtml(opts.home)}">${escapeHtml(w.home)}</a></p>
-    </main>
-  </body>
-</html>
-`;
+  return plainPage(opts.lang, w.title, [`<p>${escapeHtml(w.line)}</p>`, ...(contact ? [contact] : []), `<p><a class="home" href="${escapeHtml(opts.home)}">${escapeHtml(w.home)}</a></p>`]);
+}
+
+/**
+ * The page a link answers with (429) when its network opened too many link pages today: when to try
+ * again, and the way to Potyro. Nothing of the link either — it was not looked up.
+ */
+export function tooManyPage(opts: { lang: WordsLang; hours: number; home: string }): string {
+  const w = TOO_MANY_WORDS[opts.lang];
+  return plainPage(opts.lang, w.title, [`<p>${escapeHtml(w.again(opts.hours))}</p>`, `<p><a class="home" href="${escapeHtml(opts.home)}">${escapeHtml(TAKEN_DOWN_WORDS[opts.lang].home)}</a></p>`]);
 }
