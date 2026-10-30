@@ -107,6 +107,10 @@ test("a hosted link's bar has Report: a mail to the report address naming the li
   await expect(viewer.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 15_000 });
   const report = viewer.locator(".k-demo-bar").getByRole("link", { name: "Report" });
   await expect(report).toBeVisible();
+  // A target a thumb can hit, without making the bar any taller than its other line.
+  const box = (await report.boundingBox())!;
+  expect(box.height).toBeGreaterThanOrEqual(44);
+  expect(box.width).toBeGreaterThanOrEqual(44);
   const href = (await report.getAttribute("href"))!;
   expect(href.startsWith(`mailto:${reportAddress()}?subject=`)).toBe(true);
   const mail = decodeURIComponent(href);
@@ -129,5 +133,36 @@ test("a link the Potyro team took down says so, and where to write (#11)", async
   await expect(splash).toContainText("This link was taken down", { timeout: 15_000 });
   await expect(splash).toContainText(`write to ${reportAddress()}`);
   await expect(splash).not.toContainText("whoever shared it took it down");
+  await context.close();
+});
+
+test("a hosted link past the day's limit for this network says so, with Try again — never that the link is damaged", async ({ page, browser, baseURL, consoleGuard }) => {
+  consoleGuard.allow(/Failed to load resource: the server responded with a status of 429/, "the share service's daily limit, answered on purpose");
+  const link = await makeDemoLink(page, "Groceries");
+  const { context, page: viewer } = await stranger(browser, baseURL!);
+  let limited = true;
+  await viewer.route("**/share-api/shares/*/payload", (r) =>
+    limited
+      ? r.fulfill({
+          status: 429,
+          contentType: "application/json",
+          headers: { "retry-after": "3600" },
+          body: JSON.stringify({ ok: false, code: "too-many-opens", error: "Too many apps were opened from this address today. Try again tomorrow." }),
+        })
+      : r.continue(),
+  );
+  await viewer.goto(link);
+  const splash = viewer.locator(".k-splash-failed");
+  await expect(splash).toContainText("Too many apps were opened from this network today. Try again tomorrow, or on another network.", { timeout: 15_000 });
+  await expect(splash).not.toContainText("damaged");
+  await expect(splash).not.toContainText("Ask whoever sent it");
+  const again = splash.getByRole("button", { name: "Try again" });
+  await expect(again).toBeVisible();
+  expect((await again.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+
+  // Tomorrow, or another network: Try again opens it.
+  limited = false;
+  await again.click();
+  await expect(viewer.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 15_000 });
   await context.close();
 });

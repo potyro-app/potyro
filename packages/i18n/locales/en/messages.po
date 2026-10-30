@@ -5306,6 +5306,11 @@ msgstr "Potyro can’t show this kind of file. Save a copy to open it with anoth
 msgid "Potyro can’t use the microphone. Allow it for this site in your browser, then try again."
 msgstr "Potyro can’t use the microphone. Allow it for this site in your browser, then try again."
 
+#. Share sheet: the share service is full for the day or short of room; nothing the person did
+#: ../shell/src/demo-share.ts
+msgid "Potyro cannot keep more links today. Try again tomorrow."
+msgstr "Potyro cannot keep more links today. Try again tomorrow."
+
 #: ../shell/src/move-banner.tsx
 msgid "Potyro has a new home"
 msgstr "Potyro has a new home"
@@ -7341,6 +7346,16 @@ msgstr "Today"
 msgid "Tomorrow"
 msgstr "Tomorrow"
 
+#. Opening a demo link: the share service's daily limit for this network was reached
+#: ../shell/src/demo.tsx
+msgid "Too many apps were opened from this network today. Try again tomorrow, or on another network."
+msgstr "Too many apps were opened from this network today. Try again tomorrow, or on another network."
+
+#. Share sheet: the share service's daily limit of links for this network was reached
+#: ../shell/src/demo-share.ts
+msgid "Too many links were made from this network today. Try again tomorrow, or on another network."
+msgstr "Too many links were made from this network today. Try again tomorrow, or on another network."
+
 #: ../shell/src/app-words.ts
 msgid "Translate into {into}"
 msgstr "Translate into {into}"
@@ -7366,6 +7381,8 @@ msgstr "Try {name}, made with Potyro"
 
 #: ../shell/src/main.tsx
 #: ../shell/src/main.tsx
+#: ../shell/src/main.tsx
+#: ../shell/src/share-sheet.tsx
 #: ../views/src/media-input.tsx
 msgid "Try again"
 msgstr "Try again"
