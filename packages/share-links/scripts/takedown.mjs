@@ -6,8 +6,10 @@
 //
 // Two ways, the same result:
 //
-//   # over HTTPS, from anywhere, with the operator token the service was started with
-//   SHARE_ADMIN_TOKEN=… node scripts/takedown.mjs <id or link> --reason "…" [--site https://potyro.app]
+//   # over HTTPS, from anywhere, with the operator token the service was started with — read without
+//   # echoing it, so it is in neither the screen nor the shell's history
+//   read -rs SHARE_ADMIN_TOKEN && export SHARE_ADMIN_TOKEN
+//   node scripts/takedown.mjs <id or link> --reason "…" [--site https://potyro.app]
 //
 //   # on the server, straight into the shares folder (no token; e.g. inside the service's container)
 //   node --experimental-strip-types scripts/takedown.mjs <id or link> --reason "…" --dir /data
@@ -20,7 +22,8 @@ import { pathToFileURL } from "node:url";
 
 const ID_RE = /^[A-Za-z0-9_-]{22}$/;
 const USAGE = `Usage:
-  SHARE_ADMIN_TOKEN=… node scripts/takedown.mjs <id or link> --reason "why" [--site https://potyro.app]
+  read -rs SHARE_ADMIN_TOKEN && export SHARE_ADMIN_TOKEN
+  node scripts/takedown.mjs <id or link> --reason "why" [--site https://potyro.app]
   node --experimental-strip-types scripts/takedown.mjs <id or link> --reason "why" --dir <shares folder>`;
 
 /** The share id in what was given: an id, or a link to one (its fragment ignored). */
@@ -42,8 +45,26 @@ function parse(argv) {
   return out;
 }
 
+/**
+ * The site to send the token to: https only, so it never crosses the network in clear — except to
+ * this machine itself (a service run here, or reached through a tunnel).
+ */
+export function siteBaseOf(site) {
+  let url;
+  try {
+    url = new URL(String(site));
+  } catch {
+    throw new Error(`--site is not an address: ${site}`);
+  }
+  const local = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && local)) {
+    throw new Error(`--site must start with https:// (the token would be sent in clear to ${url.origin})`);
+  }
+  return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
+}
+
 async function overHttp(id, reason, site, token) {
-  const base = site.replace(/\/+$/, "");
+  const base = siteBaseOf(site);
   const res = await fetch(`${base}/share-api/admin/shares/${id}`, {
     method: "DELETE",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
