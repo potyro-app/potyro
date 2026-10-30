@@ -20,12 +20,22 @@ interface Db {
   prepare(sql: string): { run(...p: unknown[]): unknown; get(...p: unknown[]): Record<string, unknown> | undefined; all(...p: unknown[]): Array<Record<string, unknown>> };
   close(): void;
 }
-const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite") as { DatabaseSync: new (file: string, opts?: { timeout?: number }) => Db };
+// node:sqlite arrived in Node 22.5 (the script says 22.13, the version it was written against). The gate's
+// machine runs Node 20, where the module does not exist: loading it here would fail the whole file before
+// any suite could be skipped, so it is loaded only where it exists and both suites skip without it. The
+// script itself refuses such a Node and says to use the relay's node:22 container.
+const [nodeMajor, nodeMinor] = process.versions.node.split(".").map(Number);
+const hasNodeSqlite = nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 5);
+type DatabaseSyncCtor = new (file: string, opts?: { timeout?: number }) => Db;
+const DatabaseSync: DatabaseSyncCtor | null = hasNodeSqlite
+  ? (createRequire(import.meta.url)("node:sqlite") as { DatabaseSync: DatabaseSyncCtor }).DatabaseSync
+  : null;
 
 const SCRIPT = fileURLToPath(new URL("../scripts/erase-space.mjs", import.meta.url));
 
 /** cojson's synchronous SQLite driver, on node:sqlite: what cojson-storage-sqlite is on better-sqlite3. */
 function driver(file: string) {
+  if (!DatabaseSync) throw new Error("node:sqlite is not available on this Node");
   const db = new DatabaseSync(file);
   db.exec("PRAGMA journal_mode = WAL");
   let depth = 0;
@@ -133,6 +143,7 @@ beforeAll(async () => {
 
   // A piece of A's ciphertext, to look for in the file's bytes after. Everything into the main file
   // first, so a copy of it is the whole database.
+  if (!DatabaseSync) throw new Error("node:sqlite is not available on this Node");
   const db = new DatabaseSync(file);
   db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
   const binary = db.prepare(`SELECT id FROM coValues WHERE header LIKE '%"binary"%' AND header LIKE ?`).get(`%${groupA.id}%`)!.id as string;
@@ -173,6 +184,7 @@ function run(args: string[]): Promise<{ code: number; out: string; err: string }
 }
 
 function ids(file: string): Set<string> {
+  if (!DatabaseSync) throw new Error("node:sqlite is not available on this Node");
   const db = new DatabaseSync(file);
   const out = new Set(db.prepare("SELECT id FROM coValues").all().map((r) => r.id as string));
   db.close();
@@ -180,6 +192,7 @@ function ids(file: string): Set<string> {
 }
 
 function counts(file: string): Record<string, number> {
+  if (!DatabaseSync) throw new Error("node:sqlite is not available on this Node");
   const db = new DatabaseSync(file);
   const n = (t: string) => Number(db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get()!.n);
   const out = { coValues: n("coValues"), sessions: n("sessions"), transactions: n("transactions"), signatureAfter: n("signatureAfter") };
@@ -188,17 +201,12 @@ function counts(file: string): Record<string, number> {
 }
 
 function ownedIds(file: string, group: string): string[] {
+  if (!DatabaseSync) throw new Error("node:sqlite is not available on this Node");
   const db = new DatabaseSync(file);
   const out = db.prepare("SELECT id FROM coValues WHERE header LIKE ?").all(`%"ownedByGroup","group":"${group}"%`).map((r) => r.id as string);
   db.close();
   return out;
 }
-
-// node:sqlite arrived in Node 22.5 (the script says 22.13, the version it was written against). The
-// gate's machine runs Node 20, where the module does not exist: these suites are skipped there, not
-// failed — the script itself refuses to run on such a Node and says to use the relay's node:22 container.
-const [nodeMajor, nodeMinor] = process.versions.node.split(".").map(Number);
-const hasNodeSqlite = nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 5);
 
 describe.skipIf(!hasNodeSqlite)("erasing a space from the relay's database", () => {
   it("a dry run lists the space and everything it owns, and changes nothing", async () => {
@@ -232,7 +240,8 @@ describe.skipIf(!hasNodeSqlite)("erasing a space from the relay's database", () 
     for (const id of going) expect(left.has(id)).toBe(false);
     expect(left).toEqual(new Set([...all].filter((id) => !going.has(id))));
     // No session, edit or signature of theirs is left behind, and the bytes are out of the file.
-    const db = new DatabaseSync(file);
+    if (!DatabaseSync) throw new Error("node:sqlite is not available on this Node");
+  const db = new DatabaseSync(file);
     expect(Number(db.prepare("SELECT COUNT(*) AS n FROM sessions WHERE coValue NOT IN (SELECT rowID FROM coValues)").get()!.n)).toBe(0);
     expect(Number(db.prepare("SELECT COUNT(*) AS n FROM transactions WHERE ses NOT IN (SELECT rowID FROM sessions)").get()!.n)).toBe(0);
     expect(Number(db.prepare("SELECT COUNT(*) AS n FROM signatureAfter WHERE ses NOT IN (SELECT rowID FROM sessions)").get()!.n)).toBe(0);
