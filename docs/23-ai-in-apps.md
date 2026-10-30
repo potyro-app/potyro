@@ -100,9 +100,17 @@ Owner decision 2026-10-15: **both**, free first.
 
 1. **The free allowance.** A small relay (`packages/ai-relay`, beside the platform-request relay)
    holds Potyro's OpenRouter key, fixes the model, the token cap and the provider settings, and
-   meters: per device a day and a month, per address a day, and **a monthly spending cap for the
-   whole service, checked before every dispatch**. A device id is random and says nothing about the
+   meters: per device a day and a month, per address a day (an IPv6 address by its /64), and **a
+   monthly and a daily spending cap for the whole service, checked before every dispatch** with the
+   most the request could cost on top of every request still out. A device id is random and says nothing about the
    person.
+   The same relay also serves **the Studio and Ask**, once the shell has the engine for it (E1/E3):
+   `POST /ai/v1/chat/completions` takes an OpenAI-shaped chat request (its messages, tools and
+   reasoning as the Studio's loop writes them), sends it on only for an allowlisted model, with the
+   token cap clamped and `data_collection: "deny"` forced, pipes the answer back as it streams, and
+   holds each device to a monthly allowance in US dollars, debited from OpenRouter's `usage.cost`.
+   Web search is refused there until a paid plan exists (none does). Both routes share the
+   monthly and the daily cap. Deployment and every limit: docs/16 "AI for apps".
 2. **Then the person's own key** — the OpenRouter key in Model settings (session-only, as for Ask)
    — when the allowance is used up, the relay is not reachable, or it is not deployed.
 3. **Neither:** the call throws, in words the shell shows as the action's failure:
@@ -110,6 +118,40 @@ Owner decision 2026-10-15: **both**, free first.
      settings."*
    - allowance used up: *"This month's free AI is used up — add your own OpenRouter key in Model
      settings."*
+
+### The chat route's refusals
+
+Every refusal from `POST /ai/v1/chat/completions` is in OpenAI's error shape, so an OpenAI-style
+client reads it as an error, with a code the shell maps to its own words and an English `message`
+that already says what to do next (shown as it is where the shell has nothing better):
+
+```json
+{"error": {"code": "allowance", "message": "This month's free AI on this device is used up. To keep going, add your own key in Model settings.", "type": "potyro"}}
+```
+
+A refusal about one field of the request also carries `param`, the field's name. The codes
+(`ChatErrorCode` and `CHAT_MESSAGES` in `packages/ai-relay/src/chat.ts`):
+
+| Code | Status | When | What the shell does |
+|---|---|---|---|
+| `allowance` | 429 | The device's month is used up — or what is left is not enough for this request (a shorter one may still fit; the message says so) | Move to the person's own key |
+| `address-day` | 429 | This network's day is used up (an IPv6 network by its /64) | Own key; else "back tomorrow" |
+| `service-day` | 429 | The whole service's day is used up | Own key; else "back tomorrow" |
+| `service-month` | 429 | The whole service's month is used up | Own key |
+| `busy` | 429 | The device has too many requests out | Wait and retry |
+| `off` | 503 | The kill switch is on | Own key; else "try later" |
+| `device` | 401 | No `Bearer potyro-device:<id>` | A bug: update |
+| `model` | 400 | A model the free allowance does not offer | Use the default model, or own key |
+| `plan` | 403 | Web search or another server tool, which needs a plan (none exists) | Without web search, or own key |
+| `request` | 400 | Not JSON, or a field that is unknown or wrong (`param`) | A bug: update |
+| `too-big` | 413 | Over 4 MiB | Start a new chat, or own key |
+| `method` | 405 | Not a POST | A bug: update |
+| `upstream` | 502 | OpenRouter failed, or refused Potyro's key | Retry, or own key |
+
+Every `429` but `busy` carries `x-potyro-left-usd`. A refusal from OpenRouter itself that the sender
+can act on (a 400 such as "reasoning is mandatory") is passed back as OpenRouter sent it.
+`/complete` keeps its own shape (`429 {"ok":false,"error":"allowance","reason":…}`, with
+`service-day` among the reasons), which the shell already reads.
 
 **On the person's key** two guards run on the device before dispatch: 20 calls a minute per app (a
 loop in an app's code must not empty a wallet) and $1 a month per app. Past either, the call
@@ -154,11 +196,12 @@ environment variable.
 | QuickJS ops `cap.ai.*` | `@potyro/host` isolate | bytes cross as base64; a `FileRef` / `MediaRef` as itself |
 | free first, own key, resize, offline, timeouts, guards, spend, on/off | `@potyro/shell` `app-ai.ts` | holds the key and the person's choices |
 | wire format, OpenRouter body, relay, server | `@potyro/ai-relay` | browser-safe format + Node relay, no Potyro dependencies |
+| the Studio's and Ask's chat route, its dollar allowance, the demand counts | `@potyro/ai-relay` `chat.ts`, `counts.ts`, `ledger.ts` | the same key, the same cap, the same ledger |
 
 ## What this does not do
 
 Image generation and editing (the original scope of #213) are not here: its blockers (provider
 terms, the AI Act's labelling, minors) are unchanged. Streaming, tools and web search are not
-offered to apps. An on-device model is not wired yet; `AiCap` is the seam it would plug into.
+offered to apps (the relay's chat route has streaming and tools, for the Studio and Ask only). An on-device model is not wired yet; `AiCap` is the seam it would plug into.
 
 These are new optional members: no existing app changes, so `schemaVersion` is not bumped.
