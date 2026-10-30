@@ -63,7 +63,7 @@ changed here.
 | F-29 | Delete: `DELETE /share-api/shares/<id>` with the delete token, or the operator removes the folder. The sharer's device keeps the last 200 tokens (`potyro:shares`) but **no UI calls DELETE yet**. | `share-links/src/handler.ts`, `disk.ts`; `shell/src/share-service.ts` (`remember`, no DELETE anywhere in shell) | code |
 | F-30 | Per-address limit: 30 links a day, in memory. | docs/16; `share-links/src/handler.ts` (`allow(req.ip, …)`) | code |
 | F-31 | Without the service, the inline link carries the whole app in the fragment. | docs/24 §2 | doc |
-| F-32 | The link service is live on potyro.app. | `https://potyro.app/share-api/health` → `{"ok":true}` | observed (docs/16 still says not deployed) |
+| F-32 | The link service is live on potyro.app. | `https://potyro.app/share-api/health` → `{"ok":true}` | observed (docs/16 says so since the #458 pass, 2026-10-30) |
 
 ## AI inside apps and the free allowance
 
