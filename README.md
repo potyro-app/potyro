@@ -74,7 +74,7 @@ Same code, two authority levels. The language is never the thing that is limited
 - Android and iOS through Capacitor, the native shell around a web build, with native capabilities
   and the platform keystore.
 - The Studio: describe an app, change it, fix it by recording what went wrong, point at the part you
-  mean, in your language, with one of five model engines, every candidate gated before it is kept.
+  mean, in your language, with one of six model engines, every candidate gated before it is kept.
 - Twenty-one real apps in `apps/`, six example apps in `examples/`, the gallery on potyro.com, and a
   tutorial for writing apps outside this repo.
 
