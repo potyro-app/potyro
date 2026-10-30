@@ -58,6 +58,15 @@ describe("export bundle round-trip", () => {
     reopened.destroy();
   });
 
+  it("reads a manifest that says mergeable, or names no mode, as a snapshot", () => {
+    const sqlite = new Uint8Array([1, 2, 3]);
+    for (const mode of ["mergeable", undefined]) {
+      const legacy = { ...manifest(), mode } as unknown as ExportManifest;
+      const unpacked = unpackBundle(packBundle({ sqlite, manifest: legacy }));
+      expect(unpacked.manifest.mode).toBe("snapshot");
+    }
+  });
+
   it("still opens a bundle exported before the rename, as karta-bundle/1", async () => {
     const first = await createMemorySqliteStore("demo");
     await first.store.insert("note", { title: "Kept" });
