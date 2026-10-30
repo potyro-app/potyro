@@ -305,7 +305,16 @@ export function storageOver(driver: SqliteDriverAsync): ReturnType<typeof getSql
  * Going through `createJazzStore` for that would have meant inventing an app id and leaving a space
  * behind for an app that does not exist.
  */
-export async function openAccountNode(opts: Omit<CreateJazzStoreOpts, "peers"> & { peers?: unknown[] }): Promise<{
+export async function openAccountNode(
+  opts: Omit<CreateJazzStoreOpts, "peers" | "expectExisting"> & {
+    peers?: unknown[];
+    /**
+     * See `CreateJazzStoreOpts.expectExisting`. A function is asked at the moment it matters, which
+     * is how a shared opening (`deviceNode`) hears a caller that joined it after it began.
+     */
+    expectExisting?: boolean | (() => boolean);
+  },
+): Promise<{
   node: InstanceType<typeof LocalNode>;
   accountID: string;
   relay?: RelayConnection;
@@ -360,10 +369,12 @@ export async function openAccountNode(opts: Omit<CreateJazzStoreOpts, "peers"> &
     // A device that was linked asks the relay FIRST, because for it "not here" means "not yet",
     // never "does not exist". Bounded, so a dead relay costs seconds rather than the tens of seconds
     // the no-peers path exists to avoid — and if the wait runs out, the paths below still apply.
-    const fromPeers =
-      opts.expectExisting && opts.relay
-        ? await loadAccountThroughRelay(opts.relay, (p) => loadAccount(opts.account!.id, opts.account!.secret, p))
-        : null;
+    const expecting = (): boolean =>
+      typeof opts.expectExisting === "function" ? opts.expectExisting() : Boolean(opts.expectExisting);
+    const throughRelay = (): Promise<InstanceType<typeof LocalNode> | null> =>
+      opts.relay ? loadAccountThroughRelay(opts.relay, (p) => loadAccount(opts.account!.id, opts.account!.secret, p)) : Promise.resolve(null);
+    const askedRelay = expecting() && !!opts.relay;
+    const fromPeers = askedRelay ? await throughRelay() : null;
     try {
       node = fromPeers ?? (await loadAccount(opts.account.id, opts.account.secret, [] as never[]));
     } catch (e) {
@@ -371,19 +382,25 @@ export async function openAccountNode(opts: Omit<CreateJazzStoreOpts, "peers"> &
       // failure (corrupt storage, bad secret) must surface rather than silently mint a second
       // identity and strand the person's spaces.
       if (!/unavailable/i.test(e instanceof Error ? e.message : String(e))) throw e;
-      const created = await LocalNode.withNewlyCreatedAccount({
-        creationProps: { name: opts.profileName ?? "Me" },
-        crypto,
-        storage,
-        peers: [] as never[],
-        initialAgentSecret: opts.account.secret as never,
-        onLocalStoreDurabilityChange: durability.listener as never,
-      });
-      node = created.node;
-      if ((created.accountID as unknown as string) !== opts.account.id) {
-        throw new Error(
-          `createJazzStore: materialised account ${String(created.accountID)} does not match the identity's ${opts.account.id}.`,
-        );
+      // Asked once more before minting: someone sharing this opening may have said, since the first
+      // answer, that the account exists elsewhere (see `deviceNode`).
+      const late = !askedRelay && expecting() ? await throughRelay() : null;
+      if (late) node = late;
+      else {
+        const created = await LocalNode.withNewlyCreatedAccount({
+          creationProps: { name: opts.profileName ?? "Me" },
+          crypto,
+          storage,
+          peers: [] as never[],
+          initialAgentSecret: opts.account.secret as never,
+          onLocalStoreDurabilityChange: durability.listener as never,
+        });
+        node = created.node;
+        if ((created.accountID as unknown as string) !== opts.account.id) {
+          throw new Error(
+            `createJazzStore: materialised account ${String(created.accountID)} does not match the identity's ${opts.account.id}.`,
+          );
+        }
       }
     }
     // cojson does this itself in both of its own constructors, so it is the supported way in.
@@ -636,8 +653,26 @@ interface DeviceNode {
  *
  * Only for an identity passed in (`account`): the shell always passes one. Without it the account is
  * whatever `keys` remembers, which is how the store's own tests open several devices in one process.
+ *
+ * ## Who decides how the account is found
+ *
+ * Whoever registers first starts the opening, but `expectExisting` (a device linked with the recovery
+ * words: ask the relay for the account before minting it locally) is not part of the key, so it
+ * cannot be the first caller's alone to decide. The rule: while an opening has not settled, ANY
+ * caller sharing it that passes `expectExisting` makes it ask the relay first — it is read when the
+ * account is resolved, and once more before minting one, not when the opening began. An invite
+ * accepted at boot and the boot account reader arrive in either order, and the reader's say counts
+ * either way. Once the opening has settled the account is resolved, and a later `expectExisting`
+ * has nothing left to change.
+ *
+ * ## Not yet: legacy per-app databases
+ *
+ * Apps recorded before the database move keep their own `${appId}-jazz` file (see `openJazzStore`),
+ * and a node is per database — so each of those still gets a node of its own on the same account,
+ * beside this one: the two-nodes-on-one-account shape this exists to remove. Migrating those spaces
+ * into the device database is a follow-up; until then legacy apps keep the hazard.
  */
-const deviceNodes = new Map<string, Promise<DeviceNode>>();
+const deviceNodes = new Map<string, { opening: Promise<DeviceNode>; expectExisting: boolean }>();
 
 async function deviceNode(
   dbName: string,
@@ -645,7 +680,12 @@ async function deviceNode(
 ): Promise<DeviceNode> {
   const key = opts.account ? [dbName, opts.account.id, opts.relay ?? ""].join("\n") : null;
   const known = key ? deviceNodes.get(key) : undefined;
-  if (known) return known;
+  if (known) {
+    // Heard by a pending opening; a settled one has already resolved the account.
+    if (opts.expectExisting) known.expectExisting = true;
+    return known.opening;
+  }
+  const shared = { opening: undefined as unknown as Promise<DeviceNode>, expectExisting: Boolean(opts.expectExisting) };
   const opening = (async (): Promise<DeviceNode> => {
     const { db, driver, whenPersisted, crypto } = await openDeviceDatabase(dbName);
     // A relay is OPTIONAL and additive. With none, this is a durable local-only store and no socket
@@ -662,14 +702,15 @@ async function deviceNode(
       profileName: opts.profileName,
       account: opts.account,
       relay: opts.relay,
-      expectExisting: opts.expectExisting,
+      expectExisting: () => shared.expectExisting,
     });
     return { opened, whenPersisted };
   })();
+  shared.opening = opening;
   if (key) {
-    deviceNodes.set(key, opening);
+    deviceNodes.set(key, shared);
     opening.catch(() => {
-      if (deviceNodes.get(key) === opening) deviceNodes.delete(key);
+      if (deviceNodes.get(key) === shared) deviceNodes.delete(key);
     });
   }
   return opening;
@@ -903,6 +944,8 @@ export async function joinSpace(
     profileName?: string;
     /** The device account from `@potyro/identity` — you join a space AS someone. */
     account?: { id: string; secret: string };
+    /** This device was linked with the recovery words. See `CreateJazzStoreOpts.expectExisting`. */
+    expectExisting?: boolean;
   },
 ): Promise<JazzStoreHandle> {
   const keys = opts?.keys ?? browserKeys();
@@ -924,6 +967,7 @@ export async function joinSpace(
     relay: opts?.relay,
     profileName: opts?.profileName,
     account: opts?.account,
+    expectExisting: opts?.expectExisting,
   });
   await (handle.node as { acceptInvite(id: string, secret: string): Promise<void> }).acceptInvite(
     invite.group,
