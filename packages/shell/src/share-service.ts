@@ -78,9 +78,12 @@ export async function hostDemo(opts: { appId: string; zip: Uint8Array; meta: Sha
 
 /** The package behind a hosted link. Throws `GoneError` when the service no longer has it. */
 export class GoneError extends Error {}
+/** The operator took the link down (a 410, docs/16 "Taking a link down"), not its sharer. */
+export class TakenDownError extends GoneError {}
 
 export async function fetchHostedPackage(id: string, key: string): Promise<Uint8Array> {
   const res = await fetch(`${shareServiceUrl()}/shares/${encodeURIComponent(id)}/payload`, { cache: "no-cache" });
+  if (res.status === 410) throw new TakenDownError(id);
   if (res.status === 404) throw new GoneError(id);
   if (!res.ok) throw new Error(`the share service answered ${res.status}`);
   return openPackage(new Uint8Array(await res.arrayBuffer()), key);

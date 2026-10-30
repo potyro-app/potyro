@@ -390,7 +390,9 @@ async function bootDemo(root: HTMLElement, link: DemoLink, target?: AppTarget): 
     // person invites from the demo gets the same demo, or their own copy.
     const session = await openDemo(pkg, caps, { link: demoLinkText(link, location.origin, location.pathname) });
     shareEvent("demo-opened");
-    mount(root, <DemoScreen session={session} pkg={pkg} startRemix={link.remix} target={target} />);
+    // What a report names: the hosted link without its key (#11).
+    const reportLink = link.kind === "hosted" ? demoLinkText(link, location.origin, location.pathname).split("#")[0] : undefined;
+    mount(root, <DemoScreen session={session} pkg={pkg} startRemix={link.remix} target={target} reportLink={reportLink} />);
   } catch (e) {
     const why =
       e instanceof DemoDeclined

@@ -13906,6 +13906,30 @@ input.k-switch:disabled {
   color: var(--ink-faint);
   font-weight: 400;
 }
+/* Report (#11): there for whoever needs it, quiet for everyone else. */
+.k-demo-report {
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-decoration-color: var(--ink-faint);
+  text-underline-offset: 3px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+.k-demo-note > span + .k-demo-report::before {
+  content: " · ";
+  display: inline-block;
+  white-space: pre;
+  color: var(--ink-faint);
+  text-decoration: none;
+}
+.k-demo-report:hover {
+  color: var(--ink);
+  text-decoration-color: currentColor;
+}
+.k-demo-report:focus-visible {
+  outline: 2px solid var(--accent-potyro);
+  outline-offset: 2px;
+}
 /* Who made it, on the Add-an-app card (docs/24 §6). */
 .k-add-app-credit {
   margin: 0.1rem 0 0;

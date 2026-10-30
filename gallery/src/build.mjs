@@ -19,8 +19,17 @@ export const GALLERY_DIR = resolve(here, "..");
 const ROOT = resolve(GALLERY_DIR, "..");
 const DESIGN = join(ROOT, "packages", "design");
 
-/** Where "Report a link" writes to (it reaches the Potyro team). Named here and nowhere else. */
-export const CONTACT = "contact@potyro.com";
+/**
+ * Where "Report a link" writes to: the terms' report address (`abuse` in packages/shell/src/contacts.json,
+ * the one place Potyro's addresses are named, #11). While it is still the placeholder the owner has to
+ * fill in, the general address, so the link always reaches the Potyro team.
+ */
+export const CONTACT = reportAddress(JSON.parse(readFileSync(join(ROOT, "packages", "shell", "src", "contacts.json"), "utf8")));
+
+/** @param {{ abuse: string, general: string }} contacts */
+function reportAddress(contacts) {
+  return /^<[^>]*>$/.test(contacts.abuse.trim()) ? contacts.general : contacts.abuse;
+}
 /** Potyro itself: where "Open Potyro" and "Create my app" go, and where the prompt box sends. */
 export const APP_SITE = "https://potyro.app/";
 

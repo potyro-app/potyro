@@ -1,4 +1,5 @@
 import { test, expect } from "./console-guard";
+import { readFileSync } from "node:fs";
 import { foreignHosts, makeDemoLink, stranger } from "./share-demo";
 
 // Link previews (docs/24 §4–§5). With the share service there (the dev server mounts it), a demo link
@@ -89,5 +90,44 @@ test("a link its sharer took down says so, in plain words", async ({ page, brows
   const { context, page: viewer } = await stranger(browser, baseURL!);
   await viewer.goto(link);
   await expect(viewer.locator(".k-splash-failed")).toContainText("This link no longer works", { timeout: 15_000 });
+  await context.close();
+});
+
+/** Where the app's Report goes (packages/shell/src/contacts.json, #11): the abuse address once filled in. */
+function reportAddress(): string {
+  const c = JSON.parse(readFileSync(new URL("../packages/shell/src/contacts.json", import.meta.url), "utf8")) as { abuse: string; general: string };
+  return /^<[^>]*>$/.test(c.abuse.trim()) ? c.general : c.abuse;
+}
+
+test("a hosted link's bar has Report: a mail to the report address naming the link, never its key (#11)", async ({ page, browser, baseURL }) => {
+  const link = await makeDemoLink(page, "Groceries");
+  const url = new URL(link);
+  const { context, page: viewer } = await stranger(browser, baseURL!);
+  await viewer.goto(link);
+  await expect(viewer.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 15_000 });
+  const report = viewer.locator(".k-demo-bar").getByRole("link", { name: "Report" });
+  await expect(report).toBeVisible();
+  const href = (await report.getAttribute("href"))!;
+  expect(href.startsWith(`mailto:${reportAddress()}?subject=`)).toBe(true);
+  const mail = decodeURIComponent(href);
+  expect(mail).toContain(`The link: ${url.origin}${url.pathname}`);
+  // The key opens the package: a report never carries it.
+  expect(mail).not.toContain(url.hash.slice(1));
+  await context.close();
+});
+
+test("a link the Potyro team took down says so, and where to write (#11)", async ({ page, browser, baseURL, consoleGuard }) => {
+  // The page here is the cached shell; the package answers 410, as the service does after a takedown.
+  consoleGuard.allow(/Failed to load resource: the server responded with a status of 410/, "the link was taken down on purpose: its package answers 410");
+  const link = await makeDemoLink(page, "Groceries");
+  const { context, page: viewer } = await stranger(browser, baseURL!);
+  await viewer.route("**/share-api/shares/*/payload", (r) =>
+    r.fulfill({ status: 410, contentType: "application/json", body: JSON.stringify({ ok: false, code: "taken-down", error: "This link was taken down." }) }),
+  );
+  await viewer.goto(link);
+  const splash = viewer.locator(".k-splash-failed");
+  await expect(splash).toContainText("This link was taken down", { timeout: 15_000 });
+  await expect(splash).toContainText(`write to ${reportAddress()}`);
+  await expect(splash).not.toContainText("whoever shared it took it down");
   await context.close();
 });

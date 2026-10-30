@@ -1112,6 +1112,11 @@ msgstr "A packing list I can reuse for trips"
 msgid "A picture of your own on the tile"
 msgstr "A picture of your own on the tile"
 
+#. Subject of the email that reports a demo link to the Potyro team
+#: ../shell/src/demo.tsx
+msgid "A Potyro link"
+msgstr "A Potyro link"
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "A query parameter named"
 msgstr "A query parameter named"
@@ -5619,6 +5624,11 @@ msgstr "Replay"
 msgid "Replay this path against the app"
 msgstr "Replay this path against the app"
 
+#. Demo bar: report this demo link to the Potyro team
+#: ../shell/src/demo.tsx
+msgid "Report"
+msgstr "Report"
+
 #: ../shell/src/history.tsx
 msgid "Reported as host-side"
 msgstr "Reported as host-side"
@@ -6468,6 +6478,11 @@ msgstr "Tap the map to place a point"
 msgid "Tap the part you mean"
 msgstr "Tap the part you mean"
 
+#. Demo bar: what the Report link does
+#: ../shell/src/demo.tsx
+msgid "Tell the Potyro team about this link, if you think it is illegal"
+msgstr "Tell the Potyro team about this link, if you think it is illegal"
+
 #: ../shell/src/endpoint-settings.tsx
 msgid "Test connection"
 msgstr "Test connection"
@@ -6716,6 +6731,23 @@ msgstr "The link could not be fetched from here"
 #: ../shell/src/share-body.tsx
 msgid "The link could not be made. The words can still be sent."
 msgstr "The link could not be made. The words can still be sent."
+
+#. Start of the email that reports a demo link; the person writes their reasons under the second line
+#: ../shell/src/demo.tsx
+msgid ""
+"The link: {reportLink}\n"
+"\n"
+"Why I think it is illegal:\n"
+"\n"
+"\n"
+"I believe this report is accurate and complete."
+msgstr ""
+"The link: {reportLink}\n"
+"\n"
+"Why I think it is illegal:\n"
+"\n"
+"\n"
+"I believe this report is accurate and complete."
 
 #: ../shell/src/move-archive.ts
 #: ../shell/src/move-archive.ts
@@ -7156,6 +7188,11 @@ msgstr "This link no longer works: whoever shared it took it down, or it was nev
 #: ../shell/src/main.tsx
 msgid "This link opens an app you don't have here. Ask whoever sent it to share the app with you, then open the link again."
 msgstr "This link opens an app you don't have here. Ask whoever sent it to share the app with you, then open the link again."
+
+#. A demo link the Potyro team removed after a report; the address is where to write
+#: ../shell/src/demo.tsx
+msgid "This link was taken down: the app behind it was removed from Potyro. If you think this was a mistake, write to {address}."
+msgstr "This link was taken down: the app behind it was removed from Potyro. If you think this was a mistake, write to {address}."
 
 #: ../shell/src/realm-probe-screen.tsx
 msgid "This makes a sealed screen busy for 3 seconds, three ways, and measures whether Potyro froze meanwhile. The counter stops while it is frozen."
