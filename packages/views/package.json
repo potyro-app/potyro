@@ -1,6 +1,7 @@
 {
   "name": "@potyro/views",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "type": "module",
   "description": "View registry + built-in views (WP6): list, table, detail, gallery, custom (M1). calendar/map later.",
   "license": "Apache-2.0",

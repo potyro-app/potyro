@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-palette-catcher",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Palette Catcher: a photo becomes a palette of 5–8 colours, chosen in OKLab, to copy, keep and share",

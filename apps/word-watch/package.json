@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-word-watch",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Word Watch: words you pick, found live in Bluesky's public firehose (Jetstream) \u2014 matches, who and what, per-minute counts (ctx.caps.network.socket, docs/28)",

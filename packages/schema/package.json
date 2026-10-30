@@ -1,6 +1,7 @@
 {
   "name": "potyro",
   "version": "0.1.0",
+  "author": "Edgar Zanella Alvarenga",
   "type": "module",
   "description": "Write Potyro apps: defineApp(), the ctx types, and `potyro pack` to make the package Add an app installs",
   "license": "Apache-2.0",

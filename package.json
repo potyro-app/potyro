@@ -1,6 +1,7 @@
 {
   "name": "potyro",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",

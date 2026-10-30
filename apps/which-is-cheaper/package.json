@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-which-is-cheaper",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Which is cheaper: two prices and two sizes, and it says the cost per unit and which one wins",

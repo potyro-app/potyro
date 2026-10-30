@@ -1,6 +1,7 @@
 {
   "name": "@potyro/identity",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "type": "module",
   "description": "Device identity (KA-16, ADR 0001 D2 amended): owns the cojson account seed, the cached {id,name}, and passphrase linking (D2a). No network, no database.",
   "license": "Apache-2.0",
