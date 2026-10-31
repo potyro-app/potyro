@@ -6,9 +6,9 @@ test.beforeEach(async ({ page }) => {
   await useStart(page);
 });
 
-// The Start screen's tiles (#96; owner, 2026-10-15): each app's hour on the colour clock with graphite
-// on it that reads (AA; the design pass, 2026-10-24), and the live face an app declares (`AppDefinition.tile`, docs/04 §Tile) — run after the
-// wall paints, run again when the app's data changes, silent when it fails.
+// The Start screen's tiles (#96; owner, 2026-10-15): each app's hour on the colour clock as a button
+// wears it, words on it that read (AA; #428), and the live face an app declares (`AppDefinition.tile`,
+// docs/04 §Tile) — run after the wall paints, run again when the app's data changes, silent when it fails.
 
 const tile = (page: Page, key: string): Locator => page.locator(`.k-metro-wall .k-metro-cell[data-key="${key}"] .k-metro-tile`);
 const liveFace = (page: Page, key: string): Locator => page.locator(`.k-metro-wall .k-metro-cell[data-key="${key}"] .k-metro-face-live`);
@@ -35,9 +35,9 @@ async function contrastOnTile(t: Locator): Promise<number> {
 test.describe("first run, the examples", () => {
   test.use({ viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true });
 
-  test("every tile is its app's hour on the colour clock, with graphite on it that reads", async ({ page }) => {
-    // DESIGN.md §3.1: an app's colour is an angle; its tile is that hour's traço, graphite on it (as
-    // Home's cards). A declared colour gives only its hue — Plants' #7FCF8E is not painted as written.
+  test("every tile is its app's hour on the colour clock, with words on it that read", async ({ page }) => {
+    // DESIGN.md §3.1: an app's colour is an angle; its tile is that hour's button pair — for Plants'
+    // green the traço with graphite. A declared colour gives only its hue — #7FCF8E is not painted as written.
     await page.goto("/");
     await expect(tile(page, "user:plants")).toBeVisible({ timeout: 30_000 });
     const keys = await page.locator(".k-metro-wall .k-metro-cell[data-key]").evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.key!));
@@ -71,6 +71,38 @@ test.describe("first run, the examples", () => {
     await expect(liveFace(page, "user:groceries")).not.toContainText("Milk");
   });
 });
+
+// The four hours where graphite on the bare traço falls short of AA (rosa 4.49, vermelho 4.26, anil
+// 4.32, roxo 4.12): a tile is the hour's button pair (DESIGN.md §3.1 `--accent` / `--on-accent`), the
+// tinta with white in the light, so the small words on it read in either theme (#428).
+const hued = (id: string, name: string, accent: string) => ({
+  id,
+  name,
+  source:
+    `import { defineApp } from "potyro";\n` +
+    `export default defineApp({ id: ${JSON.stringify(id)}, name: ${JSON.stringify(name)}, version: "1.0.0", schemaVersion: 1,\n` +
+    `  theme: { accent: ${JSON.stringify(accent)} },\n` +
+    `  entities: { item: { fields: { title: { type: "text" } } } },\n` +
+    `  pages: [{ id: "all", title: "Items", view: { type: "list", entity: "item", display: { primary: "title" } } }] });\n`,
+  updatedAt: new Date(0).toISOString(),
+  trusted: true,
+});
+const HOURS = [hued("rosa", "Rosa", "#e44f89"), hued("vermelho", "Vermelho", "#e54e3c"), hued("anil", "Anil", "#5d7bf1"), hued("roxo", "Roxo", "#9964e5")];
+
+for (const colorScheme of ["light", "dark"] as const) {
+  test.describe(`every hour, ${colorScheme}`, () => {
+    test.use({ colorScheme, viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true });
+
+    test("a tile's words read on it, whatever the app's hour", async ({ page }) => {
+      await seed(page, HOURS);
+      await openHome(page);
+      for (const { id } of HOURS) {
+        await expect(tile(page, `user:${id}`)).toBeVisible({ timeout: 30_000 });
+        expect(await contrastOnTile(tile(page, `user:${id}`)), id).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  });
+}
 
 const app = (id: string, name: string, tileFn: string) => ({
   id,
