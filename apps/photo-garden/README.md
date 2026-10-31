@@ -30,8 +30,8 @@ test/                 garden.ts and the app's shape
   - **Keep this** saves the canvas as a PNG in the app's own folder (`garden/…png`, through
     `ctx.files`) and an **Artwork** record with a name made from the picture's colour and the style
     ("Rose Drift", "Fern Tessera II"). For a few seconds a note over the picture names it and offers
-    **Share**, which hands the PNG to `ctx.files.export`: the save dialog on a computer, the share
-    sheet on a phone.
+    **Share**, which hands the PNG to `ctx.ui.share`: Potyro's share dialog shows the picture, then
+    sends it through the share sheet where the device has one, or saves a copy.
 - **Gallery** — what you kept, newest first. Tap one to see it large, **Share** it, **Save a copy**
   outside the app, or **Delete** it.
 

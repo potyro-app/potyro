@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "./console-guard";
 import { readFileSync } from "node:fs";
 import { addAsMine, changed, count, needEsmSh, packApp, pixelsOf, watchEsmSh } from "./library-demos";
+import { drawSharedPicture, fakeShareSheet } from "./share-files";
 
 // apps/photo-garden, packed as its build packs it and added as the person's own app, with p5 1.11.11
 // fetched from the real esm.sh (#266 — and the fetcher fix that stopped refusing p5 1.x for merely
@@ -36,6 +37,7 @@ async function drag(page: Page, from: [number, number], to: [number, number]): P
 test("Photo Garden: p5 comes from esm.sh, a photo grows into a living picture that scatters under a drag, and Keep this lands in the Gallery", async ({ page }) => {
   test.setTimeout(120_000);
   await needEsmSh();
+  await fakeShareSheet(page);
   const asked = watchEsmSh(page);
   const { card } = await addAsMine(page, "photo-garden.potyro-app.zip", packApp("photo-garden", "photo-garden.app.ts"));
   expect(card).toContain("fetches p5 1.11.11 from esm.sh");
@@ -91,37 +93,34 @@ test("Photo Garden: p5 comes from esm.sh, a photo grows into a living picture th
   const note = page.locator(".pg-kept-note");
   await expect(note).toContainText("Kept “Rose Tessera” in your gallery", { timeout: 15_000 });
 
-  // The share moment, right there: Share hands the kept PNG to the system's save or share dialog
-  // (ctx.files.export). The dialog is answered in the page, which reads the picture it is given.
-  await page.evaluate(() => {
-    const w = window as unknown as { __saved?: { name: string; w: number; h: number; pink: number }; showSaveFilePicker: unknown };
-    w.showSaveFilePicker = async ({ suggestedName }: { suggestedName: string }) => ({
-      createWritable: async () => ({
-        write: async (data: Blob) => {
-          const bmp = await createImageBitmap(data);
-          const c = document.createElement("canvas");
-          c.width = bmp.width;
-          c.height = bmp.height;
-          const g = c.getContext("2d")!;
-          g.drawImage(bmp, 0, 0);
-          const px = g.getImageData(0, 0, c.width, c.height).data;
-          let pink = 0;
-          for (let i = 0; i < px.length; i += 4) if (px[i]! > 170 && px[i + 1]! < 140 && px[i + 2]! > 80 && px[i + 2]! < 190 && px[i]! - px[i + 1]! > 70) pink++;
-          w.__saved = { name: suggestedName, w: c.width, h: c.height, pink };
-        },
-        close: async () => {},
-      }),
-    });
-  });
-  await note.getByRole("button", { name: "Share" }).click();
-  await expect.poll(() => page.evaluate(() => (window as unknown as { __saved?: unknown }).__saved), { timeout: 10_000 }).toBeTruthy();
-  const saved = await page.evaluate(() => (window as unknown as { __saved: { name: string; w: number; h: number; pink: number } }).__saved);
-  expect(saved.name).toMatch(/^\d{4}-\d{2}-\d{2}-\d{6}-rose-tessera\.png$/);
+  // The share moment, right there: Share hands the kept PNG to Potyro's share dialog (ctx.ui.share),
+  // which shows it before anything leaves; its Share hands it to the share sheet, which keeps what it
+  // was given — so this reads the picture itself.
+  const shareKept = note.getByRole("button", { name: "Share" });
+  await shareKept.click();
+  const dialog = page.getByRole("dialog", { name: "Rose Tessera" });
+  const kept = dialog.getByRole("img", { name: /-rose-tessera\.png$/ });
+  await expect(kept).toBeVisible({ timeout: 10_000 });
+  await expect.poll(() => kept.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(500);
+  // One dialog at a time: Share waits while this one is open.
+  await expect(shareKept).toBeDisabled();
+  await dialog.getByRole("button", { name: "Share", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  const picture = await drawSharedPicture(page);
+  expect(picture.name).toMatch(/^\d{4}-\d{2}-\d{2}-\d{6}-rose-tessera\.png$/);
+  expect(picture.type).toBe("image/png");
   // The canvas as it was kept, pixel for pixel, with the flower in it.
   const size = await canvas(page).evaluate((c) => [(c as HTMLCanvasElement).width, (c as HTMLCanvasElement).height]);
   expect(size[0]).toBeGreaterThan(500);
-  expect([saved.w, saved.h]).toEqual(size);
-  expect(saved.pink).toBeGreaterThan(3_000);
+  expect([picture.w, picture.h]).toEqual(size);
+  const pinkInIt = await page.evaluate(() => {
+    const g = (window as unknown as { __picture: CanvasRenderingContext2D }).__picture;
+    const px = g.getImageData(0, 0, g.canvas.width, g.canvas.height).data;
+    let n = 0;
+    for (let i = 0; i < px.length; i += 4) if (px[i]! > 170 && px[i + 1]! < 140 && px[i + 2]! > 80 && px[i + 2]! < 190 && px[i]! - px[i + 1]! > 70) n++;
+    return n;
+  });
+  expect(pinkInIt).toBeGreaterThan(3_000);
   await expect(note).toBeHidden();
   await page.locator(".k-tab", { hasText: "Gallery" }).click();
   const piece = page.getByRole("button", { name: "Rose Tessera, open" });

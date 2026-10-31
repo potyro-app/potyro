@@ -1,8 +1,9 @@
 // Photo Garden — take a photo, and thousands of specks that carry its colours drift on a current,
 // gather into the picture, and scatter wherever you touch or drag. Three styles (Flow, Points,
 // Mosaic), a density slider, and "Keep this" saves the moment as a PNG in the app's own folder with a
-// record for the Gallery, then offers Share for a few seconds (ctx.files.export: the save dialog on a
-// computer, the share sheet on a phone). Artworks are only made that way: `quickActions: []`.
+// record for the Gallery, then offers Share for a few seconds (ctx.ui.share: Potyro's share dialog,
+// with the picture shown, then the share sheet or a saved copy). Artworks are only made that way:
+// `quickActions: []`.
 //
 // Drawn with p5.js in instance mode, imported by URL (#266): the shell fetches p5 once, when the app
 // is added, and runs it from the copy it keeps. The photo comes through `ctx.caps.camera` — the app
@@ -164,30 +165,48 @@ function mountStudio(el: HTMLElement, props: ViewProps): () => void {
   const shareKept = h("button", { class: "pg-btn pg-primary", type: "button" }, ctx.t("Share"));
   const keptNote = h("div", { class: "pg-kept-note", role: "status", hidden: "" }, keptText, shareKept);
   let kept: FileInfo | null = null;
+  let keptTitle = "";
   let noteTimer = 0;
   const hideNote = () => {
     clearTimeout(noteTimer);
     keptNote.hidden = true;
     kept = null;
   };
-  // It waits while the person is on it: a note that leaves under the pointer is a missed tap.
+  // It waits while a mouse rests on it: a note that leaves under the pointer is a missed click. Only a
+  // fine pointer's hover holds it — a tap leaves a sticky :hover, and a click leaves focus on Share,
+  // and neither is someone still reading.
+  const holds = () => window.matchMedia?.("(hover: hover) and (pointer: fine)").matches === true && keptNote.matches(":hover");
   const fadeNote = () => {
     clearTimeout(noteTimer);
-    noteTimer = window.setTimeout(() => (keptNote.matches(":hover, :focus-within") ? fadeNote() : hideNote()), NOTE_MS);
+    noteTimer = window.setTimeout(() => (holds() ? fadeNote() : hideNote()), NOTE_MS);
   };
   const showNote = (file: FileInfo, title: string) => {
     kept = file;
+    keptTitle = title;
     keptText.textContent = ctx.t("Kept “{title}” in your gallery", { title });
     keptNote.hidden = false;
     fadeNote();
   };
-  // ctx.files.export: the save dialog on a computer, the share sheet on a phone.
+  // Potyro's share dialog, as the Gallery's Share: the picture shown, then the share sheet or a saved
+  // copy. One at a time; while it is open the note waits, and a dialog closed unsent says nothing.
   shareKept.addEventListener("click", () => {
-    if (!kept) return;
-    void ctx.files.export(kept).then(hideNote, (e: unknown) => {
-      if (e instanceof Error && e.name === "AbortError") return; // they closed the dialog
-      ctx.ui.toast(ctx.t("It could not be shared."));
-    });
+    if (!kept || shareKept.disabled) return;
+    const file = kept;
+    const title = keptTitle;
+    shareKept.disabled = true;
+    clearTimeout(noteTimer);
+    void ctx.ui
+      .share({ title, files: [file] })
+      .then(
+        (sent) => (sent ? hideNote() : fadeNote()),
+        () => {
+          ctx.ui.toast(ctx.t("It could not be shared."));
+          fadeNote();
+        },
+      )
+      .finally(() => {
+        shareKept.disabled = false;
+      });
   });
 
   // Control bar

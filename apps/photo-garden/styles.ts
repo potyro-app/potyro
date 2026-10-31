@@ -119,29 +119,28 @@ export const STYLES = `
   transition: opacity 600ms var(--ease);
 }
 .pg-hint[hidden] { display: block; opacity: 0; }
-/* After Keep this: what was kept, and Share, over the top of the picture for a few seconds. */
+/* After Keep this: what was kept, and Share, over the top of the picture for a few seconds. Text over
+   a moving picture sits on a solid page colour (DESIGN.md §10), lifted by the one float shadow. */
 .pg-kept-note {
   position: absolute;
   top: var(--space-3);
   left: 50%;
   transform: translateX(-50%);
   width: max-content;
-  max-width: calc(100% - 1.5rem);
+  max-width: calc(100% - var(--space-5));
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 6px 6px 6px var(--space-4);
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--surface-raised) 88%, transparent);
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
-  border: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
-  box-shadow: 0 12px 36px oklch(20% 0.02 60 / 0.22);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: var(--shadow-float);
   animation: pg-rise var(--dur-slow) var(--ease);
 }
 .pg-kept-note[hidden] { display: none; }
-.pg-kept-note p { margin: 0; min-width: 0; font-size: 0.9rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@keyframes pg-rise { from { opacity: 0; transform: translate(-50%, -8px); } }
+.pg-kept-note p { margin: 0; min-width: 0; font-size: var(--text-small); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@keyframes pg-rise { from { opacity: 0; transform: translate(-50%, calc(-1 * var(--space-2))); } }
 
 @media (max-width: 639px) {
   .pg-bar { grid-template-columns: 1fr auto; grid-template-areas: "styles styles" "density actions"; row-gap: 8px; padding: 8px; }
