@@ -17,6 +17,9 @@ import { ENGINES, ENGINE_GROUPS, canInvestigate, engineLabel, type Engine, type 
 import { canGenerate } from "./generate-client.js";
 import { ThinkingSettings } from "./thinking-settings.js";
 import { EndpointSettings } from "./endpoint-settings.js";
+import { RememberKey } from "./remember-key.js";
+import { freeOffered, leftWords, refusalText, stoppedNow, useFreeAi } from "./free-ai.js";
+import { checkFreeEngine } from "./engine-store.js";
 
 /**
  * Where the microphone's words are made on this device (docs/29): voice uses none of the engines
@@ -71,6 +74,13 @@ interface EngineSettingsProps {
 export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltIn }: EngineSettingsProps) {
   const { t } = useLingui();
   const set = (patch: Partial<EngineConfig>): void => onChange({ ...config, ...patch });
+  const free = useFreeAi();
+  const freeStop = stoppedNow(free);
+  // Opening Model settings asks the free route again where it gave no answer, so Potyro is listed
+  // once it can be reached.
+  useEffect(() => {
+    void checkFreeEngine({ again: true }).catch(() => {});
+  }, []);
 
   // Choosing an engine reveals ITS settings underneath it, which on a short window opens below the
   // fold — you tick OpenRouter and the key field it just asked you for is off screen.
@@ -89,7 +99,8 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
     return null;
   };
   /** Every engine but the dev server's own route, which exists only while `pnpm dev` runs. */
-  const shown = (id: Engine): boolean => id !== "cli" || canGenerate();
+  // Potyro's free engine only while the relay's chat route serves (or while it is the one chosen).
+  const shown = (id: Engine): boolean => (id === "cli" ? canGenerate() : id === "potyro" ? freeOffered(free) || config.engine === "potyro" : true);
 
   const label = engineLabel(config);
   const noteOf = (m: { id: string; note?: string }): string => {
@@ -120,7 +131,7 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
               <Trans comment="Model settings title: which AI model is used">Model</Trans>
             </h2>
             <p className="k-muted">
-              <Trans>Which model writes and edits your app. Keys stay in this tab and are never saved.</Trans>
+              <Trans>Which model writes and edits your app. Keys stay in this tab unless you ask this device to remember one.</Trans>
             </p>
           </div>
           <button type="button" className="k-add" aria-label={t`Close model settings`} onClick={onClose}>
@@ -159,16 +170,25 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
                     </label>
 
                     {/* Settings belong to their engine, and appear only when it is the one selected. */}
+                    {active && e.id === "potyro" ? (
+                      <p className="k-muted k-free-left" role="status">
+                        {freeStop ? refusalText(freeStop.code) : free.left ? leftWords(free.left) : null}
+                      </p>
+                    ) : null}
+
                     {active && e.id === "anthropic" ? (
-                      <input
-                        className="k-input"
-                        aria-label={t`Anthropic API key`}
-                        type="password"
-                        // i18n-ignore — the shape of an Anthropic key, not words
-                        placeholder="sk-ant-…"
-                        value={config.anthropicKey}
-                        onChange={(ev) => set({ anthropicKey: ev.target.value })}
-                      />
+                      <div className="k-engine-fields">
+                        <input
+                          className="k-input"
+                          aria-label={t`Anthropic API key`}
+                          type="password"
+                          // i18n-ignore — the shape of an Anthropic key, not words
+                          placeholder="sk-ant-…"
+                          value={config.anthropicKey}
+                          onChange={(ev) => set({ anthropicKey: ev.target.value })}
+                        />
+                        <RememberKey kind="anthropic" hasKey={config.anthropicKey.trim().length > 0} />
+                      </div>
                     ) : null}
 
                     {active && e.id === "openrouter" ? (
@@ -182,6 +202,7 @@ export function EngineSettings({ config, onChange, onClose, hasWebGPU, hasBuiltI
                           value={config.openrouterKey}
                           onChange={(ev) => set({ openrouterKey: ev.target.value })}
                         />
+                        <RememberKey kind="openrouter" hasKey={config.openrouterKey.trim().length > 0} />
                         <select
                           className="k-input"
                           aria-label={t`OpenRouter model`}

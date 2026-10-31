@@ -1083,6 +1083,10 @@ msgstr "eine vollständige Webseite"
 msgid "A header named"
 msgstr "Ein Header namens"
 
+#: ../shell/src/free-panel.tsx
+msgid "A key connects Potyro to an AI service on your own account. The service charges you for what you use, usually a few cents an app."
+msgstr "Ein Schlüssel verbindet Potyro mit einem KI-Dienst auf deinem eigenen Konto. Der Dienst berechnet dir, was du nutzt, meist ein paar Cent pro App."
+
 #: ../shell/src/App.tsx
 msgid "a link anyone can try"
 msgstr "ein Link, den jede:r ausprobieren kann"
@@ -1095,6 +1099,11 @@ msgstr "Ein Link, den jede:r ausprobieren kann"
 #: ../shell/src/main.tsx
 msgid "A link to an app"
 msgstr "Ein Link zu einer App"
+
+#. The free engine: how much of this month's free app making is left
+#: ../shell/src/free-ai.ts
+msgid "a little left this month"
+msgstr "diesen Monat noch ein wenig übrig"
 
 #: ../shell/src/backup-switch.tsx
 msgid "A new device signed in with your words can bring them all back."
@@ -1271,6 +1280,15 @@ msgstr "Datei hinzufügen"
 #: ../shell/src/ask-material.tsx
 msgid "Add a file instead"
 msgstr "Stattdessen eine Datei hinzufügen"
+
+#. Button: open Model settings to paste a key
+#: ../shell/src/free-panel.tsx
+msgid "Add a key"
+msgstr "Schlüssel hinzufügen"
+
+#: ../shell/src/free-panel.tsx
+msgid "Add a key to make apps"
+msgstr "Füge einen Schlüssel hinzu, um Apps zu machen"
 
 #: ../shell/src/App.tsx
 msgid "Add a note"
@@ -1554,6 +1572,10 @@ msgstr "Eine App in dieser Datei ist beschädigt."
 #: ../shell/src/incoming-files-host.tsx
 msgid "An app is added to your apps. Any other file goes into the app you choose."
 msgstr "Eine App kommt zu deinen Apps. Jede andere Datei landet in der App, die du wählst."
+
+#: ../shell/src/free-panel.tsx
+msgid "Anonymous counts are off in You, so nothing was sent."
+msgstr "Anonyme Zählungen sind unter „Du“ aus, also wurde nichts gesendet."
 
 #. Company name; keep as is
 #: ../shell/src/engines.ts
@@ -2543,6 +2565,14 @@ msgstr "Kopieren ging nicht — markiere den Link und kopiere ihn selbst."
 msgid "Couldn't copy — select the text and copy it yourself."
 msgstr "Kopieren ging nicht — markiere den Text und kopiere ihn selbst."
 
+#: ../shell/src/free-panel.tsx
+msgid "Couldn't count it just now. Try again later."
+msgstr "Das ließ sich gerade nicht zählen. Versuch es später noch einmal."
+
+#: ../shell/src/remember-key.tsx
+msgid "Couldn't keep it on this device. It stays in this tab."
+msgstr "Das ließ sich auf diesem Gerät nicht aufbewahren. Er bleibt in diesem Tab."
+
 #: ../shell/src/data-page.tsx
 msgid "Couldn’t open {name}’s data: {failed}"
 msgstr "Die Daten von {name} ließen sich nicht öffnen: {failed}"
@@ -2580,6 +2610,21 @@ msgstr "Konnte noch nicht gesendet werden. Es ist auf diesem Gerät gespeichert 
 #: ../shell/src/share-body.tsx
 msgid "Couldn't share it. Save a copy instead."
 msgstr "Teilen hat nicht geklappt. Speichere stattdessen eine Kopie."
+
+#. You panel: a switch; turns off two anonymous counts, nothing about who
+#: ../shell/src/counts-switch.tsx
+msgid "Count me anonymously"
+msgstr "Mich anonym mitzählen"
+
+#: ../shell/src/free-panel.tsx
+#: ../shell/src/free-panel.tsx
+msgid "Counted, thanks. Nothing about you was sent."
+msgstr "Gezählt, danke. Nichts über dich wurde gesendet."
+
+#. You panel heading: what Potyro counts (anonymous numbers only)
+#: ../shell/src/identity-panel.tsx
+msgid "Counts"
+msgstr "Zählungen"
 
 #. Form button that saves a new record
 #: ../views/src/record-form.tsx
@@ -3211,6 +3256,10 @@ msgstr "Lösung gefunden"
 msgid "Fix this"
 msgstr "Reparieren"
 
+#: ../shell/src/App.tsx
+msgid "Fix this couldn't start: {reason}. Reload Potyro and try again."
+msgstr "„Reparieren“ konnte nicht starten: {reason}. Lade Potyro neu und versuch es noch einmal."
+
 #: ../shell/src/studio-engine.ts
 msgid "Fixing it via {label} · {elapsed}"
 msgstr "Wird über {label} repariert · {elapsed}"
@@ -3234,6 +3283,11 @@ msgstr "Für {sourceLabel}, das diese App nennt."
 msgid "For {sourceLabel}."
 msgstr "Für {sourceLabel}."
 
+#. Button: take a remembered model key off this device
+#: ../shell/src/remember-key.tsx
+msgid "Forget"
+msgstr "Vergessen"
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "Forget the key"
 msgstr "Schlüssel vergessen"
@@ -3254,6 +3308,42 @@ msgstr "Fr"
 #: ../shell/src/app-ai.ts
 msgid "Free AI isn't available yet — add your own key in Model settings."
 msgstr "Kostenlose KI gibt es noch nicht – füge in den Modelleinstellungen deinen eigenen Schlüssel hinzu."
+
+#: ../shell/src/free-ai.ts
+msgid "Free app making can't be reached right now. Check your connection and try again, or add your own key."
+msgstr "Das kostenlose App-Machen ist gerade nicht erreichbar. Prüfe deine Verbindung und versuch es noch einmal, oder füge deinen eigenen Schlüssel hinzu."
+
+#: ../shell/src/free-ai.ts
+msgid "Free app making couldn't reach the model just now. Try again in a minute."
+msgstr "Das kostenlose App-Machen hat das Modell gerade nicht erreicht. Versuch es in einer Minute noch einmal."
+
+#: ../shell/src/free-ai.ts
+msgid "Free app making couldn't take this request. Reload Potyro and try again."
+msgstr "Das kostenlose App-Machen konnte diese Anfrage nicht annehmen. Lade Potyro neu und versuch es noch einmal."
+
+#: ../shell/src/free-ai.ts
+msgid "Free app making is busy on this network today. It's back tomorrow, or add your own key."
+msgstr "Das kostenlose App-Machen ist in diesem Netz heute ausgelastet. Morgen geht es wieder, oder füge deinen eigenen Schlüssel hinzu."
+
+#: ../shell/src/free-ai.ts
+msgid "Free app making is paused right now. Add your own key, or try again later."
+msgstr "Das kostenlose App-Machen ist gerade pausiert. Füge deinen eigenen Schlüssel hinzu, oder versuch es später noch einmal."
+
+#: ../shell/src/free-ai.ts
+msgid "Free app making is used up for everyone this month. Add your own key to keep going."
+msgstr "Das kostenlose App-Machen ist diesen Monat für alle aufgebraucht. Füge deinen eigenen Schlüssel hinzu, um weiterzumachen."
+
+#: ../shell/src/free-ai.ts
+msgid "Free app making is used up for today. It's back tomorrow, or add your own key."
+msgstr "Das kostenlose App-Machen ist für heute aufgebraucht. Morgen geht es wieder, oder füge deinen eigenen Schlüssel hinzu."
+
+#: ../shell/src/free-ai.ts
+msgid "Free app making isn't available right now. Add your own key in the Studio’s Model settings."
+msgstr "Das kostenlose App-Machen ist gerade nicht verfügbar. Füge deinen eigenen Schlüssel in den Modelleinstellungen des Studios hinzu."
+
+#: ../shell/src/engines.ts
+msgid "Free to start: Potyro pays for some app making each month. When it runs out, add your own key."
+msgstr "Kostenlos zum Start: Potyro zahlt jeden Monat ein wenig App-Machen. Wenn es aufgebraucht ist, füge deinen eigenen Schlüssel hinzu."
 
 #: ../shell/src/app-ai.ts
 msgid "Free while this month's allowance lasts; then your own OpenRouter key, usually under 1¢."
@@ -3326,6 +3416,11 @@ msgstr "Aufgegeben"
 #: ../shell/src/ask-verdicts.ts
 msgid "General knowledge"
 msgstr "Allgemeinwissen"
+
+#. Followed by links to the services' key pages: OpenRouter, Anthropic
+#: ../shell/src/free-panel.tsx
+msgid "Get a key from"
+msgstr "Einen Schlüssel bekommst du bei"
 
 #: ../shell/src/file-viewer.tsx
 msgid "Getting it from the shared app now — it opens here when it arrives, and stays on this device after."
@@ -3585,6 +3680,11 @@ msgstr "Ich habe die App nicht gemacht: Was du willst, braucht etwas, das Potyro
 #: ../shell/src/add-app-dialog.tsx
 msgid "I wrote this. Run it as mine."
 msgstr "Ich habe sie geschrieben. Als meine eigene ausführen."
+
+#. Button: counts, anonymously, one more person who would pay for a plan; nothing is asked and nothing is promised back
+#: ../shell/src/free-panel.tsx
+msgid "I'd pay for a plan"
+msgstr "Ich würde für einen Tarif zahlen"
 
 #: ../shell/src/guests-panel.tsx
 msgid "I’m not on the list"
@@ -3893,6 +3993,10 @@ msgstr "{name} behalten?"
 msgid "Keep anyway"
 msgstr "Trotzdem behalten"
 
+#: ../shell/src/free-panel.tsx
+msgid "Keep going with a key"
+msgstr "Mit einem Schlüssel weitermachen"
+
 #: ../shell/src/studio.tsx
 msgid "Keep it"
 msgstr "Behalten"
@@ -3948,6 +4052,10 @@ msgstr "Hier behalten, weil der geteilte Bereich von {appName} voll war. Die App
 #: ../shell/src/data-table.tsx
 msgid "Kept in storage; this app no longer shows it"
 msgstr "Noch gespeichert; diese App zeigt es nicht mehr"
+
+#: ../shell/src/remember-key.tsx
+msgid "Kept locked on this device."
+msgstr "Verschlossen auf diesem Gerät aufbewahrt."
 
 #: ../shell/src/studio.tsx
 msgid "Kept with problems."
@@ -4969,6 +5077,10 @@ msgstr "Objekte"
 msgid "Off"
 msgstr "Aus"
 
+#: ../shell/src/remember-key.tsx
+msgid "Off: the key is gone when this tab closes."
+msgstr "Aus: Der Schlüssel ist weg, wenn dieser Tab geschlossen wird."
+
 #: ../shell/src/tile-editor.tsx
 msgid "Offer “Ask” in this app, to add records with AI."
 msgstr "„Ask“ in dieser App anbieten, um Einträge mit KI hinzuzufügen."
@@ -5170,7 +5282,9 @@ msgid "Opening {name}"
 msgstr "{name} wird geöffnet"
 
 #. Service name; keep as is
+#. Service name; keep as is
 #: ../shell/src/engines.ts
+#: ../shell/src/studio.tsx
 msgid "OpenRouter"
 msgstr "OpenRouter"
 
@@ -5181,6 +5295,11 @@ msgstr "OpenRouter-API-Schlüssel"
 #: ../shell/src/engine-settings.tsx
 msgid "OpenRouter model"
 msgstr "OpenRouter-Modell"
+
+#. After the key links: a server of the person's own that speaks the OpenAI API also works
+#: ../shell/src/free-panel.tsx
+msgid "or any OpenAI-compatible server, in Model settings"
+msgstr "oder einen beliebigen OpenAI-kompatiblen Server, in den Modelleinstellungen"
 
 #. An hour of the colour clock
 #: ../shell/src/studio.tsx
@@ -5318,6 +5437,11 @@ msgstr "Angeheftet"
 msgid "Plants to water this week"
 msgstr "Pflanzen, die diese Woche Wasser brauchen"
 
+#. The free engine: how much of this month's free app making is left
+#: ../shell/src/free-ai.ts
+msgid "plenty left this month"
+msgstr "diesen Monat noch reichlich übrig"
+
 #. Preview bar button: point at a part of the app to talk about it
 #: ../shell/src/studio-preview.tsx
 msgid "Point"
@@ -5335,6 +5459,11 @@ msgstr "Auf die App zeigen"
 #: ../shell/src/point-mode.tsx
 msgid "Pointing at"
 msgstr "Zeigt auf"
+
+#. Engine name: Potyro's own free app making; the product name, keep as is
+#: ../shell/src/engines.ts
+msgid "Potyro"
+msgstr "Potyro"
 
 #. Studio: a card offering to send what the person asked for to the people who make Potyro
 #: ../shell/src/platform-request-card.tsx
@@ -5370,6 +5499,10 @@ msgstr "Potyro ist in einem anderen Tab dieser Seite offen. Drück „Hier verwe
 #: ../shell/src/realm-probe-screen.tsx
 msgid "Potyro itself busy (calibration)"
 msgstr "Potyro selbst beschäftigt (Kalibrierung)"
+
+#: ../shell/src/ask-panel.tsx
+msgid "Potyro passes all of this to OpenRouter and the model it picks."
+msgstr "Potyro gibt all das an OpenRouter und das Modell weiter, das es auswählt."
 
 #: ../shell/src/look-panel.tsx
 msgid "Potyro pink"
@@ -5517,6 +5650,11 @@ msgstr "Ablehnen"
 #: ../shell/src/ask-review-parts.tsx
 msgid "Reject {name}"
 msgstr "{name} ablehnen"
+
+#. A switch beside a model key: keep the key on this device after the tab closes
+#: ../shell/src/remember-key.tsx
+msgid "Remember on this device"
+msgstr "Auf diesem Gerät merken"
 
 #. A version's note in History, lower case: this app is a remix of another
 #: ../shell/src/version-notes.ts
@@ -6290,6 +6428,11 @@ msgstr "Start"
 msgid "Start a new app"
 msgstr "Neue App beginnen"
 
+#. Link: Potyro's gallery of apps, where one can be made your own with no key
+#: ../shell/src/free-panel.tsx
+msgid "Start from an app in the gallery"
+msgstr "Mit einer App aus der Galerie anfangen"
+
 #: ../shell/src/ask-panel.tsx
 #: ../views/src/steps.tsx
 msgid "Start over"
@@ -6596,6 +6739,10 @@ msgstr "Das hat nicht geklappt: {reason} Hier wurde nichts geändert. Versuch es
 msgid "That file is no longer in this app"
 msgstr "Diese Datei ist nicht mehr in dieser App"
 
+#: ../shell/src/counts-switch.tsx
+msgid "That I used my own key, or that I'd pay for a plan. Once a month at most, and nothing about you or your apps."
+msgstr "Dass ich meinen eigenen Schlüssel benutzt habe, oder dass ich für einen Tarif zahlen würde. Höchstens einmal im Monat, und nichts über dich oder deine Apps."
+
 #: ../shell/src/add-app.ts
 msgid "That is not a link"
 msgstr "Das ist kein Link"
@@ -6824,6 +6971,10 @@ msgstr "das Mikrofon, um zu hören, was du sagst"
 #: ../shell/src/studio-engine.ts
 msgid "The model answered with an explanation instead of an app. Try again, or say it another way."
 msgstr "Das Modell hat mit einer Erklärung statt einer App geantwortet. Versuch es erneut oder sag es anders."
+
+#: ../shell/src/start-fix.ts
+msgid "The model couldn't answer: {reason}. Try again in a minute, or choose another model in the Studio’s Model settings."
+msgstr "Das Modell konnte nicht antworten: {reason}. Versuch es in einer Minute noch einmal, oder wähle ein anderes Modell in den Modelleinstellungen des Studios."
 
 #: ../shell/src/studio-engine.ts
 msgid "The model sent the whole file back instead of edits."
@@ -7144,6 +7295,14 @@ msgstr "Dieses Diagramm konnte nicht berechnet werden: {error}"
 msgid "This conversation could not be saved: {reason}"
 msgstr "Dieses Gespräch konnte nicht gespeichert werden: {reason}"
 
+#: ../shell/src/free-ai.ts
+msgid "This conversation is too long for free app making. Start a new app, or add your own key."
+msgstr "Dieses Gespräch ist zu lang für das kostenlose App-Machen. Fang eine neue App an, oder füge deinen eigenen Schlüssel hinzu."
+
+#: ../shell/src/free-ai.ts
+msgid "This conversation is too long for the free allowance. Start a new app, or add your own key."
+msgstr "Dieses Gespräch ist zu lang für das kostenlose Kontingent. Fang eine neue App an, oder füge deinen eigenen Schlüssel hinzu."
+
 #: ../shell/src/remove-app.ts
 msgid "This deletes the app AND its data — every record you have added to it. It cannot be undone."
 msgstr "Das löscht die App UND ihre Daten — jeden Eintrag, den du hinzugefügt hast. Das lässt sich nicht rückgängig machen."
@@ -7151,6 +7310,14 @@ msgstr "Das löscht die App UND ihre Daten — jeden Eintrag, den du hinzugefüg
 #: ../shell/src/identity-panel.tsx
 msgid "This device"
 msgstr "Dieses Gerät"
+
+#: ../shell/src/free-ai.ts
+msgid "This device already has a request going. Wait for it to finish, then try again."
+msgstr "Auf diesem Gerät läuft schon eine Anfrage. Warte, bis sie fertig ist, und versuch es dann noch einmal."
+
+#: ../shell/src/remember-key.tsx
+msgid "This device can't keep a key locked away, so it stays in this tab only."
+msgstr "Dieses Gerät kann keinen Schlüssel verschlossen aufbewahren, also bleibt er nur in diesem Tab."
 
 #: ../shell/src/studio-voice.ts
 msgid "This device can’t listen. Type what you want instead."
@@ -7259,6 +7426,10 @@ msgstr "Dieser Monat"
 #: ../shell/src/app-ai.ts
 msgid "This month's free AI is used up — add your own OpenRouter key in Model settings."
 msgstr "Die kostenlose KI dieses Monats ist aufgebraucht – füge in den Modelleinstellungen deinen eigenen OpenRouter-Schlüssel hinzu."
+
+#: ../shell/src/free-ai.ts
+msgid "This month's free app making is used up on this device. Add your own key to keep going, or start from an app in the gallery."
+msgstr "Das kostenlose App-Machen ist diesen Monat auf diesem Gerät aufgebraucht. Füge deinen eigenen Schlüssel hinzu, um weiterzumachen, oder fang mit einer App aus der Galerie an."
 
 #: ../shell/src/fix-panel.tsx
 msgid "This one isn’t in your app"
@@ -7621,6 +7792,11 @@ msgstr "Gemeinsam nutzen"
 msgid "Use my voice"
 msgstr "Meine Stimme nutzen"
 
+#. Button: use the key already in Model settings; {keyName} is the service, e.g. OpenRouter
+#: ../shell/src/free-panel.tsx
+msgid "Use your {keyName} key"
+msgstr "Deinen {keyName}-Schlüssel nutzen"
+
 #. Studio microphone: the question before the recording first leaves the device
 #: ../shell/src/studio-voice.ts
 msgid "Use your voice to describe the app?"
@@ -7629,6 +7805,11 @@ msgstr "Die App mit deiner Stimme beschreiben?"
 #: ../shell/src/look-panel.tsx
 msgid "Used by the launcher and the Studio, and by any app that has not been given a colour of its own — an app’s colour is on its tile, under <0>Edit tile</0>."
 msgstr "Wird von der Übersicht und dem Studio genutzt, und von jeder App, die keine eigene Farbe hat — die Farbe einer App steht auf ihrer Kachel, unter <0>Kachel bearbeiten</0>."
+
+#. The free engine: this month's free app making is used up
+#: ../shell/src/free-ai.ts
+msgid "used up this month"
+msgstr "diesen Monat aufgebraucht"
 
 #. Checklist: what the app suggests adding, while the add box is empty
 #: ../views/src/checklist-usuals.tsx
@@ -7700,6 +7881,10 @@ msgstr "Mi"
 #: ../shell/src/missing-features.ts
 msgid "weak references"
 msgstr "schwache Referenzen"
+
+#: ../shell/src/free-ai.ts
+msgid "Web search isn't part of free app making. Turn web search off, or add your own key."
+msgstr "Websuche gehört nicht zum kostenlosen App-Machen. Schalte die Websuche aus, oder füge deinen eigenen Schlüssel hinzu."
 
 #. A version's note, lower case: the app was put back to an older version from the Studio
 #: ../shell/src/version-notes.ts
@@ -7836,8 +8021,8 @@ msgid "Where this was found"
 msgstr "Wo das gefunden wurde"
 
 #: ../shell/src/engine-settings.tsx
-msgid "Which model writes and edits your app. Keys stay in this tab and are never saved."
-msgstr "Welches Modell deine App schreibt und bearbeitet. Schlüssel bleiben in diesem Tab und werden nie gespeichert."
+msgid "Which model writes and edits your app. Keys stay in this tab unless you ask this device to remember one."
+msgstr "Welches Modell deine App schreibt und bearbeitet. Schlüssel bleiben in diesem Tab, außer du lässt dieses Gerät einen merken."
 
 #: ../shell/src/point-mode.tsx
 msgid "Which part"

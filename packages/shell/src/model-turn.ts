@@ -30,6 +30,7 @@ export async function backendFor(cfg: EngineConfig, onProgress?: (text: string) 
       })) as never;
     case "builtin":
       return (await createGeminiNanoBackend()) as never;
+    case "potyro":
     case "openrouter":
     case "endpoint":
       return (await createOpenRouterBackend(chatEngineOptions(cfg)!)) as never;

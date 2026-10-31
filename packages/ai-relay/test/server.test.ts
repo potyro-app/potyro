@@ -131,6 +131,38 @@ describe("the chat route over HTTP", () => {
   });
 });
 
+describe("/health and the chat route (#121)", () => {
+  const relay = () => createAiRelay({ upstream: async () => ({ ok: true, text: "", cost: 0 }), now: Date.now });
+  const health = async (): Promise<Record<string, unknown>> => {
+    const { port } = server!.address() as AddressInfo;
+    const res = await fetch(`http://127.0.0.1:${port}/ai/health`);
+    expect(res.status).toBe(200);
+    return (await res.json()) as Record<string, unknown>;
+  };
+
+  it("says chat:false where the relay has no chat route", async () => {
+    server = await startServer({ handle: relay().handle, port: 0, host: "127.0.0.1" });
+    expect(await health()).toEqual({ ok: true, chat: false });
+  });
+
+  it("says chat:true and names the model while the route is on, and chat:false once the kill switch is thrown", async () => {
+    let off = false;
+    const chat = createChatProxy({ upstream: async () => new Response("{}"), now: Date.now });
+    server = await startServer({ handle: relay().handle, chat: chat.handle, chatOff: () => off, chatModel: "deepseek/deepseek-v4-flash-0731", port: 0, host: "127.0.0.1" });
+    expect(await health()).toEqual({ ok: true, chat: true, model: "deepseek/deepseek-v4-flash-0731" });
+    off = true;
+    expect(await health()).toEqual({ ok: true, chat: false });
+  });
+
+  it("lets a native WebView send the headers the Studio's client sends", async () => {
+    const chat = createChatProxy({ upstream: async () => new Response("{}"), now: Date.now });
+    server = await startServer({ handle: relay().handle, chat: chat.handle, port: 0, host: "127.0.0.1" });
+    const { port } = server.address() as AddressInfo;
+    const pre = await fetch(`http://127.0.0.1:${port}/ai/v1/chat/completions`, { method: "OPTIONS", headers: { origin: "https://localhost", "access-control-request-method": "POST" } });
+    expect(pre.headers.get("access-control-allow-headers")).toMatch(/http-referer.*x-title/);
+  });
+});
+
 describe("the kill switch", () => {
   it("is on with AI_CHAT_OFF=1, or while the file AI_CHAT_OFF_FILE names is there, asked each time", () => {
     let there = false;

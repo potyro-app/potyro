@@ -16,6 +16,7 @@ import type { ChatMessage } from "@potyro/generator/agent";
 import { createOpenRouterEngine, endpointFailure } from "@potyro/generator/backends";
 import { canSearchWeb, chatEngineOptions, engineReady, type EngineConfig } from "./engines.js";
 import { unreachableText } from "./endpoint-check.js";
+import { freeNotNow } from "./free-ai.js";
 
 export type StartAskOutcome = AskOutcome | { kind: "refused"; text: string };
 
@@ -23,6 +24,7 @@ export type StartAskOutcome = AskOutcome | { kind: "refused"; text: string };
 export function askRefusal(cfg: EngineConfig): string | null {
   if (!chatEngineOptions(cfg)) return t`Ask needs a model that can use tools. Choose OpenRouter or an OpenAI-compatible endpoint in the Studio’s Model settings.`;
   if (!engineReady(cfg)) {
+    if (cfg.engine === "potyro") return freeNotNow();
     return cfg.engine === "endpoint"
       ? t`Ask needs the endpoint’s address and a model. Add them in the Studio’s Model settings.`
       : t`Ask needs your OpenRouter key. Add it in the Studio’s Model settings.`;

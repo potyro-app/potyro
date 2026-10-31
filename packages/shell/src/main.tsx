@@ -25,6 +25,7 @@ import { createWebCapabilities, type Capabilities } from "@potyro/capabilities";
 import { isOpenedFile, keepStorage, listenForShares, maybeCreateNativeCapabilities, maybeCreateNativeSourceHttp, maybeCreateNativeVault, nameFromUri } from "@potyro/native";
 import { setSourceHttp } from "./ask-sources.js";
 import { browserVault, deferredVault, secureIdentitySecrets, setSecretVault } from "@potyro/identity";
+import { loadRememberedKeys, watchFreeEngine } from "./engine-store.js";
 import type { Provenance } from "@potyro/host";
 import type { PotyroRuntime } from "@potyro/runtime";
 import { App } from "./App.js";
@@ -878,6 +879,10 @@ function canSwitchInPlace(next: Route): boolean {
 // encrypted vault, else — where neither exists — plain storage as before. Registered at module load,
 // before anything below can read identity; which one is decided on first use.
 setSecretVault(deferredVault(async () => (await maybeCreateNativeVault()) ?? browserVault()));
+// The model keys the person asked this device to remember (#455), from that vault into Model settings.
+void loadRememberedKeys();
+// Which engine a first visit starts on (#121): decided now, so Ask and Fix this start on Potyro too.
+watchFreeEngine();
 // Ask's source requests (#213) go through the app's own HTTP stack on a device, where CORS does not
 // exist; in a browser they stay on `fetch`. Boxed, never a bare plugin (capacitor await hazard).
 void maybeCreateNativeSourceHttp().then((native) => {
