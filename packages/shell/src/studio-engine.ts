@@ -40,7 +40,7 @@ import type { AppSeed } from "./app-seed.js";
 /** What a turn came to. `summary` is what the conversation says happened. */
 export type Outcome =
   /** `platformRequest`: the rest needs something Potyro itself lacks — a request the person may send (#263). */
-  /** `modules`: the app's own modules, every one, when the change edited any of them (#448). `seed`: a new app's demo records, the ones its run passed on (#486). */
+  /** `modules`: the app's own modules, every one, when the change edited any of them (#448). `seed`: a new app's demo records, the sample records the create loop asked for (#486). */
   | { kind: "source"; source: string; summary: string; notDone?: string[]; platformRequest?: PlatformRequest; modules?: Record<string, string>; seed?: AppSeed }
   /** It was rewritten rather than edited, and lost what `loss` names. Never saved without asking. */
   | { kind: "loss"; source: string; summary: string; loss: string; modules?: Record<string, string> }

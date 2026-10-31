@@ -1,5 +1,5 @@
 import { test, expect } from "./console-guard";
-import { ask, chooseOpenRouter, currentCard, openFromCard, openNewStudio } from "./studio-helpers.js";
+import { ask, chooseOpenRouter, currentCard, openFromCard, openNewStudio, asksForSamples, noSamples } from "./studio-helpers.js";
 
 // The modify loop can read the release's corpus (#262), end to end in the Studio with a scripted
 // OpenRouter: the model calls `search_corpus`, and the answer comes from the example apps bundled with
@@ -18,6 +18,7 @@ test("search_corpus answers from the release's example apps, inside the browser"
   const reply = (message: Record<string, unknown>) => ({ status: 200, contentType: "application/json", body: JSON.stringify({ choices: [{ message }] }) });
   await page.route("**/openrouter.ai/**", async (route) => {
     const body = route.request().postDataJSON() as { messages: Msg[] };
+    if (asksForSamples(body)) return route.fulfill(noSamples());
     requests.push(body.messages);
     const n = requests.length;
     if (n === 1) return route.fulfill(reply({ content: "```ts\n" + APP + "\n```" }));

@@ -30,7 +30,6 @@ import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge } from "./ui-bridge.js";
 import { renderPages, type PageToRender } from "./render-pages.js";
-import { seedFromStore, seedThatFits, type AppSeed } from "./app-seed.js";
 
 const RUN_TIMEOUT_MS = 5_000;
 const RUN_MEMORY_BYTES = 64 * 1024 * 1024;
@@ -38,11 +37,11 @@ const RUN_MEMORY_BYTES = 64 * 1024 * 1024;
 export const RUN_WALL_CLOCK_MS = 30_000;
 
 /**
- * A run, and the sample records it ran on (#486): made up from the fields, in the run's own throwaway
- * store, as they were before any of the app's logic touched them. What a new app keeps as its demo
- * records when it passes. Absent when seeding failed or the run did not finish.
+ * A run, and the entities of the app it ran (#486): what the create loop's one call for sample
+ * records describes to the model, and what its rows are checked against. Absent when the app did not
+ * load or the run did not finish. The run's own made-up records ("name 1") stay in the run.
  */
-export type CandidateRun = RunReport & { seed?: AppSeed };
+export type CandidateRun = RunReport & { entities?: AppDefinition["entities"] };
 
 export interface RunCandidateDeps {
   /** Test seam: compose the candidate on the given store. Defaults to the isolate, with a budget. */
@@ -102,11 +101,7 @@ async function run(source: string, deps: RunCandidateDeps): Promise<CandidateRun
     const def = runtime.definition as AppDefinition & { id: string };
     // Custom views are mounted below with the real views, effects and all; the smoke run's
     // first-paint render of them would only say the same thing twice.
-    let seed: AppSeed | undefined;
-    const onSeeded = async () => {
-      seed = seedThatFits(await seedFromStore(store, Object.keys(def.entities ?? {})), def.entities);
-    };
-    const logic = smokeReport(await smokeRuntime(def, runtime, { customViews: false, onSeeded }));
+    const logic = smokeReport(await smokeRuntime(def, runtime, { customViews: false }));
     const { pages, sealed } = await pagesToRender(def, runtime);
     const screens = await renderPages(runtime, pages, deps.settleMs);
     const report = mergeRuns(logic, screens);
@@ -115,7 +110,8 @@ async function run(source: string, deps: RunCandidateDeps): Promise<CandidateRun
       standInNote(modules),
     ].filter((n): n is string => n !== null);
     const ran = notes.length ? { ...report, ran: [report.ran, ...notes].join("; ") } : report;
-    return seed ? { ...ran, seed } : ran;
+    // As the person reads it (labels in their language, #302): what the model is told the fields are.
+    return def.entities ? { ...ran, entities: def.entities } : ran;
   } finally {
     try {
       composed?.loaded.dispose();

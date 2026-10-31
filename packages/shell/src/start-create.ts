@@ -13,7 +13,7 @@ import { createOpenRouterEngine, loadCorpus, type Language } from "@potyro/gener
 import { thinkingFor, type EngineConfig } from "./engines.js";
 import { buildAndValidate } from "./validate-app.js";
 import { runCandidate } from "./run-candidate.js";
-import type { AppSeed } from "./app-seed.js";
+import { sampleSeed, type AppSeed, type Entities } from "./app-seed.js";
 import { loopEngineOptions, modifyLoopRefusal } from "./start-modify.js";
 
 export interface StartCreateOpts {
@@ -32,8 +32,10 @@ export interface StartCreateOpts {
 export const createLoopRefusal = modifyLoopRefusal;
 
 /**
- * What the loop ended with; an app it made carries the sample records its run passed on (#486) — the
- * app's demo records, what a link anyone can try opens on. None when its run threw or did not finish.
+ * What the loop ended with; an app it made carries its sample records (#486) — the app's demo records,
+ * what a link anyone can try opens on: the ones the loop asked the model for once the app passed its
+ * run, each row checked as a use of the seed checks it (`sampleSeed`). None when its run threw, the
+ * reply was not rows, or fewer than two fit — the app then opens on an empty copy.
  */
 export type StudioCreateOutcome = Exclude<CreateLoopOutcome, { kind: "source" }> | (Extract<CreateLoopOutcome, { kind: "source" }> & { seed?: AppSeed });
 
@@ -41,11 +43,11 @@ export async function startCreate(opts: StartCreateOpts): Promise<StudioCreateOu
   const refused = createLoopRefusal(opts.engine);
   if (refused) return { kind: "failed", reason: refused, cause: "engine" };
   const check = (source: string): Promise<string[]> => buildAndValidate(source);
-  /** The records each candidate passed its run on, by its source: the one the loop ends with keeps its. */
-  const passedOn = new Map<string, AppSeed | undefined>();
+  /** The entities of each candidate that passed its run, by its source: what its sample records are asked for in, and checked against. */
+  const passed = new Map<string, Entities>();
   const run = async (source: string) => {
-    const { seed, ...report } = await runCandidate(source);
-    passedOn.set(source, report.errors.length ? undefined : seed);
+    const { entities, ...report } = await runCandidate(source);
+    if (!report.errors.length && entities) passed.set(source, entities);
     return report;
   };
   const chat = loopEngineOptions(opts.engine);
@@ -63,9 +65,12 @@ export async function startCreate(opts: StartCreateOpts): Promise<StudioCreateOu
     ...(opts.drafts ? { drafts: opts.drafts } : {}),
     check,
     run,
+    samples: (source) => passed.get(source),
     onStep: opts.onStep,
     signal: opts.signal,
   });
-  const seed = outcome.kind === "source" ? passedOn.get(outcome.source) : undefined;
-  return seed && outcome.kind === "source" ? { ...outcome, seed } : outcome;
+  if (outcome.kind !== "source") return outcome;
+  const { samples, ...made } = outcome;
+  const seed = sampleSeed(samples, passed.get(made.source));
+  return seed ? { ...made, seed } : made;
 }
