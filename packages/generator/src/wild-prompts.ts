@@ -250,7 +250,7 @@ export const WILD_PROMPTS: WildPrompt[] = [
     tags: ["reminder", "interval"],
   },
   {
-    id: "home-inventory",
+    id: "insurance-inventory",
     source: "authored",
     description:
       "A home inventory for insurance: each item with a photo, the room, what I paid and the receipt. I want the total value per room and overall.",

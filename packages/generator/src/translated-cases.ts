@@ -211,7 +211,7 @@ export const CREATE_REQUESTS: Readonly<Record<EvalLanguage, Readonly<Record<stri
       "Śledź moje aplikacje o pracę: firma, stanowisko, kiedy aplikowałem i na jakim jestem etapie. Szturchnij mnie, jeśli przez dwa tygodnie nie dostałem żadnej odpowiedzi.",
     "gift-ideas":
       "Miejsce, żeby notować pomysły na prezenty dla ludzi, kiedy tylko mi przyjdą do głowy, z urodzinami każdego i przypomnieniem dwa tygodnie wcześniej, żebym naprawdę zdążył coś zamówić.",
-    "home-inventory":
+    "insurance-inventory":
       "Sfotografować wszystko, co mam, na potrzeby ubezpieczenia — ile zapłaciłem, kiedy kupiłem, w którym pokoju to stoi — i zsumować wartość dla każdego pokoju.",
     "meal-plan": "Zaplanuj, co jemy każdego wieczoru w tygodniu, a potem automatycznie zrób mi z przepisów listę zakupów.",
     sleep: "Zapisuj, o której idę spać i o której wstaję, i pokaż mi średnią z ostatniego tygodnia.",
@@ -302,7 +302,7 @@ export const CREATE_REQUESTS: Readonly<Record<EvalLanguage, Readonly<Record<stri
       "Acompanhar minhas candidaturas a vagas: empresa, cargo, quando me candidatei e em que etapa estou. Me dá um toque se eu não tiver nenhuma resposta em duas semanas.",
     "gift-ideas":
       "Um lugar pra anotar ideias de presente pras pessoas assim que eu penso nelas, com o aniversário de todo mundo, e um lembrete duas semanas antes pra eu ter tempo de encomendar alguma coisa.",
-    "home-inventory":
+    "insurance-inventory":
       "Fotografar tudo o que eu tenho pro seguro — quanto eu paguei, quando comprei, em qual cômodo está — e somar o total por cômodo.",
     "meal-plan": "Planejar o que a gente vai comer em cada noite da semana, e aí me dar a lista de compras automaticamente a partir das receitas.",
     sleep: "Registrar a que horas eu vou dormir e a que horas eu acordo, e me mostrar minha média da última semana.",
