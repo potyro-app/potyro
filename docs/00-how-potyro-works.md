@@ -627,6 +627,14 @@ which app it is across devices, so a link made on one device opens the right cop
 source is a package with no files; an export bundle is read as a package too, which is how a backup
 installs on a device that never had the app.
 
+`seed.json` is never the person's records. An app added from a package keeps the seed it came with;
+an app made in the Studio keeps the sample records its create run passed on: the create loop runs
+each candidate on records made up from its fields, in a throwaway store, and the one it ends with,
+when nothing threw, keeps them (`packages/shell/src/app-seed.ts`, #486). Studio → Files → Save as a
+package writes that seed as `seed.json`, and a demo link carries it, so the app opens on something
+on a device that never had it. When the app changes, rows that no longer fit its fields are
+dropped, and nothing is added back.
+
 Everything comes in sealed. A file from this device or pasted source may be marked "I wrote this"
 on the card; a link never can, and an update that arrives by link drops a trusted app back into the
 sealed box, so a link cannot put new code into an app that runs with full authority.

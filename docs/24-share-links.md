@@ -85,6 +85,16 @@ The device that shares builds them, in this order:
    app's own sample data, kept beside the app when it was added (`UserApp.seed`, at most 64 KB of
    JSON — a bigger one is applied on install but not kept), and only for the entities it keeps.
    Never what the person added since. An inline link too long with them is made without them.
+   For an app made in the Studio, **the records its run check passed on** (#486), kept the same way.
+   The create loop runs every candidate on records made up from its fields, in a throwaway store
+   (`run-candidate.ts`); the candidate the loop ends with, when its run threw nothing, keeps them as
+   they were before any of its logic ran (`app-seed.ts`), and they become its seed. A later change
+   keeps only the rows that still fit: whenever the app's definition is at hand — a version saved in
+   the Studio, a version put back from History, the app opening — each row is checked against its
+   entity's fields by the rule every write is held to (`fieldValueProblem`), and a row that no
+   longer fits is dropped, never repaired, with any reference to it taken out of the rows that
+   pointed at it. Nothing is ever added to a seed afterwards, and the person's own records are never
+   read for one.
 3. Otherwise **nothing**: the app opens empty, as it would for anyone who adds it. That is honest,
    and an app worth sharing is usable from empty.
 4. On the viewer's device, once the records are in, **the app's own demo** when it declares one
