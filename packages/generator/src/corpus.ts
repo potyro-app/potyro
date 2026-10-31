@@ -255,6 +255,25 @@ const shapeTerms = (source: string): string[] => [...new Set([...source.matchAll
 const appIdOf = (source: string): string | undefined => /\bid:\s*["']([^"']+)["']/.exec(source)?.[1];
 const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+/** The passages priming would pick, best first, at most `max` of them and one per file. */
+function primePicks(corpus: Corpus, instruction: string, source: string, language: Language | undefined, max: number): Chunk[] {
+  const { groups, view } = primeQuery(corpus, instruction, source, language);
+  if (groups.length < 2) return [];
+  const self = appIdOf(source);
+  const selfRe = self ? new RegExp(`\\bid:\\s*["']${escapeRe(self)}["']`) : null;
+  const files = corpus.files.filter((f) => !f.path.startsWith("packages/") && !(selfRe && selfRe.test(f.text)));
+  return distinct(
+    rankChunks(files, groups, shapeTerms(source), view).filter((s) => s.matched >= 2),
+    max,
+    1,
+  );
+}
+
+/** The files priming would quote with room for `max` (the eval's yardstick: English's top five). */
+export function primeRankedFiles(corpus: Corpus, instruction: string, source: string, language: Language | undefined, max: number): string[] {
+  return primePicks(corpus, instruction, source, language, max).map((c) => c.path);
+}
+
 /**
  * What the model should have read before its first turn (#262): the one or two corpus files that
  * speak to the request, around where they do. A passage must share at least two of the request's
@@ -264,16 +283,7 @@ const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
  * #341). Empty when the corpus has nothing to say, so the first message says nothing either.
  */
 export function primeCorpus(corpus: Corpus, instruction: string, source: string, language?: Language): string {
-  const { groups, view } = primeQuery(corpus, instruction, source, language);
-  if (groups.length < 2) return "";
-  const self = appIdOf(source);
-  const selfRe = self ? new RegExp(`\\bid:\\s*["']${escapeRe(self)}["']`) : null;
-  const files = corpus.files.filter((f) => !f.path.startsWith("packages/") && !(selfRe && selfRe.test(f.text)));
-  const picked = distinct(
-    rankChunks(files, groups, shapeTerms(source), view).filter((s) => s.matched >= 2),
-    PRIME_FILES,
-    1,
-  );
+  const picked = primePicks(corpus, instruction, source, language, PRIME_FILES);
   if (!picked.length) return "";
   let out = "";
   for (const c of picked) {
