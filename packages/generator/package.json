@@ -30,7 +30,8 @@
     "eval:translate": "vite-node scripts/run-translate-eval.ts --",
     "eval:translate:fixture": "vite-node scripts/run-translate-eval.ts -- --fixture",
     "i18n:app": "vite-node scripts/i18n-app.ts --",
-    "maps-to-po": "vite-node scripts/maps-to-po.ts --"
+    "maps-to-po": "vite-node scripts/maps-to-po.ts --",
+    "eval:prime": "vite-node scripts/run-prime-eval.ts --"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
