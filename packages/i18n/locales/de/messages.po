@@ -4133,14 +4133,21 @@ msgstr "Später →"
 msgid "Launcher actions"
 msgstr "Aktionen der App-Übersicht"
 
+#. Button: go to the gallery, losing the change not kept
 #. Button: leave a shared app
 #: ../shell/src/remove-app.ts
+#: ../shell/src/studio.tsx
 msgid "Leave"
 msgstr "Verlassen"
 
 #: ../shell/src/remove-app.ts
 msgid "Leave “{name}”?"
 msgstr "„{name}“ verlassen?"
+
+#. Asked before the Studio's page goes to the gallery while a change in it is not kept
+#: ../shell/src/studio.tsx
+msgid "Leave for the gallery?"
+msgstr "Zur Galerie gehen?"
 
 #: ../shell/src/chrome.tsx
 #: ../shell/src/chrome.tsx
@@ -6468,6 +6475,11 @@ msgstr "Mikrofon wird eingeschaltet"
 msgid "Starts with"
 msgstr "Beginnt mit"
 
+#. Button: stay in the Studio, with the change
+#: ../shell/src/studio.tsx
+msgid "Stay"
+msgstr "Bleiben"
+
 #. Point chip: a kind of view, lower case
 #: ../shell/src/point-target.ts
 msgid "steps"
@@ -6866,6 +6878,10 @@ msgstr "Der Quelltext der App"
 #: ../shell/src/backup-switch.tsx
 msgid "The apps already there stay there. This deletes nothing, and neither does turning sync off for one app."
 msgstr "Die Apps, die schon dort sind, bleiben dort. Das löscht nichts, und Sync für eine App auszuschalten auch nicht."
+
+#: ../shell/src/studio.tsx
+msgid "The change you have not kept here is lost."
+msgstr "Die Änderung, die du hier nicht behalten hast, geht verloren."
 
 #: ../shell/src/share-sheet.tsx
 msgid "The clip could not be recorded: {why}"

@@ -18,3 +18,19 @@ export function galleryUrl(): string {
 export function openGallery(): void {
   globalThis.location?.assign(galleryUrl());
 }
+
+/**
+ * Leaving a page for the gallery, in this tab. What can be kept is kept (`keep`, the words in a box)
+ * only once the page really goes; what cannot be (`unkept`: a version not kept, code not saved) is
+ * asked about first, never lost in silence. `true`: go now. A promise: go if it settles `true`.
+ */
+export function leaveForGallery(opts: { unkept: boolean; keep: () => void; ask: () => Promise<boolean> }): true | Promise<boolean> {
+  if (!opts.unkept) {
+    opts.keep();
+    return true;
+  }
+  return opts.ask().then((go) => {
+    if (go) opts.keep();
+    return go;
+  });
+}

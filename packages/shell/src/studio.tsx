@@ -39,6 +39,7 @@ import { canGenerate } from "./generate-client.js";
 import { checkFreeEngine, useEngineConfig } from "./engine-store.js";
 import { freeNotNow, useFreeAi } from "./free-ai.js";
 import { FreePanel } from "./free-panel.js";
+import { leaveForGallery as leaveFor } from "./gallery-link.js";
 import { forgetKeptIdea, keepIdea, keptIdea } from "./kept-idea.js";
 import { shellDialogs } from "./dialog.js";
 import { followChat, syncChat } from "./chat-sync.js";
@@ -380,6 +381,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   }, [appId, source]);
   // Edited, made or deleted since the last save: each is a change Save keeps.
   const changedModules = changedPaths(draftModules, savedModules);
+  // Something here that lives only in this page: a version made and not kept (it failed a gate), or
+  // code edited in the Studio's editor and not saved. Leaving the page loses it.
+  const unkept = held !== null || changedModules.size > 0 || draftSource !== (source ?? STARTER);
 
   const engine = async () => studioEngine(engineCfg, (text) => setWorking(text ?? ""), await modulesOf(appRef.current ?? undefined));
 
@@ -600,6 +604,23 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       setWorking(null);
     }
   };
+
+  /**
+   * The key panel's gallery link (#487): the gallery opens in this tab, so the Studio goes with the
+   * page. The box's words are kept for the way back (kept-idea.ts); a version not kept or code not
+   * saved cannot be, so the person is asked first — never left to find it gone.
+   */
+  const leaveForGallery = (): true | Promise<boolean> =>
+    leaveFor({
+      unkept,
+      keep: () => keepIdea(descriptionRef.current, appRef.current),
+      ask: () =>
+        shellDialogs.confirm(t({ message: "Leave for the gallery?", comment: "Asked before the Studio's page goes to the gallery while a change in it is not kept" }), {
+          detail: t`The change you have not kept here is lost.`,
+          ok: t({ message: "Leave", comment: "Button: go to the gallery, losing the change not kept" }),
+          cancel: t({ message: "Stay", comment: "Button: stay in the Studio, with the change" }),
+        }),
+    });
 
   const keepHeld = async (): Promise<void> => {
     if (!held) return;
@@ -943,7 +964,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         </div>
 
         <footer className="k-composer">
-          {noWay ? <FreePanel free={free} onAddKey={() => setSettingsOpen(true)} ownKey={ownKey} onLeave={() => keepIdea(descriptionRef.current, appRef.current)} /> : null}
+          {noWay ? <FreePanel free={free} onAddKey={() => setSettingsOpen(true)} ownKey={ownKey} onLeave={leaveForGallery} /> : null}
           {noWay ? null : <VoiceStrip voice={voice} />}
           <div className="k-composer-box" hidden={noWay} data-pointed={point ? true : undefined} data-listening={listening || undefined}>
             {point ? (
