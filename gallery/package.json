@@ -1,6 +1,7 @@
 {
   "name": "@potyro/gallery",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "type": "module",
   "private": true,
   "description": "Potyro's curated gallery (docs/24 §10): gallery.json lists the apps in six languages and the demo link each opens; `pnpm gallery:publish` makes those links through the real share flow and screenshots them; `pnpm gallery:build` writes a static page with no third-party requests into dist/gallery for potyro.com (docs/16).",

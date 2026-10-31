@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-earthquakes",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Earthquakes, live: EMSC's public WebSocket on a map and a list, the strongest of the day, the ones near you and an alert (ctx.caps.network.socket, docs/28)",

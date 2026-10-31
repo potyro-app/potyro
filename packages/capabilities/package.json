@@ -1,6 +1,7 @@
 {
   "name": "@potyro/capabilities",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "type": "module",
   "description": "Capabilities interface + FakeCapabilities (WP4). Web/Capacitor impls land later.",
   "license": "Apache-2.0",

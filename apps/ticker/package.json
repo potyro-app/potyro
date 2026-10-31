@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-ticker",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Ticker: a watchlist of live prices \u2014 crypto from Coinbase's public WebSocket, currencies from the ECB via Frankfurter \u2014 sparklines, change and price alerts (ctx.caps.network.socket, docs/28)",

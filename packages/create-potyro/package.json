@@ -1,6 +1,7 @@
 {
   "name": "create-potyro",
   "version": "0.1.0",
+  "author": "Edgar Zanella Alvarenga",
   "type": "module",
   "description": "Start a Potyro app: `npm create potyro my-app`",
   "license": "Apache-2.0 AND MIT-0",

@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-pantry",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "What's in my kitchen: photograph groceries, a fridge shelf or a receipt and get a pantry list by expiry, reminders, a waste tally and ideas for what expires first (ctx.caps.ai, docs/23)",
