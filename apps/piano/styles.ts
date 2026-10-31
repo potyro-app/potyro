@@ -56,6 +56,12 @@ export const CSS = `
 
 .pn-rest { padding: 20px; border-radius: 16px; background: color-mix(in oklch, #5B8DEF 10%, var(--surface, #fff)); border: 1px solid var(--line, #e6e2d8); }
 .pn-rest h2 { font-family: var(--font-display, Georgia, serif); font-size: 1.5rem; margin-bottom: 6px; }
+.pn-daydone { margin-top: 18px; padding: 16px 16px 16px 20px; border-radius: 16px; background: var(--aguada, color-mix(in oklch, var(--pn-accent) 14%, var(--surface, #fff))); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; animation: pn-rise .32s cubic-bezier(.22, 1, .36, 1); }
+.pn-daydone h2 { font-family: var(--font-display, Georgia, serif); font-size: 1.5rem; }
+.pn-daydone p { color: var(--ink-soft, #555); margin-top: 2px; }
+.pn-daydone .pn-btn { min-height: 44px; padding: 0 1.4rem; border-radius: 999px; }
+@keyframes pn-rise { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .pn-daydone { animation: none; } }
 .pn-goal { margin-top: 18px; padding: 16px; border-radius: 16px; background: var(--paper, #f3efe6); }
 .pn-goal-text { font-family: var(--font-display, Georgia, serif); font-size: 1.25rem; line-height: 1.3; margin-top: 4px; }
 

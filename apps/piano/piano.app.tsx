@@ -3,7 +3,8 @@
 // The lesson content lives in `plan.json`, never here: this file only knows that a plan has phases,
 // weeks, five daily blocks, "done when" goals and optional modules (see `plan.ts`). Where you are in
 // the plan is `progress.ts`, stored in `ctx.storage`; what you did each day is a `session` record;
-// the weekly review is a `weekLog` record.
+// the weekly review is a `weekLog` record. A day with every block ticked is "Day done", and Share
+// makes a picture of it (`card.ts`) for ctx.files.export.
 //
 // It imports `plan.ts`, `progress.ts` and `styles.ts` directly: `pnpm pack:app` packs them as the
 // package's `src/`, and the shell resolves `./plan.js` from there (#258). This file stays the one the
@@ -16,7 +17,7 @@
 // is a plan file of its own (Modules → Load plan file…). What validatePlan says about a broken file
 // stays in English too: it points at paths in the file, for whoever edits it.
 import { defineApp } from "potyro";
-import type { Ctx, Field, Resolved, ViewProps } from "potyro";
+import type { Ctx, Field, FileInfo, Resolved, ViewProps } from "potyro";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { blocksForWeek, mainWeeks, resolveLink, startingWeekNumber, validatePlan } from "./plan.js";
 import type { Plan, PlanLink, PlanModule } from "./plan.js";
@@ -45,6 +46,7 @@ import {
 } from "./progress.js";
 import type { DayBlock, Progress } from "./progress.js";
 import { CSS } from "./styles.js";
+import { drawDayCard, type DayCardData } from "./card.js";
 
 // ---- the built-in plan ships WITH the app, as `plan.json` in its own folder (#253) ----
 // Read through ctx.files rather than inlined: the plan can change without rebuilding the app, and a
@@ -199,6 +201,9 @@ function Today(props: ViewProps) {
   // before the query watcher has caught up.
   const sessionIdRef = useRef<string | null>(null);
   const writesRef = useRef<Promise<void>>(Promise.resolve());
+  // The page's own element: the share picture reads the app's colour and fonts from it.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [sharing, setSharing] = useState(false);
 
   // One clock for the running timer. When it reaches zero it says so once, buzzes, and stops.
   useEffect(() => {
@@ -361,9 +366,56 @@ function Today(props: ViewProps) {
   });
 
   const doneCount = blocks.filter((b) => done.has(b.id)).length;
+  // Every block ticked: the day is done, and it is worth a picture.
+  const dayDone = blocks.length > 0 && doneCount === blocks.length;
+  const minutesText = ctx.format.number(
+    blocks.filter((b) => done.has(b.id)).reduce((sum, b) => sum + b.minutes, 0),
+    { style: "unit", unit: "minute" },
+  );
+  const blocksText = ctx.t(
+    "{done}/{total} blocks today",
+    { done: doneCount, total: blocks.length },
+  );
+
+  // The picture of the day, handed to ctx.files.export: the save dialog on a computer, the share
+  // sheet on a phone. The copy written to hand over is removed after.
+  const shareDay = async (): Promise<void> => {
+    const el = rootRef.current;
+    if (!el || sharing) return;
+    setSharing(true);
+    const css = getComputedStyle(el);
+    const token = (name: string, fallback: string): string => css.getPropertyValue(name).trim() || fallback;
+    const card: DayCardData = {
+      date: longDate(today, ctx),
+      title: ctx.t("Day done"),
+      week: `${cur.week.label} · ${ctx.t("Day {day} of 7", { day })}`,
+      minutes: minutesText,
+      blocksLine: blocksText,
+      blocks: blocks.map((b) => b.label),
+      weekTitle: ctx.t("This week"),
+      days: dots.map((d, i) => ({ n: i + 1, practised: d.practised, today: d.today, future: d.future })),
+      name: runtime.definition.name,
+    };
+    let file: FileInfo | null = null;
+    try {
+      const png = await drawDayCard(card, {
+        traco: token("--traco", "#C9772B"),
+        tinta: token("--tinta-l", token("--accent", "#a05e1c")),
+        display: token("--font-display", "system-ui, sans-serif"),
+        body: token("--font-body", "system-ui, sans-serif"),
+      });
+      file = await ctx.files.write(`share/piano-${todayKey}.png`, png, { mime: "image/png" });
+      await ctx.files.export(file);
+    } catch (e) {
+      if (!(e instanceof Error && e.name === "AbortError")) ctx.ui.toast(ctx.t("It could not be shared."));
+    } finally {
+      if (file) await ctx.files.remove(file).catch(() => undefined);
+      setSharing(false);
+    }
+  };
 
   return (
-    <div className="pn">
+    <div className="pn" ref={rootRef}>
       <style>{CSS}</style>
       <header className="pn-head">
         <p className="pn-eyebrow">
@@ -503,16 +555,25 @@ function Today(props: ViewProps) {
         </ol>
       )}
 
+      {dayDone ? (
+        <section className="pn-daydone" aria-labelledby="pn-daydone-title">
+          <div>
+            <h2 id="pn-daydone-title">{ctx.t("Day done")}</h2>
+            <p>
+              {ctx.t("{minutes} practised", { minutes: minutesText })}
+            </p>
+          </div>
+          <button className="pn-btn pn-btn-primary" onClick={() => void shareDay()} disabled={sharing}>
+            {ctx.t("Share")}
+          </button>
+        </section>
+      ) : null}
+
       <section className="pn-goal">
         <p className="pn-eyebrow">{ctx.t("Done when")}</p>
         <p className="pn-goal-text">{cur.goal}</p>
         {!rest || showAnyway ? (
-          <p className="pn-note">
-            {ctx.t(
-              "{done}/{total} blocks today",
-              { done: doneCount, total: blocks.length },
-            )}
-          </p>
+          <p className="pn-note">{blocksText}</p>
         ) : null}
         {progress.completed && !cur.module ? (
           <p className="pn-note">
@@ -961,7 +1022,7 @@ export default defineApp({
   id: "piano",
   name: "Piano",
   icon: "🎹",
-  version: "1.1.0",
+  version: "1.2.0",
   schemaVersion: 1,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
