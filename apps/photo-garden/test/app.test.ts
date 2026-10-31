@@ -43,8 +43,9 @@ describe("Photo Garden", () => {
     expect(app.quickActions).toEqual([]);
   });
 
-  it("shares a kept picture through ctx.files.export", () => {
-    expect(source).toMatch(/ctx\.files\.export\(kept\)/);
+  it("shares a kept picture through the share dialog, never by saving a copy", () => {
+    expect(source).toMatch(/ctx\.ui\s*\.share\(\{ title, files: \[file\] \}\)/);
+    expect(source).not.toMatch(/ctx\.files\.export\(kept\)/);
   });
 });
 
