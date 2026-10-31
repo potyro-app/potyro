@@ -23,9 +23,11 @@ export interface PromptBoxProps {
   autoFocus?: boolean;
   /** What the box starts with: words the person typed before, and kept (kept-idea.ts). */
   initial?: string;
+  /** Told what the box holds after each edit (a clear included): the words are this box's now. */
+  onEdit?: (text: string) => void;
 }
 
-export function PromptBox({ sendLabel, onSend, examples = [], compact = false, autoFocus = false, initial = "" }: PromptBoxProps) {
+export function PromptBox({ sendLabel, onSend, examples = [], compact = false, autoFocus = false, initial = "", onEdit }: PromptBoxProps) {
   const { t } = useLingui();
   const id = useId();
   const [text, setText] = useState(initial);
@@ -53,7 +55,10 @@ export function PromptBox({ sendLabel, onSend, examples = [], compact = false, a
               : t({ message: "e.g. a shopping list for the house, split by store", comment: "The prompt box's placeholder: a concrete example, never a label" })
           }
           autoFocus={autoFocus}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            onEdit?.(e.target.value);
+          }}
           onKeyDown={onKey}
         />
         <button type="button" className="k-prompt-send" aria-label={sendLabel} title={sendLabel} onClick={send}>

@@ -66,6 +66,9 @@ const list = (words: readonly string[]): string => fmt.list(words);
  *
  * `onAdded`: told once the app is saved, before it is opened.
  *
+ * `onGallery`: told as the person leaves for the gallery, in this tab (#487), so what the screen
+ * behind holds can be kept first.
+ *
  * `remix`: Make it mine (docs/24 §6) — the person's own copy to change: always a new app beside any copy
  * they have, credited as a remix, sealed like anything from someone else, and opened with the Studio
  * asking what to change. It may start with the package's sample records or empty; the card asks.
@@ -77,6 +80,7 @@ export function AddAppDialog({
   initialPackage,
   onAdded,
   remix,
+  onGallery,
 }: {
   onClose: () => void;
   initialLink?: string;
@@ -84,6 +88,7 @@ export function AddAppDialog({
   initialPackage?: AppPackage | (() => Promise<AppPackage>);
   onAdded?: (done: Installed) => void;
   remix?: boolean;
+  onGallery?: () => void;
 }) {
   const { t } = useLingui();
   const [step, setStep] = useState<Step>(initialFiles?.length || initialPackage ? { kind: "reading" } : { kind: "choose", tab: initialLink ? "link" : null });
@@ -229,7 +234,7 @@ export function AddAppDialog({
               </button>
               {/* Not a source of its own: the gallery's apps are demo links, which open here as any link does.
                   In this tab (gallery-link.ts): its Make it mine comes back to the tab with your apps. */}
-              <a className="k-add-app-source k-add-app-gallery" href={galleryUrl()}>
+              <a className="k-add-app-source k-add-app-gallery" href={galleryUrl()} onClick={onGallery}>
                 <span className="k-add-app-source-glyph" aria-hidden><Glyph icon="images" size={24} /></span>
                 <span className="k-add-app-source-title">
                   <Trans comment="Add an app: Potyro's gallery of apps">From the gallery</Trans>
