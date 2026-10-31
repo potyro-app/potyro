@@ -59,3 +59,122 @@ export function sharePage(indexHtml: string, meta: ShareMeta, links: PageLinks):
   if (/<head[^>]*>/i.test(withoutTitle)) return withoutTitle.replace(/<head[^>]*>/i, (head) => `${head}\n    ${tags}`);
   return `<!doctype html><html><head>${tags}</head><body></body></html>`;
 }
+
+/** The words of the page a taken-down link answers with, in the languages Potyro speaks. */
+const TAKEN_DOWN_WORDS = {
+  en: { title: "This link was taken down.", line: "The app behind it was removed from Potyro.", contact: "If you think this was a mistake, write to {email}.", home: "Go to Potyro" },
+  "pt-BR": { title: "Este link foi tirado do ar.", line: "O app por trás dele foi removido do Potyro.", contact: "Se você acha que foi um engano, escreva para {email}.", home: "Ir para o Potyro" },
+  de: { title: "Dieser Link wurde gesperrt.", line: "Die App dahinter wurde von Potyro entfernt.", contact: "Wenn du glaubst, dass das ein Fehler war, schreib an {email}.", home: "Zu Potyro" },
+  es: { title: "Este enlace fue retirado.", line: "La app que había detrás se quitó de Potyro.", contact: "Si crees que es un error, escribe a {email}.", home: "Ir a Potyro" },
+  it: { title: "Questo link è stato rimosso.", line: "L’app dietro questo link è stata tolta da Potyro.", contact: "Se pensi che sia un errore, scrivi a {email}.", home: "Vai a Potyro" },
+  pl: { title: "Ten link został zablokowany.", line: "Aplikacja, do której prowadził, została usunięta z Potyro.", contact: "Jeśli uważasz, że to pomyłka, napisz na {email}.", home: "Przejdź do Potyro" },
+} as const;
+
+type WordsLang = keyof typeof TAKEN_DOWN_WORDS;
+
+/** The first language in an `Accept-Language` header that the page has words for; else English. */
+export function pageLanguage(acceptLanguage: string | undefined): WordsLang {
+  const wanted = (acceptLanguage ?? "")
+    .split(",")
+    .map((part) => {
+      const [tag, ...params] = part.trim().split(";");
+      const q = params.map((p) => /^\s*q=([\d.]+)\s*$/.exec(p)?.[1]).find(Boolean);
+      return { tag: (tag ?? "").trim().toLowerCase(), q: q === undefined ? 1 : Number(q) };
+    })
+    .filter((w) => w.tag && w.q > 0)
+    .sort((a, b) => b.q - a.q);
+  for (const { tag } of wanted) {
+    if (tag === "pt-br" || tag === "pt" || tag.startsWith("pt-")) return "pt-BR";
+    const base = tag.split("-")[0]!;
+    if (base === "en" || base === "de" || base === "es" || base === "it" || base === "pl") return base;
+  }
+  return "en";
+}
+
+/** The words of the page a link answers with when too many were opened from one network today. */
+const TOO_MANY_WORDS: Record<WordsLang, { title: string; again: (hours: number) => string }> = {
+  en: {
+    title: "Too many links were opened from this network today.",
+    again: (n) => (n === 1 ? "Try again in about an hour, or on another network." : `Try again in about ${n} hours, or on another network.`),
+  },
+  "pt-BR": {
+    title: "Muitos links foram abertos desta rede hoje.",
+    again: (n) => (n === 1 ? "Tente de novo daqui a mais ou menos uma hora, ou em outra rede." : `Tente de novo daqui a umas ${n} horas, ou em outra rede.`),
+  },
+  de: {
+    title: "Aus diesem Netz wurden heute zu viele Links geöffnet.",
+    again: (n) => (n === 1 ? "Versuch es in etwa einer Stunde noch einmal oder in einem anderen Netz." : `Versuch es in etwa ${n} Stunden noch einmal oder in einem anderen Netz.`),
+  },
+  es: {
+    title: "Hoy se abrieron demasiados enlaces desde esta red.",
+    again: (n) => (n === 1 ? "Vuelve a intentarlo en más o menos una hora, o desde otra red." : `Vuelve a intentarlo en unas ${n} horas, o desde otra red.`),
+  },
+  it: {
+    title: "Oggi sono stati aperti troppi link da questa rete.",
+    again: (n) => (n === 1 ? "Riprova tra circa un’ora, o da un’altra rete." : `Riprova tra circa ${n} ore, o da un’altra rete.`),
+  },
+  pl: {
+    title: "Z tej sieci otwarto dziś zbyt wiele linków.",
+    again: (n) => (n === 1 ? "Spróbuj ponownie za mniej więcej godzinę albo w innej sieci." : `Spróbuj ponownie za około ${n} ${polishHours(n)} albo w innej sieci.`),
+  },
+};
+
+/** 2 godziny, 5 godzin, 22 godziny: Polish counts take one of two forms past one. */
+function polishHours(n: number): string {
+  const tens = n % 100;
+  const ones = n % 10;
+  return ones >= 2 && ones <= 4 && (tens < 12 || tens > 14) ? "godziny" : "godzin";
+}
+
+/** A whole page of a few lines, with no script and nothing fetched: what the service says on its own. */
+function plainPage(lang: WordsLang, title: string, paragraphs: string[]): string {
+  return `<!doctype html>
+<html lang="${lang}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font: 17px/1.5 system-ui, sans-serif; margin: 0; padding: 3rem 1rem; background: Canvas; color: CanvasText; }
+      main { max-width: 32rem; margin: 0 auto; }
+      h1 { font-size: 1.4rem; line-height: 1.25; margin: 0 0 0.75rem; }
+      p { margin: 0 0 0.75rem; }
+      a { color: LinkText; }
+      a.home { display: inline-block; min-height: 44px; line-height: 44px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>${escapeHtml(title)}</h1>
+      ${paragraphs.join("\n      ")}
+    </main>
+  </body>
+</html>
+`;
+}
+
+/**
+ * The whole page a link the operator took down answers with (410). It is not the shell: nothing of
+ * the old link — its title, its picture, its package — and no script. Only what happened, who to
+ * write to, and the way back to Potyro.
+ */
+export function takenDownPage(opts: { lang: WordsLang; contact?: string; home: string }): string {
+  const w = TAKEN_DOWN_WORDS[opts.lang];
+  const contact = opts.contact
+    ? `<p>${escapeHtml(w.contact)
+        .split("{email}")
+        .join(`<a href="mailto:${escapeHtml(opts.contact)}">${escapeHtml(opts.contact)}</a>`)}</p>`
+    : "";
+  return plainPage(opts.lang, w.title, [`<p>${escapeHtml(w.line)}</p>`, ...(contact ? [contact] : []), `<p><a class="home" href="${escapeHtml(opts.home)}">${escapeHtml(w.home)}</a></p>`]);
+}
+
+/**
+ * The page a link answers with (429) when its network opened too many link pages today: when to try
+ * again, and the way to Potyro. Nothing of the link either — it was not looked up.
+ */
+export function tooManyPage(opts: { lang: WordsLang; hours: number; home: string }): string {
+  const w = TOO_MANY_WORDS[opts.lang];
+  return plainPage(opts.lang, w.title, [`<p>${escapeHtml(w.again(opts.hours))}</p>`, `<p><a class="home" href="${escapeHtml(opts.home)}">${escapeHtml(TAKEN_DOWN_WORDS[opts.lang].home)}</a></p>`]);
+}

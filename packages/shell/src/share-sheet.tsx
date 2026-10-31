@@ -167,7 +167,7 @@ export function ShareSheet({ app, onClose, onInvite, clipRoot }: ShareSheetProps
                 </p>
               ) : null}
               <button type="button" className="k-add k-primary-action k-share-make" data-share="demo" disabled={busy} onClick={() => void make()}>
-                {state.kind === "making" ? t`Making the link` : t`Make the link`}
+                {state.kind === "making" ? t`Making the link` : state.kind === "failed" ? t`Try again` : t`Make the link`}
               </button>
             </>
           )}

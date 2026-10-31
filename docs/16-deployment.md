@@ -153,6 +153,64 @@ the space's members (it cannot read them), but stored. What that means for runni
 - **The app's code never rides here.** Libraries' bytes and an app's own modules (`.modules/`,
   `.src/`) stay on each device (#281); a synced store refuses to put them in a space.
 
+### Erasing a space or an account from the relay (#119)
+
+For a person's request to erase what the relay holds of them (GDPR art. 17), or a shared space its
+members want gone. `packages/store/scripts/erase-space.mjs` reads the database `jazz-run sync --db`
+writes — cojson's SQLite storage — and needs Node 22.13 or later and nothing else.
+
+**What it knows about the file.** Every CoValue is a row in `coValues` with a plain-JSON header; its
+edits are rows in `sessions`, `transactions` and `signatureAfter`. A space is a cojson **group**
+(header ruleset `group`); everything in it — its root, records, chat, the bytes of its files — is a
+CoValue whose header names that group as owner (`ownedByGroup`). An account is a group whose header
+says `account`. Group edits (who is a member, in what role) are plaintext; the space's content is
+encrypted to its members and stays unreadable to the script, which never needs to read it.
+
+**`--space <id>`** removes the group and every CoValue it owns — rows in all four tables, plus the
+bookkeeping tables — in one transaction, then `VACUUM`s so the bytes leave the file. It says how many
+other accounts were in the space: they lose it too. **`--account <id>`** removes what that account
+alone holds: every space it created that nobody else is in, and — once no space left on the relay
+names it — the account and its profile (its name). A space it created that others are in is listed,
+not erased (erase it with `--space` once they agree), and so is the account while any remaining space
+holds its edits or its membership: other members' devices need it to check those edits. Its edits
+inside other people's spaces are never touched — they are part of those spaces.
+
+```bash
+# 0. Once: the script is one file with no dependencies.
+rsync -az packages/store/scripts/erase-space.mjs e@vaz.io:/opt/potyro-tools/
+# 1. Ask first: the person removes the app from every device (for a shared space: every member does).
+# 2. Stop the relay: the script refuses while it has the file open (it takes an exclusive lock).
+docker stop potyro-relay
+# 3. See what would go, then erase. Needs free disk the size of sync.db for the VACUUM.
+docker run --rm -v /var/lib/potyro:/data -v /opt/potyro-tools:/tools:ro node:22-bookworm \
+  node /tools/erase-space.mjs --db /data/sync.db --space co_z… --dry-run
+docker run --rm -v /var/lib/potyro:/data -v /opt/potyro-tools:/tools:ro node:22-bookworm \
+  node /tools/erase-space.mjs --db /data/sync.db --space co_z…
+# 4. Start it again.
+docker start potyro-relay
+```
+
+(`--account co_z…` the same way; `--json` for a machine-readable plan; `--no-vacuum` to skip the
+rebuild, which leaves the erased bytes in free pages until the next `VACUUM`.)
+
+**What it cannot do — say so to whoever asked:**
+
+- **A device that still holds the space sends it back** the next time it syncs. Sync is two-way and
+  the relay cannot tell a returning copy from a new one; `packages/store/test/erase-space.test.ts`
+  shows it happen. So step 1 is not
+  optional: an erase while a member still has the app is undone by that member's next edit.
+- **Backups still hold it** (#214) until they age out. Say how long in the privacy text.
+- **Finding the id.** An account's id is under You → Advanced ("Identity `co_z…`"). Nothing in the
+  app shows a space's id yet: it is the `group` in the space's invite link (`#join=…` is base64 of
+  URI-encoded JSON).
+- **The person's other traces stay where they belong to others:** their membership entry and edits
+  in spaces other people hold, and their name in those members' copies.
+
+The lasting fix is in the product, not here: the space's admin deleting it from the app, with
+cojson's own delete (a signed tombstone the relay keeps, after which it refuses the content back).
+cojson 0.20 can delete a space's CoValues that way but not the group itself, and `jazz-run sync` does
+not turn on erasing the content of deleted CoValues (`enableDeletedCoValuesErasure`). Not built.
+
 ## 4. The Apache vhost
 
 `proxy_wstunnel`, `rewrite`, `headers` and `ssl` were already enabled — check yours with
@@ -759,10 +817,10 @@ What the service accepts and does:
 
 | | |
 |---|---|
-| Routes | `POST /share-api/shares`, `GET /share-api/shares/<id>/payload`, `DELETE /share-api/shares/<id>` (with `x-delete-token`), `GET /share-api/health`, `GET /s/<id>` (the shell's `index.html` with the link's Open Graph and Twitter meta written in), `GET /s/<id>/preview.jpg`. |
-| What it holds | Per link: the **sealed** app package (AES-GCM, ≤ 2 MiB). The key is in the link's fragment and never reaches the service. Beside it, what the sharer's device made public for the preview: a title (the app's name), one line, a language, and a 1200×630 JPEG or PNG of ≤ 300 KB drawn from **demo** records. It also keeps the sha256 of the token that takes the link down. |
+| Routes | `POST /share-api/shares`, `GET /share-api/shares/<id>/payload`, `DELETE /share-api/shares/<id>` (with `x-delete-token`), `DELETE /share-api/admin/shares/<id>` (the operator's takedown, [below](#taking-a-link-down)), `GET /share-api/health`, `GET /s/<id>` (the shell's `index.html` with the link's Open Graph and Twitter meta written in), `GET /s/<id>/preview.jpg`. |
+| What it holds | Per link: the **sealed** app package (AES-GCM, ≤ 2 MiB). The key is in the link's fragment and never reaches the service. Beside it, what the sharer's device made public for the preview: a title (the app's name), one line, a language, and a 1200×630 JPEG or PNG of ≤ 300 KB drawn from **demo** records. It also keeps the sha256 of the token that takes the link down. For a link the operator took down: only the time and the reason. |
 | Checks | Body size before parsing, then each part. The picture is checked by its first bytes (JPEG/PNG only). Meta text is cleaned and capped, and HTML-escaped where it goes into the page. Ids are 128 random bits. |
-| Rate limit | 30 links a day per address (the first `X-Forwarded-For` entry), in memory. |
+| Limits | Per address and per day, in memory: 30 links made, 300 packages fetched, 2000 link pages and pictures; an IPv6 /48 eight times that. For the whole service: 2 GB of new links a day, and none while the disk would have under 1 GB free ([below](#limits-per-address)). |
 | Pages | `noindex, nofollow` (header and meta). A link is for whoever it was sent to. |
 | It never | runs app code or reads a package. It has no accounts and no list of links. |
 
@@ -781,6 +839,8 @@ docker run -d --name potyro-share-links --restart unless-stopped \
   -e HOST=0.0.0.0 -e PORT=4203 \
   -e POTYRO_SHARES_DIR=/data -e POTYRO_SHELL_INDEX=/site/index.html \
   -e POTYRO_PUBLIC_ORIGIN=https://apps.vaz.io \
+  -e TRUST_PROXY=caddy \
+  --env-file /etc/potyro/share-links.env \
   -v /opt/potyro-share-links:/app:ro -v /var/lib/potyro/shares:/data -v /var/www/karta:/site:ro -w /app \
   node:22-bookworm \
   node --experimental-strip-types src/server.ts
@@ -789,6 +849,22 @@ docker logs potyro-share-links   # "[share-links] keeping shares in /data, page 
 
 `POTYRO_PUBLIC_ORIGIN` is what preview URLs are built on. Crawlers need absolute `https://` URLs,
 and Apache does not tell the service which scheme it was reached by.
+
+`/etc/potyro/share-links.env` (mode 600, owned by root) holds the one secret,
+`SHARE_ADMIN_TOKEN=…` (made with `openssl rand -base64 33`), and the report address: a line
+`SHARE_ABUSE_CONTACT=` with the real address the terms name after it (the same one as `abuse` in
+`packages/shell/src/contacts.json`). Until it is set — or while it is still a placeholder like
+`<ABUSE EMAIL>`, which the service says in its log at start — a taken-down link's page names
+`contact@potyro.com`. The token is the operator's token for taking a
+link down over HTTPS ([below](#taking-a-link-down)); at least 32 characters, or the service will not
+start. Leave it out and the takedown route does not exist; links are then taken down on the server
+itself. It is in a file, not on the command line, so it is not in `ps`, the shell's history or
+`docker inspect`'s `Cmd`. The service never logs it.
+
+`TRUST_PROXY=caddy` (the default) believes the LAST `X-Forwarded-For` entry: Caddy writes it, and so
+does Apache's `mod_proxy`, which appends the peer it saw. Anything before it is what the client sent.
+`none` ignores the header (a service reached directly). The rule and its test are the AI relay's
+(`packages/share-links/src/address.ts` is a copy of `packages/ai-relay/src/address.ts`).
 
 ### 2. Route it, before the SPA rule
 
@@ -834,15 +910,99 @@ sheet should not say "without a preview picture". Check:
 - The image URL answers `image/jpeg`.
 - Pasting the link into a chat shows the card, once the gate allows it (§3).
 
-**Taking a link down** (a notice, a takedown, or the sharer's own request):
-`sudo rm -rf /var/lib/potyro/shares/<first two characters of id>/<id>`. The page then still loads
-the shell, which tells the person the link no longer works. The sharer's device keeps each link's
-delete token (`potyro:shares`); `DELETE /share-api/shares/<id>` with `x-delete-token` does the same.
-Before opening this to the public, see the research note on the DSA (a hosting service must have a
-notice-and-action path). The folder and the `rm` above are that path's mechanism, not the whole of it.
-
 **Disk:** links are never expired. Budget about 20–60 KB per link (sealed package + picture);
-`du -sh /var/lib/potyro/shares` to watch it.
+`du -sh /var/lib/potyro/shares` to watch it. No more than 2 GB of new links a day are kept, and none
+while the disk would have under 1 GB free ([Limits per address](#limits-per-address)).
+
+### Taking a link down
+
+For a notice about illegal content (the terms' "Reporting illegal content", to the report address),
+or anything else the terms say may be removed. **Who may run it:** the operator — whoever holds
+`SHARE_ADMIN_TOKEN` or a shell on the server. Today that is the owner, alone. Say why every time:
+the reason is kept with the takedown, with no end date. Keep it to what was decided and why (the
+notice's date, the rule or law); the reporter's name and address stay in the mail, not here.
+
+From anywhere, over HTTPS (Node 18 or later; a whole link is fine, its key after `#` is never sent).
+Paste the token at the silent prompt, so it is in neither the screen nor the shell's history. The
+script sends it only to an `https://` site (or to this machine):
+
+```bash
+read -rs SHARE_ADMIN_TOKEN && export SHARE_ADMIN_TOKEN
+node packages/share-links/scripts/takedown.mjs \
+  'https://potyro.app/s/<id>#k=…' --reason "notice of 2026-11-02 from …: …" --site https://potyro.app
+# Taken down: <id>. The link now answers 410.
+unset SHARE_ADMIN_TOKEN
+```
+
+On the server, straight into the shares folder (no token needed):
+
+```bash
+docker exec potyro-share-links node --experimental-strip-types scripts/takedown.mjs <id> --reason "…" --dir /data
+```
+
+Both do the same: `taken-down.json` (the time and the reason) is written into the link's folder
+first, then its `meta.json`, `payload.bin` and `preview` are removed. From then on:
+
+- `GET /s/<id>` answers **410** with a page that is not the shell: "This link was taken down. The
+  app behind it was removed from Potyro. If you think this was a mistake, write to
+  `SHARE_ABUSE_CONTACT`." — in the visitor's language (English, Portuguese, German, Spanish, Italian,
+  Polish), with no script and nothing of the link: no title, no picture, no preview tags. Without
+  `SHARE_ABUSE_CONTACT` (or with a placeholder in it) it names `contact@potyro.com`.
+- The package and the picture answer 410 too, and the sharer's own `DELETE` answers 410: it cannot
+  bring the link back or turn it into a 404.
+- Where the shell itself opens the link instead of this page (a shell already running, a build
+  whose pages are on the device), it gets the 410 from the package, and its splash says the link
+  was taken down and where to write. No device answers either from its own cache: the service
+  worker never serves `/s/…` or `/share-api/…` from its cache. That rule comes with the PWA work
+  (`packages/shell/public/sw.js`), which this needs: until it is in, a device that opened the link
+  before can keep opening the package it kept.
+
+Check: `curl -s -o /dev/null -w '%{http_code}' https://potyro.app/s/<id>` → `410`. The record:
+`cat /var/lib/potyro/shares/<first two characters of id>/<id>/taken-down.json`.
+
+What it cannot reach: a chat app that already drew the link's card keeps its own copy of the
+picture and title; the service now serves the picture with `max-age=3600`, so browsers and caches
+that obey it let go within the hour. There are no accounts, so the sharer is not told
+(docs/legal/terms.md says so). A link its sharer removed (the delete token kept on their device,
+`potyro:shares`) answers 404 instead: nothing is kept of it.
+
+The takedown is the mechanism; the notice-and-action path around it (reading the report, deciding,
+answering the reporter) is the operator's, and the DSA note on it still applies.
+
+### Limits per address
+
+Each address (an IPv6 address counts as its /64: one home or phone is usually given a whole /64)
+gets, per calendar day in UTC, in memory. An IPv6 /48 is counted as well, at eight times each
+limit for all its /64s together: a household is often given a /56 and a server a /48, which would
+otherwise be hundreds or thousands of "addresses".
+
+| What | Default | Env | Code when it is reached |
+|---|---|---|---|
+| Links made (`POST /share-api/shares`; a malformed one does not count) | 30 | `SHARE_CREATE_PER_ADDRESS_DAY` | `too-many-links` |
+| Packages fetched (`GET …/payload`, up to 2 MiB each: one per demo opened) | 300 | `SHARE_PAYLOAD_PER_ADDRESS_DAY` | `too-many-opens` |
+| Link pages and preview pictures (`GET /s/…`, which chat apps fetch for their cards) | 2000 | `SHARE_PAGE_PER_ADDRESS_DAY` | `too-many-pages` |
+| Takedowns with a wrong operator token | 10 | — | `too-many-tries` |
+
+A refusal is `429` with `retry-after` (seconds to midnight UTC) and JSON:
+`{"ok":false,"code":"too-many-opens","error":"Too many apps were opened from this address today. Try again tomorrow."}`.
+The shell says it in the person's language — "Too many apps were opened from this network today.
+Try again tomorrow, or on another network." — with Try again. A link's own page (`GET /s/<id>`),
+which a person opened in a browser, is not JSON: it is a short page in their language, with no
+script, saying how many hours until they can try again. An address out of wrong-token tries is
+refused whatever token it sends, the right one too: the limit is on guesses, not on error messages.
+
+For the whole service, from every address together:
+
+| What | Default | Env | Code when it is reached |
+|---|---|---|---|
+| Bytes of new links (package + picture) kept a day | 2 000 000 000 | `SHARE_STORED_BYTES_DAY` | `full-today` (503, `retry-after` to midnight UTC) |
+| Free disk left after a new link, at least | 1 000 000 000 | `SHARE_MIN_FREE_BYTES` | `no-room` (503, `retry-after: 3600`) |
+
+Either says so in the service's log, at most once an hour. Links already made keep opening; only
+new ones are refused, and the sharer's device then makes the link that carries the app itself.
+`/share-api/health` is never limited. At most 100 000 addresses are counted at once; past that the
+one counted longest ago starts its day again. A restart starts every count again. The pages limit is
+high on purpose: one chat service's crawler fetches the cards of everyone who pastes a link there.
 
 ## Rooms for multiplayer apps (docs/26): deployed
 
@@ -1106,6 +1266,9 @@ Be straight with anyone you invite:
   not claim "we can see nothing" — it is not true yet.
 - **No quotas, no metering, no abuse controls.** The log grows with every edit and nothing compacts
   it (KA-30). A chatty pair can out-transaction the app's own data, permanently, on your disk.
+  (The share service has per-address limits a day, [Limits per address](#limits-per-address); the
+  relay has none.) Erasing a space is by hand, with its limits:
+  [Erasing a space or an account from the relay](#erasing-a-space-or-an-account-from-the-relay-119).
 - **Anyone with a share link is in.** The invite secret is the whole capability; there is no second
   factor and no way to revoke one link short of rotating the space's keys (KA-17).
 - **The first load is ~2.1 MB gzipped.** Not a security issue, but it is what a phone on mobile data

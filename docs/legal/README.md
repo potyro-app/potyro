@@ -17,7 +17,10 @@ review are HTML comments (`<!-- -->`), so they do not show when the page is serv
 ## Placeholders
 
 `Edgar Zanella Alvarenga`, `<CONTACT EMAIL>`, `<ABUSE EMAIL>`, `<DATE>` (the date each text takes effect) and
-`<RETENTION, to decide>` (how long emails are kept). The hosting location reads "Germany or
+`<RETENTION, to decide>` (how long emails are kept). `<ABUSE EMAIL>` is also `abuse` in
+`packages/shell/src/contacts.json` (the app's and the gallery's "Report") and the share service's
+`SHARE_ABUSE_CONTACT` (the page of a link taken down; until it is set, that page names
+`contact@potyro.com`): fill in all three together. The hosting location reads "Germany or
 Finland, to confirm" (facts.md F-58: the address looks like Hetzner's Helsinki cloud).
 
 ## Where they will be served
