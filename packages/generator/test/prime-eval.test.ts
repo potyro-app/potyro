@@ -29,7 +29,8 @@ describe("priming in other languages (#306 follow-up)", () => {
   it("primes every modify request in every language, sharing much of what English primes", () => {
     const p = primeParity(CORPUS, modify, EVAL_LANGUAGES);
     expect(p.primed).toEqual({ en: modify.length, pl: modify.length, "pt-BR": modify.length });
-    // Measured at build: pl 26/50, pt-BR 18/50 (before: 9 and 11).
+    // Measured at build (32-file corpus): pl 26/50, pt-BR 18/50 (before: 9 and 11). On main's 139 files,
+    // 2026-10-31: pl 18/50, pt-BR 21/50; the pl floor fails (see PR #320: the yardstick moved).
     expect(p.shared.pl / p.enPassages).toBeGreaterThanOrEqual(0.45);
     expect(p.shared["pt-BR"] / p.enPassages).toBeGreaterThanOrEqual(0.3);
   });
@@ -38,7 +39,7 @@ describe("priming in other languages (#306 follow-up)", () => {
     const p = primeParity(CORPUS, create, EVAL_LANGUAGES);
     expect(p.primed.pl).toBeGreaterThanOrEqual(create.length - 2);
     expect(p.primed["pt-BR"]).toBe(create.length);
-    // Measured at build: pl 34/96, pt-BR 32/96 (before: 25 and 18).
+    // Measured at build: pl 34/96, pt-BR 32/96 (before: 25 and 18). 2026-10-31, 60 prompts: pl 52/120, pt-BR 36/120.
     expect(p.shared.pl / p.enPassages).toBeGreaterThanOrEqual(0.3);
     expect(p.shared["pt-BR"] / p.enPassages).toBeGreaterThanOrEqual(0.3);
   });
