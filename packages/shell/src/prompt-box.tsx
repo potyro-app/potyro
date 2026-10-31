@@ -21,12 +21,14 @@ export interface PromptBoxProps {
   compact?: boolean;
   /** Focus the box when it appears (not on a phone, where the keyboard would cover the apps). */
   autoFocus?: boolean;
+  /** What the box starts with: words the person typed before, and kept (kept-idea.ts). */
+  initial?: string;
 }
 
-export function PromptBox({ sendLabel, onSend, examples = [], compact = false, autoFocus = false }: PromptBoxProps) {
+export function PromptBox({ sendLabel, onSend, examples = [], compact = false, autoFocus = false, initial = "" }: PromptBoxProps) {
   const { t } = useLingui();
   const id = useId();
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initial);
   const send = (): void => onSend(text.trim());
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -39,7 +41,7 @@ export function PromptBox({ sendLabel, onSend, examples = [], compact = false, a
       <label className="k-prompt-label" htmlFor={id}>
         {t({ message: "Describe your app", comment: "The label over the prompt box" })}
       </label>
-      <div className="k-prompt-field">
+      <div className="k-prompt-field" data-filled={text ? true : undefined}>
         <textarea
           id={id}
           className="k-prompt-box"
