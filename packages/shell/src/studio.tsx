@@ -925,7 +925,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               onFix={() => void fixHeld()}
               onKeep={() => void keepHeld()}
               onLook={() => setPreviewOpen(true)}
-              onSuggest={(s) => setDescription(s)}
+              onSuggest={noWay ? undefined : (s) => setDescription(s)}
               existing={hasApp}
               remix={remix}
               requests={requests}
@@ -935,7 +935,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         </div>
 
         <footer className="k-composer">
-          {noWay ? <FreePanel free={free} onAddKey={() => setSettingsOpen(true)} ownKey={ownKey} /> : null}
+          {noWay ? <FreePanel free={free} onAddKey={() => setSettingsOpen(true)} ownKey={ownKey} request={description} /> : null}
           {noWay ? null : <VoiceStrip voice={voice} />}
           <div className="k-composer-box" hidden={noWay} data-pointed={point ? true : undefined} data-listening={listening || undefined}>
             {point ? (
