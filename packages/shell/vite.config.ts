@@ -17,6 +17,8 @@ import { memoryShareStore } from "../share-links/src/store.ts";
 import { LIMITS as SHARE_LIMITS } from "../share-links/src/wire.ts";
 import { FACES_DIR, FACES_MODEL, FACES_RUNTIME } from "./src/faces/faces-assets.ts";
 import { stampServiceWorker } from "./src/sw-stamp.ts";
+// The privacy page and the terms of use (#117): plain .mjs, read by the gallery's build too.
+import { legalPagesPlugin } from "../legal/src/vite.mjs";
 
 /**
  * The shell's own CSP (#272, docs/22 §3.2): it embeds no frame that fetches, so `frame-src 'none'`.
@@ -321,7 +323,9 @@ export default defineConfig({
   // (packages/i18n/build.mjs). `precacheCatalogs` tells the service worker which chunks are languages.
   // `realmWorkerPlugin` serves the realm's worker runtime as `virtual:potyro-realm-worker` (#272), and
   // `realmViewPlugin` the sealed custom views' frame runtime as `virtual:potyro-realm-view` (#267).
-  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), precacheShell(), claudeCliPlugin(), realmWorkerPlugin(), realmViewPlugin(), shareLinksPlugin(), facesAssets()],
+  // `legalPagesPlugin` serves and emits /privacy and /terms from docs/legal, and sets
+  // `import.meta.env.VITE_POTYRO_LEGAL` — only while no text there waits for its placeholders (#117).
+  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), precacheShell(), claudeCliPlugin(), realmWorkerPlugin(), realmViewPlugin(), shareLinksPlugin(), facesAssets(), legalPagesPlugin()],
   // The browser suite's parallel shards each start their own dev servers from this one checkout
   // (docs/16 §8). Each shard gets its own dependency cache, so one server re-optimising never
   // rewrites the `deps` another is serving from. Unset: Vite's default, `node_modules/.vite`.

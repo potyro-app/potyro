@@ -135,8 +135,11 @@ export interface AiCap {
   complete(call: AiCall): Promise<AiReply>; // throws words for the person: offline, off, nobody pays
   standing?(): "on" | "off" | undefined;    // this app's answer on this device
   allow?(): void;
-  consentWords?(appName: string, sends: "photo" | "text"): AiConsentWords | Promise<AiConsentWords>; // { message; detail; ok; cancel }, saying who pays now
+  consentWords?(appName: string, sends: "photo" | "text"): AiConsentWords | Promise<AiConsentWords>; // { message; detail; ok; cancel; privacy? }, saying who pays now
 }
+// `privacy?: "ai" | "voice"` (PrivacyTopic): the section of Potyro's privacy page the question links (#117).
+// The host passes it to `UiBridge.confirm(msg, { …, privacy })`; `ctx.ui.confirm` builds its options
+// field by field, so an app's own question never carries one.
 export interface CameraCap { capture(o?: { source?: "camera"|"library" }): Promise<Blob>; }
 export interface LiveCameraCap {
   start(o?: LiveCameraOptions): Promise<LiveCamera>;   // LiveCamera is the app-facing handle (docs/04)

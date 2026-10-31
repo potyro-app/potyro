@@ -369,6 +369,8 @@ export function createAppAi(deps: AppAiDeps): AiCap {
         detail: `${what} ${pays}`,
         ok: t({ message: "Allow", comment: "Button: let a shared app use AI" }),
         cancel: t({ message: "Not now", comment: "Button: refuse a shared app's AI request this time" }),
+        // The question links the privacy page's AI section, when this build has the page (#117).
+        privacy: "ai",
       };
     },
   };

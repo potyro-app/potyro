@@ -19,6 +19,8 @@ interface ImportMetaEnv {
   readonly VITE_POTYRO_MOVE_ORIGINS?: string;
   /** Where Potyro's gallery is (gallery-link.ts). Default `https://potyro.com/`. */
   readonly VITE_POTYRO_GALLERY?: string;
+  /** "1" when this build has /privacy and /terms (set by packages/legal/src/vite.mjs, never by hand): the app links them. */
+  readonly VITE_POTYRO_LEGAL?: string;
 }
 interface ImportMeta {
   readonly env: ImportMetaEnv;

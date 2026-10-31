@@ -527,6 +527,8 @@ importers:
         specifier: ^6.2.5
         version: 6.2.5
 
+  packages/legal: {}
+
   packages/native:
     dependencies:
       '@capacitor/app':

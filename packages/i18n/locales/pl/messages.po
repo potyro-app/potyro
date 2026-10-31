@@ -1591,8 +1591,8 @@ msgid "Any server that speaks the OpenAI chat API: OpenAI, Ollama, LM Studio and
 msgstr "Każdy serwer, który obsługuje API czatu OpenAI: OpenAI, Ollama, LM Studio i inne. Podaj jego adres, klucz, jeśli go wymaga, i model."
 
 #: ../shell/src/backup-switch.tsx
-msgid "Anything you make later goes too. The relay only ever sees encrypted data."
-msgstr "Wszystko, co zrobisz później, też tam trafi. Przekaźnik widzi zawsze tylko zaszyfrowane dane."
+msgid "Anything you make later goes too."
+msgstr "Wszystko, co zrobisz później, też tam trafi."
 
 #: ../shell/src/ask-sources-panel.tsx
 msgid "API address"
@@ -3615,10 +3615,20 @@ msgstr "Jak mocno myśli"
 msgid "how it was made, as shared by its author"
 msgstr "jak została zrobiona, tak jak udostępnił to autor"
 
+#. Studio request card: link to the privacy page's section on requests
+#: ../shell/src/platform-request-card.tsx
+msgid "How requests are kept, and how to remove one"
+msgstr "Jak przechowywane są prośby i jak usunąć jedną z nich"
+
 #. Better-wording form: the box for the person's own wording
 #: ../shell/src/suggest-wording.tsx
 msgid "How should it read?"
 msgstr "Jak powinno brzmieć?"
+
+#. Better-wording form: link to the privacy page's section on requests and suggestions
+#: ../shell/src/suggest-wording.tsx
+msgid "How suggestions are kept, and how to remove one"
+msgstr "Jak przechowywane są propozycje i jak usunąć jedną z nich"
 
 #: ../shell/src/platform-request-card.tsx
 msgid "How your app is put together"
@@ -3844,10 +3854,6 @@ msgstr "Rysuje własne ekrany, w zamkniętym pudełku: stamtąd sięgają do two
 msgid "It goes from {appName} for good. Anything in the app that uses it will no longer find it."
 msgstr "Zniknie z {appName} na zawsze. To, co w aplikacji go używa, już go nie znajdzie."
 
-#: ../shell/src/platform-request-card.tsx
-msgid "It goes on a public list of requests the Potyro team reads, without your name. No account needed."
-msgstr "Trafi na publiczną listę próśb, którą czyta zespół Potyro, bez twojego imienia. Konto nie jest potrzebne."
-
 #: ../shell/src/studio.tsx
 msgid "It goes when you save the code. Anything that imports it stops working until that import goes too."
 msgstr "Zniknie, gdy zapiszesz kod. To, co go importuje, przestanie działać, dopóki ten import też nie zniknie."
@@ -3863,6 +3869,10 @@ msgstr "Ma {size}. {appName} jest udostępniona, więc każdy w niej może pobra
 #: ../shell/src/add-app-dialog.tsx
 msgid "It is already here"
 msgstr "Już tu jest"
+
+#: ../shell/src/platform-request-card.tsx
+msgid "It is posted publicly on GitHub, where anyone can read it, without your name."
+msgstr "Zostanie opublikowana na GitHubie, gdzie każdy może ją przeczytać, bez twojego imienia."
 
 #: ../shell/src/data-table.tsx
 msgid "It is removed from the app too, and can’t be brought back."
@@ -5212,10 +5222,10 @@ msgstr "Tylko osoba, która to dodała, może to zmienić."
 msgid "Only the person who created this app can invite or remove people."
 msgstr "Tylko osoba, która utworzyła tę aplikację, może zapraszać i usuwać ludzi."
 
-#. Better-wording form: what is sent
+#. Better-wording form: what is sent, and that it is posted publicly on GitHub
 #: ../shell/src/suggest-wording.tsx
-msgid "Only these words and yours are sent to the Potyro team — nothing about you or your apps."
-msgstr "Do zespołu Potyro trafią tylko te słowa i twoja propozycja — nic o tobie ani o twoich aplikacjach."
+msgid "Only these words and yours go, posted publicly on GitHub. Nothing about you or your apps goes with them."
+msgstr "Wysyłane są tylko te słowa i twoje, publicznie na GitHubie. Nic o tobie ani twoich aplikacjach nie idzie razem z nimi."
 
 #: ../shell/src/app-ai.ts
 msgid "Only what the app sends goes: this photo and its question — nothing else in the app."
@@ -5537,6 +5547,16 @@ msgstr "Poprzednia generacja, do testu regresji"
 #: ../views/src/date-input.tsx
 msgid "Previous month"
 msgstr "Poprzedni miesiąc"
+
+#. Link to Potyro's privacy page
+#: ../shell/src/legal-links.tsx
+msgid "Privacy"
+msgstr "Prywatność"
+
+#. The links to Potyro's privacy page and terms of use
+#: ../shell/src/legal-links.tsx
+msgid "Privacy and terms"
+msgstr "Prywatność i warunki"
 
 #. Studio: share the app by a link
 #: ../shell/src/studio.tsx
@@ -6592,12 +6612,12 @@ msgid "Synced"
 msgstr "Zsynchronizowano"
 
 #: ../shell/src/identity-panel.tsx
-msgid "Synced apps meet through this site’s relay. It only ever sees encrypted data — it cannot read your records."
-msgstr "Zsynchronizowane aplikacje spotykają się przez przekaźnik tej witryny. Widzi on zawsze tylko zaszyfrowane dane — nie może czytać twoich wpisów."
+msgid "Synced apps meet through this site’s relay. It cannot read your records: they are encrypted on this device first."
+msgstr "Zsynchronizowane aplikacje spotykają się przez przekaźnik tej witryny. Nie może on czytać twoich wpisów: najpierw są szyfrowane na tym urządzeniu."
 
 #: ../shell/src/identity-panel.tsx
-msgid "Synced apps meet through your own relay. It only ever sees encrypted data — it cannot read your records."
-msgstr "Zsynchronizowane aplikacje spotykają się przez twój własny przekaźnik. Widzi on zawsze tylko zaszyfrowane dane — nie może czytać twoich wpisów."
+msgid "Synced apps meet through your own relay. It cannot read your records: they are encrypted on this device first."
+msgstr "Zsynchronizowane aplikacje spotykają się przez twój własny przekaźnik. Nie może on czytać twoich wpisów: najpierw są szyfrowane na tym urządzeniu."
 
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher-metro.tsx
@@ -6679,6 +6699,11 @@ msgstr "Dotknij części, o którą ci chodzi"
 #: ../shell/src/demo.tsx
 msgid "Tell the Potyro team about this link, if you think it is illegal"
 msgstr "Powiadom zespół Potyro o tym linku, jeśli uważasz, że jest nielegalny"
+
+#. Link to Potyro's terms of use
+#: ../shell/src/legal-links.tsx
+msgid "Terms of use"
+msgstr "Warunki korzystania"
 
 #: ../shell/src/endpoint-settings.tsx
 msgid "Test connection"
@@ -6839,8 +6864,8 @@ msgid "The app's source"
 msgstr "Kod źródłowy aplikacji"
 
 #: ../shell/src/backup-switch.tsx
-msgid "The apps already there stay there — this is not a delete. Turn sync off for an app individually to take it back off the relay."
-msgstr "Aplikacje, które już tam są, zostają — to nie jest usuwanie. Wyłącz synchronizację dla pojedynczej aplikacji, aby zdjąć ją z przekaźnika."
+msgid "The apps already there stay there. This deletes nothing, and neither does turning sync off for one app."
+msgstr "Aplikacje, które już tam są, zostają. To niczego nie usuwa, wyłączenie synchronizacji jednej aplikacji też nie."
 
 #: ../shell/src/share-sheet.tsx
 msgid "The clip could not be recorded: {why}"
@@ -7891,6 +7916,11 @@ msgstr "Wyszukiwanie w sieci nie wchodzi w darmowe tworzenie aplikacji. Wyłącz
 msgid "went back to version {seq}"
 msgstr "powrót do wersji {seq}"
 
+#. Share sheet: link to the privacy page's section on demo links
+#: ../shell/src/share-sheet.tsx
+msgid "What a link makes public, and for how long"
+msgstr "Co link upublicznia i na jak długo"
+
 #: ../shell/src/guests-panel.tsx
 msgid "What about {name}?"
 msgstr "Co z {name}?"
@@ -7912,6 +7942,11 @@ msgstr "Nie udało się odczytać tego, co dotarło."
 msgid "What arrived is not what you were shown, so none of it was brought in."
 msgstr "To, co dotarło, nie jest tym, co ci pokazano, więc nic nie zostało przeniesione."
 
+#. Link under the backup switch to the privacy page's section on sync and backup
+#: ../shell/src/backup-switch.tsx
+msgid "What backup keeps on Potyro’s server"
+msgstr "Co kopia zapasowa trzyma na serwerze Potyro"
+
 #: ../shell/src/studio.tsx
 msgid ""
 "What came back has problems, so it was not saved:\n"
@@ -7919,6 +7954,11 @@ msgid ""
 msgstr ""
 "To, co wróciło, ma problemy, więc nie zostało zapisane:\n"
 "- {problems}"
+
+#. Link in a question about removing data: the privacy page's section on what can be deleted
+#: ../shell/src/dialog.tsx
+msgid "What can be deleted, and how"
+msgstr "Co można usunąć i jak"
 
 #: ../shell/src/people-panel.tsx
 msgid "What can they do?"
@@ -7939,6 +7979,14 @@ msgstr "Co miało się stać?"
 msgid "What happened"
 msgstr "Co się stało"
 
+#: ../shell/src/backup-switch.tsx
+msgid "What is in your apps is encrypted on this device, so Potyro’s server cannot read it. Your name and who you share with can be seen there."
+msgstr "To, co jest w twoich aplikacjach, jest szyfrowane na tym urządzeniu, więc serwer Potyro nie może tego przeczytać. Twoje imię i to, z kim się dzielisz, są tam widoczne."
+
+#: ../shell/src/backup-switch.tsx
+msgid "What is in your apps is encrypted on this device, so the server you chose cannot read it. Your name and who you share with can be seen there."
+msgstr "To, co jest w twoich aplikacjach, jest szyfrowane na tym urządzeniu, więc wybrany przez ciebie serwer nie może tego przeczytać. Twoje imię i to, z kim się dzielisz, są tam widoczne."
+
 #. Under the question asking for a home device's address; the field below takes it
 #: ../shell/src/app-sockets.ts
 msgid "What is the device’s address? For example 192.168.1.20 or homeassistant.local — it is in the device’s own settings or app."
@@ -7947,6 +7995,21 @@ msgstr "Jaki jest adres urządzenia? Na przykład 192.168.1.20 albo homeassistan
 #: ../shell/src/trust-dialog.tsx
 msgid "what it asks for cannot be read without running it"
 msgstr "tego, o co prosi, nie da się odczytać bez uruchomienia"
+
+#. Model settings: link to the privacy page's section on the Studio's models
+#: ../shell/src/engine-settings.tsx
+msgid "What leaves your device with each choice"
+msgstr "Co opuszcza twoje urządzenie przy każdym wyborze"
+
+#. Link in a question about keeping apps on Potyro's server: the privacy page's section on it
+#: ../shell/src/dialog.tsx
+msgid "What Potyro’s server keeps"
+msgstr "Co trzyma serwer Potyro"
+
+#. Share sheet, Use it together: link to the privacy page's section on sync and sharing
+#: ../shell/src/share-sheet.tsx
+msgid "What sharing keeps on Potyro’s server"
+msgstr "Co udostępnianie trzyma na serwerze Potyro"
 
 #: ../shell/src/studio.tsx
 msgid "What should be different about it?"
@@ -8004,6 +8067,11 @@ msgstr "Najpierw to, co otwierasz często i ostatnio"
 msgid "When a change keeps being turned back, the next try thinks hard. It costs more only on changes that were going badly."
 msgstr "Gdy zmiana wciąż jest cofana, następna próba myśli mocno. Kosztuje więcej tylko przy zmianach, które szły źle."
 
+#. Link in the question before an app first uses AI: the privacy page's section on it
+#: ../shell/src/dialog.tsx
+msgid "Where AI requests go, and what is kept"
+msgstr "Dokąd trafiają prośby do AI i co jest przechowywane"
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "Where it comes from"
 msgstr "Skąd pochodzi"
@@ -8019,6 +8087,11 @@ msgstr "Gdzie ta aplikacja może pozostać połączona, gdy jest otwarta. Wyłą
 #: ../shell/src/ask-review-parts.tsx
 msgid "Where this was found"
 msgstr "Gdzie to znaleziono"
+
+#. Link in the question before an app first listens: the privacy page's section on voice
+#: ../shell/src/dialog.tsx
+msgid "Where what you say goes"
+msgstr "Dokąd trafia to, co mówisz"
 
 #: ../shell/src/engine-settings.tsx
 msgid "Which model writes and edits your app. Keys stay in this tab unless you ask this device to remember one."
