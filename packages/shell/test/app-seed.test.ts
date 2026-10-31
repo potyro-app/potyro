@@ -2,12 +2,12 @@
 //
 // An app's sample records (#486): fitted at the point of USE — a demo link, a package, a demo opening —
 // against the definition at hand, by the rule the store's write gate holds every record to; never
-// narrowed where they are kept, so a later version or a History rollback never loses one. Nothing of
-// the person's records is one.
+// narrowed where they are kept, so a later version or a History rollback never loses one. A Studio
+// app's are the model's sample records, checked row by row; nothing of the person's records is one.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EntityDef } from "potyro";
 import { MemoryStore, readAppPackage } from "@potyro/store";
-import { seedThatFits, type AppSeed } from "../src/app-seed.js";
+import { sampleSeed, seedThatFits, type AppSeed } from "../src/app-seed.js";
 import { shippedPackage } from "../src/app-folder.js";
 
 // History's store is the one thing that cannot run headlessly (app-history.test.ts).
@@ -103,6 +103,40 @@ describe("a seed fitted to the app as it is now", () => {
     const entities = { log: { label: "Log", fields: { sets: { type: "list", of: { reps: { type: "number" }, photo: { type: "media" } } } } } } as never;
     const rows = { log: [{ id: "l1", sets: [{ reps: 5, photo: { file: "a.webp" } }] }, { id: "l2", sets: [{ reps: "five" }] }] };
     expect(seedThatFits(rows, entities)).toEqual({ log: [rows.log[0]] });
+  });
+});
+
+describe("a Studio app's sample records, from the model's reply", () => {
+  const reply = {
+    plant: [
+      { id: "plant-1", name: "Monstera by the window", light: "shade", photo: "https://example.com/m.jpg" },
+      { id: "plant-2", name: "Lemon tree", light: "sun" },
+      { id: "plant-3", name: "Basil", light: "full sun" },
+    ],
+    watering: [{ id: "watering-1", plant: "plant-3", amount: 2 }],
+    nonsense: [{ x: 1 }],
+  };
+
+  it("keeps the rows that fit, drops the ones that do not — and what the model cannot know (a photo)", () => {
+    expect(sampleSeed(reply, plants())).toEqual({
+      plant: [
+        { id: "plant-1", name: "Monstera by the window", light: "shade" },
+        { id: "plant-2", name: "Lemon tree", light: "sun" },
+      ],
+      // Its plant was not a record that fits: the reference goes, the watering stays.
+      watering: [{ id: "watering-1", amount: 2 }],
+    });
+  });
+
+  it("is none when fewer than two rows fit: the app opens on an empty copy", () => {
+    // One of the two fits: not enough to show what the app is for.
+    expect(sampleSeed({ plant: [{ id: "plant-1", name: "Basil", light: "full sun" }, { id: "plant-2", name: "Fig" }] }, plants())).toBeUndefined();
+    expect(sampleSeed({ plant: [{ name: "Fig" }, { name: "Olive" }] }, plants())).toEqual({ plant: [{ name: "Fig" }, { name: "Olive" }] });
+  });
+
+  it("is none for a reply that is not rows", () => {
+    for (const bad of [null, "Monstera", [{ name: "Fig" }], { plant: "Fig" }, { plant: [1, 2, "x"] }]) expect(sampleSeed(bad, plants())).toBeUndefined();
+    expect(sampleSeed(reply, undefined)).toBeUndefined();
   });
 });
 

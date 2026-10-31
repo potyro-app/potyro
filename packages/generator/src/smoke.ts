@@ -169,11 +169,6 @@ export interface SmokeOptions {
    * page for real anyway — the Studio does (#262), with effects, in a DOM.
    */
   customViews?: boolean;
-  /**
-   * Called once every sample record is in, before any of the app's logic runs on them — what a caller
-   * keeps of them (the Studio keeps a new app's as its demo records, #486). Not called when seeding failed.
-   */
-  onSeeded?: () => Promise<void> | void;
 }
 
 /**
@@ -222,7 +217,6 @@ async function smokeSteps(app: AppDefinition & { id: string }, runtime: PotyroRu
   ran.records = seedOut.records;
   errors.push(...seedOut.errors);
   seededAll();
-  if (seeded && !seedOut.errors.length) await opts.onSeeded?.();
 
   // ---- computed: resolving a record runs every computed on it ----
   const samples: Record<string, Resolved[]> = {};
