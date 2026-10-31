@@ -115,11 +115,11 @@ test("used up: the relay's refusal opens the panel, and Start from an app opens 
   expect(counts.map((c) => c.body)).toEqual([{ event: "want-plan" }]);
   expect(counts[0]!.authorization).toBeUndefined();
 
-  // Start from an app: the gallery, beside Potyro; its Make it mine opens the app as your own copy.
-  const opened = context.waitForEvent("page");
+  // Start from an app: the gallery, in this tab (#487); its Make it mine opens the app as your own copy.
   await panel.getByRole("link", { name: "Start from an app in the gallery" }).click();
-  const gallery = await opened;
+  const gallery = page;
   await expect(gallery).toHaveURL(/^https:\/\/potyro\.com\//);
+  expect(context.pages()).toHaveLength(1);
   await gallery.getByRole("link", { name: "Make it mine" }).click();
   const card = gallery.getByRole("dialog", { name: "Make it mine" });
   await expect(card.getByRole("heading", { name: "Groceries" })).toBeVisible({ timeout: 30_000 });
