@@ -207,3 +207,37 @@ test("#489 with the app open, the Studio's Close is in reach, and nothing covere
   await expect(studio).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Watering", exact: true })).toBeVisible({ timeout: 30_000 });
 });
+
+test("#489 an app run from hand-written code before any app exists keeps a way back on its own bar", async ({ page, context }) => {
+  const cli = await noRealModel(context);
+  await page.addInitScript(() => localStorage.setItem("potyro:generator:engine", JSON.stringify({ engine: "cli" })));
+  await page.goto("/");
+  await page.locator(".k-launch-fab").tap();
+  await page.getByRole("menuitem", { name: /Describe a new app/ }).tap();
+  const studio = page.getByRole("dialog", { name: "App studio" });
+  await studio.getByRole("button", { name: "Studio menu" }).tap();
+  await page.getByRole("menuitem", { name: "Write the code yourself" }).tap();
+  const tools = page.getByRole("dialog", { name: "Code, files and history" });
+  await tools.getByRole("textbox", { name: "App source" }).fill(APP);
+  await tools.getByRole("button", { name: /Run/ }).tap();
+
+  const preview = studio.getByRole("region", { name: "App preview" });
+  await expect(preview.locator("h1").first()).toHaveText("Watering", { timeout: 30_000 });
+  await settled(studio);
+  // No app yet, so no tabs on the Studio's bar: the preview's own bar keeps the way back.
+  await expect(studio.locator(".k-studio-bar").getByRole("tab")).toHaveCount(0);
+  const back = preview.getByRole("button", { name: "Back to the chat" });
+  await expect(back).toBeVisible();
+  expect(await onTop(page, back)).toBe(true);
+  const b = (await back.boundingBox())!;
+  expect(b.height).toBeGreaterThanOrEqual(44);
+  expect(await coveredControls(studio)).toEqual([]);
+
+  await back.tap();
+  await expect(preview).toHaveCount(0);
+  const box = studio.getByRole("textbox", { name: "Describe the app" });
+  await expect(box).toBeVisible();
+  await box.focus();
+  await expect(box).toBeFocused();
+  expect(cli).toEqual([]);
+});

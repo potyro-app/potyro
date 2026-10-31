@@ -17559,7 +17559,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
     padding-top: var(--space-2);
   }
   /* No way back on this bar (the tabs above are it): the app's name starts it. */
-  .k-studio[data-preview] .k-preview-title {
+  .k-studio[data-preview] .k-preview[data-under-bar] .k-preview-title {
     justify-content: flex-start;
   }
 }

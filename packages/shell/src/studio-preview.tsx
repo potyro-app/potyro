@@ -163,8 +163,9 @@ export interface PreviewScreenProps {
   onPointCancel: () => void;
   onPicked: (pointed: Pointed) => void;
   /**
-   * On a phone the app stands under the Studio's bar, whose tabs (Conversation, App) are the way back
-   * (DESIGN.md §10): this bar then has no way back of its own.
+   * On a phone the app stands under the Studio's bar. When that bar shows the tabs (Conversation,
+   * App), they are the way back (DESIGN.md §10) and this bar has no way back of its own. When it
+   * does not — an app run from hand-written code before there is one — this bar keeps its own.
    */
   underStudioBar?: boolean;
   /** The quick adjustments above the app (DESIGN.md §10): its name, its colour. */
@@ -186,7 +187,7 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
   const def = preview.composed.runtime.definition;
   const promote = preview.sealed && onPromote ? onPromote : undefined;
   return (
-    <section className="k-preview" aria-label={t`App preview`} data-pointing={pointing || undefined}>
+    <section className="k-preview" aria-label={t`App preview`} data-pointing={pointing || undefined} data-under-bar={underStudioBar || undefined}>
       {pointing ? (
         // The bar says what the mode is and how to leave it — never the app's own controls.
         <header className="k-preview-bar k-point-bar" role="status">
