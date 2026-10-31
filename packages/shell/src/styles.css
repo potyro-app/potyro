@@ -6614,13 +6614,17 @@ button.k-file-name:focus-visible {
   width: 9.5rem;
   max-width: 45%;
 }
+/* The calendar: a Lucide icon in --ink-soft (DESIGN.md §3.5 — no emoji in the interface). */
 .k-date-open {
   flex: none;
+  display: grid;
+  place-items: center;
   width: 2.75rem;
   min-height: 2.75rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface);
+  color: var(--ink-soft);
   font-size: 1.1rem;
   cursor: pointer;
   transition: border-color var(--dur-fast) var(--ease);
@@ -7588,10 +7592,12 @@ body:has(.k-tabbar) .k-toasts {
   padding: clamp(1.5rem, 8vh, 5rem) 0 var(--space-4);
   animation: k-route-in var(--dur-slow) var(--ease);
 }
+/* A label, not a state: --muted as every eyebrow (§3.1 — a status colour is never decoration, and the
+   Studio's one colour is Potyro's rosa, §10). */
 .k-studio-empty .k-studio-eyebrow {
   display: block;
   margin: 0 0 var(--space-2);
-  color: var(--warn);
+  color: var(--muted);
 }
 .k-studio-hero {
   margin: 0 0 var(--space-3);
