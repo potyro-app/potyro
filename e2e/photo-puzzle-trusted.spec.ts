@@ -4,6 +4,7 @@ import { addAsMine, count, packApp, pixelsOf } from "./library-demos";
 import { tileAction } from "./launcher-actions.js";
 import { answerNamePrompt } from "./name-prompt.js";
 import { E2E_RELAY } from "./ports";
+import { grantClipboard } from "./engines";
 
 // apps/photo-puzzle, packed as its build packs it and added as the person's own app. The photo goes in
 // the way a phone's would: ctx.caps.camera on the web is a file input, so the test answers its file
@@ -118,11 +119,11 @@ async function device(context: BrowserContext): Promise<Page> {
   return context.newPage();
 }
 
-test("Photo Puzzle: sent to a friend, they solve YOUR photo, and their time comes back", async ({ browser }) => {
+test("Photo Puzzle: sent to a friend, they solve YOUR photo, and their time comes back", async ({ browser, browserName }) => {
   test.setTimeout(300_000);
   // ---- A: makes a puzzle, shares the app ----
   const ctxA = await browser.newContext({ viewport: { width: 390, height: 844 } });
-  await ctxA.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await grantClipboard(ctxA, browserName);
   const a = await device(ctxA);
   await addAsMine(a, "photo-puzzle.potyro-app.zip", packApp("photo-puzzle", "photo-puzzle.app.ts"));
   await choosePhoto(a);
