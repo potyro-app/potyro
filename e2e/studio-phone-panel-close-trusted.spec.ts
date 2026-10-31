@@ -185,6 +185,18 @@ test("#489 with the app open, the Studio's Close is in reach, and nothing covere
 
   // The card's Open is now covered (inert): focus goes to the app, not to the page.
   await expect(preview).toBeFocused();
+  // The way back and its neighbour are a thumb's size, apart (DESIGN.md §3.4, §11.4); so are the
+  // preview bar's Point and Code.
+  const appTab = studio.locator(".k-studio-bar").getByRole("tab", { name: "App" });
+  const ct = (await conversation.boundingBox())!;
+  const at = (await appTab.boundingBox())!;
+  expect(Math.min(ct.height, at.height)).toBeGreaterThanOrEqual(44);
+  expect(at.x - (ct.x + ct.width)).toBeGreaterThanOrEqual(8);
+  // (At this width Point is its glyph alone, named by its title.)
+  for (const sel of [".k-preview-point", ".k-preview-code"]) {
+    const b = (await preview.locator(sel).boundingBox())!;
+    expect(b.height, sel).toBeGreaterThanOrEqual(44);
+  }
 
   // What the app covers (the conversation, the box) is out of reach, for a reader and for Tab.
   expect(await coveredControls(studio)).toEqual([]);
@@ -196,7 +208,6 @@ test("#489 with the app open, the Studio's Close is in reach, and nothing covere
   expect(axe.violations).toEqual([]);
 
   // Pointing, then the Conversation tab: pointing ends with the app, as the way back always ends it.
-  const appTab = studio.locator(".k-studio-bar").getByRole("tab", { name: "App" });
   await preview.locator(".k-preview-point").tap();
   await expect(preview.locator(".k-point-bar")).toBeVisible();
   await conversation.tap();
