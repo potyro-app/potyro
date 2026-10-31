@@ -8,10 +8,12 @@
 //     a candidate that passed is kept with the records it passed on.
 // Never the person's own records: nothing here reads an app's store.
 //
-// The app changes after its seed was made — a modify renames a field, an enum loses an option — so a
-// seed is fitted to the app as it is now whenever the definition is at hand (`seedThatFits`): a row
-// that no longer fits is dropped, never repaired by guessing, and a reference to a dropped row is
-// taken out of the rows that pointed at it.
+// The stored seed is never narrowed. The app changes after its seed was made — a modify renames a
+// field, an enum loses an option, History puts an older version back — so a seed is fitted at the
+// point of USE, against the definition at hand (`seedThatFits`): when a demo link is made, when a
+// package is saved, when a demo opens. A row is dropped only when the store's own write gate would
+// refuse it, and a reference to a dropped row is taken out of the rows that pointed at it. A version
+// whose shape no longer fits gets fewer rows, or none; going back to one that fits gets them all back.
 
 import { fieldValueProblem, type EntityDef, type Field } from "potyro";
 import type { Store } from "@potyro/store";
@@ -59,15 +61,14 @@ function valueFits(field: Field, value: unknown, key: string): boolean {
   return fieldValueProblem(field, value, "write", key) === null;
 }
 
-/** Whether a seed row fits its entity as it is now: every value its field's write rule, every required field there. */
+/**
+ * Whether a seed row would go in as it is: every value it holds passes its field's write rule — the
+ * one the host holds every write to (values-gate.ts: enum options, min and max, the value's shape).
+ * Whether a field is required is not asked: that is the form's question, not the store's (values.ts),
+ * and the store takes a record without it — so a field with a default, or with nothing, is fine.
+ */
 function fits(fields: Readonly<Record<string, Field>>, row: Record<string, unknown>): boolean {
-  for (const [key, field] of Object.entries(fields)) {
-    const value = row[key];
-    // A photo cannot be made up, so a sample record without one is still a sample record.
-    if (field.required && (value == null || value === "") && !holdsFile(field)) return false;
-    if (!valueFits(field, value, key)) return false;
-  }
-  return true;
+  return Object.entries(fields).every(([key, field]) => valueFits(field, row[key], key));
 }
 
 const NONE: ReadonlySet<string> = new Set();
@@ -75,13 +76,10 @@ const NONE: ReadonlySet<string> = new Set();
 const refId = (v: unknown): string | undefined =>
   typeof v === "string" ? v : typeof v === "object" && v !== null && typeof (v as { id?: unknown }).id === "string" ? (v as { id: string }).id : undefined;
 
-/** A relation's value with every reference to a dropped row taken out; undefined when none is left. */
+/** A relation's value with every reference to a dropped row taken out: a list keeps the rest (or none), one goes. */
 function keptRefs(field: Field & { type: "relation" }, value: unknown, dropped: ReadonlySet<string>): unknown {
   const gone = (v: unknown) => dropped.has(refId(v) ?? "");
-  if (field.many) {
-    const left = Array.isArray(value) ? value.filter((v) => !gone(v)) : [];
-    return left.length ? left : undefined;
-  }
+  if (field.many) return Array.isArray(value) ? value.filter((v) => !gone(v)) : value;
   return gone(value) ? undefined : value;
 }
 
@@ -113,46 +111,29 @@ function trimmed(fields: Readonly<Record<string, Field>>, row: Record<string, un
 }
 
 /**
- * The part of a seed that fits the app as it is now: only the entities it declares, only rows whose
- * values still pass their fields' rules, each row with only the fields it declares, and no reference
- * to a row that was dropped. Undefined when nothing is left. Never adds a row.
+ * The part of a seed that fits the app as it is now: only the entities it declares, only rows the
+ * store's write gate would take, each row with only the fields it declares, and no reference to a row
+ * that was dropped. Undefined when nothing is left. Never adds a row, never changes what is stored:
+ * it is what a use of the seed (a demo link, a package, a demo opening) gets.
  */
 export function seedThatFits(seed: AppSeed | undefined, entities: Entities): AppSeed | undefined {
   if (!seed || !entities) return undefined;
   const fieldsOf = (entity: string) => (entities[entity]?.fields ?? {}) as Record<string, Field>;
-  let rows: AppSeed = {};
+  const good: AppSeed = {};
+  const dropped: Record<string, Set<string>> = {};
   for (const [entity, list] of Object.entries(seed)) {
-    if (entities[entity] && Array.isArray(list)) rows[entity] = list.filter((row) => typeof row === "object" && row !== null && !Array.isArray(row));
+    if (!entities[entity] || !Array.isArray(list)) continue;
+    const rows = list.filter((row) => typeof row === "object" && row !== null && !Array.isArray(row));
+    good[entity] = rows.filter((row) => fits(fieldsOf(entity), row));
+    const left = new Set(good[entity]);
+    dropped[entity] = new Set(rows.filter((r) => !left.has(r)).map((r) => refId(r.id)).filter((id): id is string => Boolean(id)));
   }
-  // Dropping a row can leave a row that needed it (a required reference) without it: again, until
-  // every row left fits. Each round drops a row or ends, so it ends.
-  for (;;) {
-    const good: AppSeed = {};
-    for (const [entity, list] of Object.entries(rows)) good[entity] = list.filter((row) => fits(fieldsOf(entity), row));
-    const dropped: Record<string, Set<string>> = {};
-    for (const [entity, list] of Object.entries(rows)) {
-      const left = new Set(good[entity]);
-      dropped[entity] = new Set(list.filter((r) => !left.has(r)).map((r) => refId(r.id)).filter((id): id is string => Boolean(id)));
-    }
-    const next: AppSeed = {};
-    for (const [entity, list] of Object.entries(good)) if (list.length) next[entity] = list.map((row) => trimmed(fieldsOf(entity), row, dropped));
-    if (Object.entries(next).every(([entity, list]) => list.every((row) => fits(fieldsOf(entity), row)))) {
-      return Object.keys(next).length ? next : undefined;
-    }
-    rows = next;
-  }
+  // Taking a reference out leaves a row the gate still takes (no field is required of it), so one
+  // pass is enough.
+  const out: AppSeed = {};
+  for (const [entity, list] of Object.entries(good)) if (list.length) out[entity] = list.map((row) => trimmed(fieldsOf(entity), row, dropped));
+  return Object.keys(out).length ? out : undefined;
 }
 
-/** Whether two seeds are the same rows. */
-export const sameSeed = (a: AppSeed | undefined, b: AppSeed | undefined): boolean => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
-
-/**
- * The seed to save with a version of an app (#486), fitted to that version's entities: a new app's
- * is the one its run passed on (`made`); a changed app keeps the rows of the one it had that still
- * fit. `null` when none is left — the app's seed goes; `undefined` when the version's entities are not
- * known (it did not build), and the seed stays as it was until a version that builds.
- */
-export function seedForVersion(opts: { isNew: boolean; prev?: AppSeed; made?: AppSeed; entities: Entities }): AppSeed | null | undefined {
-  if (!opts.entities) return opts.isNew ? opts.made : undefined;
-  return seedThatFits(opts.isNew ? opts.made : opts.prev, opts.entities) ?? null;
-}
+/** How many records a seed holds, in every entity. */
+export const seedRows = (seed: AppSeed | undefined): number => Object.values(seed ?? {}).reduce((n, rows) => n + (Array.isArray(rows) ? rows.length : 0), 0);

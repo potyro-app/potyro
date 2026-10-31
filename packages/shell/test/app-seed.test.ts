@@ -1,12 +1,13 @@
 // @vitest-environment happy-dom
 //
-// An app's sample records (#486): what a Studio-made app keeps of the records its run passed on, how
-// they are fitted to the app after it changes (rows that no longer fit are dropped, never repaired),
-// and that nothing of the person's own records ever becomes one.
+// An app's sample records (#486): fitted at the point of USE — a demo link, a package, a demo opening —
+// against the definition at hand, by the rule the store's write gate holds every record to; never
+// narrowed where they are kept, so a later version or a History rollback never loses one. Nothing of
+// the person's records is one.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EntityDef } from "potyro";
 import { MemoryStore, readAppPackage } from "@potyro/store";
-import { seedForVersion, seedThatFits, type AppSeed } from "../src/app-seed.js";
+import { seedThatFits, type AppSeed } from "../src/app-seed.js";
 import { shippedPackage } from "../src/app-folder.js";
 
 // History's store is the one thing that cannot run headlessly (app-history.test.ts).
@@ -17,7 +18,9 @@ vi.mock("../src/open-store.js", () => ({
     return store;
   },
 }));
-const { getUserApp, refitSeed, saveUserApp } = await import("../src/user-apps.js");
+const { getUserApp, saveUserApp } = await import("../src/user-apps.js");
+const { listVersions } = await import("../src/app-history.js");
+const { restoreVersion } = await import("../src/restore-version.js");
 
 const NOW = "2026-10-31T00:00:00.000Z";
 
@@ -57,16 +60,23 @@ describe("a seed fitted to the app as it is now", () => {
     expect(seedThatFits(seed, plants())).toEqual(seed);
   });
 
-  it("drops a row whose value its field no longer allows, and a row that pointed at it, required, goes too", () => {
-    // The modify took "sun" out of the options: the lemon tree no longer fits, nor its watering.
+  it("drops a row whose value its field no longer allows, and takes the reference to it out of the rows that pointed at it", () => {
+    // The modify took "sun" out of the options: the lemon tree no longer fits. Its watering stays —
+    // the store takes a record without its plant — with the plant taken out.
     const fitted = seedThatFits(seed, plants({ light: { type: "enum", options: ["shade", "bright"] } }));
-    expect(fitted).toEqual({ plant: [seed.plant![0]], watering: [seed.watering![0]] });
+    expect(fitted).toEqual({ plant: [seed.plant![0]], watering: [seed.watering![0], { id: "w2", amount: 1 }] });
   });
 
-  it("drops a row that lacks a field the app now requires, but not for a photo, which cannot be made up", () => {
-    const fitted = seedThatFits(seed, plants({ room: { type: "text", required: true } }));
-    expect(fitted).toBeUndefined();
-    expect(seedThatFits(seed, plants({ photo: { type: "media", required: true } }))?.plant).toHaveLength(2);
+  it("drops a row the gate refuses for min and max, as the store's write gate does", () => {
+    const entities = plants();
+    (entities.watering!.fields as Record<string, unknown>).amount = { type: "number", min: 0, max: 1 };
+    expect(seedThatFits(seed, entities)?.watering).toEqual([seed.watering![1]]);
+  });
+
+  it("never asks whether a field is required — the store does not — with a default or without", () => {
+    // The app now requires a room, with a default or not: the store takes the rows without it all the same.
+    expect(seedThatFits(seed, plants({ room: { type: "text", required: true } }))).toEqual(seed);
+    expect(seedThatFits(seed, plants({ room: { type: "text", required: true, default: "Kitchen" } }))).toEqual(seed);
   });
 
   it("takes out a field the app no longer has, and an entity it no longer keeps, and keeps the rest", () => {
@@ -76,10 +86,12 @@ describe("a seed fitted to the app as it is now", () => {
     expect(fitted).toEqual({ plant: [{ id: "p1", name: "Monstera" }, { id: "p2", name: "Lemon tree", photo: { file: "photos/lemon.webp" } }] });
   });
 
-  it("takes out a reference to a dropped row where the reference is not required", () => {
+  it("takes a dropped row out of a list of references, and leaves an empty list as it was", () => {
     const entities = plants({ light: { type: "enum", options: ["shade"] } });
-    (entities.watering!.fields as Record<string, unknown>).plant = { type: "relation", to: "plant" };
-    expect(seedThatFits(seed, entities)?.watering).toEqual([{ id: "w1", plant: "p1", amount: 2 }, { id: "w2", amount: 1 }]);
+    (entities.watering!.fields as Record<string, unknown>).plant = { type: "relation", to: "plant", many: true };
+    const fitted = seedThatFits({ ...seed, watering: [{ id: "w1", plant: ["p1", "p2"] }, { id: "w2", plant: ["p2"] }] }, entities);
+    expect(fitted?.watering).toEqual([{ id: "w1", plant: ["p1"] }, { id: "w2", plant: [] }]);
+    expect(seedThatFits({ watering: [{ id: "w3", plant: [] }] }, entities)?.watering).toEqual([{ id: "w3", plant: [] }]);
   });
 
   it("leaves a reference to a record the seed never had: one the app makes itself", () => {
@@ -94,45 +106,28 @@ describe("a seed fitted to the app as it is now", () => {
   });
 });
 
-describe("the seed saved with a version", () => {
-  it("a new app's is the one its run passed on, fitted", () => {
-    expect(seedForVersion({ isNew: true, made: seed, entities: plants() })).toEqual(seed);
-  });
-
-  it("a changed app keeps the rows of its own that fit, never the run's", () => {
-    const run: AppSeed = { plant: [{ id: "x", name: "name 1" }] };
-    expect(seedForVersion({ isNew: false, prev: seed, made: run, entities: plants() })).toEqual(seed);
-    // None of them fits any more: the seed goes, and is not replaced by anything.
-    expect(seedForVersion({ isNew: false, prev: seed, made: run, entities: plants({ name: { type: "number", required: true } }) })).toBeNull();
-    expect(seedForVersion({ isNew: false, made: run, entities: plants() })).toBeNull();
-  });
-
-  it("a version that did not build leaves the seed as it was", () => {
-    expect(seedForVersion({ isNew: false, prev: seed, entities: undefined })).toBeUndefined();
-  });
-});
-
 describe("a saved app's seed", () => {
   beforeEach(() => localStorage.clear());
   afterEach(() => localStorage.clear());
 
-  it("is taken away when the version says null, and kept when it says nothing", async () => {
+  it("is kept through every later version, whatever their shape: nothing narrows it where it is kept", async () => {
     await saveUserApp({ id: "watering", name: "Watering", source: "s1", seed }, NOW);
     await saveUserApp({ id: "watering", name: "Watering", source: "s2" }, NOW);
     expect(getUserApp("watering")?.seed).toEqual(seed);
-    await saveUserApp({ id: "watering", name: "Watering", source: "s3", seed: null }, NOW);
-    expect(getUserApp("watering")?.seed).toBeUndefined();
   });
 
-  it("is refitted as the app opens: rows that no longer fit are dropped, nothing is added", async () => {
-    await saveUserApp({ id: "watering", name: "Watering", source: "s1", seed }, NOW);
-    refitSeed("watering", plants({ light: { type: "enum", options: ["shade"] } }));
-    expect(getUserApp("watering")?.seed).toEqual({ plant: [seed.plant![0]], watering: [seed.watering![0]] });
-    refitSeed("watering", plants({ name: { type: "number", required: true } }));
-    expect(getUserApp("watering")?.seed).toBeUndefined();
-    // An app with no seed gets none from refitting.
-    refitSeed("watering", plants());
-    expect(getUserApp("watering")?.seed).toBeUndefined();
+  it("comes back whole when History puts back a version its rows fit, after one they did not", async () => {
+    await saveUserApp({ id: "watering", name: "Watering", source: "v1", seed }, NOW);
+    // v2 took "sun" away: a link made now carries the shade plant only…
+    await saveUserApp({ id: "watering", name: "Watering", source: "v2" }, NOW);
+    const v2 = plants({ light: { type: "enum", options: ["shade"] } });
+    expect(seedThatFits(getUserApp("watering")!.seed, v2)?.plant).toEqual([seed.plant![0]]);
+    // …and going back to v1 gets the lemon tree back, because the kept seed was never cut.
+    const v1 = (await listVersions("watering")).find((v) => v.source === "v1")!;
+    await restoreVersion(getUserApp("watering")!, v1, "went back to version 1", NOW);
+    expect(getUserApp("watering")?.source).toBe("v1");
+    expect(getUserApp("watering")?.seed).toEqual(seed);
+    expect(seedThatFits(getUserApp("watering")!.seed, plants())).toEqual(seed);
   });
 
   it("is what a package saved from the app carries as seed.json — never the person's records in its store", async () => {
@@ -144,5 +139,12 @@ describe("a saved app's seed", () => {
     expect(JSON.stringify(readAppPackage(zip).seed)).not.toContain("My own fig");
     // An app with no sample records saves a package without any: its store is not read for them.
     expect(readAppPackage(await shippedPackage(store, { source: "export default 1", lock: undefined })).seed).toBeUndefined();
+  });
+
+  it("a package saved from a version fits it to that version: only the rows it takes", async () => {
+    const store = new MemoryStore();
+    await store.open("user:watering");
+    const zip = await shippedPackage(store, { source: "export default 1", lock: undefined, seed, entities: plants({ light: { type: "enum", options: ["shade"] } }) });
+    expect(readAppPackage(zip).seed).toEqual({ plant: [seed.plant![0]], watering: [seed.watering![0], { id: "w2", amount: 1 }] });
   });
 });

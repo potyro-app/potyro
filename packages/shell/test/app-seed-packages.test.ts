@@ -24,3 +24,26 @@ describe("a package's own seed.json fits its app", () => {
     }, 60_000);
   }
 });
+
+// A demo link of a bundled example carries its first-run records, and the device that opens it fits
+// them to the app as it loads there (demo.tsx, #486): that must never drop one of them either.
+const EXAMPLES: Array<[string, () => Promise<{ default: { entities?: Record<string, EntityDef> } }>]> = [
+  ["groceries", () => import("../../../examples/groceries.app.ts") as never],
+  ["places", () => import("../../../examples/places.app.ts") as never],
+  ["plants", () => import("../../../examples/plants.app.ts") as never],
+  ["recipes", () => import("../../../examples/recipes.app.tsx") as never],
+  ["split", () => import("../../../examples/split.app.ts") as never],
+  ["workout", () => import("../../../examples/workout.app.tsx") as never],
+];
+
+describe("a bundled example's demo records fit its app", () => {
+  for (const [id, load] of EXAMPLES) {
+    it(id, async () => {
+      const { demoSeed } = await import("../src/demo-package.js");
+      const entities = (await load()).default.entities!;
+      const seed = await demoSeed(id, Object.keys(entities));
+      expect(seed).toBeDefined();
+      expect(seedThatFits(seed, entities)).toEqual(seed);
+    }, 60_000);
+  }
+});
