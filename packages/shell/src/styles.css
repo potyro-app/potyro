@@ -14221,7 +14221,6 @@ input.k-switch:disabled {
 .k-metro {
   /* What is not an app's tile (a group's folder) keeps graphite; an app's tile sets its own, below. */
   --tile-ink: var(--ink-on-traco);
-  --tile-ink-soft: color-mix(in oklab, var(--ink-on-traco) 80%, transparent);
   --metro-side: 12px;
   /* The app bar's height, so the last row of tiles can scroll clear of it. */
   --metro-bar: calc(4.25rem + var(--k-safe-bottom));
@@ -14434,19 +14433,16 @@ button.k-metro-group-name {
 .k-metro .k-metro-mosaic-cell {
   --tile-bg: var(--tile-bg-l);
   --tile-ink: var(--tile-ink-l);
-  --tile-ink-soft: color-mix(in oklab, var(--tile-ink-l) 80%, transparent);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .k-metro :is(.k-launch-tile.k-metro-tile, .k-launch-tile.k-metro-row-open, .k-metro-mosaic-cell) {
     --tile-bg: var(--tile-bg-d);
     --tile-ink: var(--tile-ink-d);
-    --tile-ink-soft: color-mix(in oklab, var(--tile-ink-d) 80%, transparent);
-  }
+    }
 }
 :root[data-theme="dark"] .k-metro :is(.k-launch-tile.k-metro-tile, .k-launch-tile.k-metro-row-open, .k-metro-mosaic-cell) {
   --tile-bg: var(--tile-bg-d);
   --tile-ink: var(--tile-ink-d);
-  --tile-ink-soft: color-mix(in oklab, var(--tile-ink-d) 80%, transparent);
 }
 .k-metro .k-launch-tile.k-metro-tile {
   position: relative;
@@ -14625,10 +14621,13 @@ button.k-metro-group-name {
   font-weight: 400;
   -webkit-line-clamp: 1;
 }
+/* The tile's own ink, as the headline: a line under the title is smaller and lighter in weight, never
+   fainter — ink softened by alpha fell under AA at a third of the hours. */
 .k-metro-live-line {
   font-size: 0.8rem;
+  font-weight: 400;
   line-height: 1.25;
-  color: var(--tile-ink-soft);
+  color: var(--tile-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -14647,7 +14646,6 @@ button.k-metro-group-name {
 /* Over a photo the words are white, on a shade from the bottom that the name and count sit on too. */
 .k-metro-face:has(> .k-metro-photo) {
   --tile-ink: var(--on-photo);
-  --tile-ink-soft: var(--on-photo-soft);
   color: var(--tile-ink);
 }
 .k-metro-face:has(> .k-metro-photo)::after {

@@ -13,22 +13,51 @@ test.beforeEach(async ({ page }) => {
 const tile = (page: Page, key: string): Locator => page.locator(`.k-metro-wall .k-metro-cell[data-key="${key}"] .k-metro-tile`);
 const liveFace = (page: Page, key: string): Locator => page.locator(`.k-metro-wall .k-metro-cell[data-key="${key}"] .k-metro-face-live`);
 
-/** The tile's own text colour on its painted background, as WCAG computes it — both read back through
- *  a canvas, so any colour syntax works. */
-async function contrastOnTile(t: Locator): Promise<number> {
-  return t.evaluate((el) => {
-    const rgb = (css: string): [number, number, number] => {
-      const ctx = document.createElement("canvas").getContext("2d")!;
-      ctx.fillStyle = css;
-      ctx.fillRect(0, 0, 1, 1);
+/** The lowest contrast of any words drawn on the tile — the tile's own ink and every text node inside
+ *  it, the live face's headline and lines too — each colour composited over the nearest background
+ *  under it, as WCAG computes it. Read back through a canvas, so any colour syntax (and alpha) works.
+ *  Words for the ear only, and words over a photo (which has no one colour under it), are skipped. */
+async function contrastOnTile(t: Locator): Promise<{ min: number; worst: string; checked: number }> {
+  return t.evaluate((tileEl) => {
+    const ctx = document.createElement("canvas").getContext("2d", { willReadFrequently: true })!;
+    const paint = (...layers: string[]): [number, number, number] => {
+      ctx.clearRect(0, 0, 1, 1);
+      for (const css of ["#000", ...layers]) {
+        ctx.fillStyle = css;
+        ctx.fillRect(0, 0, 1, 1);
+      }
       const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
       return [r!, g!, b!];
     };
     const lin = (c: number) => ((c /= 255) <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
     const lum = ([r, g, b]: [number, number, number]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-    const cs = getComputedStyle(el);
-    const [a, b] = [lum(rgb(cs.backgroundColor)), lum(rgb(cs.color))].sort((x, y) => y - x);
-    return (a! + 0.05) / (b! + 0.05);
+    const transparent = (css: string) => css === "transparent" || /rgba\(.*,\s*0\)$/.test(css);
+    const ground = (el: Element): string => {
+      for (let at: Element | null = el; at; at = at.parentElement) {
+        const bg = getComputedStyle(at).backgroundColor;
+        if (!transparent(bg)) return bg;
+        if (at === tileEl) break;
+      }
+      return getComputedStyle(tileEl).backgroundColor;
+    };
+    const measure = (el: Element): number => {
+      const bg = ground(el);
+      const [a, b] = [lum(paint(bg)), lum(paint(bg, getComputedStyle(el).color))].sort((x, y) => y - x);
+      return (a! + 0.05) / (b! + 0.05);
+    };
+    let min = measure(tileEl);
+    let worst = "the tile";
+    let checked = 1;
+    const walk = document.createTreeWalker(tileEl, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const el = n.parentElement;
+      if (!el || !n.textContent?.trim()) continue;
+      if (el.closest(".k-visually-hidden") || el.closest(".k-metro-face")?.querySelector(":scope > .k-metro-photo")) continue;
+      const c = measure(el);
+      checked++;
+      if (c < min) [min, worst] = [c, `${el.className}: "${n.textContent.trim()}"`];
+    }
+    return { min, worst, checked };
   });
 }
 
@@ -42,7 +71,10 @@ test.describe("first run, the examples", () => {
     await expect(tile(page, "user:plants")).toBeVisible({ timeout: 30_000 });
     const keys = await page.locator(".k-metro-wall .k-metro-cell[data-key]").evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.key!));
     expect(keys.length).toBeGreaterThanOrEqual(6);
-    for (const key of keys) expect(await contrastOnTile(tile(page, key)), key).toBeGreaterThanOrEqual(4.5);
+    for (const key of keys) {
+      const { min, worst } = await contrastOnTile(tile(page, key));
+      expect(min, `${key}, ${worst}`).toBeGreaterThanOrEqual(4.5);
+    }
     const ink = await tile(page, "user:plants").evaluate((el) => getComputedStyle(el).color);
     expect(ink).toBe("rgb(35, 31, 32)");
     const bg = await tile(page, "user:plants").evaluate((el) => getComputedStyle(el).backgroundColor);
@@ -74,7 +106,9 @@ test.describe("first run, the examples", () => {
 
 // The four hours where graphite on the bare traço falls short of AA (rosa 4.49, vermelho 4.26, anil
 // 4.32, roxo 4.12): a tile is the hour's button pair (DESIGN.md §3.1 `--accent` / `--on-accent`), the
-// tinta with white in the light, so the small words on it read in either theme (#428).
+// tinta with white in the light, so the small words on it read in either theme (#428). Each has a live
+// face, so its headline and the smaller lines under it are measured too — those once wore the ink at
+// 80%, under AA at a third of the hours.
 const hued = (id: string, name: string, accent: string) => ({
   id,
   name,
@@ -82,6 +116,7 @@ const hued = (id: string, name: string, accent: string) => ({
     `import { defineApp } from "potyro";\n` +
     `export default defineApp({ id: ${JSON.stringify(id)}, name: ${JSON.stringify(name)}, version: "1.0.0", schemaVersion: 1,\n` +
     `  theme: { accent: ${JSON.stringify(accent)} },\n` +
+    `  tile: async () => ({ title: "3 due", lines: ["Water the fern", "Feed the cat"] }),\n` +
     `  entities: { item: { fields: { title: { type: "text" } } } },\n` +
     `  pages: [{ id: "all", title: "Items", view: { type: "list", entity: "item", display: { primary: "title" } } }] });\n`,
   updatedAt: new Date(0).toISOString(),
@@ -97,8 +132,11 @@ for (const colorScheme of ["light", "dark"] as const) {
       await seed(page, HOURS);
       await openHome(page);
       for (const { id } of HOURS) {
-        await expect(tile(page, `user:${id}`)).toBeVisible({ timeout: 30_000 });
-        expect(await contrastOnTile(tile(page, `user:${id}`)), id).toBeGreaterThanOrEqual(4.5);
+        await expect(liveFace(page, `user:${id}`)).toContainText("Feed the cat", { timeout: 30_000 });
+        const { min, worst, checked } = await contrastOnTile(tile(page, `user:${id}`));
+        // The tile, its name, the headline and both lines at least.
+        expect(checked, id).toBeGreaterThanOrEqual(5);
+        expect(min, `${id}, ${worst}`).toBeGreaterThanOrEqual(4.5);
       }
     });
   });
