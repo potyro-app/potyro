@@ -13,6 +13,7 @@
 //                                                    DEFAULT_REASONING in openrouter-backend.ts)
 //        --corpus wild|core|both  --limit N  --concurrency N  --repairs N
 //        --only id1,id2           --out <dir>
+//        --prompts <file.json>    an ad-hoc corpus ([{ id, description, tags? }]) instead of the built-in ones
 //        --language pl|pt-BR      (#301) each prompt is its hand-checked translation (translated-cases.ts),
 //                                 the turn carries the language line, and the report adds whether the
 //                                 app's labels are in that language. `en` is today's run, unchanged.
@@ -35,6 +36,7 @@
 // Every backend is handed the same contract and the same turns (prompt.ts / chat-backend.ts), so
 // one run's report.json is directly comparable to another's.
 
+import { readFileSync } from "node:fs";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ClaudeCliBackend } from "../src/cli-backend.js";
@@ -216,10 +218,16 @@ async function main(): Promise<void> {
   const only = arg("only")?.split(",").map((s) => s.trim());
   const outDir = resolve(arg("out", join(process.cwd(), "eval-out", `run-${Date.now()}`))!);
 
-  const tagged: Array<{ prompt: GenPrompt; corpus: "wild" | "core" }> = [
-    ...(corpus !== "core" ? WILD_PROMPTS.map((p) => ({ prompt: p as GenPrompt, corpus: "wild" as const })) : []),
-    ...(corpus !== "wild" ? PROMPTS.map((p) => ({ prompt: p, corpus: "core" as const })) : []),
-  ];
+  // `--prompts <file.json>`: an ad-hoc corpus — a JSON array of { id, description, tags? } — in place of
+  // the built-in ones, for a measurement on requests the model has never seen in the Studio's corpus.
+  const promptsFile = arg("prompts");
+  const adHoc: GenPrompt[] | null = promptsFile ? (JSON.parse(readFileSync(resolve(promptsFile), "utf8")) as GenPrompt[]) : null;
+  const tagged: Array<{ prompt: GenPrompt; corpus: "wild" | "core" }> = adHoc
+    ? adHoc.map((p) => ({ prompt: p, corpus: "wild" as const }))
+    : [
+        ...(corpus !== "core" ? WILD_PROMPTS.map((p) => ({ prompt: p as GenPrompt, corpus: "wild" as const })) : []),
+        ...(corpus !== "wild" ? PROMPTS.map((p) => ({ prompt: p, corpus: "core" as const })) : []),
+      ];
   // #301: the person's language. English (or no flag) is today's run, byte for byte.
   const languageArg = arg("language");
   const language: Language | null = languageArg ? matchLanguage(languageArg) : null;
