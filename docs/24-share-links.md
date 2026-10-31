@@ -110,14 +110,20 @@ A small Node process beside the relay, same shape as `platform-requests` (#263):
 |---|---|
 | `POST /share-api/shares` | `{ meta: { title, description, lang }, image?, payload }` (base64). Returns `{ id, deleteToken }`. |
 | `GET /share-api/shares/<id>/payload` | the ciphertext |
-| `DELETE /share-api/shares/<id>` | with `x-delete-token`: removes it (the sharer's "stop sharing", and the operator's takedown) |
+| `DELETE /share-api/shares/<id>` | with `x-delete-token`: removes it (the sharer's "stop sharing"); the link then answers 404 |
+| `DELETE /share-api/admin/shares/<id>` | with `authorization: Bearer <SHARE_ADMIN_TOKEN>` and `{ reason }`: the operator's takedown; the link then answers 410 |
 | `GET /s/<id>` | the shell's `index.html` with Open Graph and Twitter meta for the link written in |
 | `GET /s/<id>/preview.jpg` (or `.png`) | the preview image |
 | `GET /share-api/health` | `{ ok: true }` |
 
 Caps: payload ≤ 2 MiB, image ≤ 300 KB (JPEG or PNG, checked by magic bytes), title ≤ 80 and
-description ≤ 200 characters, checked before anything is written. 30 shares a day per address.
-Ids are 128 random bits. Meta text is HTML-escaped where it is written into the page. Every page it
+description ≤ 200 characters, checked before anything is written. Per address (an IPv6 address
+counts as its /64) and per day (UTC): 30 links made, 300 packages fetched, 2000 link pages and
+pictures, and an IPv6 /48 eight times that; for the whole service, 2 GB of new links a day and
+none while the disk would have under 1 GB free. A refusal is JSON with a `code` and a sentence,
+except on a link's own page, which is a few lines in the visitor's language; the shell says "Too
+many apps were opened from this network today" with Try again, never that the link is damaged
+(docs/16). Ids are 128 random bits. Meta text is HTML-escaped where it is written into the page. Every page it
 serves carries `noindex`: a link is for whoever it was sent to, not for search.
 
 The shell at `/s/<id>` is the ordinary SPA: it reads `<id>` from the path and `k` from the fragment,
@@ -126,6 +132,21 @@ fetches the payload, decrypts it and opens the demo. Built-in asset paths are ab
 
 In dev and `vite preview` the same handler is mounted by a Vite plugin (shares kept in memory), so
 the hosted form is what the dev server and the browser tests exercise. Deploying it is docs/16.
+
+**Taken down (#11).** A link the operator takes down (docs/16, "Taking a link down") answers 410 on
+its page, its package and its picture. The page is not the shell: a few lines in the visitor's
+language — the link was taken down, the app behind it was removed, where to write if it was a
+mistake — and nothing of the link. The service keeps the time and the operator's reason in the
+link's place, and serves neither. Where the shell itself opens the link instead of that page, it
+gets the 410 from the package and says the same on its splash. The service worker never answers
+`/s/…` or `/share-api/…` from its cache (the PWA work's rule, which this needs), so no device keeps
+opening a package it fetched before.
+
+**Report.** The demo bar of a hosted link has a quiet **Report**: a mail to the report address the
+terms name, with the link without its key and the start of a notice. An inline link has none — it is
+on no server to remove. The address is `abuse` in `packages/shell/src/contacts.json` (read by the
+shell and by the gallery's "Report a link"); while it is still the `<ABUSE EMAIL>` placeholder,
+reports go to `general` (`contact@potyro.com`).
 
 ## 5. The preview image
 
@@ -218,6 +239,8 @@ it), WebM otherwise. Saving waits for a tap on "Save the clip", because a browse
 - No records leave the device in a demo; no space is created.
 - No change to trust: a demo runs sealed, Keep and Make it mine install sealed, promotion stays explicit.
 - No server-side rendering of apps: the service never runs app code.
+- No word to the sharer when the operator takes a link down: there are no accounts to tell
+  (docs/legal/terms.md says so).
 
 ## 10. The gallery
 
@@ -248,8 +271,9 @@ without JavaScript (English), its stylesheet and a small script on the same orig
 screenshots it shows and nothing else. The script picks the language — `?lang=`, the one chosen on the
 page, then the browser's — and handles the light/dark switch and the category filter; what it remembers
 stays in that browser. Every card has **Try it** (the demo link) and **Make it mine** (the same link
-with `&remix=1`). The footer has "Report a link", a mailto to `contact@potyro.com` (named once, in
-`build.mjs`), and links to potyro.app. Tests: `gallery/test` (data, words, page, build) and
+with `&remix=1`). The footer has "Report a link", a mailto to the report address (`packages/shell/src/contacts.json`,
+the same one the demo bar's Report uses; `contact@potyro.com` while the abuse address is a
+placeholder), and links to potyro.app. Tests: `gallery/test` (data, words, page, build) and
 `e2e/gallery-trusted.spec.ts` (publish against the local dev server, axe in light and dark, no request
 leaves the page's origin, languages).
 

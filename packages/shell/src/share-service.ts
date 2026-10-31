@@ -67,7 +67,8 @@ export async function hostDemo(opts: { appId: string; zip: Uint8Array; meta: Sha
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ meta: opts.meta, payload: toBase64(sealed), ...(opts.image ? { image: toBase64(opts.image) } : {}) }),
   });
-  const out = (await res.json().catch(() => ({}))) as Partial<ShareCreated> & { error?: string };
+  const out = (await res.json().catch(() => ({}))) as Partial<ShareCreated> & { error?: string; code?: string };
+  if (res.status === 429 || res.status === 503) throw new TooManyError(res.status, out.code, retryAfterOf(res));
   if (!res.ok || !out.id || !out.deleteToken) throw new Error(out.error ?? `the share service answered ${res.status}`);
   // The link is on the site the service serves pages for: this one, or — in a build that names the
   // service elsewhere (the Android app) — that one.
@@ -78,10 +79,37 @@ export async function hostDemo(opts: { appId: string; zip: Uint8Array; meta: Sha
 
 /** The package behind a hosted link. Throws `GoneError` when the service no longer has it. */
 export class GoneError extends Error {}
+/** The operator took the link down (a 410, docs/16 "Taking a link down"), not its sharer. */
+export class TakenDownError extends GoneError {}
+
+/**
+ * The service said not now (429, or 503 when it is full): a limit on this network's address for the
+ * day, or on what the whole service keeps. Nothing is wrong with the link. `code` is the service's
+ * (`too-many-opens`, `too-many-links`, `full-today`, `no-room`); `retryAfter` is in seconds.
+ */
+export class TooManyError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string | undefined,
+    readonly retryAfter: number | undefined,
+  ) {
+    super(`the share service answered ${status}${code ? ` (${code})` : ""}`);
+  }
+}
+
+function retryAfterOf(res: Response): number | undefined {
+  const n = Number(res.headers.get("retry-after"));
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
 
 export async function fetchHostedPackage(id: string, key: string): Promise<Uint8Array> {
   const res = await fetch(`${shareServiceUrl()}/shares/${encodeURIComponent(id)}/payload`, { cache: "no-cache" });
+  if (res.status === 410) throw new TakenDownError(id);
   if (res.status === 404) throw new GoneError(id);
+  if (res.status === 429 || res.status === 503) {
+    const out = (await res.json().catch(() => ({}))) as { code?: unknown };
+    throw new TooManyError(res.status, typeof out.code === "string" ? out.code : undefined, retryAfterOf(res));
+  }
   if (!res.ok) throw new Error(`the share service answered ${res.status}`);
   return openPackage(new Uint8Array(await res.arrayBuffer()), key);
 }

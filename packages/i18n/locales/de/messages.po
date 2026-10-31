@@ -1112,6 +1112,11 @@ msgstr "Eine Packliste, die ich für Reisen wiederverwenden kann"
 msgid "A picture of your own on the tile"
 msgstr "Ein eigenes Bild auf der Kachel"
 
+#. Subject of the email that reports a demo link to the Potyro team
+#: ../shell/src/demo.tsx
+msgid "A Potyro link"
+msgstr "Ein Potyro-Link"
+
 #: ../shell/src/ask-sources-panel.tsx
 msgid "A query parameter named"
 msgstr "Ein Abfrageparameter namens"
@@ -5345,6 +5350,11 @@ msgstr "Potyro kann diese Art von Datei nicht anzeigen. Speichere eine Kopie, um
 msgid "Potyro can’t use the microphone. Allow it for this site in your browser, then try again."
 msgstr "Potyro kann das Mikrofon nicht verwenden. Erlaube es für diese Seite in deinem Browser und versuch es noch einmal."
 
+#. Share sheet: the share service is full for the day or short of room; nothing the person did
+#: ../shell/src/demo-share.ts
+msgid "Potyro cannot keep more links today. Try again tomorrow."
+msgstr "Potyro kann heute keine weiteren Links aufbewahren. Versuch es morgen noch einmal."
+
 #: ../shell/src/move-banner.tsx
 msgid "Potyro has a new home"
 msgstr "Potyro hat eine neue Adresse"
@@ -5662,6 +5672,11 @@ msgstr "Wiederholen"
 #: ../shell/src/studio-tools.tsx
 msgid "Replay this path against the app"
 msgstr "Diesen Ablauf gegen die App wiederholen"
+
+#. Demo bar: report this demo link to the Potyro team
+#: ../shell/src/demo.tsx
+msgid "Report"
+msgstr "Melden"
 
 #: ../shell/src/history.tsx
 msgid "Reported as host-side"
@@ -6517,6 +6532,11 @@ msgstr "Tippe auf die Karte, um einen Punkt zu setzen"
 msgid "Tap the part you mean"
 msgstr "Tippe auf den Teil, den du meinst"
 
+#. Demo bar: what the Report link does
+#: ../shell/src/demo.tsx
+msgid "Tell the Potyro team about this link, if you think it is illegal"
+msgstr "Sag dem Potyro-Team Bescheid, wenn du diesen Link für illegal hältst"
+
 #: ../shell/src/endpoint-settings.tsx
 msgid "Test connection"
 msgstr "Verbindung testen"
@@ -6765,6 +6785,23 @@ msgstr "Der Link konnte von hier aus nicht geladen werden"
 #: ../shell/src/share-body.tsx
 msgid "The link could not be made. The words can still be sent."
 msgstr "Der Link konnte nicht erstellt werden. Der Text kann trotzdem verschickt werden."
+
+#. Start of the email that reports a demo link; the person writes their reasons under the second line
+#: ../shell/src/demo.tsx
+msgid ""
+"The link: {reportLink}\n"
+"\n"
+"Why I think it is illegal:\n"
+"\n"
+"\n"
+"I believe this report is accurate and complete."
+msgstr ""
+"Der Link: {reportLink}\n"
+"\n"
+"Warum ich ihn für illegal halte:\n"
+"\n"
+"\n"
+"Ich versichere, dass diese Meldung richtig und vollständig ist."
 
 #: ../shell/src/move-archive.ts
 #: ../shell/src/move-archive.ts
@@ -7206,6 +7243,11 @@ msgstr "Dieser Link funktioniert nicht mehr: Wer ihn geteilt hat, hat ihn zurüc
 msgid "This link opens an app you don't have here. Ask whoever sent it to share the app with you, then open the link again."
 msgstr "Dieser Link öffnet eine App, die du hier nicht hast. Bitte die Person, die ihn geschickt hat, dir die App zu teilen, und öffne den Link dann noch einmal."
 
+#. A demo link the Potyro team removed after a report; the address is where to write
+#: ../shell/src/demo.tsx
+msgid "This link was taken down: the app behind it was removed from Potyro. If you think this was a mistake, write to {address}."
+msgstr "Dieser Link wurde gesperrt: Die App dahinter wurde von Potyro entfernt. Wenn du glaubst, dass das ein Fehler war, schreib an {address}."
+
 #: ../shell/src/realm-probe-screen.tsx
 msgid "This makes a sealed screen busy for 3 seconds, three ways, and measures whether Potyro froze meanwhile. The counter stops while it is frozen."
 msgstr "Das hält einen versiegelten Bildschirm 3 Sekunden lang beschäftigt, auf drei Arten, und misst, ob Potyro dabei eingefroren ist. Der Zähler steht still, solange es eingefroren ist."
@@ -7353,6 +7395,16 @@ msgstr "Heute"
 msgid "Tomorrow"
 msgstr "Morgen"
 
+#. Opening a demo link: the share service's daily limit for this network was reached
+#: ../shell/src/demo.tsx
+msgid "Too many apps were opened from this network today. Try again tomorrow, or on another network."
+msgstr "Aus diesem Netz wurden heute zu viele Apps geöffnet. Versuch es morgen noch einmal oder in einem anderen Netz."
+
+#. Share sheet: the share service's daily limit of links for this network was reached
+#: ../shell/src/demo-share.ts
+msgid "Too many links were made from this network today. Try again tomorrow, or on another network."
+msgstr "Aus diesem Netz wurden heute zu viele Links erstellt. Versuch es morgen noch einmal oder in einem anderen Netz."
+
 #: ../shell/src/app-words.ts
 msgid "Translate into {into}"
 msgstr "Übersetzen in {into}"
@@ -7378,6 +7430,8 @@ msgstr "Probier {name} aus, gemacht mit Potyro"
 
 #: ../shell/src/main.tsx
 #: ../shell/src/main.tsx
+#: ../shell/src/main.tsx
+#: ../shell/src/share-sheet.tsx
 #: ../views/src/media-input.tsx
 msgid "Try again"
 msgstr "Erneut versuchen"

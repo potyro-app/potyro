@@ -36,6 +36,7 @@ import { shareEvent } from "./share-events.js";
 import { creditLine } from "./credit-words.js";
 import { chooseDemoScope } from "./scope.js";
 import { holdArrival, lineFor, withAppTarget, type AppTarget } from "./app-link.js";
+import { reportAddress, reportMailto } from "./contact.js";
 
 /** The person using a demo: nobody in particular, and never this device's identity. */
 const demoPerson = (): Person => ({ id: "demo-viewer", name: t({ message: "You", comment: "The person trying a demo app" }) });
@@ -46,6 +47,8 @@ export class DemoDeclined extends Error {}
 /** The package a demo link carries. Throws in plain words when it cannot be read. */
 /** A link that leads nowhere any more (a 404): the splash says so with the mascot, not as an error. */
 export class LinkGoneError extends Error {}
+/** The app could not be fetched now, but may be later (no connection, too many today): the splash offers Try again. */
+export class DemoRetryError extends Error {}
 
 export async function loadDemoPackage(link: DemoLink): Promise<AppPackage> {
   if (link.kind === "inline") {
@@ -55,13 +58,31 @@ export async function loadDemoPackage(link: DemoLink): Promise<AppPackage> {
       throw new Error(t`This link is damaged: the app in it could not be read. Ask whoever sent it for a new one.`);
     }
   }
-  const { fetchHostedPackage, GoneError } = await import("./share-service.js");
+  const { fetchHostedPackage, GoneError, TakenDownError, TooManyError } = await import("./share-service.js");
   let zip: Uint8Array;
   try {
     zip = await fetchHostedPackage(link.id, link.key);
   } catch (e) {
+    if (e instanceof TakenDownError) {
+      const address = reportAddress();
+      throw new LinkGoneError(
+        t({
+          message: `This link was taken down: the app behind it was removed from Potyro. If you think this was a mistake, write to ${address}.`,
+          comment: "A demo link the Potyro team removed after a report; the address is where to write",
+        }),
+      );
+    }
     if (e instanceof GoneError) throw new LinkGoneError(t`This link no longer works: whoever shared it took it down, or it was never made.`);
-    if (e instanceof TypeError) throw new Error(t`The app could not be fetched. Check the connection and try again.`);
+    // A limit for the day on this network's address (docs/16 "Limits per address"): the link is fine.
+    if (e instanceof TooManyError) {
+      throw new DemoRetryError(
+        t({
+          message: "Too many apps were opened from this network today. Try again tomorrow, or on another network.",
+          comment: "Opening a demo link: the share service's daily limit for this network was reached",
+        }),
+      );
+    }
+    if (e instanceof TypeError) throw new DemoRetryError(t`The app could not be fetched. Check the connection and try again.`);
     throw new Error(t`This link is damaged: the app in it could not be read. Ask whoever sent it for a new one.`);
   }
   try {
@@ -171,7 +192,11 @@ export function leaveDemoPath(): void {
 /** How long someone who came by an invitation uses the app before Keep and Make it mine are offered. */
 const INVITE_OFFER_AFTER_MS = 3 * 60_000;
 
-export function DemoScreen({ session, pkg, startRemix, target }: { session: DemoSession; pkg: AppPackage; startRemix?: boolean; target?: AppTarget }) {
+/**
+ * `reportLink`: the hosted link's own address, without its key — what a report names (#11). Only a
+ * hosted link has one: an inline link carries the whole app in itself and is on no server to remove.
+ */
+export function DemoScreen({ session, pkg, startRemix, target, reportLink }: { session: DemoSession; pkg: AppPackage; startRemix?: boolean; target?: AppTarget; reportLink?: string }) {
   const { t } = useLingui();
   // Keep and Make it mine are the same card (docs/24 §6): a remix is a copy of your own, opened in the Studio.
   const [adding, setAdding] = useState<"keep" | "remix" | null>(startRemix ? "remix" : null);
@@ -203,6 +228,21 @@ export function DemoScreen({ session, pkg, startRemix, target }: { session: Demo
             <span>
               <Trans comment="Demo bar: nothing done in the demo is kept">A demo: nothing you do here is kept</Trans>
             </span>
+          ) : null}
+          {reportLink ? (
+            <a
+              className="k-demo-report"
+              href={reportMailto(
+                t({ message: "A Potyro link", comment: "Subject of the email that reports a demo link to the Potyro team" }),
+                t({
+                  message: `The link: ${reportLink}\n\nWhy I think it is illegal:\n\n\nI believe this report is accurate and complete.`,
+                  comment: "Start of the email that reports a demo link; the person writes their reasons under the second line",
+                }),
+              )}
+              title={t({ message: "Tell the Potyro team about this link, if you think it is illegal", comment: "Demo bar: what the Report link does" })}
+            >
+              <Trans comment="Demo bar: report this demo link to the Potyro team">Report</Trans>
+            </a>
           ) : null}
         </p>
         {offering ? (

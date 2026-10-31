@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LOCALES } from "../../packages/i18n/src/locale.ts";
 import { remixLink as shellRemixLink, readDemoLink } from "../../packages/shell/src/demo-link.ts";
+import { reportAddress } from "../../packages/shell/src/contact.ts";
 import { FORMAT, galleryProblems, isDemoLink, LANGUAGES, publishable, readGallery, remixLink, shownApps } from "../src/data.mjs";
 import { buildGallery, CONTACT, escapeHtml, imageSize, readStrings, renderPage } from "../src/build.mjs";
 
@@ -141,6 +142,8 @@ describe("the page", () => {
 
   it("says the report address in one place, and escapes what it is given", () => {
     expect(html()).toContain(`mailto:${CONTACT}?subject=`);
+    // The same address the app's demo bar reports to (packages/shell/src/contacts.json, #11).
+    expect(CONTACT).toBe(reportAddress());
     const g = published();
     g.apps[0]!.name.en = '<img src=x onerror="alert(1)">';
     const page = renderPage(g, readStrings(strings), { css: "c", js: "j", shots: {} });

@@ -1,0 +1,5 @@
+{
+  "$comment": "Potyro's addresses, named here and nowhere else (contact.ts; the gallery's build.mjs reads this file too). `abuse` is the report address of the terms (docs/legal/terms.md, 'Reporting illegal content'): a PLACEHOLDER until the owner fills it in. While it is one, reports go to `general`.",
+  "abuse": "<ABUSE EMAIL>",
+  "general": "contact@potyro.com"
+}

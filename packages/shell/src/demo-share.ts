@@ -26,6 +26,21 @@ export interface DemoLinkOptions {
   pathname?: string;
   /** Test seams. */
   serviceUp?: () => Promise<boolean>;
+  host?: (app: UserApp, demo: DemoPackage) => Promise<string>;
+}
+
+/** What to say when the share service will not take a link now (its refusal's `code`, docs/16 "Limits per address"). */
+export function notNowSentence(code: string | undefined): string {
+  if (code === "too-many-links") {
+    return t({
+      message: "Too many links were made from this network today. Try again tomorrow, or on another network.",
+      comment: "Share sheet: the share service's daily limit of links for this network was reached",
+    });
+  }
+  return t({
+    message: "Potyro cannot keep more links today. Try again tomorrow.",
+    comment: "Share sheet: the share service is full for the day or short of room; nothing the person did",
+  });
 }
 
 /** What a chat shows for the link: the app's name, and one line in the sharer's language. Never a record. */
@@ -60,14 +75,19 @@ async function hosted(app: UserApp, demo: DemoPackage): Promise<string> {
 export async function makeDemoLink(app: UserApp, opts: DemoLinkOptions = {}): Promise<MadeDemoLink> {
   const demo = await demoPackageFor(app, { by: opts.by });
   const up = opts.serviceUp ?? (async () => (await import("./share-service.js")).shareServiceUp());
+  const host = opts.host ?? hosted;
+  /** Why the service said not now, when it did: said instead of "too big" if no inline link fits either. */
+  let notNow: string | null = null;
   if (await up()) {
     try {
-      const link = await hosted(app, demo);
+      const link = await host(app, demo);
       shareEvent("demo-link-made");
       return { link, hosted: true };
     } catch (e) {
       // The service is there and said no (too many today, say): the inline link still works.
       console.warn("[potyro] the share service did not take this link; making one that carries the app:", e);
+      const { TooManyError } = await import("./share-service.js");
+      if (e instanceof TooManyError) notNow = notNowSentence(e.code);
     }
   }
   // Named by the build in the native app, where the page is the phone (site.ts).
@@ -81,6 +101,7 @@ export async function makeDemoLink(app: UserApp, opts: DemoLinkOptions = {}): Pr
   let link = inlineDemoLink(demo.zip, origin, pathname);
   if (!link && demo.pictures) link = inlineDemoLink((await demoPackageFor(app, { by: opts.by, pictures: false })).zip, origin, pathname);
   if (!link && demo.bare) link = inlineDemoLink(demo.bare, origin, pathname);
+  if (!link && notNow) throw new Error(notNow);
   if (!link) {
     const name = app.name;
     throw new Error(t`“${name}” is too big to fit in a link on its own. Send its package instead: in the Studio, Files → Save as a package.`);
