@@ -18,7 +18,7 @@ vi.mock("../src/open-store.js", () => ({
     return store;
   },
 }));
-const { getUserApp, saveUserApp } = await import("../src/user-apps.js");
+const { getUserApp, MAX_KEPT_SEED, saveUserApp } = await import("../src/user-apps.js");
 const { listVersions } = await import("../src/app-history.js");
 const { restoreVersion } = await import("../src/restore-version.js");
 
@@ -128,6 +128,15 @@ describe("a saved app's seed", () => {
     expect(getUserApp("watering")?.source).toBe("v1");
     expect(getUserApp("watering")?.seed).toEqual(seed);
     expect(seedThatFits(getUserApp("watering")!.seed, plants())).toEqual(seed);
+  });
+
+  it("is kept only when it is small, whichever way it came: the Studio's too (MAX_KEPT_SEED)", async () => {
+    const big: AppSeed = { plant: Array.from({ length: 2_000 }, (_, i) => ({ id: `p${i}`, name: `A plant with a long name, number ${i}` })) };
+    expect(JSON.stringify(big).length).toBeGreaterThan(MAX_KEPT_SEED);
+    await saveUserApp({ id: "watering", name: "Watering", source: "s1", seed: big }, NOW);
+    expect(getUserApp("watering")?.seed).toBeUndefined();
+    await saveUserApp({ id: "watering", name: "Watering", source: "s2", seed }, NOW);
+    expect(getUserApp("watering")?.seed).toEqual(seed);
   });
 
   it("is what a package saved from the app carries as seed.json — never the person's records in its store", async () => {
