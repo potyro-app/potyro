@@ -4,7 +4,7 @@
 // weeks, five daily blocks, "done when" goals and optional modules (see `plan.ts`). Where you are in
 // the plan is `progress.ts`, stored in `ctx.storage`; what you did each day is a `session` record;
 // the weekly review is a `weekLog` record. A day with every block ticked is "Day done", and Share
-// makes a picture of it (`card.ts`) for ctx.files.export.
+// makes a picture of it (`card.ts`) for the share sheet, through ctx.ui.share.
 //
 // It imports `plan.ts`, `progress.ts` and `styles.ts` directly: `pnpm pack:app` packs them as the
 // package's `src/`, and the shell resolves `./plan.js` from there (#258). This file stays the one the
@@ -17,7 +17,7 @@
 // is a plan file of its own (Modules → Load plan file…). What validatePlan says about a broken file
 // stays in English too: it points at paths in the file, for whoever edits it.
 import { defineApp } from "potyro";
-import type { Ctx, Field, FileInfo, Resolved, ViewProps } from "potyro";
+import type { Ctx, Field, Resolved, ViewProps } from "potyro";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { blocksForWeek, mainWeeks, resolveLink, startingWeekNumber, validatePlan } from "./plan.js";
 import type { Plan, PlanLink, PlanModule } from "./plan.js";
@@ -377,8 +377,8 @@ function Today(props: ViewProps) {
     { done: doneCount, total: blocks.length },
   );
 
-  // The picture of the day, handed to ctx.files.export: the save dialog on a computer, the share
-  // sheet on a phone. The copy written to hand over is removed after.
+  // The picture of the day, handed to Potyro's share dialog: it shows the picture, then the share
+  // sheet sends it, or a copy is saved where there is none. Closed unsent, nothing is said.
   const shareDay = async (): Promise<void> => {
     const el = rootRef.current;
     if (!el || sharing) return;
@@ -396,20 +396,17 @@ function Today(props: ViewProps) {
       days: dots.map((d, i) => ({ n: i + 1, practised: d.practised, today: d.today, future: d.future })),
       name: runtime.definition.name,
     };
-    let file: FileInfo | null = null;
     try {
       const png = await drawDayCard(card, {
-        traco: token("--traco", "#C9772B"),
-        tinta: token("--tinta-l", token("--accent", "#a05e1c")),
+        traco: token("--traco", token("--accent", "#C9772B")),
         display: token("--font-display", "system-ui, sans-serif"),
         body: token("--font-body", "system-ui, sans-serif"),
       });
-      file = await ctx.files.write(`share/piano-${todayKey}.png`, png, { mime: "image/png" });
-      await ctx.files.export(file);
-    } catch (e) {
-      if (!(e instanceof Error && e.name === "AbortError")) ctx.ui.toast(ctx.t("It could not be shared."));
+      const file = new File([png], `piano-${todayKey}.png`, { type: "image/png" });
+      await ctx.ui.share({ title: ctx.t("Day done"), files: [file] });
+    } catch {
+      ctx.ui.toast(ctx.t("It could not be shared."));
     } finally {
-      if (file) await ctx.files.remove(file).catch(() => undefined);
       setSharing(false);
     }
   };

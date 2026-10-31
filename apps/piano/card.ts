@@ -1,5 +1,6 @@
 // The "Day done" picture: a 1080×1350 card of a finished practice day — a keyboard across the top,
-// the minutes, the blocks done and the week — in the app's light look, for a message or a story.
+// the minutes, the blocks done, and a footer band with the week and the app's name — in the app's
+// light look, for a message or a story.
 //
 // Where the keys go (`keyboard`) is a plain function the tests run without a browser; `drawDayCard`
 // paints the card on a canvas and hands back a PNG.
@@ -18,10 +19,8 @@ export const DAY = {
 } as const;
 
 export interface DayColours {
-  /** The app's colour, its liveliest level (`--traco`): the felt under the keys, the ticks, the days. */
+  /** The app's colour, its liveliest level (`--traco`): the felt under the keys, the minutes, the ticks, the days. */
   traco: string;
-  /** The app's colour at the light theme's text level (`--tinta-l`): the minutes. */
-  tinta: string;
   display: string;
   body: string;
 }
@@ -64,6 +63,8 @@ export function keyboard(width: number, whites: number): { white: Key[]; black: 
 
 const PAD = 88;
 const KEYS_H = 300;
+/** The footer band: the week and the app's name, on the surface colour down to the card's edge. */
+export const BAND_H = 250;
 
 /** The card as a PNG. Waits for the two fonts, so the first share is not drawn in a fallback. */
 export async function drawDayCard(data: DayCardData, colours: DayColours): Promise<Blob> {
@@ -116,9 +117,9 @@ export async function drawDayCard(data: DayCardData, colours: DayColours): Promi
   g.font = body(34);
   g.fillText(data.week, PAD, y, CARD_W - PAD * 2);
 
-  // The minutes, big, in the app's colour; what they were under them.
+  // The minutes, big, in the app's own colour — the strip's and the ticks' orange; what they were under them.
   y += 168;
-  g.fillStyle = colours.tinta;
+  g.fillStyle = colours.traco;
   g.font = display(170);
   g.fillText(data.minutes, PAD - 6, y, CARD_W - PAD * 2);
   y += 58;
@@ -148,17 +149,27 @@ export async function drawDayCard(data: DayCardData, colours: DayColours): Promi
     g.fillText(label, PAD + 48, y, CARD_W - PAD * 2 - 48);
   }
 
-  // The week: a circle a day, filled where you practised, ringed today.
-  const weekY = CARD_H - 185;
+  // The footer band: what this week looks like, and whose card it is. A circle a day, filled where
+  // you practised, ringed today; the days to come fainter.
+  const bandY = CARD_H - BAND_H;
+  g.fillStyle = DAY.surface;
+  g.fillRect(0, bandY, CARD_W, BAND_H);
+  const labelY = bandY + 72;
   g.fillStyle = DAY.muted;
   g.font = body(26, 600);
-  g.fillText(data.weekTitle, PAD, weekY - 60);
+  g.fillText(data.weekTitle, PAD, labelY);
+  g.fillStyle = DAY.inkSoft;
+  g.font = display(36);
+  g.textAlign = "right";
+  g.fillText(data.name, CARD_W - PAD, labelY);
+  g.textAlign = "left";
+  const weekY = bandY + 150;
   const r = 34;
   const gap = (CARD_W - PAD * 2 - r * 2 * 7) / 6;
   data.days.forEach((d, i) => {
     const cx = PAD + r + i * (r * 2 + gap);
     g.globalAlpha = d.future ? 0.6 : 1;
-    g.fillStyle = d.practised ? colours.traco : DAY.surface2;
+    g.fillStyle = d.practised ? colours.traco : DAY.bg;
     g.beginPath();
     g.arc(cx, weekY, r, 0, Math.PI * 2);
     g.fill();
@@ -176,10 +187,6 @@ export async function drawDayCard(data: DayCardData, colours: DayColours): Promi
     g.textAlign = "left";
     g.globalAlpha = 1;
   });
-
-  g.fillStyle = DAY.inkSoft;
-  g.font = display(36);
-  g.fillText(data.name, PAD, CARD_H - 56);
 
   return new Promise<Blob>((ok, fail) => c.toBlob((b) => (b ? ok(b) : fail(new Error("no picture"))), "image/png"));
 }
