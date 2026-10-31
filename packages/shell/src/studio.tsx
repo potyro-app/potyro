@@ -130,6 +130,34 @@ function useBarHeight(root: RefObject<HTMLElement>, bar: RefObject<HTMLElement>)
   }, [root, bar]);
 }
 
+/** Focus that is nowhere a person can be: on the page itself, or on a control now inert. */
+function focusLost(): boolean {
+  const at = document.activeElement;
+  return !at || at === document.body || at.closest("[inert]") !== null;
+}
+
+/**
+ * On a phone the opened app covers the conversation, which turns inert (#489): the card's Open (or
+ * the code sheet's Run) that opened it can no longer hold focus. Focus moves to the app's region, so a
+ * keyboard or a screen reader is where the app is, not at the top of the page. When the app closes
+ * and focus went with it, it comes back to the Conversation tab, or — no tabs — to the Studio's menu.
+ */
+function usePhoneFocus(
+  covering: boolean,
+  region: RefObject<HTMLElement>,
+  conversationTab: RefObject<HTMLElement>,
+  bar: RefObject<HTMLElement>,
+): void {
+  const was = useRef(covering);
+  useEffect(() => {
+    if (covering === was.current) return;
+    was.current = covering;
+    if (!focusLost()) return;
+    if (covering) region.current?.focus({ preventScroll: true });
+    else (conversationTab.current ?? bar.current?.querySelector<HTMLElement>(".k-studio-more"))?.focus({ preventScroll: true });
+  }, [covering, region, conversationTab, bar]);
+}
+
 /** Wide enough for the conversation and the app side by side. Narrower, the app takes the screen. */
 const SIDE_BY_SIDE = "(min-width: 1100px)";
 
@@ -278,6 +306,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const rootRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLElement>(null);
   useBarHeight(rootRef, barRef);
+  const previewRef = useRef<HTMLElement>(null);
+  const conversationTabRef = useRef<HTMLButtonElement>(null);
 
   const label = engineLabel(engineCfg);
   const ready = engineReady(engineCfg);
@@ -837,13 +867,14 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     setPointing(false);
     setPreviewOpen(false);
   };
+  usePhoneFocus(showPreview && !wide, previewRef, conversationTabRef, barRef);
   // On a phone the app covers the conversation and the box: out of reach, so out of the reading and
   // Tab order too (#489), until the Conversation tab brings them back. The bar above stays live.
   const covered: Record<string, string> = showPreview && !wide ? { inert: "" } : {};
   const tabs =
     canOpen && !wide ? (
       <div className="k-studio-tabs" role="tablist" aria-label={t`Studio`}>
-        <button type="button" role="tab" className="k-studio-tab" aria-selected={!showPreview} onClick={closePreview}>
+        <button ref={conversationTabRef} type="button" role="tab" className="k-studio-tab" aria-selected={!showPreview} onClick={closePreview}>
           <Trans comment="Studio tab on a phone: the conversation">Conversation</Trans>
         </button>
         <button type="button" role="tab" className="k-studio-tab" aria-selected={showPreview} onClick={() => setPreviewOpen(true)}>
@@ -1047,6 +1078,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           preview={preview}
           title={appName}
           underStudioBar={tabs !== null}
+          regionRef={previewRef}
           above={adjust}
           appAccent={hue !== undefined ? hueColour(hue) : undefined}
           appearance={appearance}

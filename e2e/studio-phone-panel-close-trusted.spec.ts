@@ -183,6 +183,9 @@ test("#489 with the app open, the Studio's Close is in reach, and nothing covere
   expect(await onTop(page, conversation)).toBe(true);
   await expect(studio.locator(".k-studio-bar").getByRole("tab", { name: "App" })).toHaveAttribute("aria-selected", "true");
 
+  // The card's Open is now covered (inert): focus goes to the app, not to the page.
+  await expect(preview).toBeFocused();
+
   // What the app covers (the conversation, the box) is out of reach, for a reader and for Tab.
   expect(await coveredControls(studio)).toEqual([]);
   const hiddenBox = studio.getByRole("textbox", { name: "Describe the app" });
@@ -204,9 +207,11 @@ test("#489 with the app open, the Studio's Close is in reach, and nothing covere
   await expect(preview.locator(".k-point-bar")).toHaveCount(0);
   await expect(preview.locator(".k-preview-point")).toBeVisible();
 
-  // The Conversation tab brings the conversation and the box back, live.
-  await conversation.tap();
+  // The Conversation tab brings the conversation and the box back, live, and keeps the focus.
+  await conversation.focus();
+  await conversation.press("Enter");
   await expect(preview).toHaveCount(0);
+  await expect(conversation).toBeFocused();
   const box = studio.getByRole("textbox", { name: "Describe the app" });
   await expect(box).toBeVisible();
   await box.focus();
@@ -243,6 +248,8 @@ test("#489 an app run from hand-written code before any app exists keeps a way b
   expect(await onTop(page, back)).toBe(true);
   const b = (await back.boundingBox())!;
   expect(b.height).toBeGreaterThanOrEqual(44);
+  // The editor that ran it is gone, so focus is on the app, not lost to the page.
+  await expect(preview).toBeFocused();
   expect(await coveredControls(studio)).toEqual([]);
 
   await back.tap();
