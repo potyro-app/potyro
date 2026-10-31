@@ -1041,7 +1041,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         <PreviewScreen
           preview={preview}
           title={appName}
-          underStudioBar={!wide}
+          underStudioBar={tabs !== null}
           above={adjust}
           appAccent={hue !== undefined ? hueColour(hue) : undefined}
           appearance={appearance}
