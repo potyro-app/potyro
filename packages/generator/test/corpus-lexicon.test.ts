@@ -2,7 +2,7 @@
 // and from keys beside their labels, never from a hand-written dictionary.
 
 import { describe, expect, it } from "vitest";
-import { buildLexicon, englishFor, pairsIn, splitKey, withSource, wordsOf } from "../src/corpus-lexicon.js";
+import { buildLexicon, englishFor, englishView, pairsIn, splitKey, translationLanguages, withSource, wordsOf } from "../src/corpus-lexicon.js";
 
 describe("wordsOf / splitKey", () => {
   it("keeps a word whole in any script", () => {
@@ -65,5 +65,28 @@ describe("englishFor", () => {
     const edited = withSource(withWords, `fields: { rating: { type: "number", label: "Ocena" } }`);
     expect(englishFor(edited, "oceną")).toEqual(["rating"]);
     expect(englishFor(withWords, "oceną")).toEqual([]); // the base is left as it was
+  });
+});
+
+describe("translationLanguages / englishView", () => {
+  const src = `title: { en: "Recipes", pl: "Przepisy", "pt-BR": "Receitas" },
+    hint: {
+      en: "Tap a recipe",
+      pl: "Stuknij przepis",
+      "pt-BR": "Toque numa receita",
+    },
+    page: { id: "pl", sampl: "x", it: "kept: not a language here" }`;
+
+  it("finds the languages translation maps carry beside English, not keys that look like one", () => {
+    expect([...translationLanguages([src])].sort()).toEqual(["pl", "pt-BR"]);
+    expect(translationLanguages([`a: { en: "A", it: "B" }`]).size).toBe(0); // one map is not a language
+  });
+
+  it("leaves what a passage says in English, and everything that is not a translation", () => {
+    const view = englishView(src, translationLanguages([src]));
+    expect(view).toContain('en: "Recipes"');
+    expect(view).toContain('en: "Tap a recipe"');
+    expect(view).not.toMatch(/Przepisy|Receitas|Stuknij|numa/);
+    expect(view).toContain('id: "pl", sampl: "x", it: "kept: not a language here"');
   });
 });

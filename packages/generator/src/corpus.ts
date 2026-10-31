@@ -11,7 +11,7 @@
 // the sources from disk (Node, for the build script and the staleness test); `load-corpus.ts` loads
 // the generated corpus lazily, as its own chunk, in the browser.
 
-import { buildLexicon, englishFor, withSource, type Lexicon, type WordPair } from "./corpus-lexicon.js";
+import { buildLexicon, englishFor, englishView, translationLanguages, withSource, type Lexicon, type WordPair } from "./corpus-lexicon.js";
 import { classifyText, type Language } from "./language.js";
 
 export interface CorpusFile {
@@ -114,11 +114,17 @@ interface Scored {
  * alternatives — a word and the English words it stands for (corpus-lexicon.ts) — that counts once,
  * by its best alternative. Every term found counts more than many hits of one, so `ctx.files import`
  * prefers a passage with both over one that says `files` twenty times; `bonus` terms (the app's own
- * shape) only tip the balance between equals.
+ * shape) only tip the balance between equals. `view` is what of a passage is matched (a request in
+ * another language matches its English, `englishView`); the passage shown is always the whole of it.
  */
-function rankChunks(files: readonly CorpusFile[], groups: readonly (readonly string[])[], bonus: readonly string[] = []): Scored[] {
+function rankChunks(
+  files: readonly CorpusFile[],
+  groups: readonly (readonly string[])[],
+  bonus: readonly string[] = [],
+  view: (text: string) => string = (text) => text,
+): Scored[] {
   const all = files.flatMap(chunks);
-  const lowered = all.map((c) => c.lines.join("\n").toLowerCase());
+  const lowered = all.map((c) => view(c.lines.join("\n")).toLowerCase());
   const docFreq = new Map<string, number>();
   for (const w of groups.flat()) if (!docFreq.has(w)) docFreq.set(w, lowered.filter((t) => t.includes(w)).length);
   return all
@@ -195,15 +201,20 @@ const STOPWORDS = new Set(["the", "and", "for", "with", "that", "this", "from", 
 
 const primeTerms = (instruction: string): string[] => terms(instruction).filter((t) => t.length >= 3 && !STOPWORDS.has(t));
 
-/** The corpus's lexicon, mined once per corpus (it is a release's, and never changes). */
-const lexicons = new WeakMap<Corpus, Lexicon>();
-function corpusLexicon(corpus: Corpus): Lexicon {
-  let lex = lexicons.get(corpus);
-  if (!lex) {
+/** The corpus's lexicon and the languages its translation maps carry, mined once per corpus (it is a
+ *  release's, and never changes). */
+interface Mined {
+  lex: Lexicon;
+  languages: Set<string>;
+}
+const mined = new WeakMap<Corpus, Mined>();
+function corpusMined(corpus: Corpus): Mined {
+  let m = mined.get(corpus);
+  if (!m) {
     const sources = corpus.files.filter((f) => /\.tsx?$/.test(f.path)).map((f) => f.text);
-    lexicons.set(corpus, (lex = buildLexicon(sources, corpus.words ?? [])));
+    mined.set(corpus, (m = { lex: buildLexicon(sources, corpus.words ?? []), languages: translationLanguages(sources) }));
   }
-  return lex;
+  return m;
 }
 
 /** Whether the request is in a language other than English: the one the loop was told, else as it reads. */
@@ -220,14 +231,22 @@ function foreign(instruction: string, language: Language | undefined): boolean {
  * so it primes exactly as it did.
  */
 export function primeGroups(corpus: Corpus, instruction: string, source: string, language?: Language): string[][] {
+  return primeQuery(corpus, instruction, source, language).groups;
+}
+
+/** The request's terms (primeGroups) and, for a request not in English, what of a passage they match. */
+function primeQuery(corpus: Corpus, instruction: string, source: string, language?: Language): { groups: string[][]; view?: (text: string) => string } {
   const words = primeTerms(instruction);
-  if (!foreign(instruction, language)) return words.map((w) => [w]);
-  const lex = source ? withSource(corpusLexicon(corpus), source) : corpusLexicon(corpus);
-  return words.map((w) => {
+  if (!foreign(instruction, language)) return { groups: words.map((w) => [w]) };
+  const base = corpusMined(corpus);
+  const lex = source ? withSource(base.lex, source) : base.lex;
+  const groups = words.map((w) => {
     if (lex.englishCount.has(w) || !/\p{L}/u.test(w)) return [w];
     const english = englishFor(lex, w).filter((e) => e.length >= 3 && !STOPWORDS.has(e));
     return [w, ...english];
   });
+  const languages = source ? new Set([...base.languages, ...translationLanguages([source])]) : base.languages;
+  return { groups, view: (text) => englishView(text, languages) };
 }
 
 /** The `type: "…"` values an app source uses — its shape, as words the corpus can be matched on. */
@@ -245,13 +264,13 @@ const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
  * #341). Empty when the corpus has nothing to say, so the first message says nothing either.
  */
 export function primeCorpus(corpus: Corpus, instruction: string, source: string, language?: Language): string {
-  const groups = primeGroups(corpus, instruction, source, language);
+  const { groups, view } = primeQuery(corpus, instruction, source, language);
   if (groups.length < 2) return "";
   const self = appIdOf(source);
   const selfRe = self ? new RegExp(`\\bid:\\s*["']${escapeRe(self)}["']`) : null;
   const files = corpus.files.filter((f) => !f.path.startsWith("packages/") && !(selfRe && selfRe.test(f.text)));
   const picked = distinct(
-    rankChunks(files, groups, shapeTerms(source)).filter((s) => s.matched >= 2),
+    rankChunks(files, groups, shapeTerms(source), view).filter((s) => s.matched >= 2),
     PRIME_FILES,
     1,
   );
