@@ -22,6 +22,8 @@ export const MODEL = "deepseek/deepseek-v4-flash-0731";
 export const PROMPT = "a list of the plants I water and when";
 export const APP_NAME = "Watering";
 export const MY_PLANT = "Lemon tree on the balcony";
+/** What the share sheet says a demo link of an app with no sample records opens on. */
+export const OPENS_EMPTY = "It opens an empty copy of the app right away in any browser. No account, nothing to install. Your records stay with you.";
 
 /** What the model "writes" for the prompt: an app as a model would — no sample records of its own. */
 export const APP_SOURCE = `import { defineApp } from "potyro";
@@ -137,11 +139,16 @@ export async function secondDevice(browser: Browser, baseURL: string, device: De
   return { context, page: await context.newPage() };
 }
 
-/** On Home, from the tile's ⋯: Share → A link anyone can try → Make the link. Returns the link. */
+/**
+ * On Home, from the tile's ⋯: Share → A link anyone can try → Make the link. Returns the link. The
+ * app the model wrote has no sample records, and the sheet says the link opens on an empty copy.
+ */
 export async function demoLinkFromTile(page: Page): Promise<string> {
   await tileAction(page, APP_NAME, "share-sheet");
   const sheet = page.getByRole("dialog", { name: `Share ${APP_NAME}` });
   await expect(sheet.getByRole("heading", { name: "A link anyone can try" })).toBeVisible();
+  await expect(sheet.getByText(OPENS_EMPTY)).toBeVisible();
+  await expect(sheet).not.toContainText("sample records");
   const make = sheet.getByRole("button", { name: "Make the link" });
   expect(await onScreen(page, make)).toBe(true);
   await make.click();
@@ -247,11 +254,17 @@ export async function makeUseAndShare({ page, context, browser, baseURL, device,
   await expect(row).toBeVisible();
   expect(await onTop(page, row)).toBe(true);
 
-  // 4. Closed, the Studio leaves the person on Home, where the app has a tile. On a phone the app is
-  //    the whole screen and covers the Studio's Close: the Conversation tab comes first (finding,
-  //    minor: two taps to leave, and the covered Close is still in the reading order).
+  // 4. Closed, the Studio leaves the person on Home, where the app has a tile.
   const close = studio.getByRole("button", { name: "Close studio" });
-  if (!(await onTop(page, close))) await studio.getByRole("region", { name: "App preview" }).getByRole("tab", { name: "Conversation" }).click();
+  if (device === PHONE) {
+    // FINDING #489: on a phone the app is the whole screen and covers the Studio's Close, so the
+    // Conversation tab comes first — two taps to leave, and the covered Close is still in the reading
+    // order. This step encodes the bug on purpose: once #489 is fixed the next line fails, and it
+    // becomes the real assertion — Close on top at once, no tab first.
+    test.info().annotations.push({ type: "finding", description: "#489 on a phone the app preview covers the Studio's Close: two taps to leave, a covered button in the reading order" });
+    expect(await onTop(page, close)).toBe(false);
+    await studio.getByRole("region", { name: "App preview" }).getByRole("tab", { name: "Conversation" }).click();
+  }
   expect(await onTop(page, close)).toBe(true);
   await close.click();
   await expect(studio).toHaveCount(0);
@@ -261,8 +274,11 @@ export async function makeUseAndShare({ page, context, browser, baseURL, device,
   expect(link).toMatch(/\/s\/[A-Za-z0-9_-]{22}/);
 
   // 5. A second device that has never used Potyro opens it: sealed, named, and none of the sharer's
-  //    records. An app made in the Studio has no sample records of its own (finding: the sheet says
-  //    the link opens "with sample records"), so the demo opens on the app's empty page.
+  //    records. FINDING #486: an app made in the Studio has no sample records of its own, so the demo
+  //    opens on the app's empty page (the sheet now says so: "an empty copy of the app"). This step
+  //    encodes it on purpose: once #486 gives such an app something to show, the empty page below is
+  //    no longer there and the step becomes the real assertion — the link opens on sample records.
+  test.info().annotations.push({ type: "finding", description: "#486 an app made in the Studio has no sample records: its demo link opens on an empty page" });
   const { context: other, page: viewer } = await secondDevice(browser, baseURL, device, deployed);
   await fakeRelay(other, { chat: true });
   await viewer.goto(link);
@@ -302,9 +318,6 @@ export async function noFreeRouteToGallery({ page, context, browser, baseURL, de
   const cli = await noRealModel(context);
   await fakeGallery(context, galleryLink);
 
-  // FINDING: on a deployed build the panel takes the composer's place at once, and what the person
-  // typed on Home is nowhere on screen (it waits in the hidden box until a key is added); the
-  // Studio's "Ideas to start from" stay above it and fill that hidden box — a tap that shows nothing.
   const studio = await describeFromHome(page, { composer: !deployed });
   if (!deployed) {
     // Potyro is not offered at all while the relay says its chat route does not serve.
@@ -321,7 +334,26 @@ export async function noFreeRouteToGallery({ page, context, browser, baseURL, de
   await expect(panel).toBeVisible({ timeout: 30_000 });
   await settled(panel);
   await expect(panel).toContainText("usually a few cents an app");
-  await expect(studio.getByRole("textbox", { name: "Describe the app" })).toBeHidden();
+  // Hidden, it is out of the accessibility tree: found with `includeHidden` to read what it holds.
+  const box = studio.getByRole("textbox", { name: "Describe the app", includeHidden: true });
+  await expect(box).toBeHidden();
+  // FINDING #488: the panel takes the composer's place, and what the person typed on Home is nowhere
+  // on screen (it waits in the hidden box until a key is added); the Studio's "Ideas to start from"
+  // stay above the panel and fill that hidden box — a tap that shows nothing. These lines encode the
+  // bug on purpose: once #488 is fixed they fail, and they become the real assertions — the words
+  // shown (or said to be kept), and the ideas hidden or off while the box is.
+  test.info().annotations.push({ type: "finding", description: "#488 the words typed on Home are hidden behind the key panel, and 'Ideas to start from' fill the hidden box" });
+  await expect(box).toHaveValue(PROMPT);
+  // In the Studio, that is: Home behind it still holds them in its own box, under the Studio.
+  await expect(studio.getByText(PROMPT).filter({ visible: true })).toHaveCount(0);
+  const idea = studio.getByRole("list", { name: "Ideas to start from" }).getByRole("button").first();
+  await expect(idea).toBeVisible();
+  const ideaWords = (await idea.textContent())!.trim();
+  await idea.click();
+  await expect(box).toHaveValue(ideaWords);
+  await expect(box).toBeHidden();
+  // The idea itself is the only place in the Studio its words show.
+  await expect(studio.getByText(ideaWords, { exact: true }).filter({ visible: true })).toHaveCount(1);
   // When the build names no gallery (VITE_POTYRO_GALLERY), the link is the live site's root: the
   // tests route it, or they would leave for potyro.com.
   const start = panel.getByRole("link", { name: "Start from an app in the gallery" });
