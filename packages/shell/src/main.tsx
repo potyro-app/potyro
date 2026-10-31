@@ -31,6 +31,9 @@ import { App } from "./App.js";
 import { Studio } from "./studio.js";
 import { Launcher, openInstalledApp } from "./launcher.js";
 import { applyLook } from "./look.js";
+import { listenForInstall } from "./install-offer.js";
+import { connectOffline, type ConnectionInfo } from "./offline-ready.js";
+import { followThemeColor } from "./theme-color.js";
 import { appKey, recordOpen, recordSignals } from "./launcher-store.js";
 import { pauseTiles, watchTile } from "./tile-runner.js";
 import { seedExamples } from "./examples.js";
@@ -1022,6 +1025,8 @@ async function boot(): Promise<void> {
   // Before anything paints. A light flash on a device set to dark is the whole feature failing in
   // the one moment it is most visible.
   applyLook();
+  // And the browser's bar with it, when a theme is chosen rather than the system's (#123).
+  followThemeColor();
 
   // The language, before anything paints for the same reason (#298): the saved choice, else the
   // device's, else English. English needs no fetch; another language is one small chunk, from the
@@ -1190,10 +1195,24 @@ function registerServiceWorker(): void {
     return;
   }
 
-  navigator.serviceWorker.register("/sw.js").catch(() => {
-    /* offline SW is best-effort */
-  });
+  navigator.serviceWorker
+    .register("/sw.js")
+    .then(() => navigator.serviceWorker.ready)
+    .then((reg) => {
+      // Which build this page runs, for the worker (public/sw.js header): the path of this, the
+      // entry script. Then how much is kept for offline use, and the rest only on Wi-Fi or a cable
+      // (offline-ready.ts) — otherwise when the person asks for it in You.
+      const connection = (navigator as Navigator & { connection?: ConnectionInfo }).connection;
+      connectOffline(navigator.serviceWorker, reg, new URL(import.meta.url).pathname, connection);
+    })
+    .catch(() => {
+      /* offline SW is best-effort */
+    });
 }
+
+// Before boot awaits anything: the browser's install offer (#123) fires once, and only a listener
+// that is already there catches it.
+listenForInstall();
 
 boot().catch((err: unknown) => {
   // Not a boot error: the screen saying another tab has the storage is already up.

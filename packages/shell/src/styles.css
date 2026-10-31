@@ -11130,6 +11130,60 @@ body:has(.k-tabbar) .k-toasts {
 .k-identity-words {
   margin-top: 0.55rem;
 }
+/* Add to home screen (#123): a row under "This device", the same paper as the device paths, quieter
+   than them — the answer is one tap, and "No thanks" sits beside it as plain text. */
+.k-identity-install {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.7rem;
+  margin-top: 0.55rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.k-identity-install-text {
+  display: flex;
+  flex: 1 1 13rem;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.k-identity-install-text b {
+  font-weight: 600;
+}
+/* Every answer here is a thumb's 44px, mouse or not, with 8px between: the row exists for phones. */
+.k-identity-install-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+.k-identity-install-actions button {
+  min-height: 2.75rem;
+}
+.k-identity-install-no {
+  min-width: 2.75rem;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.k-identity-install-no:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+.k-identity-install-no:focus-visible {
+  color: var(--ink);
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
+}
 
 /* tokens-only: start — language picker */
 /* You → Language (#298). One native select: the platform's own picker on a phone, a list on a
