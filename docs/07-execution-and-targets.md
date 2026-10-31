@@ -303,6 +303,34 @@ Vite build + cache-first service worker. Persistence via OPFS SQLite. `WebCapabi
 `ctx.caps`. Trusted apps run direct (main/worker); untrusted apps' logic in the browser realm, served
 with `frame-src 'none'` (QuickJS-WASM behind the flag).
 
+**Offline after one visit, and the home screen (#123).** The service worker
+(`packages/shell/public/sw.js`) serves pages network-first and everything else cache-first, and it
+does not wait to see a file fetched: the build writes `shell-precache.json`
+(`precacheShell` in `packages/shell/vite.config.ts`) with two lists and the build's id. `boot` (the
+entry chunk, its static imports, styles and fonts, the manifest and icons, about 2.4 MB) is fetched
+at install, because on a first visit the page loads its entry before the worker controls it, and a
+reload offline used to find the page with no script. `rest` (every other file under `assets/`,
+about 40 MB, mostly the bundler's Wasm an app needs to open) is fetched only when the page asks
+(`warm`, four at a time): automatically only when `navigator.connection` says Wi-Fi or ethernet with
+Save-Data off, once after Potyro is added to the home screen, and when the person taps "Keep Potyro
+ready offline (about 40 MB)" in You (`packages/shell/src/offline-ready.ts`). Otherwise files are kept
+as they are used. You says "Everything works offline" only once the worker reports every file kept.
+
+The build stamps its id into the emitted `sw.js`, so each release is a new worker with its own cache,
+`potyro-<build>`. Old caches are deleted only when every open page has told the worker which build
+it runs and none runs that one, so a tab left open on the previous build keeps its lazy chunks.
+Offline, every navigation gets one copy of the page (`/`, whatever the query), kept only when it is
+this build's page and its boot files are in the same cache. `/ai/`, `/share-api/`, `/requests/`,
+`/rooms/` and share links (`/s/<id>`) never go through the cache, and nothing marked
+`Cache-Control: no-store` is kept.
+
+The You panel offers adding Potyro to the home screen (`install-offer.ts`): the browser's own dialog
+where `beforeinstallprompt` fires (its mini-infobar is suppressed), the two Safari steps on iPhone
+and iPad, nothing after "No thanks"; once on the home screen, an Offline row instead.
+`e2e/pwa-install-prod.spec.ts` covers this against a production build (`pnpm test:e2e:prod`, not
+part of `ci:local all`). Real-device checks on Android Chrome and iOS Safari are still to be
+recorded in docs/13 and docs/27 (§5.1: whether a home-screen web app on iOS shares Safari's storage).
+
 ### Capacitor (second)
 Wraps the same web build. `CapacitorCapabilities` backs `ctx.caps` with real native camera,
 **exact local notifications**, geolocation, filesystem. Same runners: the WebView builds the realm

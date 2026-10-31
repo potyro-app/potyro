@@ -1,11 +1,16 @@
 {
+  "id": "/",
   "name": "Potyro",
   "short_name": "Potyro",
-  "description": "Personal apps that are real TypeScript modules.",
+  "description": "Your own small apps. They live on your device and work offline.",
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#414042",
+  "theme_color": "#ffffff",
+  "categories": ["productivity", "lifestyle", "utilities"],
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
