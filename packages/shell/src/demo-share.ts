@@ -16,6 +16,8 @@ export interface MadeDemoLink {
   link: string;
   /** Hosted links get a preview card in chats; an inline one shows the site's own. */
   hosted: boolean;
+  /** Whether the link opens on sample records (docs/24 §3), or on an empty copy of the app. */
+  samples: boolean;
 }
 
 export interface DemoLinkOptions {
@@ -82,7 +84,7 @@ export async function makeDemoLink(app: UserApp, opts: DemoLinkOptions = {}): Pr
     try {
       const link = await host(app, demo);
       shareEvent("demo-link-made");
-      return { link, hosted: true };
+      return { link, hosted: true, samples: Boolean(demo.seed) };
     } catch (e) {
       // The service is there and said no (too many today, say): the inline link still works.
       console.warn("[potyro] the share service did not take this link; making one that carries the app:", e);
@@ -100,7 +102,11 @@ export async function makeDemoLink(app: UserApp, opts: DemoLinkOptions = {}): Pr
   // limit), the app on its own, which opens empty, as it would for anyone who adds it.
   let link = inlineDemoLink(demo.zip, origin, pathname);
   if (!link && demo.pictures) link = inlineDemoLink((await demoPackageFor(app, { by: opts.by, pictures: false })).zip, origin, pathname);
-  if (!link && demo.bare) link = inlineDemoLink(demo.bare, origin, pathname);
+  let samples = Boolean(demo.seed);
+  if (!link && demo.bare) {
+    link = inlineDemoLink(demo.bare, origin, pathname);
+    samples = false;
+  }
   if (!link && notNow) throw new Error(notNow);
   if (!link) {
     const name = app.name;
@@ -108,5 +114,5 @@ export async function makeDemoLink(app: UserApp, opts: DemoLinkOptions = {}): Pr
   }
   shareEvent("demo-link-made");
   shareEvent("demo-link-inline");
-  return { link, hosted: false };
+  return { link, hosted: false, samples };
 }

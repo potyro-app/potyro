@@ -86,7 +86,9 @@ The device that shares builds them, in this order:
    JSON — a bigger one is applied on install but not kept), and only for the entities it keeps.
    Never what the person added since. An inline link too long with them is made without them.
 3. Otherwise **nothing**: the app opens empty, as it would for anyone who adds it. That is honest,
-   and an app worth sharing is usable from empty.
+   and an app worth sharing is usable from empty. The share sheet says which (`hasSampleRecords`,
+   then the made link's `samples`): "with sample records" only when the link carries some, else "an
+   empty copy of the app" — an app made in the Studio has none of its own (#486).
 4. On the viewer's device, once the records are in, **the app's own demo** when it declares one
    (`defineApp({ demo })`, docs/04 §Demo): an app that lives on a feed plays a replay, since records
    written in advance would be stale by the time the link is opened. Only a demo link runs it.
