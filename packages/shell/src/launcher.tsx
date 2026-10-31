@@ -42,6 +42,7 @@ import { AddAppDialog } from "./add-app-dialog.js";
 import { canRemix, RemixDialog } from "./remix.js";
 import { tileCredit } from "./credit-words.js";
 import { openGallery } from "./gallery-link.js";
+import { keptIdea } from "./kept-idea.js";
 import { ActionMenu } from "@potyro/views";
 import { liveCandidates, watchLiveSignals } from "./launcher-live.js";
 import { addExample, exampleNames, missingExamples } from "./examples.js";
@@ -715,6 +716,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
     t({ message: "Split the trip's bills", comment: "An example prompt under the prompt box" }),
   ];
   const describe = (text: string): void => onNewApp(text || undefined);
+  // Words typed in the Studio before the person went to the gallery (#487): still theirs, here too.
+  const kept = keptIdea();
   const welcome =
     neverOpened && !welcomeDismissed ? (
       <section className="k-welcome" aria-labelledby="k-welcome-h">
@@ -724,7 +727,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         <p>
           <Trans>Say what you need and Potyro builds an app you can share. Or open one of the examples below and change it.</Trans>
         </p>
-        <PromptBox sendLabel={t`Describe an app`} onSend={describe} examples={examples} />
+        <PromptBox sendLabel={t`Describe an app`} onSend={describe} examples={examples} initial={kept} />
         <div className="k-welcome-actions">
           <button type="button" className="k-welcome-later" onClick={dismissWelcome}>
             <Trans>Not now</Trans>
@@ -733,7 +736,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       </section>
     ) : variant === "home" ? (
       <div className="k-welcome k-welcome-compact">
-        <PromptBox compact sendLabel={t`Describe an app`} onSend={describe} />
+        <PromptBox compact sendLabel={t`Describe an app`} onSend={describe} initial={kept} />
       </div>
     ) : null;
   // A bundled example you deleted is gone for good, which is right — until you want it back.

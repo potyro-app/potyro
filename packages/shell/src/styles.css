@@ -16486,7 +16486,9 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-prompt-send:active {
   transform: scale(0.97);
 }
-/* One line, a pill, until it has focus: then the three lines of the full box. */
+/* One line, a pill, until it has focus or words: then the three lines of the full box. With words in
+   it the box keeps its size when focus moves to the send button, so the button is still under the
+   finger that pressed it (#487: words kept from before fill the box on arrival). */
 .k-prompt[data-compact] .k-prompt-box {
   min-height: 48px;
   padding: calc((48px - 1.5rem) / 2 - var(--stroke)) calc(44px + var(--space-4)) calc((48px - 1.5rem) / 2 - var(--stroke)) var(--space-4);
@@ -16499,12 +16501,14 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   right: 2px;
   margin: auto 0;
 }
-.k-prompt[data-compact] .k-prompt-field:focus-within .k-prompt-box {
+.k-prompt[data-compact] .k-prompt-field:focus-within .k-prompt-box,
+.k-prompt[data-compact] .k-prompt-field[data-filled] .k-prompt-box {
   min-height: calc(3 * 1.5rem + 2 * var(--space-4));
   padding: var(--space-4) calc(44px + var(--space-5)) var(--space-4) var(--space-4);
   border-radius: var(--radius-lg);
 }
-.k-prompt[data-compact] .k-prompt-field:focus-within .k-prompt-send {
+.k-prompt[data-compact] .k-prompt-field:focus-within .k-prompt-send,
+.k-prompt[data-compact] .k-prompt-field[data-filled] .k-prompt-send {
   top: auto;
   bottom: var(--space-3);
   right: var(--space-3);
@@ -16742,7 +16746,8 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   white-space: nowrap;
   overflow: hidden;
 }
-.k-prompt[data-compact] .k-prompt-field:focus-within .k-prompt-box {
+.k-prompt[data-compact] .k-prompt-field:focus-within .k-prompt-box,
+.k-prompt[data-compact] .k-prompt-field[data-filled] .k-prompt-box {
   white-space: pre-wrap;
   overflow: auto;
 }

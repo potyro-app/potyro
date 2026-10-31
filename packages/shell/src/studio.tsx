@@ -39,6 +39,7 @@ import { canGenerate } from "./generate-client.js";
 import { checkFreeEngine, useEngineConfig } from "./engine-store.js";
 import { freeNotNow, useFreeAi } from "./free-ai.js";
 import { FreePanel } from "./free-panel.js";
+import { forgetKeptIdea, keepIdea, keptIdea } from "./kept-idea.js";
 import { shellDialogs } from "./dialog.js";
 import { followChat, syncChat } from "./chat-sync.js";
 import { adoptDraft, appendMessage, briefSince, clearChat, earlierConversation, isDraftId, listMessages, newDraftId, threadItems, type ChatItem, type NewMessage } from "./studio-chat.js";
@@ -220,7 +221,14 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const [copied, setCopied] = useState(false);
   const [held, setHeld] = useState<Held | null>(null);
   const [working, setWorking] = useState<string | null>(null);
-  const [description, setDescription] = useState(initialDescription ?? "");
+  // What was in the box when the person left for the gallery from here (#487), for this app (or a new
+  // one): back in the box, unless they came with words of their own. Either way, taken.
+  const [description, setDescription] = useState(() => initialDescription ?? keptIdea(opened?.id ?? null) ?? "");
+  useEffect(() => {
+    if (keptIdea(opened?.id ?? null) !== undefined) forgetKeptIdea();
+    // once, as the Studio opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const descriptionRef = useRef(description);
   descriptionRef.current = description;
   // The microphone (docs/29): what was in the box when it started, and then what is heard after it.
@@ -935,7 +943,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         </div>
 
         <footer className="k-composer">
-          {noWay ? <FreePanel free={free} onAddKey={() => setSettingsOpen(true)} ownKey={ownKey} /> : null}
+          {noWay ? <FreePanel free={free} onAddKey={() => setSettingsOpen(true)} ownKey={ownKey} onLeave={() => keepIdea(descriptionRef.current, appRef.current)} /> : null}
           {noWay ? null : <VoiceStrip voice={voice} />}
           <div className="k-composer-box" hidden={noWay} data-pointed={point ? true : undefined} data-listening={listening || undefined}>
             {point ? (
