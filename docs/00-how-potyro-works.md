@@ -1013,7 +1013,9 @@ composes two of them and escalates from the on-device model to the cloud when th
 has not converged. Keys are kept in the tab's sessionStorage, gone when the tab closes, never in
 localStorage — unless the person turns on **Remember on this device** beside a key, which puts it in
 the device's secret vault. With no engine that can run (no free allowance and no key), the Studio
-shows what a key is and where to get one, and the gallery, instead of a disabled button. The shell
+shows what a key is and where to get one, and the gallery, instead of a disabled button (the
+gallery opens in the same tab; the box's words wait for the way back, and a version or code not kept
+is asked about first: docs/24 §10). The shell
 counts, anonymously and at most once a month, a key typed and a press of "I'd pay for a plan"
 (docs/23 "Counts"; off in You). Potyro, OpenRouter and an OpenAI-compatible endpoint carry tool calls end to end, so they can
 investigate and run the loops below; the others get one turn with the reference and the
