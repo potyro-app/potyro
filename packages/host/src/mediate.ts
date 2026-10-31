@@ -4,7 +4,7 @@
 // wrapper. App code sees the same `ctx.caps` interface either way — authority is what differs.
 
 import type { AiCapability, Caps, NetworkPermission, PermissionManifest } from "potyro";
-import type { AiCall, AiCap, Capabilities } from "@potyro/capabilities";
+import type { AiCall, AiCap, AiConsentWords, Capabilities } from "@potyro/capabilities";
 import { AiError, makeAi, type AiDeps } from "./ai.js";
 import type { Provenance, UiBridge } from "./types.js";
 import { makeLiveNetwork, permittedHosts } from "./sockets.js";
@@ -22,7 +22,7 @@ const BLOBS_ONLY: AiContext = {
   },
 };
 
-function englishConsent(appName: string, sends: "photo" | "text", service: string) {
+function englishConsent(appName: string, sends: "photo" | "text", service: string): AiConsentWords {
   return {
     message: sends === "photo" ? `“${appName}” wants to send a photo to an AI service (${service}) to read it.` : `“${appName}” wants to send some text to an AI service (${service}).`,
     // Who pays is the platform's to say (AiCap.consentWords): this fallback promises nothing about it.
@@ -46,7 +46,7 @@ function sealedAi(cap: AiCap, ui: UiBridge, appName: string, ai: AiContext): AiC
     asking ??= (async () => {
       try {
         const w = (await cap.consentWords?.(appName, sends)) ?? englishConsent(appName, sends, cap.service);
-        return await ui.confirm(w.message, { detail: w.detail, ok: w.ok, cancel: w.cancel });
+        return await ui.confirm(w.message, { detail: w.detail, ok: w.ok, cancel: w.cancel, privacy: w.privacy });
       } finally {
         asking = null;
       }

@@ -48,6 +48,7 @@ export function studioVoiceConsent(where: SpeechWhere): ConsentWords {
     detail,
     ok: t({ message: "Use my voice", comment: "Studio microphone: button that agrees to voice input" }),
     cancel: t({ message: "Not now", comment: "Studio microphone: button that refuses voice input this time" }),
+    privacy: "voice",
   };
 }
 

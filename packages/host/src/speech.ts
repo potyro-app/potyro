@@ -190,7 +190,7 @@ export function makeSpeech(a: MakeSpeechArgs): SpeechCapability {
     state.asking ??= (async () => {
       try {
         const w = a.cap.consentWords?.(a.appName, where) ?? englishSpeechConsent(a.appName, where);
-        return await a.ui.confirm(w.message, { detail: w.detail, ok: w.ok, cancel: w.cancel });
+        return await a.ui.confirm(w.message, { detail: w.detail, ok: w.ok, cancel: w.cancel, privacy: w.privacy });
       } finally {
         state.asking = null;
       }

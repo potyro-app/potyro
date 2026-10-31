@@ -67,6 +67,13 @@ const rules = [
     note: "rooms depends on no Potyro package",
   },
   {
+    // The legal pages (#117) are built by the shell's Vite config and the gallery's script, both
+    // plain Node: the builder reads docs/legal and packages/design's files, never another package.
+    pkg: "packages/legal/src",
+    forbidden: [/^(?:import|export)\b[^\n]*["']@potyro\//m, /import\(\s*["']@potyro\//],
+    note: "legal depends on no Potyro package; the shell's build and the gallery's read it",
+  },
+  {
     pkg: "examples",
     forbidden: [/@potyro\/store/, /@potyro\/host/, /@potyro\/capabilities/, /@potyro\/runtime/, /@potyro\/views/, /@potyro\/shell/],
     note: "app modules reach host power only via ctx; import `potyro` only",

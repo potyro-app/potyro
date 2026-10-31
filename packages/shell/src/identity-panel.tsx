@@ -23,8 +23,9 @@ import { LANGUAGE_SELECT_ID, LanguagePicker } from "./language-picker.js";
 import { BackupSwitch } from "./backup-switch.js";
 import { InstallRow } from "./install-row.js";
 import { CountsSwitch } from "./counts-switch.js";
+import { LegalLinks } from "./legal-links.js";
 import { shellDialogs } from "./dialog.js";
-import { RELAY_KEY, syncRelayUrl } from "./open-store.js";
+import { RELAY_KEY, syncRelayUrl, usesOwnRelay } from "./open-store.js";
 import { DEFAULT_NAME, ensureIdentity, peekIdentity, recoveryPassphrase, renameIdentity, signInWithPassphrase } from "@potyro/identity";
 import { personHue, personInitials } from "@potyro/runtime";
 
@@ -193,7 +194,7 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
   };
 
   const named = Boolean(me?.name && me.name !== DEFAULT_NAME);
-  const ownRelay = Boolean(globalThis.localStorage?.getItem(RELAY_KEY));
+  const ownRelay = usesOwnRelay();
   const relay = syncRelayUrl();
 
   // #95: this read like a debug page — a monospace `no identity yet` under the name, a ws:// URL on
@@ -308,8 +309,8 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
           <p className="k-muted">
             {relay
               ? ownRelay
-                ? t`Synced apps meet through your own relay. It only ever sees encrypted data — it cannot read your records.`
-                : t`Synced apps meet through this site’s relay. It only ever sees encrypted data — it cannot read your records.`
+                ? t`Synced apps meet through your own relay. It cannot read your records: they are encrypted on this device first.`
+                : t`Synced apps meet through this site’s relay. It cannot read your records: they are encrypted on this device first.`
               : t`No relay: synced apps stay on this device.`}
           </p>
           {relay ? (
@@ -331,6 +332,9 @@ export function IdentityPanel({ onClose }: { onClose: () => void }) {
               so without this the only way to know is to ask someone to open a console. */}
           <StorageReport />
         </details>
+        {/* #117: where identity, sync and the relay are, so where the privacy page is too. Absent
+            from a build that has no pages yet (legal-links.tsx). */}
+        <LegalLinks />
         {Probe ? <Probe onClose={() => setProbe(null)} /> : null}
       </div>
     </div>

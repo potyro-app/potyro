@@ -91,6 +91,7 @@ export function speechConsentWords(appName: string, where: SpeechWhere): Consent
     detail: speechDetail(where),
     ok: t({ message: "Allow", comment: "Button: let an app listen through the microphone" }),
     cancel: t({ message: "Not now", comment: "Button: refuse an app's voice input this time" }),
+    privacy: "voice",
   };
 }
 

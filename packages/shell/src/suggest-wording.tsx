@@ -17,6 +17,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { catalogMessages, findMessages, messagesShown, useLocale, type CatalogMessage } from "@potyro/i18n";
 import { sendSaved, type SendResult } from "./platform-requests.js";
 import { screenTexts, sendWording, wordingRequest, WORDING_MAX } from "./wording-suggestions.js";
+import { LegalLink } from "./legal-links.js";
 
 /** How many of the screen's messages, or of a search's, are offered at once (the list scrolls). */
 const SHOWN = 12;
@@ -155,8 +156,11 @@ function WordingForm({ onClose }: { onClose: () => void }) {
             autoFocus
           />
           <p className="k-muted k-wording-hint">
-            <Trans comment="Better-wording form: what is sent">Only these words and yours are sent to the Potyro team — nothing about you or your apps.</Trans>
+            <Trans comment="Better-wording form: what is sent, and that it is posted publicly on GitHub">Only these words and yours go, posted publicly on GitHub. Nothing about you or your apps goes with them.</Trans>
           </p>
+          <LegalLink section="requests" block>
+            <Trans comment="Better-wording form: link to the privacy page's section on requests and suggestions">How suggestions are kept, and how to remove one</Trans>
+          </LegalLink>
           <div className="k-wording-actions">
             <button type="button" className="k-add" onClick={again}>
               <Trans comment="Better-wording form: back to choosing the words">Back</Trans>
