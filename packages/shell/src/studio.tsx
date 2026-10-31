@@ -25,7 +25,7 @@ import { hasBuiltInAI } from "@potyro/generator/backends";
 import { listCases } from "./app-cases.js";
 import { recordDiagnosis } from "./app-diagnoses.js";
 import { CaseReport } from "./case-report.js";
-import { getUserApp, renameUserApp, saveUserApp, setUserAppTrusted, type UserApp } from "./user-apps.js";
+import { getUserApp, refitSeed, renameUserApp, saveUserApp, setUserAppTrusted, type UserApp } from "./user-apps.js";
 import { restoreVersion } from "./restore-version.js";
 import { NEW_MODULE } from "./code-files.js";
 import { newLine } from "./app-line.js";
@@ -68,6 +68,7 @@ import { getEntry, updateEntry } from "./launcher-store.js";
 import { hueColour } from "./tile-identity.js";
 import type { Appearance } from "./app-theme.js";
 import { tracoOf } from "./app-colour.js";
+import { seedForVersion, type AppSeed } from "./app-seed.js";
 
 /** The eleven hours an app may wear (DESIGN.md §10); 12 o'clock is Potyro's own and stays empty. */
 const HOURS = HORAS.filter((h) => h.hora !== 12);
@@ -389,8 +390,12 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     extra: Pick<NewMessage, "platform"> = {},
     /** Modules edited by hand (#448): their files go on this device first, and their lock with the version. */
     own?: OwnEdit,
+    /** A new app's sample records, the ones its run passed on (#486): its demo records. */
+    made?: AppSeed,
   ): Promise<void> => {
     const existing = appRef.current ? getUserApp(appRef.current) : undefined;
+    // Fitted to this version: a field it renamed or an option it dropped takes the rows that held it out.
+    const seed = seedForVersion({ isNew: !existing, prev: existing?.seed, made, entities: built?.composed.runtime.definition.entities });
     // Saved in the app's OWN language: a translated app keeps one stored name, and each device shows
     // the source's name in its own language around it (#302).
     const defined = built ? ownName(built.composed.runtime.core.app.definition) : undefined;
@@ -412,6 +417,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         rationale: summary || undefined,
         origin,
         ...(existing ? {} : { line: newLine() }),
+        ...(seed !== undefined ? { seed } : {}),
       },
       new Date().toISOString(),
     );
@@ -481,6 +487,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     extra: Pick<NewMessage, "platform"> = {},
     /** The app's own modules, when the change edited any (#448): checked and kept with it. */
     modules?: Record<string, string>,
+    /** A new app's sample records (#486). */
+    made?: AppSeed,
   ): Promise<void> => {
     setWorking(t`Checking it`);
     let src = next;
@@ -523,7 +531,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       });
       return;
     }
-    await keep(src, built, said, note, undefined, libraries, extra, own);
+    await keep(src, built, said, note, undefined, libraries, extra, own, made);
   };
 
   const answer = async (outcome: Outcome, note: string): Promise<void> => {
@@ -545,6 +553,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       outcome.kind === "loss" ? outcome.loss : null,
       outcome.kind === "source" ? platformAsk(outcome.platformRequest) : {},
       outcome.modules,
+      outcome.kind === "source" ? outcome.seed : undefined,
     );
   };
 
@@ -624,7 +633,10 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     setSource(restored);
     setDraftSource(restored);
     setHeld(null);
-    setPreview((await buildPreview(restored, appRef.current)).preview);
+    const built = (await buildPreview(restored, appRef.current)).preview;
+    // The version put back may not have the fields its demo records were made for (#486).
+    if (appRef.current) refitSeed(appRef.current, built?.composed.runtime.definition.entities);
+    setPreview(built);
     await refresh();
   };
 

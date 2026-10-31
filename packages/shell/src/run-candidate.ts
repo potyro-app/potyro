@@ -30,11 +30,19 @@ import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge } from "./ui-bridge.js";
 import { renderPages, type PageToRender } from "./render-pages.js";
+import { seedFromStore, seedThatFits, type AppSeed } from "./app-seed.js";
 
 const RUN_TIMEOUT_MS = 5_000;
 const RUN_MEMORY_BYTES = 64 * 1024 * 1024;
 /** The whole run — compile, load, logic, every page. Past this the app is reported as not finishing. */
 export const RUN_WALL_CLOCK_MS = 30_000;
+
+/**
+ * A run, and the sample records it ran on (#486): made up from the fields, in the run's own throwaway
+ * store, as they were before any of the app's logic touched them. What a new app keeps as its demo
+ * records when it passes. Absent when seeding failed or the run did not finish.
+ */
+export type CandidateRun = RunReport & { seed?: AppSeed };
 
 export interface RunCandidateDeps {
   /** Test seam: compose the candidate on the given store. Defaults to the isolate, with a budget. */
@@ -83,7 +91,7 @@ async function pagesToRender(def: AppDefinition, runtime: PotyroRuntime): Promis
   return { pages, sealed };
 }
 
-async function run(source: string, deps: RunCandidateDeps): Promise<RunReport> {
+async function run(source: string, deps: RunCandidateDeps): Promise<CandidateRun> {
   const store = new MemoryStore();
   await store.open("run-candidate");
   let composed: Composed | undefined;
@@ -94,7 +102,11 @@ async function run(source: string, deps: RunCandidateDeps): Promise<RunReport> {
     const def = runtime.definition as AppDefinition & { id: string };
     // Custom views are mounted below with the real views, effects and all; the smoke run's
     // first-paint render of them would only say the same thing twice.
-    const logic = smokeReport(await smokeRuntime(def, runtime, { customViews: false }));
+    let seed: AppSeed | undefined;
+    const onSeeded = async () => {
+      seed = seedThatFits(await seedFromStore(store, Object.keys(def.entities ?? {})), def.entities);
+    };
+    const logic = smokeReport(await smokeRuntime(def, runtime, { customViews: false, onSeeded }));
     const { pages, sealed } = await pagesToRender(def, runtime);
     const screens = await renderPages(runtime, pages, deps.settleMs);
     const report = mergeRuns(logic, screens);
@@ -102,7 +114,8 @@ async function run(source: string, deps: RunCandidateDeps): Promise<RunReport> {
       sealed ? `${sealed} custom view${sealed === 1 ? " was" : "s were"} not run here — custom views run only as the person's own app` : null,
       standInNote(modules),
     ].filter((n): n is string => n !== null);
-    return notes.length ? { ...report, ran: [report.ran, ...notes].join("; ") } : report;
+    const ran = notes.length ? { ...report, ran: [report.ran, ...notes].join("; ") } : report;
+    return seed ? { ...ran, seed } : ran;
   } finally {
     try {
       composed?.loaded.dispose();
@@ -113,9 +126,9 @@ async function run(source: string, deps: RunCandidateDeps): Promise<RunReport> {
 }
 
 /** Run a candidate source and report what broke. Rejects only when it cannot be composed at all. */
-export function runCandidate(source: string, deps: RunCandidateDeps = {}): Promise<RunReport> {
+export function runCandidate(source: string, deps: RunCandidateDeps = {}): Promise<CandidateRun> {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<RunReport>((resolve) => {
+  const timeout = new Promise<CandidateRun>((resolve) => {
     timer = setTimeout(
       () => resolve({ errors: [`it did not finish running in ${RUN_WALL_CLOCK_MS / 1000}s — something waits forever or never stops`], warnings: [], ran: "" }),
       RUN_WALL_CLOCK_MS,

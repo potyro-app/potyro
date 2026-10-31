@@ -39,7 +39,7 @@ import { appKey, recordOpen, recordSignals } from "./launcher-store.js";
 import { pauseTiles, watchTile } from "./tile-runner.js";
 import { seedExamples } from "./examples.js";
 import { restoreScope } from "./scope.js";
-import { getUserApp, listUserApps } from "./user-apps.js";
+import { getUserApp, listUserApps, refitSeed } from "./user-apps.js";
 import { Toaster } from "./toaster.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge, createUiBridge } from "./ui-bridge.js";
@@ -715,6 +715,9 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   } else {
     await runMigrationsIfPossible(composed!.runtime.definition, store, toaster);
   }
+  // Its demo records fitted to it as it loads now (#486): a version changed anywhere drops the rows
+  // that no longer fit, so a link anyone can try never opens on them.
+  refitSeed(id, composed!.runtime.definition.entities);
   // Everything this app started that outlives a render, so switching away can stop it (#89). The
   // page dying used to do this for free.
   const stops: Array<() => void> = gate ? [gate.stop] : [];

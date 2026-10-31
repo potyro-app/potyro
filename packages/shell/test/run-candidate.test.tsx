@@ -55,6 +55,33 @@ const quiet = () => {
 };
 
 describe("runCandidate", () => {
+  it("keeps the sample records it ran on, as they were before the app's logic touched them (#486)", async () => {
+    const app = defineApp({
+      id: "notes-seed",
+      name: "Notes",
+      version: "1.0.0",
+      schemaVersion: 1,
+      entities: {
+        note: {
+          label: "Note",
+          displayField: "title",
+          fields: { title: { type: "text", required: true }, done: { type: "boolean" } },
+          // The run presses it on the first record: the seed is what the person sees before anyone did.
+          actions: { finish: { label: "Finish", run: async (n: { id: string }, ctx: { patch(e: string, id: string, d: object): Promise<void> }) => ctx.patch("note", n.id, { title: "finished", done: true }) } },
+        },
+      },
+      pages: [{ id: "all", title: "All", view: { type: "list", entity: "note", display: { primary: "title" } } }],
+    } as never);
+    const report = await runCandidate("", { compose: direct(app), settleMs: 400 });
+    expect(report.errors).toEqual([]);
+    expect(report.ran).toContain("1 action");
+    const rows = report.seed?.note ?? [];
+    expect(rows.map((r) => r.title)).toEqual(["title 1", "title 2", "title 3"]);
+    expect(rows.every((r) => typeof r.id === "string" && !("createdAt" in r) && !("updatedAt" in r))).toBe(true);
+    // JSON, as a package's seed.json is: it survives being written and read back.
+    expect(JSON.parse(JSON.stringify(report.seed))).toEqual(report.seed);
+  });
+
   it("passes an app whose logic runs and whose pages show their records", async () => {
     const report = await runCandidate("", { compose: direct(notes()), settleMs: 400 });
     expect(report.errors).toEqual([]);
