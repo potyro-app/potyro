@@ -432,10 +432,19 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
       },
       signal: controller.signal,
       resumeFrom,
-    })).then((outcome) => {
-      if (fixRunId.current !== runId) return; // a superseded run's outcome; do not overwrite the current one
-      setFixOutcome(outcome);
-    });
+    })).then(
+      (outcome) => {
+        if (fixRunId.current !== runId) return; // a superseded run's outcome; do not overwrite the current one
+        setFixOutcome(outcome);
+      },
+      // `startFix` returns its refusals; this is only for a throw before it runs (the app's modules
+      // unreadable), so the panel says something rather than waiting forever.
+      (e: unknown) => {
+        if (fixRunId.current !== runId) return;
+        const reason = e instanceof Error ? e.message : String(e);
+        setFixOutcome({ kind: "refused", text: t`Fix this couldn't start: ${reason}. Reload Potyro and try again.` });
+      },
+    );
   };
 
   const openFix = (): void => {

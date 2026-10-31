@@ -22,6 +22,7 @@ import { MaterialField, type Material } from "./ask-material.js";
 import { addSpend, formatSpend, spentIn } from "./ask-spend.js";
 import { setAskEnabled } from "./ask-setting.js";
 import { canSearchWeb, chatEngineOptions, engineLabel, type EngineConfig } from "./engines.js";
+import { useFreeAi } from "./free-ai.js";
 import { askRefusal, startAsk, type StartAskOutcome } from "./start-ask.js";
 import { currentLocale } from "./locale.js";
 import { currentVault } from "@potyro/identity";
@@ -180,6 +181,9 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
   const [material, setMaterial] = useState<Material | null>(initialMaterial ?? null);
   const [placing, setPlacing] = useState<{ done: number; of: number } | null>(null);
   const abort = useRef<AbortController | null>(null);
+  // Potyro's free engine is ready or not by what the relay last said (#121): follow it, so a stop or
+  // the first /health answer shows here at once.
+  useFreeAi();
   const refused = askRefusal(engine);
   const keys = keysForPage();
   const [sources, setSources] = useState<SourcesState>({ usable: [], needKey: [], place: "vault" });
@@ -403,6 +407,7 @@ export function AskPanel({ appId, runtime, engine, initialMaterial, onClose }: A
             ) : (
               <p className="k-ask-privacy">
                 {privacyLine(engineLabel(engine), hasMaterial, Boolean(area && sendArea))}
+                {engine.engine === "potyro" ? <> {t`Potyro passes all of this to OpenRouter and the model it picks.`}</> : null}
               </p>
             )}
             {priced && appSpent > 0 ? <p className="k-ask-cost">{t`Ask has used ${spentHere} of your OpenRouter credit in this app, on this device.`}</p> : null}

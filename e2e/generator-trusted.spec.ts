@@ -24,14 +24,18 @@ test("studio previews an app trusted by default and saves it to My Apps", async 
   await expect(settings).toContainText("claude -p");
   await settings.click();
   const models = page.getByRole("dialog", { name: "Model settings" });
-  // A cloud engine cannot run without the user's own key, so the action is gated until there is one.
+  // A cloud engine cannot run without the user's own key: until there is one, the Studio says what a
+  // key is and where to get one in place of the composer (#455), and Add a key opens Model settings.
   await models.getByRole("radio", { name: /Anthropic/ }).check();
   await models.getByRole("button", { name: "Close model settings" }).click();
-  await expect(settings).toContainText("Anthropic");
-  await expect(go).toBeDisabled();
-  await settings.click();
+  const noKey = studio.getByRole("region", { name: "Add a key to make apps" });
+  await expect(noKey).toBeVisible();
+  await expect(go).toBeHidden();
+  await noKey.getByRole("button", { name: "Add a key" }).click();
   await models.getByLabel("Anthropic API key").fill("sk-ant-example");
   await models.getByRole("button", { name: "Close model settings" }).click();
+  await expect(noKey).toHaveCount(0);
+  await expect(settings).toContainText("Anthropic");
   await expect(go).toBeEnabled();
 
   // The on-device engine needs WebGPU, which Firefox does not ship — it is offered but disabled

@@ -57,6 +57,10 @@ export interface ServerOptions {
   /** `/complete` and `/health`. */
   handle: (req: RelayRequest) => Promise<RelayResponse>;
   chat?: (req: ChatRequest) => Promise<ChatReply>;
+  /** The chat route's kill switch, asked on every `/health` too: the shell offers the route only while it is on. */
+  chatOff?: () => boolean;
+  /** The model the chat route sends (the first allowed): `/health` names it, so the shell sends one the relay takes. */
+  chatModel?: string;
   counts?: (req: CountRequest) => CountReply;
   port: number;
   host: string;
@@ -124,7 +128,7 @@ export function startServer(opts: ServerOptions): Promise<Server> {
       const fail = (): void => reply(500, { ok: false });
       if (req.method === "OPTIONS") {
         const preflight = cors["access-control-allow-origin"]
-          ? { "access-control-allow-methods": "GET, POST", "access-control-allow-headers": "authorization, content-type, x-potyro-plan", "access-control-max-age": "600" }
+          ? { "access-control-allow-methods": "GET, POST", "access-control-allow-headers": "authorization, content-type, x-potyro-plan, http-referer, x-title", "access-control-max-age": "600" }
           : {};
         res.writeHead(204, { ...cors, ...preflight });
         return void res.end();
@@ -159,7 +163,14 @@ export function startServer(opts: ServerOptions): Promise<Server> {
           return fail();
         }
       }
-      opts.handle({ method, path, body, ip }).then((r) => reply(r.status, r.body), fail);
+      opts.handle({ method, path, body, ip }).then((r) => {
+        // `/health` also says whether the chat route serves now (#121): on, and its switch not thrown.
+        if (path === "/health" && r.status === 200) {
+          const chat = Boolean(opts.chat) && !(opts.chatOff?.() ?? false);
+          return reply(r.status, { ...r.body, chat, ...(chat && opts.chatModel ? { model: opts.chatModel } : {}) });
+        }
+        return reply(r.status, r.body);
+      }, fail);
     });
   });
   return new Promise((resolve) => server.listen(opts.port, opts.host, () => resolve(server)));
@@ -257,12 +268,13 @@ async function main(): Promise<void> {
   // Never the request, the device or the address: the upstream's status or message only.
   const onError = (e: unknown): void => console.error("[ai-relay]", e instanceof Error ? e.message : e);
   const relay = createAiRelay({ upstream: openRouter(key), now: Date.now, ledger, budget, limits, model, prices, onError });
-  const chat = createChatProxy({ upstream: openRouterChat(key), now: Date.now, ledger, budget, limits: chatLimits, models, prices, isOff: killSwitch(process.env), onError });
+  const isOff = killSwitch(process.env);
+  const chat = createChatProxy({ upstream: openRouterChat(key), now: Date.now, ledger, budget, limits: chatLimits, models, prices, isOff, onError });
   const counts = createCounts({ now: Date.now, ledger, perAddressDay: num("AI_COUNT_PER_ADDRESS_DAY") });
   const port = Number(process.env.PORT ?? 4204);
   const host = process.env.HOST ?? "127.0.0.1";
   const corsOrigins = list(process.env.AI_CORS_ORIGINS) ?? DEFAULT_CORS_ORIGINS;
-  await startServer({ handle: relay.handle, chat: chat.handle, counts: counts.handle, port, host, trustProxy, corsOrigins });
+  await startServer({ handle: relay.handle, chat: chat.handle, chatOff: isOff, chatModel: models[0], counts: counts.handle, port, host, trustProxy, corsOrigins });
   console.log(`[ai-relay] ${model}; chat ${models.join(", ")}; cap $${budget.monthlyUsd} a month, $${budget.dayUsd} a day; proxy ${trustProxy}; listening on ${host}:${port}`);
 }
 

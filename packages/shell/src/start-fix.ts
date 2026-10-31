@@ -19,6 +19,7 @@ import {
 } from "@potyro/generator/agent";
 import { createOpenRouterEngine, type Language } from "@potyro/generator/backends";
 import { canInvestigate, chatEngineOptions, engineReady, type EngineConfig } from "./engines.js";
+import { freeNotNow, freeRefusal } from "./free-ai.js";
 import { verifyCandidate } from "./verify-candidate.js";
 import type { ModuleSource } from "./package-modules.js";
 import { joinForModel, unpackCandidate } from "./joined-app.js";
@@ -67,12 +68,22 @@ function refusal(cfg: EngineConfig): LoopOutcome | undefined {
     return {
       kind: "refused",
       text:
-        engine === "endpoint"
-          ? t`The endpoint needs its address and a model to investigate. Add them in the Studio’s Model settings.`
-          : t`${engine} needs your own API key to investigate. Add one in the Studio’s Model settings.`,
+        engine === "potyro"
+          ? freeNotNow()
+          : engine === "endpoint"
+            ? t`The endpoint needs its address and a model to investigate. Add them in the Studio’s Model settings.`
+            : t`${engine} needs your own API key to investigate. Add one in the Studio’s Model settings.`,
     };
   }
   return undefined;
+}
+
+/** Why the loop could not go on, in the person's words: a free-engine refusal already is; anything else, said with what to do. */
+function failedText(e: unknown): string {
+  const free = freeRefusal(e);
+  if (free) return free.message;
+  const reason = e instanceof Error && e.message.trim() ? e.message.trim() : String(e);
+  return t`The model couldn't answer: ${reason}. Try again in a minute, or choose another model in the Studio’s Model settings.`;
 }
 
 /** The app source a transcript's opening user turn showed the model, or null when it shows none. */
@@ -180,32 +191,40 @@ export async function startFix(opts: StartFixOpts): Promise<FixOutcome> {
     };
   }
 
-  const outcome = await runAgentLoop({
-    engine: createOpenRouterEngine(chat),
-    model: chat.model,
-    tools,
-    system: AGENT_SYSTEM_PROMPT,
-    task,
-    source: shown,
-    ...(opts.language ? { language: opts.language } : {}),
-    // Closed over the case and the real store — never the candidate's own claim about itself.
-    verify: async (text) => {
-      const u = await unpackCandidate(text, joined, opts.modules);
-      if (!u.ok) return { passed: false, detail: u.problem };
-      return verifyCandidate({
-        source: u.source,
-        theCase: opts.theCase,
-        appStore: opts.store,
-        modules: u.modules,
-        // The app AS IT IS, so a candidate cannot pass by deleting the feature it was meant to fix.
-        original: opts.runtime.definition,
-      });
-    },
-    baseline,
-    onStep: opts.onStep,
-    signal: opts.signal,
-    resumeFrom: opts.resumeFrom,
-  });
+  // Never a throw (see `refusal` above): the model's service saying no — Potyro's free engine refusing
+  // in words (free-ai.ts), a key refused, the network gone — comes back as an outcome the panel shows.
+  let outcome: LoopOutcome;
+  try {
+    outcome = await runAgentLoop({
+      engine: createOpenRouterEngine(chat),
+      model: chat.model,
+      tools,
+      system: AGENT_SYSTEM_PROMPT,
+      task,
+      source: shown,
+      ...(opts.language ? { language: opts.language } : {}),
+      // Closed over the case and the real store — never the candidate's own claim about itself.
+      verify: async (text) => {
+        const u = await unpackCandidate(text, joined, opts.modules);
+        if (!u.ok) return { passed: false, detail: u.problem };
+        return verifyCandidate({
+          source: u.source,
+          theCase: opts.theCase,
+          appStore: opts.store,
+          modules: u.modules,
+          // The app AS IT IS, so a candidate cannot pass by deleting the feature it was meant to fix.
+          original: opts.runtime.definition,
+        });
+      },
+      baseline,
+      onStep: opts.onStep,
+      signal: opts.signal,
+      resumeFrom: opts.resumeFrom,
+    });
+  } catch (e) {
+    if (opts.signal?.aborted) return { kind: "stopped" };
+    return { kind: "refused", text: failedText(e) };
+  }
   // What is applied is the entry and the modules it changed, never the joined text.
   if ((outcome.kind === "fix" || outcome.kind === "unverified-fix") && joined) {
     const u = await unpackCandidate(outcome.source, joined, opts.modules);

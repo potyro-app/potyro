@@ -34,8 +34,11 @@ import { confirmAndRemoveApp } from "./remove-app.js";
 import { navigateTo } from "./router.js";
 import { listVersions, type VersionOrigin } from "./app-history.js";
 import { EngineSettings } from "./engine-settings.js";
-import { engineLabel, engineReady } from "./engines.js";
-import { useEngineConfig } from "./engine-store.js";
+import { engineLabel, engineLeft, engineReady, isCloud } from "./engines.js";
+import { canGenerate } from "./generate-client.js";
+import { checkFreeEngine, useEngineConfig } from "./engine-store.js";
+import { freeNotNow, useFreeAi } from "./free-ai.js";
+import { FreePanel } from "./free-panel.js";
 import { shellDialogs } from "./dialog.js";
 import { followChat, syncChat } from "./chat-sync.js";
 import { adoptDraft, appendMessage, briefSince, clearChat, earlierConversation, isDraftId, listMessages, newDraftId, threadItems, type ChatItem, type NewMessage } from "./studio-chat.js";
@@ -249,12 +252,25 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const [caseReport, setCaseReport] = useState<ReplayReport | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [engineCfg, setEngineCfg] = useEngineConfig();
+  // What the relay's free route said (#121): read here so the engine's name and readiness follow it.
+  const free = useFreeAi();
   const wide = useWide();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const label = engineLabel(engineCfg);
   const ready = engineReady(engineCfg);
   const busy = working !== null;
+  // A deployed build asks the relay at start which engine a first visit gets (#121): until it answers,
+  // neither the panel nor "needs an API key" shows, since the answer may well be Potyro's free engine.
+  const asking = free.health === null && (!canGenerate() || engineCfg.engine === "potyro");
+  // No engine can make an app (#455): no free app making to use, and no key of the person's own. Not
+  // while the free route is still being asked about, and not for an endpoint, which says what it lacks.
+  const noWay = !ready && !busy && !asking && (isCloud(engineCfg.engine) || engineCfg.engine === "potyro");
+  // A key already in Model settings, while another engine is chosen: the panel offers it first.
+  const ownKey =
+    engineCfg.engine !== "openrouter" && engineCfg.openrouterKey.trim()
+      ? { label: t({ message: "OpenRouter", comment: "Service name; keep as is" }), use: () => setEngineCfg({ ...engineCfg, engine: "openrouter" }) }
+      : undefined;
   const savedName = appId ? getUserApp(appId)?.name : undefined;
   // The name the person reads (#302): their own for it, or the source's in their language.
   const appName = preview ? shownName(savedName, preview.composed.runtime.core.app.definition, languagePrefs()) : (savedName ?? t`Your app`);
@@ -297,6 +313,11 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     say,
     refresh,
   });
+
+  // Arriving: whether the relay's free route serves, and so which engine a first visit starts on.
+  useEffect(() => {
+    void checkFreeEngine();
+  }, []);
 
   // Arriving: the conversation, and the app built so that Open has something to open.
   useEffect(() => {
@@ -914,8 +935,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         </div>
 
         <footer className="k-composer">
-          <VoiceStrip voice={voice} />
-          <div className="k-composer-box" data-pointed={point ? true : undefined} data-listening={listening || undefined}>
+          {noWay ? <FreePanel free={free} onAddKey={() => setSettingsOpen(true)} ownKey={ownKey} /> : null}
+          {noWay ? null : <VoiceStrip voice={voice} />}
+          <div className="k-composer-box" hidden={noWay} data-pointed={point ? true : undefined} data-listening={listening || undefined}>
             {point ? (
               <div className="k-composer-point">
                 <span className="k-point-chip" title={t({ message: `About ${point.label}`, comment: "The part of the app a message is about" })}>
@@ -958,7 +980,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               title={
                 ready
                   ? t`Send to ${label}`
-                  : engineCfg.engine === "endpoint"
+                  : engineCfg.engine === "potyro"
+                    ? freeNotNow()
+                    : engineCfg.engine === "endpoint"
                     ? t`${label} needs an address and a model — open Model settings`
                     : t`${label} needs an API key — open Model settings`
               }
@@ -968,11 +992,12 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               {I.send}
             </button>
           </div>
-          <div className="k-composer-meta">
+          <div className="k-composer-meta" hidden={noWay}>
             <button type="button" className="k-composer-engine" aria-label={t`Model settings`} title={t`Choose which model writes and edits your app`} onClick={() => setSettingsOpen(true)}>
               {I.settings} {label}
+              {engineLeft(engineCfg)}
             </button>
-            {!ready ? (
+            {!ready && !asking && engineCfg.engine !== "potyro" ? (
               <span className="k-composer-warn">
                 {engineCfg.engine === "endpoint" ? <Trans>needs an address and a model</Trans> : <Trans>needs an API key</Trans>}
               </span>
