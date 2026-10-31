@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "./console-guard";
 import { addAsMine, count, near, needEsmSh, packApp, pixelsOf, watchEsmSh } from "./library-demos";
+import { drawSharedPicture, fakeShareSheet } from "./share-files";
 
 // apps/mood-sleep, packed as its build packs it and added as the person's own app, with chart.js
 // fetched from the real esm.sh (#266). Every check is about what is drawn: the sentence carries the
@@ -17,6 +18,7 @@ const scatterCanvas = (page: Page) => page.locator(".ms-scatter canvas");
 
 test("Sleep & Mood: chart.js comes from esm.sh once, and both charts draw what the seed says", async ({ page }) => {
   await needEsmSh();
+  await fakeShareSheet(page);
   const asked = watchEsmSh(page);
   const zip = packApp("mood-sleep", "mood-sleep.app.ts", ["--seed", "seed.json"]);
   const { card } = await addAsMine(page, "mood-sleep.potyro-app.zip", zip);
@@ -43,61 +45,64 @@ test("Sleep & Mood: chart.js comes from esm.sh once, and both charts draw what t
   await expect(chip).toHaveAttribute("aria-pressed", "false");
   await expect.poll(async () => count(await pixelsOf(scatterCanvas(page)), near(EXERCISE, 30))).toBeLessThan(10);
 
-  // Share (#484): a 1080×1350 card on the night palette, handed to the system's save or share dialog
-  // (ctx.files.export). The dialog is answered in the page, which reads the picture it is given: the
-  // dark sky, and the sleep series (the app's colour at the dark text level) and the mood series
-  // really painted, in the sentence and the chart.
-  await page.evaluate(() => {
-    type Card = { name: string; w: number; h: number; sky: number[]; sleep: number; mood: number; sentence: number };
-    const w = window as unknown as { __card?: Card; showSaveFilePicker: unknown };
+  // Share (#484): a 1080×1350 card on the night palette, handed to Potyro's share dialog
+  // (ctx.ui.share). The dialog shows the picture before anything leaves; its Share hands it to the
+  // share sheet, which keeps what it was given — so this reads the picture itself: the dark sky, and
+  // the sleep series (the app's colour at the dark text level) and the mood series really painted, in
+  // the sentence and the chart, with the chart panel at least 420px tall.
+  await page.locator(".ms-hero").getByRole("button", { name: "Share" }).click();
+  const dialog = page.getByRole("dialog", { name: "Your nights" });
+  const preview = dialog.getByRole("img", { name: /^sleep-\d{4}-\d{2}-\d{2}\.png$/ });
+  await expect(preview).toBeVisible({ timeout: 15_000 });
+  await expect.poll(() => preview.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(1080);
+  await dialog.getByRole("button", { name: "Share", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  const picture = await drawSharedPicture(page);
+  expect(picture.name).toMatch(/^sleep-\d{4}-\d{2}-\d{2}\.png$/);
+  expect(picture.type).toBe("image/png");
+  expect([picture.w, picture.h]).toEqual([1080, 1350]);
+  const read = await page.evaluate(() => {
+    const g = (window as unknown as { __picture: CanvasRenderingContext2D }).__picture;
+    const W = g.canvas.width;
     const rgb = (css: string): number[] => {
-      const g = document.createElement("canvas").getContext("2d")!;
-      g.fillStyle = css;
-      g.fillRect(0, 0, 1, 1);
-      return [...g.getImageData(0, 0, 1, 1).data].slice(0, 3);
+      const p = document.createElement("canvas").getContext("2d")!;
+      p.fillStyle = css;
+      p.fillRect(0, 0, 1, 1);
+      return [...p.getImageData(0, 0, 1, 1).data].slice(0, 3);
     };
     const sleepRgb = rgb(getComputedStyle(document.querySelector(".ms")!).getPropertyValue("--tinta-d").trim());
     const moodRgb = rgb("#ffa25c");
-    w.showSaveFilePicker = async ({ suggestedName }: { suggestedName: string }) => ({
-      createWritable: async () => ({
-        write: async (data: Blob) => {
-          const bmp = await createImageBitmap(data);
-          const c = document.createElement("canvas");
-          c.width = bmp.width;
-          c.height = bmp.height;
-          const g = c.getContext("2d")!;
-          g.drawImage(bmp, 0, 0);
-          const near = (px: Uint8ClampedArray, i: number, t: number[]) => Math.abs(px[i]! - t[0]!) < 12 && Math.abs(px[i + 1]! - t[1]!) < 12 && Math.abs(px[i + 2]! - t[2]!) < 12;
-          const tally = (y0: number, y1: number, t: number[]) => {
-            const px = g.getImageData(0, y0, c.width, y1 - y0).data;
-            let n = 0;
-            for (let i = 0; i < px.length; i += 4) if (near(px, i, t)) n++;
-            return n;
-          };
-          w.__card = {
-            name: suggestedName,
-            w: c.width,
-            h: c.height,
-            sky: [...g.getImageData(10, 10, 1, 1).data].slice(0, 3),
-            sleep: tally(0, c.height, sleepRgb),
-            mood: tally(0, c.height, moodRgb),
-            // The sentence's numbers, above the stats: sleep-coloured text in the top third.
-            sentence: tally(180, 560, sleepRgb),
-          };
-        },
-        close: async () => {},
-      }),
-    });
+    const near = (px: Uint8ClampedArray, i: number, t: number[], tol = 12) => Math.abs(px[i]! - t[0]!) < tol && Math.abs(px[i + 1]! - t[1]!) < tol && Math.abs(px[i + 2]! - t[2]!) < tol;
+    const tally = (y0: number, y1: number, t: number[]) => {
+      const px = g.getImageData(0, y0, W, y1 - y0).data;
+      let n = 0;
+      for (let i = 0; i < px.length; i += 4) if (near(px, i, t)) n++;
+      return n;
+    };
+    // The chart panel: the panel's colour (#2a2829) down a column inside it, clear of its corners.
+    const column = g.getImageData(120, 0, 1, g.canvas.height).data;
+    let top = -1;
+    let bottom = -1;
+    for (let y = 0; y < g.canvas.height; y++) {
+      if (near(column, y * 4, [42, 40, 41], 3)) {
+        if (top < 0) top = y;
+        bottom = y;
+      }
+    }
+    return {
+      sky: [...g.getImageData(10, 10, 1, 1).data].slice(0, 3),
+      sleep: tally(0, g.canvas.height, sleepRgb),
+      mood: tally(0, g.canvas.height, moodRgb),
+      // The sentence's numbers, above the stats: sleep-coloured text in the top part.
+      sentence: tally(180, 520, sleepRgb),
+      panel: bottom - top,
+    };
   });
-  await page.locator(".ms-hero").getByRole("button", { name: "Share" }).click();
-  await expect.poll(() => page.evaluate(() => (window as unknown as { __card?: unknown }).__card), { timeout: 15_000 }).toBeTruthy();
-  const shared = await page.evaluate(() => (window as unknown as { __card: { name: string; w: number; h: number; sky: number[]; sleep: number; mood: number; sentence: number } }).__card);
-  expect(shared.name).toMatch(/^sleep-\d{4}-\d{2}-\d{2}\.png$/);
-  expect([shared.w, shared.h]).toEqual([1080, 1350]);
-  expect(shared.sky).toEqual([28, 27, 28]); // #1c1b1c, the dark theme's page
-  expect(shared.sentence).toBeGreaterThan(1_500);
-  expect(shared.sleep).toBeGreaterThan(8_000);
-  expect(shared.mood).toBeGreaterThan(2_000);
+  expect(read.sky).toEqual([28, 27, 28]); // #1c1b1c, the dark theme's page
+  expect(read.sentence).toBeGreaterThan(1_500);
+  expect(read.sleep).toBeGreaterThan(8_000);
+  expect(read.mood).toBeGreaterThan(2_000);
+  expect(read.panel).toBeGreaterThanOrEqual(420 - 1);
 });
 
 test("Sleep & Mood: with esm.sh gone, the charts still draw from the copy the app keeps", async ({ page, context }) => {

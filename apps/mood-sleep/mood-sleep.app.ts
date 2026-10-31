@@ -5,15 +5,15 @@
 // The chart screen draws on a <canvas> with a library that needs a real web page, so this app runs
 // as your own (trusted) app only. The numbers and the sentence on top are worked out in insights.ts,
 // in plain functions the tests run without a browser. Share draws the hero as a 1080×1350 picture on
-// the night palette (card.ts) and hands it to ctx.files.export: the save dialog on a computer, the
-// share sheet on a phone.
+// the night palette (card.ts) and hands it to ctx.ui.share: Potyro's share dialog shows it, then the
+// share sheet sends it, or a copy is saved where there is none.
 //
 // In six languages (#303); every language but English is a model's draft (#297). The charts say
 // their words through `ctx.t` and write dates and numbers through `ctx.format`. A check-in's note is
 // a record. A tag is stored as its option ("late screen"), so a chart chip, a scatter group and
 // the dataset behind it all key on that, and only what is shown is translated.
 import { defineApp } from "potyro";
-import type { Ctx, Field, FileInfo, Resolved, ViewProps } from "potyro";
+import type { Ctx, Field, Resolved, ViewProps } from "potyro";
 import { Chart, registerables } from "https://esm.sh/chart.js@4.5.1?bundle";
 import type { ChartConfiguration, ChartDataset, Plugin, ScatterDataPoint, TooltipItem } from "https://esm.sh/chart.js@4.5.1?bundle";
 import {
@@ -573,7 +573,8 @@ function mountPatterns(el: HTMLElement, props: ViewProps): () => void {
         ? {
             kicker: kicker.textContent ?? "",
             sentence: said[0]!,
-            stats: three,
+            // On the card the mood is a plain number: no face beside it (DESIGN.md §3.5).
+            stats: three.map((x, i) => (i === 1 ? { ...x, unit: "" } : x)),
             title: ctx.t("Night by night"),
             legend: { sleep: sleepWord, mood: moodWordTitle },
             goal: { hours: LONG, label: ctx.t("{h}h goal", { h: LONG }) },
@@ -587,24 +588,20 @@ function mountPatterns(el: HTMLElement, props: ViewProps): () => void {
   };
 
   // The card is drawn on the night palette whatever the screen's theme: the app's colour at the dark
-  // theme's text level (DESIGN.md §3.1), and mood's dark colour.
+  // theme's text level (DESIGN.md §3.1), and mood's dark colour. It goes to Potyro's share dialog,
+  // which shows it, then sends it through the share sheet or saves a copy; closed unsent, nothing.
   const shareCard = async () => {
     if (!card || share.disabled) return;
     share.disabled = true;
     const s = getComputedStyle(el);
     const sleep = css(rgba(s.getPropertyValue("--tinta-d").trim(), css(pal.sleep)));
-    const day = dayKey(ctx.today());
-    let file: FileInfo | null = null;
     try {
       const png = await drawCard(card, { sleep, mood: MOOD_DARK, display: pal.display, body: pal.font });
-      file = await ctx.files.write(`share/sleep-${day}.png`, png, { mime: "image/png" });
-      // The save dialog on a computer, the share sheet on a phone.
-      await ctx.files.export(file);
-    } catch (e) {
-      if (!(e instanceof Error && e.name === "AbortError")) ctx.ui.toast(ctx.t("It could not be shared."));
+      const file = new File([png], `sleep-${dayKey(ctx.today())}.png`, { type: "image/png" });
+      await ctx.ui.share({ title: ctx.t("Your nights"), files: [file] });
+    } catch {
+      ctx.ui.toast(ctx.t("It could not be shared."));
     } finally {
-      // The picture was for sending: it does not stay in the app's folder.
-      if (file) await ctx.files.remove(file).catch(() => undefined);
       share.disabled = false;
     }
   };
