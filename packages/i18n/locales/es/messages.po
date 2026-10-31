@@ -8222,6 +8222,11 @@ msgstr "Tú y tus dispositivos"
 msgid "You are the same person here as there, with the same recovery words."
 msgstr "Eres la misma persona aquí que allí, con las mismas palabras de recuperación."
 
+#. Over the key panel: what the person typed, kept until an app can be made from it; {asked} is their own words
+#: ../shell/src/free-panel.tsx
+msgid "You asked for: <0>{asked}</0>"
+msgstr "Pediste: <0>{asked}</0>"
+
 #: ../shell/src/studio.tsx
 msgid "You can go back to the version before from History."
 msgstr "Puedes volver a la versión anterior desde el historial."

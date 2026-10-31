@@ -18049,6 +18049,18 @@ html:has(.k-check-add) {
   background: var(--surface-raised);
   box-shadow: var(--shadow);
 }
+.k-free-panel-asked {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+.k-free-panel-asked-words {
+  color: var(--ink);
+  font-weight: 600;
+}
 .k-free-panel-stop {
   margin: 0;
   padding: var(--space-2) var(--space-3);
