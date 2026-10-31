@@ -3,8 +3,9 @@ import { currentCard } from "./studio-helpers.js";
 
 // The Studio on a phone and on a desktop (#80, then #261). It is a conversation: the box to say
 // what you want sits at the bottom of the screen, whole and in thumb reach; what has been said fills
-// the space above it; and the app opens from its card — the whole screen on a phone, as it will
-// really run, beside the conversation on a wide screen.
+// the space above it; and the app opens from its card — the whole screen under the Studio's bar on
+// a phone (#489: its Close and tabs stay in reach), as it will really run, beside the conversation on
+// a wide screen.
 
 const PHONE = { width: 375, height: 812 };
 
@@ -70,7 +71,7 @@ test.describe("phone", () => {
     }
   });
 
-  test("the app opens from its card as the whole screen, with the way back on its bar", async ({ page }) => {
+  test("the app opens from its card as the screen under the Studio's bar, with the way back on it", async ({ page }) => {
     await stubGenerator(page);
     await page.addInitScript(() => localStorage.setItem("potyro:generator:engine", JSON.stringify({ engine: "cli" })));
     await page.goto("/");
@@ -88,14 +89,17 @@ test.describe("phone", () => {
     const preview = studio.locator(".k-preview");
     await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 30_000 });
     await preview.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
-    // The whole screen.
+    // The whole screen under the Studio's bar, which keeps Close and the tabs (#489).
     const p = await box(preview);
+    const bar = await box(studio.locator(".k-studio-bar"));
     expect(p.x).toBe(0);
-    expect(p.y).toBe(0);
+    expect(Math.abs(p.y - bottom(bar))).toBeLessThanOrEqual(1);
     expect(p.width).toBe(PHONE.width);
-    expect(p.height).toBe(PHONE.height);
-    // And the way back is always there: the Conversation tab (DESIGN.md §10).
-    const back = preview.getByRole("tab", { name: "Conversation" });
+    expect(Math.abs(bottom(p) - PHONE.height)).toBeLessThanOrEqual(1);
+    await expect(studio.getByRole("button", { name: "Close studio" })).toBeVisible();
+    // And the way back is always there: the Conversation tab on that bar (DESIGN.md §10).
+    await expect(preview.getByRole("tab")).toHaveCount(0);
+    const back = studio.locator(".k-studio-bar").getByRole("tab", { name: "Conversation" });
     await expect(back).toBeVisible();
     await back.tap();
     await expect(studio.locator(".k-preview")).toHaveCount(0);

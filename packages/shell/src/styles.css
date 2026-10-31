@@ -17545,6 +17545,24 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
     overflow: clip;
   }
 }
+/* On a phone the app stands under the Studio's bar (#489): Close, the tabs and the menu stay where
+   they were, in reach, and the app has the rest of the screen. The bar measures itself onto
+   `--k-studio-bar-h` (studio.tsx `useBarHeight`); the phone's status bar is already in it. */
+.k-studio {
+  --k-studio-bar-h: 0px;
+}
+@media (max-width: 1099.98px) {
+  .k-studio[data-preview] .k-preview {
+    top: var(--k-studio-bar-h);
+  }
+  .k-studio[data-preview] .k-preview-bar {
+    padding-top: var(--space-2);
+  }
+  /* No way back on this bar (the tabs above are it): the app's name starts it. */
+  .k-studio[data-preview] .k-preview-title {
+    justify-content: flex-start;
+  }
+}
 .k-preview-adjust-name {
   min-width: 0;
   display: inline-flex;
