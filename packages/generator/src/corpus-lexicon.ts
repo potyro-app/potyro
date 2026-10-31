@@ -36,6 +36,8 @@ const LANG_KEY = String.raw`(?:"([A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,4})?)"|([a-z]{2,
 /** One `{ en: "…", pl: "…", … }` map, on one line or several. */
 const MAP = new RegExp(String.raw`\{\s*(?:${LANG_KEY}\s*:\s*${STRING}\s*,?\s*)+\}`, "g");
 const MAP_ENTRY = new RegExp(String.raw`${LANG_KEY}\s*:\s*${STRING}`, "g");
+/** The same entry, only as a whole key: `pl: "…"`, never the end of `sampl: "…"`. */
+const VIEW_ENTRY = new RegExp(String.raw`(?<![\w$-])${LANG_KEY}\s*:\s*${STRING}`, "g");
 /** `key: { … label: "…"` or `key: { … label: { … } }`, the label before any nested object. */
 const KEYED_LABEL = new RegExp(String.raw`\b([A-Za-z_$][\w$]*)\s*:\s*\{[^{}]*?\blabel\s*:\s*(?:${STRING}|(\{[^{}]*\}))`, "g");
 
@@ -62,6 +64,35 @@ export function pairsIn(source: string): Pair[] {
     for (const text of label) pairs.push({ words: wordsOf(text), english });
   }
   return pairs.filter((p) => p.words.length > 0 && p.words.length <= 8 && p.english.length <= 8);
+}
+
+/** A language other than English that this many of the sources' maps carry beside `en`: a language,
+ *  not a key that happens to be two letters. */
+const MIN_MAPS = 2;
+
+/** The languages, other than English, the sources' translation maps carry beside `en`. */
+export function translationLanguages(sources: readonly string[]): Set<string> {
+  const maps = new Map<string, number>();
+  for (const source of sources) {
+    for (const m of source.matchAll(MAP)) {
+      const langs = Object.keys(mapEntries(m[0]));
+      if (!langs.includes("en")) continue;
+      for (const lang of langs) if (lang !== "en") maps.set(lang, (maps.get(lang) ?? 0) + 1);
+    }
+  }
+  return new Set([...maps].filter(([, n]) => n >= MIN_MAPS).map(([lang]) => lang));
+}
+
+/**
+ * A text as it reads in English: every `pl: "…"`, `"pt-BR": "…"` entry of a translation map taken
+ * out, `en: "…"` kept. A map's other entries say what its `en` says, and a request in another
+ * language reaches that through its English words (englishFor); left in, a table of an app's words in
+ * six languages would match every request in any of them, by the request's own words, and outrank
+ * the passages that do what it asks.
+ */
+export function englishView(text: string, languages: ReadonlySet<string>): string {
+  if (!languages.size) return text;
+  return text.replace(VIEW_ENTRY, (entry, quoted: string | undefined, bare: string | undefined) => (languages.has(quoted ?? bare!) ? "" : entry));
 }
 
 /** How often each word, and each word with each English word, is paired. */
