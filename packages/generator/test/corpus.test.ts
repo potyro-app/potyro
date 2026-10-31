@@ -146,6 +146,17 @@ describe("primeCorpus — retrieval done by the harness before the first turn (#
       expect(primeGroups(multi, "open the map on the camera position", editing, "en").every((g) => g.length === 1)).toBe(true);
     });
 
+    it("matches what a passage says in English, not a table of an app's words in six languages", () => {
+      const tables = buildCorpus([
+        { path: "examples/recipes.app.tsx", text: 'entities: { recipe: { label: "Recipe", fields: { rating: { type: "number", label: "Rating", min: 1, max: 5 } } } }' },
+        { path: "apps/x/words.ts", text: 'export const W = {\n  a: { en: "Pick one", pl: "Wybierz ocenę przepisu", de: "Wähle" },\n  b: { en: "Done", pl: "Ocena przepisu gotowa", de: "Fertig" },\n};' },
+        { path: "packages/demo/pairs.ts", text: 'r: { en: "Recipe", pl: "Przepis" }, s: { en: "Rating", pl: "Ocena" }' },
+      ]);
+      const pl = primeCorpus(tables, "dodaj ocenę do każdego przepisu", editing, "pl");
+      expect(pl).toContain("examples/recipes.app.tsx");
+      expect(pl).not.toContain("apps/x/words.ts");
+    });
+
     it("learns the words of the app being edited, even one written only in Polish", () => {
       const polish = 'export default defineApp({ id: "mine", entities: { item: { fields: { rating: { type: "number", label: "Ocena" } } } } });';
       expect(primeGroups(multi, "dodaj ocenę do przepisów", polish, "pl")[1]).toEqual(["ocenę", "rating"]);

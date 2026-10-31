@@ -103,12 +103,14 @@ export interface Lexicon {
   together: Map<string, Map<string, number>>;
   /** The same, counting only short pairings (a label of a word or two): those say what a word means. */
   strong: Map<string, Map<string, number>>;
+  /** How often each word is in a short pairing. */
+  strongCount: Map<string, number>;
 }
 
 const SHORT = 2;
 
 export function buildLexicon(sources: readonly string[], words: readonly WordPair[] = []): Lexicon {
-  const lex: Lexicon = { count: new Map(), englishCount: new Map(), together: new Map(), strong: new Map() };
+  const lex: Lexicon = { count: new Map(), englishCount: new Map(), together: new Map(), strong: new Map(), strongCount: new Map() };
   for (const source of sources) addPairs(lex, pairsIn(source));
   addPairs(lex, words.map(([, text, english]) => ({ words: wordsOf(text), english: wordsOf(english) })).filter((p) => p.words.length && p.english.length));
   return lex;
@@ -129,7 +131,9 @@ function addPairs(lex: Lexicon, pairs: readonly Pair[]): void {
     for (const w of ws) {
       lex.count.set(w, (lex.count.get(w) ?? 0) + 1);
       bump(lex.together, w, es);
-      if (short) bump(lex.strong, w, es);
+      if (!short) continue;
+      bump(lex.strong, w, es);
+      lex.strongCount.set(w, (lex.strongCount.get(w) ?? 0) + 1);
     }
   }
 }
@@ -138,7 +142,7 @@ function addPairs(lex: Lexicon, pairs: readonly Pair[]): void {
 export function withSource(base: Lexicon, source: string): Lexicon {
   const pairs = pairsIn(source);
   if (!pairs.length) return base;
-  const lex: Lexicon = { count: new Map(base.count), englishCount: new Map(base.englishCount), together: new Map(base.together), strong: new Map(base.strong) };
+  const lex: Lexicon = { count: new Map(base.count), englishCount: new Map(base.englishCount), together: new Map(base.together), strong: new Map(base.strong), strongCount: new Map(base.strongCount) };
   // Copy only the rows this source touches, before adding to them.
   for (const { words } of pairs) {
     for (const w of words) {
@@ -151,20 +155,48 @@ export function withSource(base: Lexicon, source: string): Lexicon {
 }
 
 const MIN_STEM = 4;
+/** Letters an inflection may change at the end of the longer form: "przepis" / "przepisów". */
+const MAX_TAIL = 2;
 /**
- * How much of two words must agree for one to be read as a form of the other: all but the last two
- * letters ("przepisu" / "przepis"), and at least four; a word of four, all but its last ("mapa" /
- * "mapę"). Shorter words only as themselves.
+ * Whether one word reads as a form of the other: they differ only in their last letters — at most
+ * two after the letters they share ("przepisu" / "przepisów" / "przepis"), three when they share at
+ * least five ("przepisami" / "przepis") — and they share at least four, or three in two words of four
+ * ("mapa" / "mapę"). Measured on the longer word too: "przy" shares "prz" with "przepisu", and is no
+ * form of it. Shorter words only as themselves.
  */
 function sameStem(a: string, b: string): boolean {
   if (a === b) return true;
-  const shorter = Math.min(a.length, b.length);
-  if (shorter < MIN_STEM) return false;
-  const need = shorter === MIN_STEM ? MIN_STEM - 1 : Math.max(MIN_STEM, shorter - 2);
-  for (let i = 0; i < need; i++) if (a[i] !== b[i]) return false;
-  return true;
+  const longer = Math.max(a.length, b.length);
+  let shared = 0;
+  while (shared < Math.min(a.length, b.length) && a[shared] === b[shared]) shared++;
+  const tail = longer - shared;
+  if (tail <= MAX_TAIL) return shared >= MIN_STEM || (shared === MIN_STEM - 1 && longer === MIN_STEM);
+  return tail === MAX_TAIL + 1 && shared >= MIN_STEM + 1;
 }
 
+/**
+ * The English words a word was paired with, each with its own forms ("page" and "pages", "place" and
+ * "places") counted as one: a word paired half the time with "page" and half with "pages" means
+ * "page". The form paired most stands for the rest, the shorter on a tie, so a passage that says
+ * "pages" still has "page" in it.
+ */
+function englishForms(together: ReadonlyMap<string, number>, strong: ReadonlyMap<string, number>): Array<{ members: string[]; both: number; strongly: number }> {
+  const byUse = [...together].sort((a, b) => b[1] - a[1] || a[0].length - b[0].length || (a[0] < b[0] ? -1 : 1));
+  const groups: Array<{ members: string[]; both: number; strongly: number }> = [];
+  for (const [e, both] of byUse) {
+    const group = groups.find((g) => sameStem(g.members[0]!, e));
+    if (group) {
+      group.members.push(e);
+      group.both += both;
+      group.strongly += strong.get(e) ?? 0;
+    } else groups.push({ members: [e], both, strongly: strong.get(e) ?? 0 });
+  }
+  return groups;
+}
+
+/** A word's labels say what it means when they are at least this share of its pairings; under it the
+ *  word is a common one ("się", "que") that an odd label happens to hold, and is read by them all. */
+const LABEL_SHARE = 0.25;
 /** Below this share of a word's pairings, an English word is not what it means. */
 const MIN_SHARE = 0.5;
 /** English words a lookup may give for one word: a label of two words gives both. */
@@ -178,20 +210,25 @@ const MAX_PER_WORD = 2;
  * wins a tie. Empty when no source paired it.
  */
 export function englishFor(lex: Lexicon, word: string): string[] {
-  const forms = [...lex.together.keys()].filter((w) => sameStem(w, word));
+  // An English word (a key's, or a map's `en`) is no form of the word, however alike: "receipt" is not "receita".
+  const forms = [...lex.together.keys()].filter((w) => w === word || (sameStem(w, word) && !lex.englishCount.has(w)));
   const together = new Map<string, number>();
   const strong = new Map<string, number>();
   let n = 0;
+  let nShort = 0;
   for (const form of forms) {
     n += lex.count.get(form)!;
+    nShort += lex.strongCount.get(form) ?? 0;
     for (const [e, k] of lex.together.get(form)!) together.set(e, (together.get(e) ?? 0) + k);
     for (const [e, k] of lex.strong.get(form) ?? []) strong.set(e, (strong.get(e) ?? 0) + k);
   }
   const picked: Array<{ e: string; share: number; spread: number }> = [];
-  for (const [e, both] of together) {
-    if (forms.includes(e)) continue; // the same word on both sides: English or a cognate, matched as it is
-    const share = both / n;
-    if (share < MIN_SHARE || (!strong.get(e) && both < 2)) continue;
+  for (const { members, both, strongly } of englishForms(together, strong)) {
+    if (members.some((e) => forms.includes(e))) continue; // the same word on both sides: English or a cognate, matched as it is
+    // A word some label pairs is read by its labels; the sentences it is in only when none does.
+    const share = nShort && nShort >= LABEL_SHARE * n ? strongly / nShort : both / n;
+    if (share < MIN_SHARE || (!strongly && both < 2)) continue;
+    const e = members[0]!;
     picked.push({ e, share, spread: lex.englishCount.get(e)! });
   }
   return picked

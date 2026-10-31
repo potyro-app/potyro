@@ -68,6 +68,57 @@ describe("englishFor", () => {
   });
 });
 
+describe("forms and meanings, on sources that say many words in many sentences", () => {
+  it("does not read a short word as a form of a long one that starts the same way", () => {
+    // "przy" shares "prz" with "przepisu"; read as a form of it, its sentences drowned "recipe".
+    const lex = buildLexicon([
+      `a: { en: "Recipe", pl: "Przepis" }`,
+      `b: { en: "Closer to the light", pl: "Bliżej przy świetle" }`,
+      `c: { en: "Hold it closer", pl: "Trzymaj przy sobie" }`,
+      `d: { en: "Light by the window", pl: "Światło przy oknie" }`,
+    ]);
+    expect(englishFor(lex, "przepisu")).toEqual(["recipe"]);
+  });
+
+  it("does not read an English word as a form of another language's", () => {
+    // "receipt" (a key and its English label) is not "receita".
+    const lex = buildLexicon([`recipe: { label: { en: "Recipe", "pt-BR": "Receita" } }`, `receipt: { label: "Receipt" }`, `x: { label: "Receipt" }`, `y: { label: "Receipt" }`]);
+    expect(englishFor(lex, "receita")).toEqual(["recipe"]);
+  });
+
+  it("counts an English word's forms as one meaning", () => {
+    const lex = buildLexicon([`a: { en: "Page", pl: "Strona" }`, `b: { en: "Pages", pl: "Strony" }`, `c: { en: "Name", pl: "Strona" }`]);
+    // "page" 1, "pages" 1, "name" 1 of three: no single word has half, the word "page" has two thirds.
+    expect(englishFor(lex, "stronę")).toEqual(["page"]);
+  });
+
+  it("reads a word by its labels when it has them, not by the sentences it is also in", () => {
+    const lex = buildLexicon([
+      `rating: { label: { en: "Rating", pl: "Ocena" } }`,
+      `a: { en: "Hard to tell from this photo", pl: "Trudno ocenić po tym zdjęciu" }`,
+      `b: { en: "Probably fine, hard to tell", pl: "Chyba dobrze, trudno ocenić" }`,
+      `c: { en: "Possibly dry, hard to tell", pl: "Może sucho, trudno ocenić" }`,
+    ]);
+    expect(englishFor(lex, "oceną")).toEqual(["rating"]);
+  });
+
+  it("does not read a common word by the odd label it is in", () => {
+    const said = [
+      ["The photo did not load", "Zdjęcie nie załadowało się"],
+      ["Could not save", "Nie udało się zapisać"],
+      ["The game is over", "Gra skończyła się"],
+      ["Starts tomorrow", "Zaczyna się jutro"],
+      ["Something went wrong", "Coś poszło nie tak, stało się"],
+      ["Wait a moment", "Zatrzymaj się na chwilę"],
+      ["Meet at noon", "Spotkajmy się w południe"],
+      ["Learn the notes", "Naucz się nut"],
+    ];
+    const sentences = said.map(([en, pl], i) => `s${i}: { en: "${en}", pl: "${pl}" }`);
+    const lex = buildLexicon([...sentences, `h: { en: "Say hello", pl: "Przywitaj się" }`]);
+    expect(englishFor(lex, "się")).toEqual([]);
+  });
+});
+
 describe("translationLanguages / englishView", () => {
   const src = `title: { en: "Recipes", pl: "Przepisy", "pt-BR": "Receitas" },
     hint: {
