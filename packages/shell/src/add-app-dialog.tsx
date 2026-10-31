@@ -227,8 +227,9 @@ export function AddAppDialog({
                   <Trans>The whole app, as text</Trans>
                 </span>
               </button>
-              {/* Not a source of its own: the gallery's apps are demo links, which open here as any link does. */}
-              <a className="k-add-app-source k-add-app-gallery" href={galleryUrl()} target="_blank" rel="noopener">
+              {/* Not a source of its own: the gallery's apps are demo links, which open here as any link does.
+                  In this tab (gallery-link.ts): its Make it mine comes back to the tab with your apps. */}
+              <a className="k-add-app-source k-add-app-gallery" href={galleryUrl()}>
                 <span className="k-add-app-source-glyph" aria-hidden><Glyph icon="images" size={24} /></span>
                 <span className="k-add-app-source-title">
                   <Trans comment="Add an app: Potyro's gallery of apps">From the gallery</Trans>

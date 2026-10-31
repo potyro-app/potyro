@@ -1230,7 +1230,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
         // it edge to edge with the controls on top.
         fullBleed={pageView?.type === "map" && !currentPage?.layout}
         locked={Boolean(locked)}
-        seal={sealed ? <Seal hue={hue} /> : undefined}
+        seal={sealed ? <Seal hue={hue} beside={themeScope === "frame"} /> : undefined}
         fullscreen={fullscreen ? { onExit: exitFullscreen } : undefined}
       >
       {locked ? <LockBanner state={locked} /> : null}
