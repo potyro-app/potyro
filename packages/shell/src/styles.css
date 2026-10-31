@@ -17318,16 +17318,18 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   transform: none;
 }
 /* On a phone: two tabs, Conversation and App (§10). */
+/* Each tab is a thumb's target, 44px, with 8px between the two (DESIGN.md §3.4, §11.4): on a phone
+   with the app open they are the way back. The pill around them stays. */
 .k-studio-tabs {
   flex: none;
   display: inline-flex;
-  gap: 2px;
+  gap: var(--space-2);
   padding: 2px;
   border-radius: var(--radius-pill);
   background: var(--surface);
 }
 .k-studio-tab {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 1rem;
   border: 0;
   border-radius: var(--radius-pill);
@@ -17463,9 +17465,10 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   border-bottom: var(--stroke) solid var(--line);
   background: var(--bg);
 }
+/* A thumb's target each (DESIGN.md §3.4, §11.4); the bar's gap keeps 8px between them. */
 .k-preview-back,
 .k-preview-code {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 0.9rem;
   border: var(--stroke) solid var(--line-strong);
   border-radius: var(--radius-pill);
@@ -17475,7 +17478,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   font-size: var(--text-small);
 }
 .k-preview-point {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 0.9rem;
   border: 0;
   background: var(--aguada);
