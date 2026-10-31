@@ -116,6 +116,58 @@ export function plotPoints(values: Array<number | null>, axis: readonly [number,
 }
 
 const PAD = 88;
+/** The kicker's baseline; the sentence starts 40 below it. */
+const KICKER_Y = 150;
+/** From the sentence's last line to the stats, and the stats' own height to the chart panel. */
+const STATS_GAP = 56;
+const STATS_H = 150;
+/** The panel ends 150 above the foot (the app's name), and never gets shorter than this. */
+const PANEL_FOOT = 150;
+export const PANEL_MIN = 420;
+
+/** How the sentence is sized: the largest step that keeps it to `lines`, never under `min`. */
+export const SENTENCE = { max: 72, min: 44, step: 4, lines: 3 } as const;
+
+/**
+ * The room the sentence has — the top of its first line to a lead below its last — once the chart
+ * panel has its minimum height: the panel is the card's picture, the sentence fits around it.
+ */
+export const SENTENCE_ROOM = CARD_H - PANEL_FOOT - PANEL_MIN - STATS_H - STATS_GAP - (KICKER_Y + 40);
+
+export const leadOf = (size: number): number => Math.round(size * 1.2);
+
+export interface FittedSentence {
+  size: number;
+  lead: number;
+  lines: Placed[][];
+}
+
+/**
+ * The sentence's size and lines: the largest step from `SENTENCE.max` down that wraps it in at most
+ * `SENTENCE.lines` lines within `SENTENCE_ROOM`. A sentence too long for that even at `SENTENCE.min`
+ * is set at the minimum, its lines measured again at that size, so the font, the lead and the lines
+ * always agree. `widthAt(size)` measures a run in the display face at that size.
+ */
+export function fitSentence(parts: Insight["parts"], widthAt: (size: number) => (r: Run) => number, max: number): FittedSentence {
+  // From the top of the first line to a lead below the last, where the stats' gap starts.
+  const height = (size: number, n: number) => size + n * leadOf(size);
+  for (let size: number = SENTENCE.max; size >= SENTENCE.min; size -= SENTENCE.step) {
+    const lines = wrapRuns(parts, widthAt(size), max);
+    if (lines.length <= SENTENCE.lines && height(size, lines.length) <= SENTENCE_ROOM) return { size, lead: leadOf(size), lines };
+  }
+  const size = SENTENCE.min;
+  return { size, lead: leadOf(size), lines: wrapRuns(parts, widthAt(size), max) };
+}
+
+/**
+ * Where the stats' labels sit and the chart panel's box, for a fitted sentence. The panel runs from
+ * under the stats to its foot, and is never shorter than `PANEL_MIN`.
+ */
+export function cardLayout(fit: FittedSentence): { statsY: number; panel: Box } {
+  const statsY = KICKER_Y + 40 + fit.size + fit.lines.length * fit.lead + STATS_GAP;
+  const top = Math.min(statsY + STATS_H, CARD_H - PANEL_FOOT - PANEL_MIN);
+  return { statsY, panel: { x: PAD - 24, y: top, w: CARD_W - PAD * 2 + 48, h: CARD_H - PANEL_FOOT - top } };
+}
 
 /** The card as a PNG. Waits for the two fonts, so the first share is not drawn in a fallback. */
 export async function drawCard(data: CardData, colours: CardColours): Promise<Blob> {
@@ -150,49 +202,47 @@ export async function drawCard(data: CardData, colours: CardColours): Promise<Bl
   g.fillStyle = NIGHT.muted;
   g.font = body(26, 600);
   g.letterSpacing = "3px";
-  g.fillText(data.kicker.toLocaleUpperCase(), PAD, 150);
+  g.fillText(data.kicker.toLocaleUpperCase(), PAD, KICKER_Y);
   g.letterSpacing = "0px";
 
-  // The sentence: as large as fits in five lines.
+  // The sentence: as large as fits in three lines, in the room the chart leaves it.
   const width = CARD_W - PAD * 2;
-  let size = 72;
-  let lines: Placed[][] = [];
-  for (; size >= 44; size -= 4) {
-    g.font = display(size);
-    lines = wrapRuns(data.sentence.parts, (r) => g.measureText(r.text).width, width);
-    if (lines.length <= 5) break;
-  }
-  const lead = Math.round(size * 1.2);
-  let y = 150 + 40 + size;
-  for (const line of lines) {
+  const fit = fitSentence(
+    data.sentence.parts,
+    (size) => {
+      g.font = display(size);
+      return (r) => g.measureText(r.text).width;
+    },
+    width,
+  );
+  const { statsY, panel } = cardLayout(fit);
+  g.font = display(fit.size);
+  fit.lines.forEach((line, i) => {
     for (const r of line) {
       g.fillStyle = r.series === "sleep" ? colours.sleep : r.series === "mood" ? colours.mood : NIGHT.ink;
-      g.fillText(r.text, PAD + r.x, y);
+      g.fillText(r.text, PAD + r.x, KICKER_Y + 40 + fit.size + i * fit.lead);
     }
-    y += lead;
-  }
+  });
 
-  // The three stats
-  y += 56;
+  // The three stats, each a plain number with its unit
   const col = width / 3;
   data.stats.forEach((s, i) => {
     const x = PAD + i * col;
     g.fillStyle = NIGHT.muted;
     g.font = body(28);
-    g.fillText(s.label, x, y, col - 16);
+    g.fillText(s.label, x, statsY, col - 16);
     g.fillStyle = NIGHT.ink;
     g.font = display(84);
-    g.fillText(s.value, x, y + 92);
+    g.fillText(s.value, x, statsY + 92);
     if (s.unit) {
       const after = g.measureText(s.value).width;
       g.fillStyle = NIGHT.muted;
       g.font = body(32);
-      g.fillText(s.unit, x + after + 6, y + 92);
+      g.fillText(s.unit, x + after + 6, statsY + 92);
     }
   });
 
   // Night by night, on its own panel down to the name.
-  const panel: Box = { x: PAD - 24, y: y + 150, w: width + 48, h: CARD_H - 150 - (y + 150) };
   g.fillStyle = NIGHT.surface;
   g.beginPath();
   g.roundRect(panel.x, panel.y, panel.w, panel.h, 40);

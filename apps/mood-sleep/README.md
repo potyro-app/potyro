@@ -31,8 +31,9 @@ test/               insights.ts, the card's layout, the seed against the fields,
   - **Log last night** opens the check-in form right there.
   - **Share** draws the top of the screen as a 1080×1350 picture — the sentence with its numbers in
     the series colours, the three stats and the nights chart — on the dark theme's colours whatever
-    the screen's, and hands it to `ctx.files.export`: the save dialog on a computer, the share sheet
-    on a phone. It is drawn in `card.ts`, and the copy it writes to hand over is removed after.
+    the screen's, and hands it to `ctx.ui.share`: Potyro's share dialog shows the picture, then sends
+    it through the share sheet where the device has one, or saves a copy. It is drawn in `card.ts`;
+    the chart keeps at least 420px of the card, and the sentence takes the size that fits above it.
 - **Nights** — every check-in, newest first; tap one to see or change it.
 
 Colours and fonts come from the shell's design tokens (`--ink`, `--line`, `--surface`, `--accent`,
