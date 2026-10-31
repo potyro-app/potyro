@@ -63,7 +63,7 @@ export function StudioFiles({ app, definition }: StudioFilesProps) {
         declared = undefined; // the card will read the app itself
       }
       const code = await appCode((await modulesOf(saved.id)) ?? store, saved.lock);
-      const zip = await shippedPackage(store, { source: saved.source, lock: saved.lock, code, declared, line: saved.line });
+      const zip = await shippedPackage(store, { source: saved.source, lock: saved.lock, code, declared, line: saved.line, seed: saved.seed });
       const name = packageName(saved.id);
       await shellCaps().filesystem.save(name, new Blob([zip as BlobPart], { type: "application/zip" }));
       setPacked(name);

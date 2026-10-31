@@ -230,12 +230,22 @@ export const totalSize = (files: ReadonlyArray<{ size: number }>): number => fil
 
 /**
  * The package the Studio saves (#253 format): the source, the files the app ships with, and its code
- * (libraries' bytes under `files/.modules/`, its own modules under `src/`, and their lock). What the
- * person added and what the app wrote are data, and stay with the person.
+ * (libraries' bytes under `files/.modules/`, its own modules under `src/`, and their lock), and its
+ * sample records as `seed.json` when it has some (#486). What the person added and what the app wrote
+ * are data, and stay with the person.
  */
 export async function shippedPackage(
   store: Store,
-  app: { source: string; sourceName?: string; lock: AppLock | undefined; code?: ReadonlyArray<{ path: string; data: Uint8Array }>; declared?: AppDeclaration; line?: string },
+  app: {
+    source: string;
+    sourceName?: string;
+    lock: AppLock | undefined;
+    code?: ReadonlyArray<{ path: string; data: Uint8Array }>;
+    declared?: AppDeclaration;
+    line?: string;
+    /** Its sample records (`UserApp.seed`): never read from `store`, which holds the person's. */
+    seed?: Record<string, Array<Record<string, unknown>>>;
+  },
 ): Promise<Uint8Array> {
   const space = fileSpace(store);
   const files: PackagedFile[] = [];
@@ -250,5 +260,5 @@ export async function shippedPackage(
     else if (c.path.startsWith(".src/")) modules.push({ path: c.path.slice(".src/".length), data: c.data });
   }
   // Which app it is (docs/24 §11): a copy made from this package opens from the same links.
-  return packAppPackage({ source: app.source, sourceName: app.sourceName ?? "app.tsx", files, modules, lock: app.lock, seed: undefined, chat: undefined, ...(app.declared ? { declared: app.declared } : {}), ...(app.line ? { line: app.line } : {}) });
+  return packAppPackage({ source: app.source, sourceName: app.sourceName ?? "app.tsx", files, modules, lock: app.lock, seed: app.seed, chat: undefined, ...(app.declared ? { declared: app.declared } : {}), ...(app.line ? { line: app.line } : {}) });
 }
