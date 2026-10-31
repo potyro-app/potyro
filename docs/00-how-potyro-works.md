@@ -628,12 +628,17 @@ source is a package with no files; an export bundle is read as a package too, wh
 installs on a device that never had the app.
 
 `seed.json` is never the person's records. An app added from a package keeps the seed it came with;
-an app made in the Studio keeps the sample records its create run passed on: the create loop runs
-each candidate on records made up from its fields, in a throwaway store, and the one it ends with,
-when nothing threw, keeps them (`packages/shell/src/app-seed.ts`, #486). Studio → Files → Save as a
-package writes that seed as `seed.json`, and a demo link carries it, so the app opens on something
-on a device that never had it. When the app changes, rows that no longer fit its fields are
-dropped, and nothing is added back.
+an app made in the Studio keeps sample records the create loop asked for: once a candidate has
+passed its run, the loop makes one more model call, through the same engine (and the same
+metering), for 3–5 plausible records per entity — the entities' fields, labels and options and
+today's date go in, names and text come back in the person's language. Each row is checked by the
+rule the store's write gate holds every record to (`fieldValueProblem`; whether a field is required
+is not asked, as the store does not ask it); rows that fail are dropped, and with fewer than two left
+the app keeps none (`packages/generator/src/agent/sample-records.ts`, `packages/shell/src/app-seed.ts`,
+#486). The run check's own rows ("name 1") only exercise the code and never become the seed. The
+kept seed is never narrowed: it is fitted to the app at the point of use — a demo link, Studio →
+Files → Save as a package, a demo opening — so a later version that cannot take a row simply carries
+fewer, and History putting back an earlier version gets them all back.
 
 Everything comes in sealed. A file from this device or pasted source may be marked "I wrote this"
 on the card; a link never can, and an update that arrives by link drops a trusted app back into the
