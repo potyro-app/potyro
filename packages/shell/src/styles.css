@@ -14159,12 +14159,12 @@ input.k-switch:disabled {
 /* ---- The Start screen (#96; owner, 2026-10-15 — settles #93) ---------------------------------
    Windows Phone 8.1's Start: flat tiles of solid colour, square corners, no shadow, packed in a
    tight grid with small even gutters; big light type for the pane titles; a slim app bar. The tile
-   colour is the app's own (`--tile-bg`, darkened in tile-colour.ts until white reads on it), and the
-   only motion is Metro's: the press tilt, the live tile turning over, the turnstile when an app
-   opens — transforms and opacity only, and none of it under reduced motion. */
+   colour is the app's hour on the colour clock (`--tile-bg`, below), and the only motion is Metro's:
+   the press tilt, the live tile turning over, the turnstile when an app opens — transforms and
+   opacity only, and none of it under reduced motion. */
 /* tokens-only: start — start screen */
 .k-metro {
-  /* Tiles wear the app's traço (metro-tile.tsx); graphite reads on every hour of it (§3.1). */
+  /* What is not an app's tile (a group's folder) keeps graphite; an app's tile sets its own, below. */
   --tile-ink: var(--ink-on-traco);
   --tile-ink-soft: color-mix(in oklab, var(--ink-on-traco) 80%, transparent);
   --metro-side: 12px;
@@ -14368,6 +14368,30 @@ button.k-metro-group-name {
   display: block;
   touch-action: pan-y;
   transition: transform var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+/* An app's tile, its row in All apps and its cell in a group's mosaic wear the app's hour as a button
+   wears it (DESIGN.md §3.1 `--accent` / `--on-accent`, `tilePair` in app-colour.ts): the traço with
+   graphite where graphite reads at AA, else the tinta with light words. Graphite on the bare traço falls
+   short of AA at four hours, and a tile carries small words. Declared on the tile itself, so the
+   theme's pair resolves there. */
+.k-metro .k-launch-tile.k-metro-tile,
+.k-metro .k-launch-tile.k-metro-row-open,
+.k-metro .k-metro-mosaic-cell {
+  --tile-bg: var(--tile-bg-l);
+  --tile-ink: var(--tile-ink-l);
+  --tile-ink-soft: color-mix(in oklab, var(--tile-ink-l) 80%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .k-metro :is(.k-launch-tile.k-metro-tile, .k-launch-tile.k-metro-row-open, .k-metro-mosaic-cell) {
+    --tile-bg: var(--tile-bg-d);
+    --tile-ink: var(--tile-ink-d);
+    --tile-ink-soft: color-mix(in oklab, var(--tile-ink-d) 80%, transparent);
+  }
+}
+:root[data-theme="dark"] .k-metro :is(.k-launch-tile.k-metro-tile, .k-launch-tile.k-metro-row-open, .k-metro-mosaic-cell) {
+  --tile-bg: var(--tile-bg-d);
+  --tile-ink: var(--tile-ink-d);
+  --tile-ink-soft: color-mix(in oklab, var(--tile-ink-d) 80%, transparent);
 }
 .k-metro .k-launch-tile.k-metro-tile {
   position: relative;
