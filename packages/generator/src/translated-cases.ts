@@ -187,11 +187,31 @@ export const CREATE_REQUESTS: Readonly<Record<EvalLanguage, Readonly<Record<stri
       "Śledź godziny, które przepracowuję dla różnych klientów, każdy z własną stawką godzinową, żebym na koniec miesiąca wiedział dokładnie, na ile wystawić każdemu fakturę.",
     "wine-notes":
       "Notatki o winach, których próbowałem — zdjęcie etykiety, ile zapłaciłem i czy kupiłbym je jeszcze raz. Chcę móc szukać po szczepie winogron.",
+    "beehives":
+      "Mam trzy ule. Po każdym przeglądzie chcę zapisać dla każdego ula, czy widziałem matkę, ile ramek z czerwiem, czy były roztocza i ile miodu zebrałem. Pokaż mi historię każdego ula i kiedy ostatnio go otwierałem.",
+    "chore-rota":
+      "Grafik obowiązków w naszym mieszkaniu: jest nas troje, pięć obowiązków, zmieniamy się co tydzień, żeby nikt nie robił tego samego dwa razy z rzędu. Pokaż, kto co robi w tym tygodniu, i daj nam odhaczać zrobione.",
+    "reading-minutes":
+      "Szkoła mojej córki chce 20 minut czytania dziennie. Niech zapisuje, co i jak długo czytała, pokaż sumę z tygodnia na tle celu i trzymaj listę książek, które skończyła.",
+    "lent-out":
+      "Kto ma moje rzeczy: pożyczam książki, narzędzia i gry planszowe i zapominam. Zapisz, co pożyczyłem, komu i kiedy, i daj oznaczyć zwrot. Pokaż, co wciąż jest na zewnątrz, od najstarszego.",
+    "sourdough":
+      "Dziennik mojego zakwasu: każde karmienie z rodzajem mąki i proporcją, jak urósł, i przypomnij mi, kiedy następne karmienie, na podstawie odstępu, który ustawię.",
+    "home-inventory":
+      "Spis rzeczy w domu do ubezpieczenia: każda rzecz ze zdjęciem, pokojem, ceną i paragonem. Chcę widzieć łączną wartość na pokój i w sumie.",
+    "bird-list":
+      "Lista ptaków, które widziałem w życiu: gatunek, gdzie i kiedy pierwszy raz, zdjęcie, jeśli się udało. Pokaż, ile nowych gatunków dodałem w każdym miesiącu, i daj szukać po nazwie.",
+    "vocab-trainer":
+      "Pomóż mi uczyć się włoskich słówek: dodaję słowo i jego znaczenie, potem przepytuj mnie z tych, których czas nadszedł, i rozkładaj powtórki coraz rzadziej za każdym razem, gdy odpowiem dobrze.",
+    "fuel-log":
+      "Za każdym tankowaniem chcę wpisać litry, cenę i przebieg, i widzieć spalanie na 100 km oraz ile wydałem w tym miesiącu.",
+    "allotment":
+      "Zaplanuj moją działkę: sześć grządek, co w każdej posadziłem i kiedy, i kiedy spodziewam się zbiorów. Pokaż, co jest do zebrania w ciągu najbliższych dwóch tygodni.",
     "job-applications":
       "Śledź moje aplikacje o pracę: firma, stanowisko, kiedy aplikowałem i na jakim jestem etapie. Szturchnij mnie, jeśli przez dwa tygodnie nie dostałem żadnej odpowiedzi.",
     "gift-ideas":
       "Miejsce, żeby notować pomysły na prezenty dla ludzi, kiedy tylko mi przyjdą do głowy, z urodzinami każdego i przypomnieniem dwa tygodnie wcześniej, żebym naprawdę zdążył coś zamówić.",
-    "home-inventory":
+    "insurance-inventory":
       "Sfotografować wszystko, co mam, na potrzeby ubezpieczenia — ile zapłaciłem, kiedy kupiłem, w którym pokoju to stoi — i zsumować wartość dla każdego pokoju.",
     "meal-plan": "Zaplanuj, co jemy każdego wieczoru w tygodniu, a potem automatycznie zrób mi z przepisów listę zakupów.",
     sleep: "Zapisuj, o której idę spać i o której wstaję, i pokaż mi średnią z ostatniego tygodnia.",
@@ -258,11 +278,31 @@ export const CREATE_REQUESTS: Readonly<Record<EvalLanguage, Readonly<Record<stri
       "Acompanhar as horas que eu trabalho pra clientes diferentes, cada um com seu valor por hora, pra no fim do mês eu saber exatamente quanto cobrar de cada um.",
     "wine-notes":
       "Guardar anotações dos vinhos que eu provei — uma foto do rótulo, quanto eu paguei e se eu compraria de novo. Quero poder buscar pela uva.",
+    "beehives":
+      "Tenho três colmeias. Depois de cada inspeção quero anotar, por colmeia, se vi a rainha, quantos quadros de cria, se havia ácaros e o que colhi. Mostre o histórico de cada colmeia e quando a abri pela última vez.",
+    "chore-rota":
+      "Uma escala de tarefas para o nosso apartamento: somos três, cinco tarefas, com rodízio toda semana para ninguém repetir a mesma coisa duas vezes seguidas. Mostre quem faz o quê nesta semana e deixe a gente marcar o que foi feito.",
+    "reading-minutes":
+      "A escola da minha filha pede 20 minutos de leitura por dia. Deixe ela registrar o que leu e por quanto tempo, mostre o total da semana contra a meta e guarde a lista dos livros que ela terminou.",
+    "lent-out":
+      "Quem está com as minhas coisas: empresto livros, ferramentas e jogos de tabuleiro e esqueço. Registre o que emprestei, para quem e quando, e deixe marcar como devolvido. Mostre o que ainda está fora, do mais antigo para o mais novo.",
+    "sourdough":
+      "Um diário do meu fermento natural: cada alimentação com a farinha e a proporção, quanto cresceu, e me lembre de quando é a próxima alimentação com base no intervalo que eu definir.",
+    "home-inventory":
+      "Um inventário da casa para o seguro: cada item com foto, o cômodo, quanto paguei e a nota fiscal. Quero o valor total por cômodo e no geral.",
+    "bird-list":
+      "Uma lista de aves da minha vida: espécie, onde e quando vi pela primeira vez, uma foto se consegui. Mostre quantas espécies novas adicionei em cada mês e deixe buscar pelo nome.",
+    "vocab-trainer":
+      "Me ajude a aprender palavras em italiano: eu adiciono a palavra e o significado, depois me pergunte as que estão na hora, e espace as repetições cada vez mais quando eu acertar.",
+    "fuel-log":
+      "Toda vez que abasteço o carro quero anotar litros, preço e a quilometragem, e ver meu consumo por 100 km e quanto gastei neste mês.",
+    "allotment":
+      "Planejar minha horta: seis canteiros, o que plantei em cada um e quando, e quando espero colher. Mostre o que está para colher nas próximas duas semanas.",
     "job-applications":
       "Acompanhar minhas candidaturas a vagas: empresa, cargo, quando me candidatei e em que etapa estou. Me dá um toque se eu não tiver nenhuma resposta em duas semanas.",
     "gift-ideas":
       "Um lugar pra anotar ideias de presente pras pessoas assim que eu penso nelas, com o aniversário de todo mundo, e um lembrete duas semanas antes pra eu ter tempo de encomendar alguma coisa.",
-    "home-inventory":
+    "insurance-inventory":
       "Fotografar tudo o que eu tenho pro seguro — quanto eu paguei, quando comprei, em qual cômodo está — e somar o total por cômodo.",
     "meal-plan": "Planejar o que a gente vai comer em cada noite da semana, e aí me dar a lista de compras automaticamente a partir das receitas.",
     sleep: "Registrar a que horas eu vou dormir e a que horas eu acordo, e me mostrar minha média da última semana.",

@@ -211,4 +211,78 @@ export const WILD_PROMPTS: WildPrompt[] = [
     tags: ["money", "aggregate"],
     risk: "cross-record profit aggregate",
   },
+  // Ten requests for apps that exist nowhere in the gallery, the examples or the Studio's corpus (2026-10-31):
+  // the measurement of what a stranger's own idea costs and how often it passes first try, as opposed to
+  // the ideas above, which mirror apps the model has seen passages of.
+  {
+    id: "beehives",
+    source: "authored",
+    description:
+      "I keep three beehives. After each inspection I want to note per hive whether I saw the queen, how many frames of brood, any mites, and what I harvested. Show me each hive's history and when I last opened it.",
+    tags: ["log", "per-item"],
+  },
+  {
+    id: "chore-rota",
+    source: "authored",
+    description:
+      "A chore rota for our flat: three of us, five chores, rotating every week so nobody does the same thing twice in a row. Show who does what this week and let us tick chores off.",
+    tags: ["rota", "rotation"],
+  },
+  {
+    id: "reading-minutes",
+    source: "authored",
+    description:
+      "My daughter's school wants 20 minutes of reading a day. Let her log what she read and for how long, show the week's total against the target, and keep a list of books she finished.",
+    tags: ["kids", "target"],
+  },
+  {
+    id: "lent-out",
+    source: "authored",
+    description:
+      "Who has my stuff: I lend books, tools and board games and forget. Record what I lent, to whom, when, and mark it returned. Show what's still out, oldest first.",
+    tags: ["lending"],
+  },
+  {
+    id: "sourdough",
+    source: "authored",
+    description:
+      "A log for my sourdough starter: each feeding with the flour and ratio, how it rose, and remind me when the next feeding is due based on the interval I set.",
+    tags: ["reminder", "interval"],
+  },
+  {
+    id: "insurance-inventory",
+    source: "authored",
+    description:
+      "A home inventory for insurance: each item with a photo, the room, what I paid and the receipt. I want the total value per room and overall.",
+    tags: ["photo", "totals"],
+  },
+  {
+    id: "bird-list",
+    source: "authored",
+    description:
+      "A birdwatching life list: species, where and when I first saw it, a photo if I got one. Show how many new species I added each month and let me search by name.",
+    tags: ["list", "monthly"],
+  },
+  {
+    id: "vocab-trainer",
+    source: "authored",
+    description:
+      "Help me learn Italian words: I add a word and its meaning, then quiz me on the ones that are due, and space them out further each time I get one right.",
+    tags: ["spaced-repetition", "quiz"],
+  },
+  {
+    id: "fuel-log",
+    source: "authored",
+    description:
+      "Every time I fill up the car I want to enter litres, price and the odometer, and see my consumption per 100 km and what I spent this month.",
+    tags: ["computed", "vehicle"],
+  },
+  {
+    id: "allotment",
+    source: "authored",
+    description:
+      "Plan my allotment: six beds, what I planted in each and when, and when I expect to harvest. Show what's due to harvest in the next two weeks.",
+    tags: ["planner", "dates"],
+  },
+
 ];
