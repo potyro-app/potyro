@@ -124,7 +124,16 @@ export interface CreateJazzStoreOpts {
    * peer to disclaim it, which turned "turn sync on" into a 30s stall against a dead relay.
    */
   relay?: string;
+  /**
+   * The device's node, already open on this database: the space is opened on it instead of on a node
+   * of its own. `openJazzStore` passes it so a page has ONE node per database (see `deviceNode`).
+   * Everything above that only shapes how a node is opened is then already decided.
+   */
+  opened?: OpenedAccountNode;
 }
+
+/** A node on the device account, as `openAccountNode` opens it. */
+export type OpenedAccountNode = Awaited<ReturnType<typeof openAccountNode>>;
 
 /** A live relay connection: whether it is up, and a way to be told when that changes. */
 export interface RelayConnection {
@@ -296,7 +305,16 @@ export function storageOver(driver: SqliteDriverAsync): ReturnType<typeof getSql
  * Going through `createJazzStore` for that would have meant inventing an app id and leaving a space
  * behind for an app that does not exist.
  */
-export async function openAccountNode(opts: Omit<CreateJazzStoreOpts, "peers"> & { peers?: unknown[] }): Promise<{
+export async function openAccountNode(
+  opts: Omit<CreateJazzStoreOpts, "peers" | "expectExisting"> & {
+    peers?: unknown[];
+    /**
+     * See `CreateJazzStoreOpts.expectExisting`. A function is asked at the moment it matters, which
+     * is how a shared opening (`deviceNode`) hears a caller that joined it after it began.
+     */
+    expectExisting?: boolean | (() => boolean);
+  },
+): Promise<{
   node: InstanceType<typeof LocalNode>;
   accountID: string;
   relay?: RelayConnection;
@@ -351,10 +369,12 @@ export async function openAccountNode(opts: Omit<CreateJazzStoreOpts, "peers"> &
     // A device that was linked asks the relay FIRST, because for it "not here" means "not yet",
     // never "does not exist". Bounded, so a dead relay costs seconds rather than the tens of seconds
     // the no-peers path exists to avoid — and if the wait runs out, the paths below still apply.
-    const fromPeers =
-      opts.expectExisting && opts.relay
-        ? await loadAccountThroughRelay(opts.relay, (p) => loadAccount(opts.account!.id, opts.account!.secret, p))
-        : null;
+    const expecting = (): boolean =>
+      typeof opts.expectExisting === "function" ? opts.expectExisting() : Boolean(opts.expectExisting);
+    const throughRelay = (): Promise<InstanceType<typeof LocalNode> | null> =>
+      opts.relay ? loadAccountThroughRelay(opts.relay, (p) => loadAccount(opts.account!.id, opts.account!.secret, p)) : Promise.resolve(null);
+    const askedRelay = expecting() && !!opts.relay;
+    const fromPeers = askedRelay ? await throughRelay() : null;
     try {
       node = fromPeers ?? (await loadAccount(opts.account.id, opts.account.secret, [] as never[]));
     } catch (e) {
@@ -362,19 +382,25 @@ export async function openAccountNode(opts: Omit<CreateJazzStoreOpts, "peers"> &
       // failure (corrupt storage, bad secret) must surface rather than silently mint a second
       // identity and strand the person's spaces.
       if (!/unavailable/i.test(e instanceof Error ? e.message : String(e))) throw e;
-      const created = await LocalNode.withNewlyCreatedAccount({
-        creationProps: { name: opts.profileName ?? "Me" },
-        crypto,
-        storage,
-        peers: [] as never[],
-        initialAgentSecret: opts.account.secret as never,
-        onLocalStoreDurabilityChange: durability.listener as never,
-      });
-      node = created.node;
-      if ((created.accountID as unknown as string) !== opts.account.id) {
-        throw new Error(
-          `createJazzStore: materialised account ${String(created.accountID)} does not match the identity's ${opts.account.id}.`,
-        );
+      // Asked once more before minting: someone sharing this opening may have said, since the first
+      // answer, that the account exists elsewhere (see `deviceNode`).
+      const late = !askedRelay && expecting() ? await throughRelay() : null;
+      if (late) node = late;
+      else {
+        const created = await LocalNode.withNewlyCreatedAccount({
+          creationProps: { name: opts.profileName ?? "Me" },
+          crypto,
+          storage,
+          peers: [] as never[],
+          initialAgentSecret: opts.account.secret as never,
+          onLocalStoreDurabilityChange: durability.listener as never,
+        });
+        node = created.node;
+        if ((created.accountID as unknown as string) !== opts.account.id) {
+          throw new Error(
+            `createJazzStore: materialised account ${String(created.accountID)} does not match the identity's ${opts.account.id}.`,
+          );
+        }
       }
     }
     // cojson does this itself in both of its own constructors, so it is the supported way in.
@@ -424,7 +450,10 @@ export async function openAccountNode(opts: Omit<CreateJazzStoreOpts, "peers"> &
 
 export async function createJazzStore(appId: string, opts: CreateJazzStoreOpts): Promise<JazzStoreHandle> {
   const keys = opts.keys ?? browserKeys();
-  const { node, accountID, relay, whenDurable } = await openAccountNode(opts);
+  // A node opened by an earlier caller has already published the name; this caller's name may be
+  // newer (renaming yourself must reach everyone), so it is published again, as every open does.
+  if (opts.opened && opts.profileName) await publishProfileName(opts.opened.node, opts.profileName);
+  const { node, accountID, relay, whenDurable } = opts.opened ?? (await openAccountNode(opts));
   const durability = { whenDurable };
 
   // ---- 2. the app's space --------------------------------------------------------------------
@@ -538,51 +567,153 @@ export async function openAccountNodeInBrowser(opts?: {
   expectExisting?: boolean;
 }): Promise<{ node: unknown; accountID: string } | null> {
   try {
-    const [{ openOpfsDb }, { openIdbSqliteDb, idbAvailable }, { WasmCrypto }, { openWorkerSqlite, workersAvailable }] = await Promise.all([
-      import("./sqlite-backend.js"),
-      import("./idb-sqlite.js"),
-      import("cojson/crypto/WasmCrypto"),
-      import("./sqlite-worker-client.js"),
-    ]);
-    // The device database, by the same name every app uses — this reads what they wrote.
-    const dbName = "karta-jazz";
-    // Same order as `openJazzStore`, and for the same reason: this must read what the apps wrote,
-    // so it has to open the database the same way they did.
-    let db: SqliteDbHandle | undefined;
-    let driver: SqliteDriverAsync | undefined;
-    if (workersAvailable()) {
-      try {
-        driver = (await openWorkerSqlite(dbName)).driver;
-      } catch (err) {
-        // Another tab has the storage: reading a second copy of the account here would be reading
-        // the wrong one. The tab says so in words (onStorageElsewhere); there is nothing to offer.
-        if (isStorageElsewhere(err)) return null;
-        driver = undefined;
-      }
-    }
-    if (!driver) {
-      try {
-        db = await openOpfsDb(dbName);
-      } catch {
-        if (!idbAvailable()) return null;
-        db = (await openIdbSqliteDb(dbName)).db;
-      }
-    }
-    const { node, accountID } = await openAccountNode({
-      db,
-      driver,
-      crypto: await WasmCrypto.create(),
-      keys: opts?.keys,
-      profileName: opts?.profileName,
-      account: opts?.account,
-      relay: opts?.relay,
-      expectExisting: opts?.expectExisting,
-    });
-    return { node, accountID };
+    // The device database, by the same name every app uses — this reads what they wrote, and on the
+    // same node an app open in this page is using (see `deviceNode`).
+    const { opened } = await deviceNode(DEVICE_DB, opts ?? {});
+    return { node: opened.node, accountID: opened.accountID };
   } catch {
-    // A device that cannot open its account simply has nothing to offer; boot carries on.
+    // A device that cannot open its account simply has nothing to offer; boot carries on. That
+    // includes another tab owning the storage: reading a second copy of the account here would be
+    // reading the wrong one, and the tab already says so in words (onStorageElsewhere).
     return null;
   }
+}
+
+/** The device database, opened the one way every caller must open it, and a crypto to go with it. */
+async function openDeviceDatabase(dbName: string): Promise<{
+  db?: SqliteDbHandle;
+  driver?: SqliteDriverAsync;
+  /** The IndexedDB fallback only: the snapshot a write must also wait for. */
+  whenPersisted?: () => Promise<void>;
+  crypto: unknown;
+}> {
+  const [{ openOpfsDb }, { openIdbSqliteDb, idbAvailable }, { WasmCrypto }, { openWorkerSqlite, workersAvailable }] = await Promise.all([
+    import("./sqlite-backend.js"),
+    import("./idb-sqlite.js"),
+    import("cojson/crypto/WasmCrypto"),
+    import("./sqlite-worker-client.js"),
+  ]);
+
+  // A worker FIRST, and in practice always: `createSyncAccessHandle` is worker-only by
+  // specification, so the main-thread OPFS attempt below has never once succeeded — in any engine.
+  // The fallbacks are what every device used to get, and both are bad in a way that grows: the
+  // IndexedDB one rewrites the entire database after every write.
+  let db: Awaited<ReturnType<typeof openOpfsDb>> | undefined;
+  let driver: SqliteDriverAsync | undefined;
+  let whenPersisted: (() => Promise<void>) | undefined;
+  if (workersAvailable()) {
+    try {
+      driver = (await openWorkerSqlite(dbName)).driver;
+    } catch (err) {
+      // Another tab owns the storage. Falling back would open a second, stale copy of the device's
+      // database and write to it — the split this refuses (storage-owner.ts).
+      if (isStorageElsewhere(err)) throw err;
+      // No worker, or no OPFS. Sync matters more than speed.
+      console.info(`[potyro] storage: no worker database (${err instanceof Error ? err.message : String(err)}), falling back`);
+      driver = undefined;
+    }
+  }
+  if (driver) console.info("[potyro] storage: SQLite in a worker, on OPFS");
+  if (!driver) {
+    try {
+      db = await openOpfsDb(dbName);
+    } catch {
+      if (!idbAvailable()) throw new Error("This browser has neither OPFS nor IndexedDB, so sync cannot be enabled.");
+      const idb = await openIdbSqliteDb(dbName);
+      db = idb.db;
+      whenPersisted = idb.whenPersisted;
+    }
+  }
+  return { db, driver, whenPersisted, crypto: await WasmCrypto.create() };
+}
+
+/** A node on the device account, and what a write on the IndexedDB fallback must also wait for. */
+interface DeviceNode {
+  opened: OpenedAccountNode;
+  whenPersisted?: () => Promise<void>;
+}
+
+/**
+ * The page's nodes on the device account: ONE per database (and relay), shared by every caller.
+ *
+ * Each app opened in a page, and the boot code that reads the account, used to open a `LocalNode`
+ * of its own over the same device database: its own session, its own copy of the account in memory,
+ * its own socket to the relay, all writing through one storage worker. That went wrong in a way
+ * measured but not taken apart inside cojson (#463). In Firefox under load, a page reloaded with a
+ * synced app open had two nodes on `karta-jazz`; one wrote to the account (the app list, the Studio
+ * conversations), and that write, reaching the other node through the relay, was refused as
+ * `InvalidSignature`, which marks the account errored for that relay. Either node's write, refused
+ * by the other: in 4 of 36 runs of sync-toggle-trusted's reload test on a loaded machine, against
+ * none in 30 with one node. Nothing was ever gained by the second node: it is the same person, on
+ * the same file.
+ *
+ * Keyed by the relay too, so a page asked for a different relay is given what it asked for. The
+ * opening is remembered, not just the node, so two callers at the same moment share one; a failed
+ * one is forgotten, so the next caller tries again (another tab may have let go of the storage).
+ *
+ * Only for an identity passed in (`account`): the shell always passes one. Without it the account is
+ * whatever `keys` remembers, which is how the store's own tests open several devices in one process.
+ *
+ * ## Who decides how the account is found
+ *
+ * Whoever registers first starts the opening, but `expectExisting` (a device linked with the recovery
+ * words: ask the relay for the account before minting it locally) is not part of the key, so it
+ * cannot be the first caller's alone to decide. The rule: while an opening has not settled, ANY
+ * caller sharing it that passes `expectExisting` makes it ask the relay first — it is read when the
+ * account is resolved, and once more before minting one, not when the opening began. An invite
+ * accepted at boot and the boot account reader arrive in either order, and the reader's say counts
+ * either way. Once the opening has settled the account is resolved, and a later `expectExisting`
+ * has nothing left to change.
+ *
+ * ## Not yet: legacy per-app databases
+ *
+ * Apps recorded before the database move keep their own `${appId}-jazz` file (see `openJazzStore`),
+ * and a node is per database — so each of those still gets a node of its own on the same account,
+ * beside this one: the two-nodes-on-one-account shape this exists to remove. Migrating those spaces
+ * into the device database is a follow-up; until then legacy apps keep the hazard.
+ */
+const deviceNodes = new Map<string, { opening: Promise<DeviceNode>; expectExisting: boolean }>();
+
+async function deviceNode(
+  dbName: string,
+  opts: Pick<CreateJazzStoreOpts, "keys" | "profileName" | "relay" | "account" | "expectExisting">,
+): Promise<DeviceNode> {
+  const key = opts.account ? [dbName, opts.account.id, opts.relay ?? ""].join("\n") : null;
+  const known = key ? deviceNodes.get(key) : undefined;
+  if (known) {
+    // Heard by a pending opening; a settled one has already resolved the account.
+    if (opts.expectExisting) known.expectExisting = true;
+    return known.opening;
+  }
+  const shared = { opening: undefined as unknown as Promise<DeviceNode>, expectExisting: Boolean(opts.expectExisting) };
+  const opening = (async (): Promise<DeviceNode> => {
+    const { db, driver, whenPersisted, crypto } = await openDeviceDatabase(dbName);
+    // A relay is OPTIONAL and additive. With none, this is a durable local-only store and no socket
+    // is ever opened — ADR D3's "solo = a space with one member, no transport". The relay only ever
+    // sees ciphertext (measured: docs/spikes/jazz-selfhost-e2e.mjs), so pointing this at a
+    // self-hosted `jazz-run sync` is the whole self-host story. It is attached to the node, not
+    // passed as a peer, because reconnecting means replacing the peer repeatedly and only the node
+    // can be given a new one.
+    const opened = await openAccountNode({
+      db,
+      driver,
+      crypto,
+      keys: opts.keys,
+      profileName: opts.profileName,
+      account: opts.account,
+      relay: opts.relay,
+      expectExisting: () => shared.expectExisting,
+    });
+    return { opened, whenPersisted };
+  })();
+  shared.opening = opening;
+  if (key) {
+    deviceNodes.set(key, shared);
+    opening.catch(() => {
+      if (deviceNodes.get(key) === shared) deviceNodes.delete(key);
+    });
+  }
+  return opening;
 }
 
 export async function openJazzStore(
@@ -600,13 +731,6 @@ export async function openJazzStore(
     spaceBudget?: number;
   },
 ): Promise<JazzStoreHandle> {
-  const [{ openOpfsDb }, { openIdbSqliteDb, idbAvailable }, { WasmCrypto }, { openWorkerSqlite, workersAvailable }] = await Promise.all([
-    import("./sqlite-backend.js"),
-    import("./idb-sqlite.js"),
-    import("cojson/crypto/WasmCrypto"),
-    import("./sqlite-worker-client.js"),
-  ]);
-
   // OPFS first (fastest), IndexedDB otherwise. Gating sync on OPFS made it unavailable to most
   // browsers — including many Chrome contexts, where `createSyncAccessHandle` is worker-only — so
   // the fallback is the difference between a feature that exists and one that does not.
@@ -643,66 +767,34 @@ export async function openJazzStore(
   const dbName = recorded ?? (predatesMove ? `${appId}-jazz` : DEVICE_DB);
   keys.set(dbKey(appId), dbName);
 
-  // A worker FIRST, and in practice always: `createSyncAccessHandle` is worker-only by
-  // specification, so the main-thread OPFS attempt below has never once succeeded — in any engine.
-  // The fallbacks are what every device used to get, and both are bad in a way that grows: the
-  // IndexedDB one rewrites the entire database after every write.
-  let db: Awaited<ReturnType<typeof openOpfsDb>> | undefined;
-  let driver: SqliteDriverAsync | undefined;
-  let whenPersisted: (() => Promise<void>) | undefined;
-  if (workersAvailable()) {
-    try {
-      driver = (await openWorkerSqlite(dbName)).driver;
-    } catch (err) {
-      // Another tab owns the storage. Falling back would open a second, stale copy of the device's
-      // database and write to it — the split this refuses (storage-owner.ts).
-      if (isStorageElsewhere(err)) throw err;
-      // No worker, or no OPFS. Sync matters more than speed.
-      console.info(`[potyro] storage: no worker database (${err instanceof Error ? err.message : String(err)}), falling back`);
-      driver = undefined;
-    }
-  }
-  if (driver) console.info("[potyro] storage: SQLite in a worker, on OPFS");
-  if (!driver) {
-    try {
-      db = await openOpfsDb(dbName);
-    } catch {
-      if (!idbAvailable()) throw new Error("This browser has neither OPFS nor IndexedDB, so sync cannot be enabled.");
-      const idb = await openIdbSqliteDb(dbName);
-      db = idb.db;
-      whenPersisted = idb.whenPersisted;
-    }
-  }
-  const crypto = await WasmCrypto.create();
-
-  // A relay is OPTIONAL and additive. With none, this is a durable local-only store and no socket
-  // is ever opened — ADR D3's "solo = a space with one member, no transport". The relay only ever
-  // sees ciphertext (measured: docs/spikes/jazz-selfhost-e2e.mjs), so pointing this at a
-  // self-hosted `jazz-run sync` is the whole self-host story.
-  // The relay is NOT put in this list. It is attached to the node afterwards, because reconnecting
-  // means replacing the peer repeatedly and only the node can be given a new one.
-  const peers = [...(opts?.peers ?? [])];
-
-  const handle = await createJazzStore(appId, {
-    db,
-    driver,
-    crypto,
+  const nodeOpts = {
     keys,
     profileName: opts?.profileName,
     account: opts?.account,
     relay: opts?.relay,
     expectExisting: opts?.expectExisting,
-    peers,
-    spaceBudget: opts?.spaceBudget,
-  });
+  };
+  let handle: JazzStoreHandle;
+  let whenPersisted: (() => Promise<void>) | undefined;
+  if (opts?.peers?.length) {
+    // Peers handed in are this caller's own, so this space gets a node of its own to carry them.
+    const device = await openDeviceDatabase(dbName);
+    whenPersisted = device.whenPersisted;
+    handle = await createJazzStore(appId, { ...nodeOpts, ...device, peers: [...opts.peers], spaceBudget: opts?.spaceBudget });
+  } else {
+    const device = await deviceNode(dbName, nodeOpts);
+    whenPersisted = device.whenPersisted;
+    handle = await createJazzStore(appId, { ...nodeOpts, crypto: undefined, opened: device.opened, spaceBudget: opts?.spaceBudget });
+  }
   if (!whenPersisted) return handle;
 
   // On the IndexedDB path a cojson flush only reaches the in-memory database; the snapshot to IDB
   // is what actually survives a reload. Both must complete before a write is called durable.
   const cojsonDurable = handle.whenDurable;
+  const persisted = whenPersisted;
   const both = async (): Promise<void> => {
     await cojsonDurable();
-    await whenPersisted!();
+    await persisted();
   };
   handle.store.setWhenDurable?.(both);
   return { ...handle, whenDurable: both };
@@ -852,6 +944,8 @@ export async function joinSpace(
     profileName?: string;
     /** The device account from `@potyro/identity` — you join a space AS someone. */
     account?: { id: string; secret: string };
+    /** This device was linked with the recovery words. See `CreateJazzStoreOpts.expectExisting`. */
+    expectExisting?: boolean;
   },
 ): Promise<JazzStoreHandle> {
   const keys = opts?.keys ?? browserKeys();
@@ -873,6 +967,7 @@ export async function joinSpace(
     relay: opts?.relay,
     profileName: opts?.profileName,
     account: opts?.account,
+    expectExisting: opts?.expectExisting,
   });
   await (handle.node as { acceptInvite(id: string, secret: string): Promise<void> }).acceptInvite(
     invite.group,

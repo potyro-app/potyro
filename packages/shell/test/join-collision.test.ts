@@ -31,7 +31,7 @@ vi.mock("@potyro/store", async (importOriginal) => ({
   peekAppSpace: (namespace: string) => spaceOnDevice[namespace] ?? null,
 }));
 
-vi.mock("../src/open-store.js", () => ({ syncRelayUrl: () => "wss://relay.example" }));
+vi.mock("../src/open-store.js", () => ({ syncRelayUrl: () => "wss://relay.example", linkedDevice: () => false }));
 vi.mock("@potyro/identity", () => ({
   identityAccount: async () => ({ id: "acct" }),
   peekIdentity: () => ({ name: "Ada" }),

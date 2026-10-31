@@ -22,7 +22,7 @@
 
 import { t } from "@lingui/core/macro";
 import { createSpaceInvite, joinSpace, openJazzStore } from "@potyro/store";
-import { syncRelayUrl } from "./open-store.js";
+import { linkedDevice, syncRelayUrl } from "./open-store.js";
 import { freeAppId, getUserApp, listUserApps, saveUserApp, setUserAppTrusted } from "./user-apps.js";
 import { currentSite } from "./site.js";
 
@@ -66,6 +66,8 @@ export async function createShareLink(appId: string, role: "writer" | "reader" =
     relay: syncRelayUrl(),
     account,
     profileName: peekIdentity()?.name,
+    // The page's node may be opened here first; a linked device's account is on the relay.
+    expectExisting: linkedDevice(),
   });
 
   // Publish before minting the link: the guest fetches the source from the space, so a link handed
@@ -160,6 +162,9 @@ export async function acceptInvite(payload: InvitePayload, trust = false): Promi
     relay: syncRelayUrl(),
     account,
     profileName: peekIdentity()?.name,
+    // An invite accepted at boot can open the page's node before the account reader does; on a
+    // linked device that opening must still ask the relay for the account before minting it.
+    expectExisting: linkedDevice(),
   });
   const { readPublishedApp } = await import("./app-sync.js");
   const published = await readPublishedApp(joined.store);
