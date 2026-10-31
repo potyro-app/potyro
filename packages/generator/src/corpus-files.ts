@@ -49,20 +49,39 @@ export function collectCorpusFiles(root: string = REPO_ROOT): CorpusFile[] {
 /** Longest message the catalogs lend priming: a label or a button, not a sentence. */
 const CATALOG_MAX_WORDS = 3;
 
+/** An app's own catalog beside it (docs/30): `examples/files/recipes/locales/pl.po`, `apps/piano/locales/pl.po`. */
+const APP_CATALOG = /^(?:examples|apps)\/(?:[^/]+\/)+locales\/([A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,4})?)\.po$/;
+
+/** Every catalog the repository has: Potyro's own (packages/i18n/locales/<language>/messages.po), then
+ *  each example's and app's, with the language each is in. */
+function catalogs(root: string): Array<{ language: string; file: string }> {
+  const out: Array<{ language: string; file: string }> = [];
+  const shell = join(root, "packages/i18n/locales");
+  for (const language of readdirSync(shell).sort()) out.push({ language, file: join(shell, language, "messages.po") });
+  const files: string[] = [];
+  for (const r of ["examples", "apps"]) walk(join(root, r), files);
+  for (const full of files.sort()) {
+    const m = APP_CATALOG.exec(relative(root, full).split(sep).join("/"));
+    if (m) out.push({ language: m[1]!, file: full });
+  }
+  return out;
+}
+
 /**
- * Potyro's own short messages in every language beside their English, from the shell's catalogs
- * (packages/i18n/locales): "Mapa" is "Map", "Wykres" is "Chart". Messages with placeholders or markup
- * and untranslated ones are left out; sorted, so the same catalogs make the same corpus.
+ * Short messages in every language beside their English, from the catalogs: Potyro's own ("Mapa" is
+ * "Map", "Wykres" is "Chart") and every example's and app's ("Przepis" is "Recipe"). Since docs/30 an
+ * app says its words in English and carries the other languages in catalogs beside it, so these are
+ * where an app's words in other languages are. Messages with placeholders or markup and untranslated
+ * ones are left out; sorted, so the same catalogs make the same corpus.
  */
 export function collectCatalogWords(root: string = REPO_ROOT): WordPair[] {
-  const dir = join(root, "packages/i18n/locales");
   const seen = new Set<string>();
   const out: WordPair[] = [];
-  for (const language of readdirSync(dir).sort()) {
+  for (const { language, file } of catalogs(root)) {
     if (language === "en") continue;
     let po: string;
     try {
-      po = readFileSync(join(dir, language, "messages.po"), "utf8");
+      po = readFileSync(file, "utf8");
     } catch {
       continue;
     }
