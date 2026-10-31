@@ -10,6 +10,7 @@
 import { t } from "@lingui/core/macro";
 import type { FileInfo, FileOrigin } from "potyro";
 import { FileSpaceError, fileSpace, isReservedPath, normalisePath, packAppPackage, type AppDeclaration, type AppLock, type EarlierCopy, type PackagedFile, type SpaceUsage, type Store } from "@potyro/store";
+import { seedThatFits, type AppSeed, type Entities } from "./app-seed.js";
 
 /** The person's files, by path: everything in the folder but the app's code. */
 export async function listFolder(store: Store): Promise<FileInfo[]> {
@@ -244,7 +245,13 @@ export async function shippedPackage(
     declared?: AppDeclaration;
     line?: string;
     /** Its sample records (`UserApp.seed`): never read from `store`, which holds the person's. */
-    seed?: Record<string, Array<Record<string, unknown>>>;
+    seed?: AppSeed;
+    /**
+     * The app's entities as the definition at hand has them (#486): the seed is fitted to them, so the
+     * package carries only the rows this version takes. Absent, it goes as kept — the device that adds
+     * the package inserts it as any package's.
+     */
+    entities?: Entities;
   },
 ): Promise<Uint8Array> {
   const space = fileSpace(store);
@@ -260,5 +267,5 @@ export async function shippedPackage(
     else if (c.path.startsWith(".src/")) modules.push({ path: c.path.slice(".src/".length), data: c.data });
   }
   // Which app it is (docs/24 §11): a copy made from this package opens from the same links.
-  return packAppPackage({ source: app.source, sourceName: app.sourceName ?? "app.tsx", files, modules, lock: app.lock, seed: app.seed, chat: undefined, ...(app.declared ? { declared: app.declared } : {}), ...(app.line ? { line: app.line } : {}) });
+  return packAppPackage({ source: app.source, sourceName: app.sourceName ?? "app.tsx", files, modules, lock: app.lock, seed: app.entities ? seedThatFits(app.seed, app.entities) : app.seed, chat: undefined, ...(app.declared ? { declared: app.declared } : {}), ...(app.line ? { line: app.line } : {}) });
 }

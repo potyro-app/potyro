@@ -16,6 +16,7 @@ import { openAppStore, syncAllowedFor } from "./app-store.js";
 import { appCode, modulesOf } from "./app-modules.js";
 import { getUserApp } from "./user-apps.js";
 import { shellCaps } from "./shell-caps.js";
+import type { Entities } from "./app-seed.js";
 
 export interface StudioFilesProps {
   app: { id: string; name: string };
@@ -63,7 +64,9 @@ export function StudioFiles({ app, definition }: StudioFilesProps) {
         declared = undefined; // the card will read the app itself
       }
       const code = await appCode((await modulesOf(saved.id)) ?? store, saved.lock);
-      const zip = await shippedPackage(store, { source: saved.source, lock: saved.lock, code, declared, line: saved.line, seed: saved.seed });
+      // Its sample records fitted to the version on screen (#486): the kept seed is left as it is.
+      const entities = (definition as { entities?: Entities } | undefined)?.entities;
+      const zip = await shippedPackage(store, { source: saved.source, lock: saved.lock, code, declared, line: saved.line, seed: saved.seed, ...(entities ? { entities } : {}) });
       const name = packageName(saved.id);
       await shellCaps().filesystem.save(name, new Blob([zip as BlobPart], { type: "application/zip" }));
       setPacked(name);
