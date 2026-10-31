@@ -164,6 +164,82 @@ test.describe("a selected chip", () => {
   });
 });
 
+// The Look panel's choices are cards, not pills: a column of a name and a line under it. Chosen, the
+// card is §6's selected chip all the same — the aguada with the name in --ink and its line muted, an
+// edge of --line-strong, the tinta head before the name. Its words were once the accent's pair, which
+// on the aguada is white on near-white (1.15:1 on Potyro's rosa). Measured at every accent the panel
+// offers, since the aguada is the accent's own wash.
+for (const colorScheme of ["light", "dark"] as const) {
+  test.describe(`the Look panel's chosen option, ${colorScheme}`, () => {
+    test.use({ viewport: { width: 1440, height: 900 }, colorScheme });
+
+    test("is --ink on the aguada with the head, and reads (AA) whatever the accent", async ({ page }) => {
+      await page.goto("/");
+      await page.getByRole("button", { name: /Look — appearance/ }).click({ timeout: 30_000 });
+      const look = page.getByRole("dialog", { name: "Look" });
+      await expect(look).toBeVisible();
+      const swatches = look.getByRole("radiogroup", { name: "Accent colour" }).getByRole("radio");
+      const count = await swatches.count();
+      expect(count).toBeGreaterThanOrEqual(6);
+      for (let i = 0; i < count; i++) {
+        await swatches.nth(i).click();
+        await expect(swatches.nth(i)).toHaveAttribute("aria-checked", "true");
+        for (const group of ["Appearance", "Home screen"]) {
+          const chosen = look.getByRole("radiogroup", { name: group }).getByRole("radio", { checked: true });
+          await expect(chosen).toHaveCount(1);
+          const drawn = await chosen.evaluate((el) => {
+            const s = getComputedStyle(el);
+            const name = el.querySelector("strong")!;
+            const head = getComputedStyle(name, "::before");
+            return {
+              bg: s.backgroundColor,
+              border: s.borderTopColor,
+              name: getComputedStyle(name).color,
+              line: getComputedStyle(el.querySelector(".k-muted")!).color,
+              head: { content: head.content, width: head.width, bg: head.backgroundColor },
+              tokens: ["--aguada", "--ink", "--line-strong", "--tinta"].map((t) => s.getPropertyValue(t).trim()),
+            };
+          });
+          const [aguada, ink, lineStrong, tinta] = await Promise.all(drawn.tokens.map((t) => computed(page, t)));
+          const at = `${group}, swatch ${i}`;
+          // Polled once per swatch: the chip fades to its colours.
+          await expect.poll(() => chosen.evaluate((el) => getComputedStyle(el).backgroundColor), { message: at }).toBe(aguada);
+          expect(drawn.name, at).toBe(ink);
+          expect(drawn.border, at).toBe(lineStrong);
+          expect(drawn.head, at).toEqual({ content: '""', width: "8px", bg: tinta });
+          expect(contrast(channels(drawn.name), channels(aguada)), at).toBeGreaterThanOrEqual(4.5);
+          expect(contrast(channels(drawn.line), channels(aguada)), at).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+      // The others are plain cards: no head.
+      const other = look.getByRole("radiogroup", { name: "Appearance" }).getByRole("radio", { checked: false }).first();
+      expect(await other.locator("strong").evaluate((el) => getComputedStyle(el, "::before").content)).toBe("none");
+    });
+  });
+}
+
+test.describe("a tag you typed", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  // A tag is a value with a way to take it off, not something that toggles: it wears §6's plain chip,
+  // never the selected one's aguada and head.
+  test("is a plain chip, not a selected one", async ({ page }) => {
+    const form = await openNewPlant(page);
+    const input = form.locator(".k-tags input");
+    await input.fill("weeknight");
+    await input.press("Enter");
+    const tag = form.locator(".k-tag", { hasText: "weeknight" });
+    await expect(tag).toBeVisible();
+    const drawn = await tag.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { bg: s.backgroundColor, ink: s.color, head: getComputedStyle(el, "::before").content, tokens: [s.getPropertyValue("--surface").trim(), s.getPropertyValue("--ink").trim()] };
+    });
+    expect(drawn.head).toBe("none");
+    expect(drawn.bg).toBe(await computed(page, drawn.tokens[0]!));
+    expect(drawn.ink).toBe(await computed(page, drawn.tokens[1]!));
+  });
+});
+
 test("a date field's calendar button is an icon, not an emoji (§3.5)", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const form = await openNewPlant(page);
