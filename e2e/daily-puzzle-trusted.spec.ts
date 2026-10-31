@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from "./console-guard";
 import { addAsMine, packApp } from "./library-demos";
+import { grantClipboard } from "./engines";
 import { dailyCode, feedback, puzzleNumber, shareText, type Mark } from "../apps/daily-puzzle/puzzle";
 
 // apps/daily-puzzle, packed as its build packs it and added as the person's own app. The clock is
@@ -57,9 +58,9 @@ async function expectRow(page: Page, r: number, guess: number[]): Promise<void> 
 /** A guess that is wrong in every place but still says something: the code shifted by one colour. */
 const wrong = (shift: number) => CODE.map((c) => (c + shift) % 7);
 
-test("Potyro Daily: a whole day — tap, type, crack it, share the grid, and come back to it", async ({ page, context }) => {
+test("Potyro Daily: a whole day — tap, type, crack it, share the grid, and come back to it", async ({ page, context, browserName }) => {
   test.setTimeout(120_000);
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await grantClipboard(context, browserName);
   await page.clock.setFixedTime(DAY);
   const { card } = await addAsMine(page, "daily-puzzle.potyro-app.zip", packApp("daily-puzzle", "daily-puzzle.app.ts"));
   expect(card).not.toMatch(/fetches/); // nothing from the network: it works offline from the first open
