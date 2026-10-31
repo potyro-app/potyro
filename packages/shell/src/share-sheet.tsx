@@ -1,6 +1,7 @@
 // Share (docs/24 §1): two ways, said plainly, the one most people want first.
 //
-//   A link anyone can try — the app, running, with sample records. Nothing of yours goes with it.
+//   A link anyone can try — the app, running, with sample records when it has some, else an empty
+//                           copy of it. Nothing of yours goes with it.
 //                           Sent by copying it, through WhatsApp or Telegram, or the device's own sheet.
 //   A 15-second clip      — only where the app is on screen: a video of it, to post (docs/24 §8).
 //   Use it together       — an invite into the app AND its records (the existing #join= link, sync on).
@@ -19,6 +20,7 @@ import { CLIP_SECONDS, clipEnvFor, clipWay, startClip, type Recording } from "./
 import { shellCaps } from "./shell-caps.js";
 import { LegalLink } from "./legal-links.js";
 import { usesOwnRelay } from "./open-store.js";
+import { hasSeeder } from "./seed.js";
 
 type State = { kind: "choose" } | { kind: "making" } | { kind: "made"; made: MadeDemoLink } | { kind: "failed"; why: string };
 
@@ -39,6 +41,17 @@ export interface ShareSheetProps {
   clipRoot?: () => Element | null;
 }
 
+/**
+ * Whether a demo link of this app opens on sample records (docs/24 §3): its own first-run seeder, or
+ * the seed kept beside it — the one its package came with, or for an app made in the Studio the records
+ * its run check passed on (#486). An app with neither (made before that, or whose rows no longer fit
+ * it) opens empty.
+ * What the sheet says before the link is made; once it is, the link itself says (`MadeDemoLink.samples`).
+ */
+export function hasSampleRecords(app: Pick<UserApp, "id" | "seed">): boolean {
+  return hasSeeder(app.id) || Object.values(app.seed ?? {}).some((rows) => rows.length > 0);
+}
+
 const WHATSAPP = "WhatsApp"; // i18n-ignore — a name
 const TELEGRAM = "Telegram"; // i18n-ignore — a name
 
@@ -54,6 +67,7 @@ export function ShareSheet({ app, onClose, onInvite, clipRoot }: ShareSheetProps
   const [showName, setShowName] = useState(Boolean(myName));
   const name = app.name;
   const busy = state.kind === "making" || clip.kind === "starting";
+  const samples = state.kind === "made" ? state.made.samples : hasSampleRecords(app);
 
   const make = async (): Promise<void> => {
     setState({ kind: "making" });
@@ -139,8 +153,14 @@ export function ShareSheet({ app, onClose, onInvite, clipRoot }: ShareSheetProps
             {state.kind === "made" ? <Mascot mode="enter" size={32} /> : null}
             <Trans>A link anyone can try</Trans>
           </h3>
-          <p className="k-muted">
-            <Trans>It opens the app right away in any browser, with sample records. No account, nothing to install. None of your records go with it.</Trans>
+          <p className="k-muted" data-share-opens={samples ? "samples" : "empty"}>
+            {samples ? (
+              <Trans>It opens the app right away in any browser, with sample records. No account, nothing to install. None of your records go with it.</Trans>
+            ) : (
+              <Trans comment="Share sheet, A link anyone can try, for an app with no sample records of its own (one made in the Studio)">
+                It opens an empty copy of the app right away in any browser. No account, nothing to install. Your records stay with you.
+              </Trans>
+            )}
           </p>
           {state.kind === "made" ? (
             <>
