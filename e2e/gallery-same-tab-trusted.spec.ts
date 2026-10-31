@@ -1,5 +1,6 @@
 import { test, expect, type BrowserContext } from "./console-guard";
 import { makeDemoLink, stranger } from "./share-demo";
+import { openSource } from "./studio-helpers.js";
 
 // The gallery opens in this tab (#487). From the Studio's key panel, "Start from an app in the
 // gallery" used to open a tab of its own; the gallery's Make it mine then opened Potyro there while
@@ -94,4 +95,86 @@ test("from the key panel: the gallery and Make it mine, in one tab, with no refu
   await expect(page.getByRole("textbox", { name: "Describe your app" }).first()).toHaveValue("", { timeout: 30_000 });
 
   expect(asked).toEqual([]);
+});
+
+const GALLERY_PAGE = `<!doctype html><title>Potyro gallery</title><h1>Apps to try</h1>`;
+
+test("from the key panel with code not saved: asked first; Stay keeps it, Leave goes", async ({ page, context }) => {
+  await context.route("https://potyro.com/**", (route) => route.fulfill({ status: 200, contentType: "text/html", body: GALLERY_PAGE }));
+  const asked = await noFreeRoute(context);
+
+  await page.goto("/?user=groceries");
+  await expect(page.locator("h1").first()).toHaveText("Groceries", { timeout: 30_000 });
+  await page.locator(".k-tools").getByRole("button", { name: "Studio" }).click();
+  const studio = page.locator(".k-studio");
+  await expect(studio.locator(".k-studio-name")).toHaveText("Groceries", { timeout: 60_000 });
+  await studio.getByRole("button", { name: "Model settings" }).click();
+  const modal = page.getByRole("dialog", { name: "Model settings" });
+  await modal.getByRole("radio", { name: /OpenRouter/ }).check();
+  await modal.getByRole("button", { name: "Close model settings" }).click();
+  const panel = studio.getByRole("region", { name: "Add a key to make apps" });
+  await expect(panel).toBeVisible({ timeout: 30_000 });
+
+  // A change in the code, not saved: it lives only in this page.
+  const tools = await openSource(page, studio);
+  const source = tools.getByRole("textbox", { name: "App source" });
+  const edited = `${await source.inputValue()}\n// water on Sundays\n`;
+  await source.fill(edited);
+  await tools.getByRole("button", { name: "Close code, files and history" }).click();
+  const here = page.url();
+
+  const start = panel.getByRole("link", { name: "Start from an app in the gallery" });
+  await start.click();
+  const ask = page.getByRole("dialog", { name: "Leave for the gallery?" });
+  await expect(ask).toBeVisible();
+  await expect(ask.getByText("The change you have not kept here is lost.")).toBeVisible();
+  // Stay: still here, the change still in the code.
+  await ask.getByRole("button", { name: "Stay" }).click();
+  await expect(ask).toHaveCount(0);
+  expect(page.url()).toBe(here);
+  const again = await openSource(page, studio);
+  await expect(again.getByRole("textbox", { name: "App source" })).toHaveValue(edited);
+  await again.getByRole("button", { name: "Close code, files and history" }).click();
+
+  // Leave: the person said so, and the page goes to the gallery.
+  await start.click();
+  await page.getByRole("dialog", { name: "Leave for the gallery?" }).getByRole("button", { name: "Leave" }).click();
+  await expect(page).toHaveURL(/^https:\/\/potyro\.com\//);
+  expect(context.pages()).toEqual([page]);
+  expect(asked).toEqual([]);
+});
+
+test.describe("on a phone, Home's box owns the kept idea", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("cleared, nothing comes back; typed, Browse the gallery keeps it", async ({ page, context }) => {
+    await context.route("https://potyro.com/**", (route) => route.fulfill({ status: 200, contentType: "text/html", body: GALLERY_PAGE }));
+    const asked = await noFreeRoute(context);
+
+    // Words kept from a Studio that went to the gallery (kept-idea.ts), and Home on the way back.
+    await page.goto("/");
+    await page.evaluate((text) => sessionStorage.setItem("potyro:kept-idea", JSON.stringify({ app: null, text })), PROMPT);
+    await page.reload();
+    const box = page.getByRole("textbox", { name: "Describe your app" }).first();
+    await expect(box).toHaveValue(PROMPT, { timeout: 30_000 });
+
+    // Cleared and sent: the Studio opens on an empty box, not on the words just deleted.
+    await box.fill("");
+    await page.getByRole("button", { name: "Describe an app" }).first().click();
+    const studio = page.locator(".k-studio");
+    await expect(studio).toBeVisible({ timeout: 30_000 });
+    await expect(studio.getByRole("textbox", { name: "Describe the app", includeHidden: true })).toHaveValue("");
+    await studio.getByRole("button", { name: "Close studio" }).click();
+    await page.goto("/");
+    await expect(page.getByRole("textbox", { name: "Describe your app" }).first()).toHaveValue("", { timeout: 30_000 });
+
+    // Typed on Home, then the gallery from the New app menu: the words are there on the way back.
+    await page.getByRole("textbox", { name: "Describe your app" }).first().fill("a reading tracker");
+    await page.locator(".k-launch-fab").click();
+    await page.getByRole("menuitem", { name: "Browse the gallery" }).click();
+    await expect(page).toHaveURL(/^https:\/\/potyro\.com\//);
+    await page.goBack();
+    await expect(page.getByRole("textbox", { name: "Describe your app" }).first()).toHaveValue("a reading tracker", { timeout: 30_000 });
+    expect(asked).toEqual([]);
+  });
 });

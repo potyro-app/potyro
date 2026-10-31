@@ -7,9 +7,9 @@
 // words (free-ai.ts `refusalText`). "I'd pay for a plan" is a count and nothing more (demand-counts.ts,
 // #118): no email, nothing about the person, and nothing promised back.
 
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { galleryUrl } from "./gallery-link.js";
+import { galleryUrl, openGallery } from "./gallery-link.js";
 import { freeUnreachable, refusalText, type FreeAi, stoppedNow } from "./free-ai.js";
 import { countOnce, countedThisMonth } from "./demand-counts.js";
 
@@ -28,14 +28,26 @@ interface Props {
   onAddKey: () => void;
   /** A key the person already has in Model settings, by its engine's name: then the first button uses it. */
   ownKey?: { label: string; use: () => void };
-  /** Called as the person leaves for the gallery, in this tab (#487): keep what the page holds. */
-  onLeave?: () => void;
+  /**
+   * Called as the person leaves for the gallery, in this tab (#487): keep what the page holds. `true`
+   * (or nothing): go now. A promise: the Studio is asking first (something here would be lost), and
+   * the page goes only when it settles `true`.
+   */
+  onLeave?: () => boolean | void | Promise<boolean>;
 }
 
 export function FreePanel({ free, onAddKey, ownKey, onLeave }: Props) {
   const { t } = useLingui();
   const stop = stoppedNow(free);
   const keyName = ownKey?.label ?? "";
+  const leave = (e: MouseEvent<HTMLAnchorElement>): void => {
+    const go = onLeave?.();
+    if (!(go instanceof Promise)) return; // the link goes, as any link does
+    e.preventDefault();
+    void go.then((yes) => {
+      if (yes) openGallery();
+    });
+  };
   const [plan, setPlan] = useState<string | null>(countedThisMonth("want-plan") ? t`Counted, thanks. Nothing about you was sent.` : null);
 
   const wantPlan = async (): Promise<void> => {
@@ -89,7 +101,7 @@ export function FreePanel({ free, onAddKey, ownKey, onLeave }: Props) {
           </button>
         )}
         {/* In this tab (gallery-link.ts): the gallery's Make it mine comes back to the tab with your apps. */}
-        <a className="k-add k-free-panel-gallery" href={galleryUrl()} onClick={onLeave}>
+        <a className="k-add k-free-panel-gallery" href={galleryUrl()} onClick={leave}>
           <Trans comment="Link: Potyro's gallery of apps, where one can be made your own with no key">Start from an app in the gallery</Trans>
         </a>
       </div>
