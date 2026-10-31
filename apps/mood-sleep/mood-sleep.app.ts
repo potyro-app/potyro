@@ -4,14 +4,16 @@
 //
 // The chart screen draws on a <canvas> with a library that needs a real web page, so this app runs
 // as your own (trusted) app only. The numbers and the sentence on top are worked out in insights.ts,
-// in plain functions the tests run without a browser.
+// in plain functions the tests run without a browser. Share draws the hero as a 1080×1350 picture on
+// the night palette (card.ts) and hands it to ctx.files.export: the save dialog on a computer, the
+// share sheet on a phone.
 //
 // In six languages (#303); every language but English is a model's draft (#297). The charts say
 // their words through `ctx.t` and write dates and numbers through `ctx.format`. A check-in's note is
 // a record. A tag is stored as its option ("late screen"), so a chart chip, a scatter group and
 // the dataset behind it all key on that, and only what is shown is translated.
 import { defineApp } from "potyro";
-import type { Ctx, Field, Resolved, ViewProps } from "potyro";
+import type { Ctx, Field, FileInfo, Resolved, ViewProps } from "potyro";
 import { Chart, registerables } from "https://esm.sh/chart.js@4.5.1?bundle";
 import type { ChartConfiguration, ChartDataset, Plugin, ScatterDataPoint, TooltipItem } from "https://esm.sh/chart.js@4.5.1?bundle";
 import {
@@ -39,6 +41,7 @@ import {
   type Say,
 } from "./insights.js";
 import { STYLES } from "./styles.js";
+import { drawCard, type CardData } from "./card.js";
 
 // ---- colour: the shell's tokens, resolved to something a canvas can paint ----
 
@@ -65,6 +68,10 @@ const TAG_COLORS: Record<string, [string, string]> = {
   stressed: ["#d4483d", "#ff8073"],
 };
 const EXTRA_TAG = ["#8a6d3b", "#d1b37a"] as [string, string];
+
+/** Mood's series colour, light and dark. Sleep's is the app's own colour. */
+const MOOD_LIGHT = "#e8833a";
+const MOOD_DARK = "#ffa25c";
 
 interface Palette {
   dark: boolean;
@@ -96,7 +103,7 @@ function palette(el: HTMLElement): Palette {
     surface: css(surface),
     raised: css(rgba(token("--surface-raised"), "#ffffff")),
     sleep: rgba(token("--accent"), "#7c6cf0"),
-    mood: rgba(dark ? "#ffa25c" : "#e8833a", "#e8833a"),
+    mood: rgba(dark ? MOOD_DARK : MOOD_LIGHT, MOOD_LIGHT),
     font: token("--font-ui") || "system-ui, sans-serif",
     display: token("--font-display") || "Georgia, serif",
     tag: (tag) => css(rgba(pick(TAG_COLORS[tag] ?? EXTRA_TAG), "#888")),
@@ -449,7 +456,10 @@ function mountPatterns(el: HTMLElement, props: ViewProps): () => void {
     ctx.t("🌙  Log last night"),
   );
   log.addEventListener("click", () => void logNight(ctx, props.runtime.definition.entities.checkin!.fields as Record<string, Field>));
-  root.append(h("header", { class: "ms-hero" }, h("div", { class: "ms-moon", "aria-hidden": "true" }), kicker, insight, also, statsEl, log));
+  // Share: the hero as a picture — the sentence, the stats and the nights — for a message or a story.
+  const share = h("button", { class: "ms-share", type: "button" }, ctx.t("Share"));
+  share.addEventListener("click", () => void shareCard());
+  root.append(h("header", { class: "ms-hero" }, h("div", { class: "ms-moon", "aria-hidden": "true" }), kicker, insight, also, statsEl, h("div", { class: "ms-actions" }, log, share)));
 
   // Night by night
   const sleepWord = ctx.t("Sleep");
@@ -525,6 +535,7 @@ function mountPatterns(el: HTMLElement, props: ViewProps): () => void {
   let all: Night[] = [];
   const hidden = new Set<string>();
 
+  let card: CardData | null = null;
   const renderText = (w: { nights: Night[]; days: string[] }) => {
     const said = insights(w.nights, ctx);
     insight.replaceChildren(...sentence(said[0]!));
@@ -541,20 +552,61 @@ function mountPatterns(el: HTMLElement, props: ViewProps): () => void {
           )
         : ctx.t("Your nights");
     const s = stats(w.nights);
-    const stat = (label: string, value: string, unit = "") => h("div", {}, h("dt", {}, label), h("dd", {}, value, ...(unit ? [h("small", {}, unit)] : [])));
-    statsEl.replaceChildren(
-      stat(ctx.t("Average sleep"), s.avgHours == null ? "–" : one(s.avgHours, ctx), "h"),
-      stat(
-        ctx.t("Average mood"),
-        s.avgMood == null ? "–" : one(s.avgMood, ctx),
-        s.avgMood == null ? "" : (MOOD_FACES[Math.round(s.avgMood)] ?? ""),
-      ),
-      stat(
-        ctx.t("Nights ≥ {h}h", { h: LONG }),
-        s.longShare == null ? "–" : String(Math.round(s.longShare * 100)),
-        "%",
-      ),
-    );
+    const three = [
+      { label: ctx.t("Average sleep"), value: s.avgHours == null ? "–" : one(s.avgHours, ctx), unit: "h" },
+      {
+        label: ctx.t("Average mood"),
+        value: s.avgMood == null ? "–" : one(s.avgMood, ctx),
+        unit: s.avgMood == null ? "" : (MOOD_FACES[Math.round(s.avgMood)] ?? ""),
+      },
+      {
+        label: ctx.t("Nights ≥ {h}h", { h: LONG }),
+        value: s.longShare == null ? "–" : String(Math.round(s.longShare * 100)),
+        unit: "%",
+      },
+    ];
+    statsEl.replaceChildren(...three.map((x) => h("div", {}, h("dt", {}, x.label), h("dd", {}, x.value, ...(x.unit ? [h("small", {}, x.unit)] : [])))));
+    share.hidden = w.nights.length === 0;
+    const series = dailySeries(w);
+    card =
+      first && last
+        ? {
+            kicker: kicker.textContent ?? "",
+            sentence: said[0]!,
+            stats: three,
+            title: ctx.t("Night by night"),
+            legend: { sleep: sleepWord, mood: moodWordTitle },
+            goal: { hours: LONG, label: ctx.t("{h}h goal", { h: LONG }) },
+            hours: series.hours,
+            mood: series.mood,
+            from: shortDay(first, ctx),
+            to: shortDay(last, ctx),
+            name: props.runtime.definition.name,
+          }
+        : null;
+  };
+
+  // The card is drawn on the night palette whatever the screen's theme: the app's colour at the dark
+  // theme's text level (DESIGN.md §3.1), and mood's dark colour.
+  const shareCard = async () => {
+    if (!card || share.disabled) return;
+    share.disabled = true;
+    const s = getComputedStyle(el);
+    const sleep = css(rgba(s.getPropertyValue("--tinta-d").trim(), css(pal.sleep)));
+    const day = dayKey(ctx.today());
+    let file: FileInfo | null = null;
+    try {
+      const png = await drawCard(card, { sleep, mood: MOOD_DARK, display: pal.display, body: pal.font });
+      file = await ctx.files.write(`share/sleep-${day}.png`, png, { mime: "image/png" });
+      // The save dialog on a computer, the share sheet on a phone.
+      await ctx.files.export(file);
+    } catch (e) {
+      if (!(e instanceof Error && e.name === "AbortError")) ctx.ui.toast(ctx.t("It could not be shared."));
+    } finally {
+      // The picture was for sending: it does not stay in the app's folder.
+      if (file) await ctx.files.remove(file).catch(() => undefined);
+      share.disabled = false;
+    }
   };
 
   const renderChips = () => {
@@ -633,7 +685,7 @@ export default defineApp({
   id: "mood-sleep",
   name: "Sleep & Mood",
   icon: "moon",
-  version: "1.2.0",
+  version: "1.3.0",
   schemaVersion: 1,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
