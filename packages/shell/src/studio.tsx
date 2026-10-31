@@ -832,13 +832,18 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     }
   };
   const showPreview = previewOpen && preview !== null;
+  /** Leaving the app ends pointing at it, by whichever way back (the tab, or the preview's own). */
+  const closePreview = (): void => {
+    setPointing(false);
+    setPreviewOpen(false);
+  };
   // On a phone the app covers the conversation and the box: out of reach, so out of the reading and
   // Tab order too (#489), until the Conversation tab brings them back. The bar above stays live.
   const covered: Record<string, string> = showPreview && !wide ? { inert: "" } : {};
   const tabs =
     canOpen && !wide ? (
       <div className="k-studio-tabs" role="tablist" aria-label={t`Studio`}>
-        <button type="button" role="tab" className="k-studio-tab" aria-selected={!showPreview} onClick={() => setPreviewOpen(false)}>
+        <button type="button" role="tab" className="k-studio-tab" aria-selected={!showPreview} onClick={closePreview}>
           <Trans comment="Studio tab on a phone: the conversation">Conversation</Trans>
         </button>
         <button type="button" role="tab" className="k-studio-tab" aria-selected={showPreview} onClick={() => setPreviewOpen(true)}>
@@ -1047,10 +1052,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           appearance={appearance}
           version={items.reduce<number | undefined>((v, i) => (i.type === "version" && i.current ? i.seq : v), undefined)}
           unsaved={held !== null}
-          onBack={() => {
-            setPointing(false);
-            setPreviewOpen(false);
-          }}
+          onBack={closePreview}
           onSource={() => setTools("source")}
           pointing={pointing}
           onPoint={() => setPointing(true)}
