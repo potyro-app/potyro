@@ -9,25 +9,13 @@
 //     files travel, by path;
 //   - its libraries' bytes: the lock says where each comes from and what it must hash to, and the
 //     device that opens the link fetches it from there, with consent, as on any install (#266).
-import { fileSpace, isReservedPath, MemoryStore, packAppPackage, SRC_DIR, type AppCredit, type AppPackage, type PackagedFile, type Store } from "@potyro/store";
+import { fileSpace, isReservedPath, MemoryStore, packAppPackage, SRC_DIR, type AppCredit, type PackagedFile, type Store } from "@potyro/store";
 import type { UserApp } from "./user-apps.js";
 import { hasSeeder, seedIfEmpty } from "./seed.js";
 import { creditToShare } from "./credit-words.js";
+import { plainSeedRow as plainRow, type AppSeed } from "./app-seed.js";
 
-export type DemoSeed = NonNullable<AppPackage["seed"]>;
-
-/** Fields a store adds to every record: not the app's data, and never worth carrying. */
-const STORE_FIELDS = new Set(["createdAt", "updatedAt"]);
-
-/** A record as JSON: dates as their ISO text, nothing a seed cannot hold. */
-function plainRow(row: Record<string, unknown>): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(row)) {
-    if (STORE_FIELDS.has(k) || v === undefined) continue;
-    out[k] = v instanceof Date ? v.toISOString() : v;
-  }
-  return JSON.parse(JSON.stringify(out)) as Record<string, unknown>;
-}
+export type DemoSeed = AppSeed;
 
 /**
  * Demo records for an app (docs/24 §3): its own first-run sample data, written into a throwaway store
@@ -37,7 +25,8 @@ function plainRow(row: Record<string, unknown>): Record<string, unknown> {
  * Never reads the app's own store.
  *
  * An app added from a package has no seeder here: its sample data is the `seed.json` its package came
- * with, kept beside it (`packageSeed`), and that is what travels — only for the entities it keeps.
+ * with, kept beside it (`packageSeed`), and that is what travels — only for the entities it keeps. So
+ * is an app made in the Studio's: the records its run check passed on (app-seed.ts, #486).
  */
 export async function demoSeed(appId: string, entities: readonly string[], packageSeed?: DemoSeed): Promise<DemoSeed | undefined> {
   if (!hasSeeder(appId)) return fromPackage(packageSeed, entities);

@@ -17,6 +17,7 @@ import { clearChat } from "./studio-chat.js";
 import { backupEnabled } from "./backup-setting.js";
 import { libraryLock, lockJson, parseLock, type AppCredit, type AppLock } from "@potyro/store";
 import { newLine } from "./app-line.js";
+import { sameSeed, seedThatFits, type Entities as SeedEntities } from "./app-seed.js";
 
 const KEY = "potyro:user-apps";
 /** Dispatched on `globalThis` after every write, so a launcher on screen can follow along (#81). */
@@ -81,9 +82,10 @@ export interface UserApp {
   /** A remix's: the line of the app it remixed, so a link to that app opens the remix when it is all there is. */
   lineOf?: string;
   /**
-   * The sample records its package came with (`seed.json`, #253): the app's own demo data, never the
-   * person's. Kept so a demo link of it opens on them, as the package did (docs/24 §3). Only a small
-   * one is kept (`MAX_KEPT_SEED`): this record lives in the device's settings.
+   * The sample records its package came with (`seed.json`, #253), or, for an app made in the Studio,
+   * the ones its run check passed on (#486): the app's own demo data, never the person's. Kept so a
+   * demo link of it opens on them, as the package did (docs/24 §3), and so a package saved from it
+   * carries them. Only a small one is kept (`MAX_KEPT_SEED`): this record lives in the device's settings.
    */
   seed?: Record<string, Array<Record<string, unknown>>>;
 }
@@ -157,7 +159,8 @@ export async function saveUserApp(
     remixOf?: AppCredit;
     line?: string;
     lineOf?: string;
-    seed?: UserApp["seed"];
+    /** `null` takes the seed away (none of its rows fits the app any more); absent keeps it. */
+    seed?: UserApp["seed"] | null;
     origin?: VersionOrigin;
     note?: string;
     rationale?: string;
@@ -226,7 +229,7 @@ export async function saveUserApp(
     line: prev?.line ?? input.line,
     lineOf: prev?.lineOf ?? input.lineOf,
     // And the sample records its package came with: a demo of it still opens on them.
-    seed: input.seed ?? prev?.seed,
+    seed: input.seed === null ? undefined : (input.seed ?? prev?.seed),
   };
   write([record, ...apps.filter((a) => a.id !== id)]);
   const modules = hasOwnModules(record.lock) ? (input.modules ?? (await ownModules(record.lock))) : undefined;
@@ -279,6 +282,27 @@ export async function removeUserApp(id: string): Promise<void> {
   await clearCases(id);
   // And for the same reason its conversation: the next app called this must start its own.
   await clearChat(id);
+}
+
+/**
+ * Replace an app's sample records (#486): what fits it after it changed (app-seed.ts). Not a new
+ * version of the app: the source is the same, so it keeps its `updatedAt`.
+ */
+export function setUserAppSeed(id: string, seed: UserApp["seed"]): void {
+  write(read().map((a) => (a.id === id ? { ...a, seed: seedToKeep(seed) } : a)));
+}
+
+/**
+ * Fit a saved app's seed to the app as it now loads (#486): run where its definition is at hand — the
+ * app opening, a version put back from History — so a change made anywhere (an edit, a fix, a version
+ * restored, a newer copy synced in) cannot leave a demo link opening on rows that no longer fit.
+ * Writes only when a row was dropped. Never adds one, and never reads the app's records.
+ */
+export function refitSeed(appId: string, entities: SeedEntities): void {
+  const app = getUserApp(appId);
+  if (!app?.seed || !entities) return;
+  const fitted = seedThatFits(app.seed, entities);
+  if (!sameSeed(fitted, app.seed)) setUserAppSeed(appId, fitted);
 }
 
 /** Record the files an app's package shipped (see `UserApp.shipped`). Not a new version of the app. */
