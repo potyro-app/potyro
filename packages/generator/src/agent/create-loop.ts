@@ -176,7 +176,7 @@ async function firstMessage(deps: CreateLoopDeps): Promise<string> {
     // A corpus that cannot be loaded leaves the first message as the single-shot create's: it is a help, never a requirement.
     const primed = await deps
       .corpus()
-      .then((c) => primeCorpus(c, deps.brief, ""))
+      .then((c) => primeCorpus(c, deps.brief, "", deps.language))
       .catch(() => "");
     if (primed) parts.push(primed);
   }
