@@ -1378,15 +1378,21 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 /* Selected (DESIGN.md §6 Chip): the aguada with --ink on it and an 8px dot of --tinta on the left —
-   the "head" — so the state shows without colour too (§11.1). A chip that holds a toggle shows its
-   state in the toggle, and takes no dot. */
-.k-chip[data-on="true"] {
+   the "head" — so the state shows without colour too (§11.1). Only a chip you can select wears it, and
+   it is read from the chip's own ARIA state (§11.4): pressed, a switch that is on, a chosen option. A
+   tag you typed is a value, not a choice, and the Look panel's cards draw their own (.k-look-mode). A
+   chip that holds a toggle shows its state in the toggle, and takes no dot. */
+.k-chip[aria-pressed="true"],
+.k-chip[role="switch"][aria-checked="true"],
+.k-chip[role="option"][aria-selected="true"] {
   background: var(--aguada);
   border-color: transparent;
   color: var(--ink);
 }
-.k-chip[data-on="true"]:not(.k-chip-switch)::before,
-.k-launch-sort-btn[aria-pressed="true"]::before {
+.k-chip[aria-pressed="true"]::before,
+.k-chip[role="option"][aria-selected="true"]::before,
+.k-launch-sort-btn[aria-pressed="true"]::before,
+.k-look-mode[aria-checked="true"] > strong::before {
   content: "";
   display: inline-block;
   flex: none;
@@ -1483,13 +1489,14 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   border-radius: var(--radius);
   cursor: pointer;
 }
-.k-look-mode[data-on] strong {
-  color: var(--on-accent);
-}
-/* The second line goes with it. Muted ink on the accent fill was the one unreadable thing on the
-   panel — grey chosen for paper, sitting on gold. */
-.k-look-mode[data-on] .k-muted {
-  color: color-mix(in oklab, var(--on-accent) 80%, transparent);
+/* The chosen card (DESIGN.md §6, a selected chip drawn as a card): the aguada with its words in --ink
+   and the second line muted as on any surface — never the accent's pair, which on the aguada was white
+   on near-white. The edge goes --line-strong so the choice holds its shape in greyscale, and the
+   tinta head sits at the start of the card's name, where the eye reads first. */
+.k-look-mode[aria-checked="true"] {
+  background: var(--aguada);
+  border-color: var(--line-strong);
+  color: var(--ink);
 }
 .k-look-hues {
   display: flex;
@@ -2509,11 +2516,15 @@ th.k-data-raw {
   line-height: 1.3rem;
   text-align: center;
 }
+/* A filter in force is a value with a way to take it off, not a choice to toggle: the aguada says it is
+   set, and it takes no head (DESIGN.md §6) — the ✕ is its affordance. */
 .k-chip-picked {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   min-height: 2.25rem;
+  background: var(--aguada);
+  color: var(--ink);
   cursor: pointer;
 }
 .k-chip-x {
