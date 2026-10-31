@@ -1,6 +1,7 @@
 {
   "name": "@potyro/native",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "type": "module",
   "description": "Capacitor target, Android + iOS (WP8 / KA-03): native capability impls (exact notifications, camera, geo, filesystem) + composition-root selection.",
   "license": "Apache-2.0",

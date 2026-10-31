@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-photo-puzzle",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Photo Puzzle: any photo becomes a jigsaw you can send to a friend",

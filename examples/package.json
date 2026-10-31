@@ -1,6 +1,7 @@
 {
   "name": "@potyro/examples",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Living fixtures + sandbox corpus (WP9): recipes / plants / places .app.ts",

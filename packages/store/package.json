@@ -1,6 +1,7 @@
 {
   "name": "@potyro/store",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "type": "module",
   "description": "Store interface + MemoryStore/LocalStore/SqliteStore + JazzStore (CRDT, ADR 0001).",
   "license": "Apache-2.0",

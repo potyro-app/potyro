@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-qr-maker",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "QR Maker: text, a link or Wi‑Fi details become a QR code to hold up — offline, kept and shared as a picture",

@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-mood-sleep",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "How did you sleep? A daily check-in, charted with chart.js loaded by URL (#266)",

@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-receipt-split",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Receipt Split: photograph a receipt and its lines become items — the smallest app using ctx.caps.ai (docs/23)",

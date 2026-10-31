@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-plant-doctor",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Plant Doctor: photograph a plant and get the likely plant and problem in plain words, a care plan with reminders, and a timeline of check-ups (ctx.caps.ai, docs/23)",

@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-daily-puzzle",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Potyro Daily: one colour code a day, the same for everyone, shared as the grid everyone knows",

@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-piano",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Personal piano practice app: the plan is data (plan.json), the UI reads it",

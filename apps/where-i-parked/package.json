@@ -1,6 +1,7 @@
 {
   "name": "@potyro/app-where-i-parked",
   "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
   "private": true,
   "type": "module",
   "description": "Where I parked: one tap drops a pin where the car is; later it says how far and which way, and opens a map to it",
