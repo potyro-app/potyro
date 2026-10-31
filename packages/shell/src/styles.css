@@ -1377,11 +1377,25 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   font-weight: 500;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
+/* Selected (DESIGN.md §6 Chip): the aguada with --ink on it and an 8px dot of --tinta on the left —
+   the "head" — so the state shows without colour too (§11.1). A chip that holds a toggle shows its
+   state in the toggle, and takes no dot. */
 .k-chip[data-on="true"] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: oklch(22% 0.04 70);
-  font-weight: 600;
+  background: var(--aguada);
+  border-color: transparent;
+  color: var(--ink);
+}
+.k-chip[data-on="true"]:not(.k-chip-switch)::before,
+.k-launch-sort-btn[aria-pressed="true"]::before {
+  content: "";
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--space-2);
+  border-radius: 50%;
+  background: var(--tinta);
+  vertical-align: 0.05em;
 }
 /* The Studio as a conversation: what was asked, and what came back. Scrolls on its own so the box
    and its one action never leave the screen — the thread is context, not the controls. */
