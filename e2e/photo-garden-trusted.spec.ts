@@ -42,8 +42,10 @@ test("Photo Garden: p5 comes from esm.sh, a photo grows into a living picture th
   expect(card).toMatch(/Asks for camera/);
   expect([...new Set(asked)].sort()).toEqual(["https://esm.sh/p5@1.11.11/es2022/p5.bundle.mjs", "https://esm.sh/p5@1.11.11?bundle"]);
 
-  // Before a photo: the idle dusk garden is already moving behind the welcome card.
+  // Before a photo: the idle dusk garden is already moving behind the welcome card. An artwork is
+  // made by keeping the canvas, so the app offers no bare "Add: Artwork" form (quickActions: [], #484).
   await expect(page.getByRole("heading", { name: "Grow a garden from a photo" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("button", { name: /Add: Artwork/ })).toHaveCount(0);
   await expect(canvas(page)).toHaveCount(1);
   const idleA = await pixelsOf(canvas(page));
   await page.waitForTimeout(600);
@@ -86,7 +88,41 @@ test("Photo Garden: p5 comes from esm.sh, a photo grows into a living picture th
   // Named for the photo's main colour and the style: cropped to this stage the flower fills the frame,
   // and its vivid pink outvotes the duller leaves.
   await page.getByRole("button", { name: "Keep this" }).click();
-  await expect(page.locator(".k-toast").last()).toHaveText("Kept “Rose Tessera” in your gallery", { timeout: 15_000 });
+  const note = page.locator(".pg-kept-note");
+  await expect(note).toContainText("Kept “Rose Tessera” in your gallery", { timeout: 15_000 });
+
+  // The share moment, right there: Share hands the kept PNG to the system's save or share dialog
+  // (ctx.files.export). The dialog is answered in the page, which reads the picture it is given.
+  await page.evaluate(() => {
+    const w = window as unknown as { __saved?: { name: string; w: number; h: number; pink: number }; showSaveFilePicker: unknown };
+    w.showSaveFilePicker = async ({ suggestedName }: { suggestedName: string }) => ({
+      createWritable: async () => ({
+        write: async (data: Blob) => {
+          const bmp = await createImageBitmap(data);
+          const c = document.createElement("canvas");
+          c.width = bmp.width;
+          c.height = bmp.height;
+          const g = c.getContext("2d")!;
+          g.drawImage(bmp, 0, 0);
+          const px = g.getImageData(0, 0, c.width, c.height).data;
+          let pink = 0;
+          for (let i = 0; i < px.length; i += 4) if (px[i]! > 170 && px[i + 1]! < 140 && px[i + 2]! > 80 && px[i + 2]! < 190 && px[i]! - px[i + 1]! > 70) pink++;
+          w.__saved = { name: suggestedName, w: c.width, h: c.height, pink };
+        },
+        close: async () => {},
+      }),
+    });
+  });
+  await note.getByRole("button", { name: "Share" }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __saved?: unknown }).__saved), { timeout: 10_000 }).toBeTruthy();
+  const saved = await page.evaluate(() => (window as unknown as { __saved: { name: string; w: number; h: number; pink: number } }).__saved);
+  expect(saved.name).toMatch(/^\d{4}-\d{2}-\d{2}-\d{6}-rose-tessera\.png$/);
+  // The canvas as it was kept, pixel for pixel, with the flower in it.
+  const size = await canvas(page).evaluate((c) => [(c as HTMLCanvasElement).width, (c as HTMLCanvasElement).height]);
+  expect(size[0]).toBeGreaterThan(500);
+  expect([saved.w, saved.h]).toEqual(size);
+  expect(saved.pink).toBeGreaterThan(3_000);
+  await expect(note).toBeHidden();
   await page.locator(".k-tab", { hasText: "Gallery" }).click();
   const piece = page.getByRole("button", { name: "Rose Tessera, open" });
   await expect(piece).toBeVisible({ timeout: 15_000 });

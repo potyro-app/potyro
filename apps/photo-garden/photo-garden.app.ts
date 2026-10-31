@@ -1,7 +1,8 @@
 // Photo Garden — take a photo, and thousands of specks that carry its colours drift on a current,
 // gather into the picture, and scatter wherever you touch or drag. Three styles (Flow, Points,
 // Mosaic), a density slider, and "Keep this" saves the moment as a PNG in the app's own folder with a
-// record for the Gallery.
+// record for the Gallery, then offers Share for a few seconds (ctx.files.export: the save dialog on a
+// computer, the share sheet on a phone). Artworks are only made that way: `quickActions: []`.
 //
 // Drawn with p5.js in instance mode, imported by URL (#266): the shell fetches p5 once, when the app
 // is added, and runs it from the copy it keeps. The photo comes through `ctx.caps.camera` — the app
@@ -16,7 +17,7 @@
 // when it is kept, and part of its file name — so it is made in English, like a title, and stays
 // as it was named.
 import { defineApp } from "potyro";
-import type { Ctx, FileRef, Resolved, ViewProps } from "potyro";
+import type { Ctx, FileInfo, FileRef, Resolved, ViewProps } from "potyro";
 import type p5 from "https://esm.sh/p5@1.11.11?bundle";
 import {
   coverCrop,
@@ -95,6 +96,8 @@ const isPhone = (w: number) => w < 640 || (window.matchMedia?.("(pointer: coarse
 const easeOut = (t: number) => 1 - (1 - t) ** 3;
 
 const PREFS = "studio";
+/** How long the note after Keep this stays, offering Share. */
+const NOTE_MS = 9000;
 /** The photo in the Studio, kept for this session only: a garden is a moment, not a record. */
 let lastPhoto: Source | null = null;
 interface Prefs {
@@ -156,6 +159,37 @@ function mountStudio(el: HTMLElement, props: ViewProps): () => void {
     ctx.t("Drag across it to scatter the specks"),
   );
 
+  // The share moment: right after Keep this, a note over the picture offers it to send on.
+  const keptText = h("p", {});
+  const shareKept = h("button", { class: "pg-btn pg-primary", type: "button" }, ctx.t("Share"));
+  const keptNote = h("div", { class: "pg-kept-note", role: "status", hidden: "" }, keptText, shareKept);
+  let kept: FileInfo | null = null;
+  let noteTimer = 0;
+  const hideNote = () => {
+    clearTimeout(noteTimer);
+    keptNote.hidden = true;
+    kept = null;
+  };
+  // It waits while the person is on it: a note that leaves under the pointer is a missed tap.
+  const fadeNote = () => {
+    clearTimeout(noteTimer);
+    noteTimer = window.setTimeout(() => (keptNote.matches(":hover, :focus-within") ? fadeNote() : hideNote()), NOTE_MS);
+  };
+  const showNote = (file: FileInfo, title: string) => {
+    kept = file;
+    keptText.textContent = ctx.t("Kept “{title}” in your gallery", { title });
+    keptNote.hidden = false;
+    fadeNote();
+  };
+  // ctx.files.export: the save dialog on a computer, the share sheet on a phone.
+  shareKept.addEventListener("click", () => {
+    if (!kept) return;
+    void ctx.files.export(kept).then(hideNote, (e: unknown) => {
+      if (e instanceof Error && e.name === "AbortError") return; // they closed the dialog
+      ctx.ui.toast(ctx.t("It could not be shared."));
+    });
+  });
+
   // Control bar
   const styleButtons = STYLE_LIST.map((s) => h("button", { type: "button", "data-style": s, "aria-pressed": "false" }, styleName(s, ctx)));
   const slider = h("input", {
@@ -185,7 +219,7 @@ function mountStudio(el: HTMLElement, props: ViewProps): () => void {
     ),
     h("div", { class: "pg-actions" }, again, keep),
   );
-  stage.append(welcome, hint, bar);
+  stage.append(welcome, hint, keptNote, bar);
   if (hasPhoto) {
     welcome.hidden = true;
     keep.disabled = false;
@@ -396,6 +430,7 @@ function mountStudio(el: HTMLElement, props: ViewProps): () => void {
     }
     hasPhoto = true;
     lastPhoto = src;
+    hideNote();
     welcome.hidden = true;
     keep.disabled = false;
     hint.hidden = false;
@@ -466,12 +501,7 @@ function mountStudio(el: HTMLElement, props: ViewProps): () => void {
       void stage.offsetWidth; // restart the flash
       stage.classList.add("pg-kept");
       void ctx.caps.haptics?.vibrate(18);
-      ctx.ui.toast(
-        ctx.t(
-          "Kept “{title}” in your gallery",
-          { title },
-        ),
-      );
+      showNote(file, title);
     } catch (e) {
       ctx.ui.toast(e instanceof Error ? e.message : notSaved);
     } finally {
@@ -540,6 +570,7 @@ function mountStudio(el: HTMLElement, props: ViewProps): () => void {
   return () => {
     alive = false;
     clearTimeout(densityTimer);
+    clearTimeout(noteTimer);
     document.removeEventListener("visibilitychange", onVisibility);
     seen.disconnect();
     watchSize.disconnect();
@@ -749,13 +780,16 @@ export default defineApp({
   id: "photo-garden",
   name: "Photo Garden",
   icon: "flower",
-  version: "1.1.0",
+  version: "1.2.0",
   schemaVersion: 1,
   language: "en",
   languages: ["en", "pt-BR", "de", "es", "pl", "it"],
   theme: { accent: "#e0567a" },
   category: "camera",
   nav: "tabs",
+  // An artwork is made by keeping the canvas, never by a form: an "Add: Artwork" would make one with
+  // no picture. So no quick actions (#484).
+  quickActions: [],
   permissions: { camera: true, haptics: true },
   entities: {
     artwork: {
