@@ -52,34 +52,93 @@ export interface SealedViewDeps {
 
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
-/** The theme where the view sits: every custom property, the colour scheme, the font and the ink. */
+/** Every custom property a list of rules declares, into `into`: nested groups (@media, @supports, @layer, nesting) and @import too. */
+function declaredIn(rules: CSSRuleList, into: Set<string>): void {
+  for (const rule of Array.from(rules)) {
+    const style = (rule as CSSStyleRule).style;
+    if (style) {
+      for (let i = 0; i < style.length; i++) {
+        const name = style[i]!;
+        if (name.startsWith("--")) into.add(name);
+      }
+    }
+    let nested: CSSRuleList | undefined;
+    try {
+      nested = (rule as CSSGroupingRule).cssRules ?? (rule as CSSImportRule).styleSheet?.cssRules;
+    } catch {
+      continue; // an @import from another origin: its rules are not ours to read
+    }
+    if (nested) declaredIn(nested, into);
+  }
+}
+
+/** What a document's stylesheets declare, kept while its sheets are the same ones with as many rules. */
+const declaredBySheets = new WeakMap<Document, { sheets: CSSStyleSheet[]; sizes: number[]; names: Set<string> }>();
+
+const ruleCount = (sheet: CSSStyleSheet): number => {
+  try {
+    return sheet.cssRules.length;
+  } catch {
+    return -1; // a cross-origin sheet: its rules are not ours to read
+  }
+};
+
+/** The custom properties a document's stylesheets declare: one walk of every rule (~12 ms for the shell's), so kept until the sheets change. */
+function sheetNames(doc: Document): Set<string> {
+  const sheets = [...Array.from(doc.styleSheets), ...((doc as Document & { adoptedStyleSheets?: CSSStyleSheet[] }).adoptedStyleSheets ?? [])];
+  const sizes = sheets.map(ruleCount);
+  const kept = declaredBySheets.get(doc);
+  if (kept && kept.sheets.length === sheets.length && kept.sheets.every((s, i) => s === sheets[i] && kept.sizes[i] === sizes[i])) return kept.names;
+  const names = new Set<string>();
+  sheets.forEach((sheet, i) => {
+    if (sizes[i]! >= 0) declaredIn(sheet.cssRules, names);
+  });
+  declaredBySheets.set(doc, { sheets, sizes, names });
+  return names;
+}
+
+/**
+ * The names of the custom properties the page declares anywhere that could reach `el`: its
+ * stylesheets, and the inline styles of `el` and its ancestors.
+ */
+function declaredNames(el: Element): Set<string> {
+  const names = new Set(sheetNames(el.ownerDocument));
+  for (let n: Element | null = el; n; n = n.parentElement) {
+    const style = (n as HTMLElement).style;
+    if (!style) continue;
+    for (let i = 0; i < style.length; i++) {
+      const name = style[i]!;
+      if (name.startsWith("--")) names.add(name);
+    }
+  }
+  return names;
+}
+
+/**
+ * The theme where the view sits: every custom property, the colour scheme, the font and the ink.
+ *
+ * A computed style's own list of its custom properties is not enough. Gecko's lists a property an
+ * element redefines over an inherited one twice, and leaves out as many others — the ones declared
+ * first, at the root: under the shell's `.k-app`, which sets the app's colour inline, Firefox's list
+ * has no `--ink`, `--surface` or `--line`, and a sealed screen painted without them. Some engines
+ * list none at all. So the names are the list's together with every name the page declares, each
+ * read through this element's computed style, which is right in every engine.
+ */
 export function readTokens(el: Element): Record<string, string> {
   const win = el.ownerDocument.defaultView!;
   const cs = win.getComputedStyle(el);
-  const out: Record<string, string> = {};
+  const listed = new Set<string>();
   for (let i = 0; i < cs.length; i++) {
     const name = cs[i]!;
-    if (name.startsWith("--")) out[name] = cs.getPropertyValue(name).trim();
+    if (name.startsWith("--")) listed.add(name);
   }
-  if (!Object.keys(out).length) {
-    // An engine that does not list custom properties in a computed style: the names the page's own
-    // stylesheets declare, read through the computed style all the same (so they are this element's).
-    for (const sheet of Array.from(el.ownerDocument.styleSheets)) {
-      let rules: CSSRuleList;
-      try {
-        rules = sheet.cssRules;
-      } catch {
-        continue;
-      }
-      for (const rule of Array.from(rules)) {
-        const style = (rule as CSSStyleRule).style;
-        if (!style) continue;
-        for (let i = 0; i < style.length; i++) {
-          const name = style[i]!;
-          if (name.startsWith("--") && !(name in out)) out[name] = cs.getPropertyValue(name).trim();
-        }
-      }
-    }
+  const out: Record<string, string> = {};
+  for (const name of listed) out[name] = cs.getPropertyValue(name).trim();
+  for (const name of declaredNames(el)) {
+    if (name in out) continue;
+    // Declared somewhere that does not reach this element: nothing to carry.
+    const value = cs.getPropertyValue(name).trim();
+    if (value) out[name] = value;
   }
   out["color-scheme"] = cs.colorScheme || "normal";
   out["font-family"] = cs.fontFamily;
