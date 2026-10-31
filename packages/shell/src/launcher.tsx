@@ -42,7 +42,7 @@ import { AddAppDialog } from "./add-app-dialog.js";
 import { canRemix, RemixDialog } from "./remix.js";
 import { tileCredit } from "./credit-words.js";
 import { openGallery } from "./gallery-link.js";
-import { keptIdea } from "./kept-idea.js";
+import { forgetKeptIdea, keepIdea, keptIdea } from "./kept-idea.js";
 import { ActionMenu } from "@potyro/views";
 import { liveCandidates, watchLiveSignals } from "./launcher-live.js";
 import { addExample, exampleNames, missingExamples } from "./examples.js";
@@ -715,9 +715,31 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
     t({ message: "Plants to water this week", comment: "An example prompt under the prompt box" }),
     t({ message: "Split the trip's bills", comment: "An example prompt under the prompt box" }),
   ];
-  const describe = (text: string): void => onNewApp(text || undefined);
   // Words typed in the Studio before the person went to the gallery (#487): still theirs, here too.
+  // One owner at a time: once Home's box is edited (or cleared) the words are its own and the kept
+  // ones are forgotten, so nothing deleted here comes back — not in this box, not in the Studio.
   const kept = keptIdea();
+  const homeText = useRef<string | undefined>(undefined);
+  const edited = (text: string): void => {
+    homeText.current = text;
+    forgetKeptIdea();
+  };
+  // Sent: the Studio gets the box's words as they are, "" included, and never a kept idea instead.
+  const describe = (text: string): void => {
+    homeText.current = undefined;
+    forgetKeptIdea();
+    onNewApp(text);
+  };
+  // To the gallery, in this tab: what is in Home's box waits for the way back (kept-idea.ts). An
+  // untouched box still holds the kept words, so there is nothing to do; a cleared one keeps nothing.
+  const leaveForGallery = (): void => {
+    if (homeText.current?.trim()) keepIdea(homeText.current, null);
+  };
+  const toGallery = (): void => {
+    leaveForGallery();
+    openGallery();
+  };
+  const boxStarts = homeText.current ?? kept;
   const welcome =
     neverOpened && !welcomeDismissed ? (
       <section className="k-welcome" aria-labelledby="k-welcome-h">
@@ -727,7 +749,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         <p>
           <Trans>Say what you need and Potyro builds an app you can share. Or open one of the examples below and change it.</Trans>
         </p>
-        <PromptBox sendLabel={t`Describe an app`} onSend={describe} examples={examples} initial={kept} />
+        <PromptBox sendLabel={t`Describe an app`} onSend={describe} examples={examples} initial={boxStarts} onEdit={edited} />
         <div className="k-welcome-actions">
           <button type="button" className="k-welcome-later" onClick={dismissWelcome}>
             <Trans>Not now</Trans>
@@ -736,7 +758,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       </section>
     ) : variant === "home" ? (
       <div className="k-welcome k-welcome-compact">
-        <PromptBox compact sendLabel={t`Describe an app`} onSend={describe} initial={kept} />
+        <PromptBox compact sendLabel={t`Describe an app`} onSend={describe} initial={boxStarts} onEdit={edited} />
       </div>
     ) : null;
   // A bundled example you deleted is gone for good, which is right — until you want it back.
@@ -766,6 +788,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       onOpen={onOpen}
       onNewApp={onNewApp}
       onAdd={() => setAdding({})}
+      onGallery={toGallery}
       menuFor={menuFor}
       inertUnless={inertUnless}
       top={
@@ -784,7 +807,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
     >
       {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
       {lookOpen ? <LookPanel onClose={() => setLookOpen(false)} /> : null}
-      {adding ? <AddAppDialog initialLink={adding.link} onClose={() => setAdding(null)} /> : null}
+      {adding ? <AddAppDialog initialLink={adding.link} onClose={() => setAdding(null)} onGallery={leaveForGallery} /> : null}
       {remixing ? <RemixDialog app={remixing} onClose={() => setRemixing(null)} /> : null}
       {sharing ? <ShareSheet app={sharing} onClose={() => setSharing(null)} onInvite={() => void share(sharing)} /> : null}
       {history ? (
@@ -844,7 +867,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       </header>
       {identity ? <IdentityPanel onClose={() => setIdentity(false)} /> : null}
       {lookOpen ? <LookPanel onClose={() => setLookOpen(false)} /> : null}
-      {adding ? <AddAppDialog initialLink={adding.link} onClose={() => setAdding(null)} /> : null}
+      {adding ? <AddAppDialog initialLink={adding.link} onClose={() => setAdding(null)} onGallery={leaveForGallery} /> : null}
       {remixing ? <RemixDialog app={remixing} onClose={() => setRemixing(null)} /> : null}
       {sharing ? <ShareSheet app={sharing} onClose={() => setSharing(null)} onInvite={() => void share(sharing)} /> : null}
 
@@ -960,7 +983,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
           entries={[
             { key: "describe", label: t`Describe a new app`, icon: I.studio, onSelect: () => onNewApp() },
             { key: "add", label: t`Add an app someone sent you`, icon: I.import, onSelect: () => setAdding({}) },
-            { key: "gallery", label: t({ message: "Browse the gallery", comment: "Opens Potyro's gallery of apps to try and make your own" }), icon: I.gallery, onSelect: () => openGallery() },
+            { key: "gallery", label: t({ message: "Browse the gallery", comment: "Opens Potyro's gallery of apps to try and make your own" }), icon: I.gallery, onSelect: toGallery },
           ]}
         />
       ) : null}
