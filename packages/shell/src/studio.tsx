@@ -69,6 +69,7 @@ import { hueColour } from "./tile-identity.js";
 import type { Appearance } from "./app-theme.js";
 import { tracoOf } from "./app-colour.js";
 import type { AppSeed } from "./app-seed.js";
+import { fixedLanding, keptAnyway, seedToSave, type Held, type OwnEdit } from "./studio-held.js";
 
 /** The eleven hours an app may wear (DESIGN.md §10); 12 o'clock is Potyro's own and stays empty. */
 const HOURS = HORAS.filter((h) => h.hora !== 12);
@@ -154,23 +155,6 @@ function changedPaths(a: Record<string, string> | undefined, b: Record<string, s
 
 /** Whether `draft` holds anything `saved` does not: an edit, a new file, a deleted one. */
 const modulesDiffer = (draft: Record<string, string>, saved: Record<string, string> | undefined): boolean => changedPaths(draft, saved).size > 0;
-
-/** A version that was made and failed a gate, so it was not saved. */
-interface Held {
-  source: string;
-  summary: string;
-  /** What was asked, for the version's note if it is kept. */
-  note: string;
-  issues: string[];
-  loss: string | null;
-  /** Its libraries, already fetched with the person's say-so (#266). */
-  libraries: StudioLibraries | null;
-  /** The modules it edited (#448), kept with it if it is kept. */
-  own?: OwnEdit;
-}
-
-/** Modules a version edited (#448): every module's text, and the files and lock entries they make. */
-type OwnEdit = { texts: Record<string, string>; code: { lock: AppLock; files: PackagedFile[] } };
 
 export interface StudioProps {
   onClose: () => void;
@@ -416,7 +400,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         origin,
         ...(existing ? {} : { line: newLine() }),
         // Stored as it came: each use fits it to the version at hand (app-seed.ts).
-        ...(!existing && made ? { seed: made } : {}),
+        ...seedToSave(!existing, made),
       },
       new Date().toISOString(),
     );
@@ -518,7 +502,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       }
     }
     if (issues.length || lost) {
-      setHeld({ source: src, summary: said, note, issues, loss: lost, libraries, ...(own ? { own } : {}) });
+      setHeld({ source: src, summary: said, note, issues, loss: lost, libraries, ...(own ? { own } : {}), ...(made ? { made } : {}) });
       setPreview(built ?? preview);
       const problems = issues.join("\n- ");
       await say({
@@ -592,7 +576,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     setWorking("");
     try {
       const fixed = await (await engine()).repair(held.source, held.issues, held.own?.texts);
-      await land(fixed.source, `${held.summary} ${fixed.summary}`.trim(), held.note, fixed.loss, {}, fixed.modules ?? held.own?.texts);
+      const l = fixedLanding(held, fixed);
+      await land(l.source, l.summary, l.note, l.loss, {}, l.modules, l.made);
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
       await say({ kind: "failure", text: t`Could not fix it: ${reason}` });
@@ -611,7 +596,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     );
     if (!go) return;
     const kept = t`Kept with problems.`;
-    await keep(h.source, preview, `${h.summary} ${kept}`.trim(), h.note, undefined, h.libraries, {}, h.own);
+    const k = keptAnyway(h, kept);
+    await keep(k.source, preview, k.summary, k.note, undefined, k.libraries, {}, k.own, k.made);
   };
 
   /** An older card: put that version back, as a new version — nothing after it is lost. */
