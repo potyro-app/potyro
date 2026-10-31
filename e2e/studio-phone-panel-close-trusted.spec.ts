@@ -192,6 +192,18 @@ test("#489 with the app open, the Studio's Close is in reach, and nothing covere
   const axe = await new AxeBuilder({ page }).include(".k-studio").withRules(["aria-hidden-focus"]).analyze();
   expect(axe.violations).toEqual([]);
 
+  // Pointing, then the Conversation tab: pointing ends with the app, as the way back always ends it.
+  const appTab = studio.locator(".k-studio-bar").getByRole("tab", { name: "App" });
+  await preview.locator(".k-preview-point").tap();
+  await expect(preview.locator(".k-point-bar")).toBeVisible();
+  await conversation.tap();
+  await expect(preview).toHaveCount(0);
+  await expect(studio.getByRole("button", { name: "Point at the app" })).toHaveAttribute("aria-pressed", "false");
+  await appTab.tap();
+  await expect(preview.locator("h1").first()).toHaveText("Watering", { timeout: 30_000 });
+  await expect(preview.locator(".k-point-bar")).toHaveCount(0);
+  await expect(preview.locator(".k-preview-point")).toBeVisible();
+
   // The Conversation tab brings the conversation and the box back, live.
   await conversation.tap();
   await expect(preview).toHaveCount(0);
