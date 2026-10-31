@@ -53,3 +53,12 @@ packages/create-potyro/LICENSE.
 
 Dependencies that pnpm installs are not part of this repository. Each carries its own licence, and
 builds of the shell bundle some of them.
+
+Relicensing consents (recorded 2026-10-30 by the copyright holder)
+  Before the repository went public under the Apache License 2.0, the two outside
+  contributors agreed to it: Bruno Golfette, for his commits to the generator, the
+  store, the shell and the browser tests; and the designer of the design system, for
+  packages/design/source (DESIGN.md, REDACAO.md, the tokens, the colour clock) and the
+  logo files under packages/design/logo. Their consent was given to Edgar Zanella
+  Alvarenga, who recorded it here. The name and logo themselves are not licensed by
+  Apache-2.0 §6 and remain Potyro's marks.
