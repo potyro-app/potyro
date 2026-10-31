@@ -14,7 +14,7 @@
 
 import { themeClass, type Appearance } from "./app-theme.js";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useRef, useState, useEffect, type ReactNode } from "react";
+import { useRef, useState, useEffect, type ReactNode, type Ref } from "react";
 import { MemoryStore, type Store } from "@potyro/store";
 import { createWebCapabilities } from "@potyro/capabilities";
 import { capsForApp } from "./app-ai-caps.js";
@@ -168,6 +168,11 @@ export interface PreviewScreenProps {
    * does not — an app run from hand-written code before there is one — this bar keeps its own.
    */
   underStudioBar?: boolean;
+  /**
+   * The preview's region, focusable (tabIndex -1) but not in the Tab order: on a phone, when what
+   * opened the app is now covered, the Studio moves focus here so it is not lost to the page.
+   */
+  regionRef?: Ref<HTMLElement>;
   /** The quick adjustments above the app (DESIGN.md §10): its name, its colour. */
   above?: ReactNode;
   /** The colour chosen for the app here, as the launcher's tile would carry it. */
@@ -177,7 +182,7 @@ export interface PreviewScreenProps {
 }
 
 /** The opened app: a bar with the way back, and the app's own screen under it. */
-export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource, onPromote, pointing, onPoint, onPointCancel, onPicked, underStudioBar, above, appAccent, appearance }: PreviewScreenProps) {
+export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource, onPromote, pointing, onPoint, onPointCancel, onPicked, underStudioBar, regionRef, above, appAccent, appearance }: PreviewScreenProps) {
   const { t } = useLingui();
   const screenRef = useRef<HTMLDivElement>(null);
   // The portal root is the screen element itself, which exists only after the first render.
@@ -187,7 +192,7 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
   const def = preview.composed.runtime.definition;
   const promote = preview.sealed && onPromote ? onPromote : undefined;
   return (
-    <section className="k-preview" aria-label={t`App preview`} data-pointing={pointing || undefined} data-under-bar={underStudioBar || undefined}>
+    <section ref={regionRef} tabIndex={-1} className="k-preview" aria-label={t`App preview`} data-pointing={pointing || undefined} data-under-bar={underStudioBar || undefined}>
       {pointing ? (
         // The bar says what the mode is and how to leave it — never the app's own controls.
         <header className="k-preview-bar k-point-bar" role="status">
