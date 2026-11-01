@@ -390,6 +390,8 @@ export async function noFreeRouteToGallery({ page, context, browser, baseURL, de
   await gallery.getByRole("navigation", { name: "Pages" }).getByRole("button", { name: "Plants" }).click();
   const monstera = gallery.getByText("Monstera").first();
   await expect(monstera).toBeVisible({ timeout: 30_000 });
+  // Its row may sit below the fold (the list is grouped by room): the hit test needs it in view.
+  await monstera.scrollIntoViewIfNeeded();
   expect(await onTop(gallery, monstera)).toBe(true);
 
   expect(relay.chats).toEqual([]);
