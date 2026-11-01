@@ -91,9 +91,9 @@ export const STYLES = `
   line-height: 1;
 }
 .ms-stats dd small { font-family: var(--font-ui); font-size: 0.8rem; color: var(--ink-soft); margin-left: 2px; }
+.ms-actions { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-6); }
 .ms-log {
   position: relative;
-  margin-top: var(--space-6);
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -111,6 +111,22 @@ export const STYLES = `
 .ms-log:hover { transform: translateY(-1px); box-shadow: 0 10px 24px color-mix(in oklab, var(--ms-sleep) 45%, transparent); }
 .ms-log:active { transform: translateY(1px) scale(0.98); }
 .ms-log:focus-visible { outline: 3px solid color-mix(in oklab, var(--ms-sleep) 50%, transparent); outline-offset: 3px; }
+.ms-share {
+  min-height: 44px;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  border: 2px solid color-mix(in oklab, var(--ms-sleep) 45%, var(--line));
+  background: transparent;
+  color: var(--ink);
+  font: 600 0.95rem var(--font-ui);
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.ms-share:hover { background: color-mix(in oklab, var(--ms-sleep) 12%, transparent); }
+.ms-share:active { transform: translateY(1px) scale(0.98); }
+.ms-share:focus-visible { outline: 3px solid color-mix(in oklab, var(--ms-sleep) 50%, transparent); outline-offset: 3px; }
+.ms-share:disabled { opacity: 0.6; cursor: progress; }
+.ms-share[hidden] { display: none; }
 
 /* Chart cards */
 .ms-card {
@@ -155,5 +171,5 @@ export const STYLES = `
 .ms-chip:focus-visible { outline: 2px solid var(--chip); outline-offset: 2px; }
 .ms-foot { margin: var(--space-2) 0 0; color: var(--ink-faint); font-size: 0.78rem; }
 .ms-empty .ms-plot { display: none; }
-@media (prefers-reduced-motion: reduce) { .ms-log, .ms-chip { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .ms-log, .ms-share, .ms-chip { transition: none; } }
 `;
