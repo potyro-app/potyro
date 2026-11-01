@@ -63,6 +63,8 @@
      so the Look panel can offer it back as a swatch after another hour was chosen — `--accent` by
      then IS the other one. */
   --accent-potyro: #e44f89;
+  /* The toggle's knob when it is off (DESIGN.md §6): white, in both themes. */
+  --switch-knob: #ffffff;
   /* Text on a block of traço (DESIGN.md §3.1): graphite, in both themes, and 24px or more. */
   --ink-on-traco: #231f20;
 
@@ -535,7 +537,7 @@ button {
   transform: scale(0.98);
 }
 .k-map-card:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-map-card-media {
@@ -1087,7 +1089,7 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   background: var(--surface-sunken);
 }
 .k-inline-bar-btn:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 1px;
 }
 .k-inline-bar-done {
@@ -1259,7 +1261,7 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   transform: scale(0.98);
 }
 .k-objtile:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-objtile-icon {
@@ -1307,7 +1309,7 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   cursor: pointer;
 }
 .k-home-page-link:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -1375,11 +1377,31 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   font-weight: 500;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
-.k-chip[data-on="true"] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: oklch(22% 0.04 70);
-  font-weight: 600;
+/* Selected (DESIGN.md §6 Chip): the aguada with --ink on it and an 8px dot of --tinta on the left —
+   the "head" — so the state shows without colour too (§11.1). Only a chip you can select wears it, and
+   it is read from the chip's own ARIA state (§11.4): pressed, a switch that is on, a chosen option. A
+   tag you typed is a value, not a choice, and the Look panel's cards draw their own (.k-look-mode). A
+   chip that holds a toggle shows its state in the toggle, and takes no dot. */
+.k-chip[aria-pressed="true"],
+.k-chip[role="switch"][aria-checked="true"],
+.k-chip[role="option"][aria-selected="true"] {
+  background: var(--aguada);
+  border-color: transparent;
+  color: var(--ink);
+}
+.k-chip[aria-pressed="true"]::before,
+.k-chip[role="option"][aria-selected="true"]::before,
+.k-launch-sort-btn[aria-pressed="true"]::before,
+.k-look-mode[aria-checked="true"] > strong::before {
+  content: "";
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--space-2);
+  border-radius: 50%;
+  background: var(--tinta);
+  vertical-align: 0.05em;
 }
 /* The Studio as a conversation: what was asked, and what came back. Scrolls on its own so the box
    and its one action never leave the screen — the thread is context, not the controls. */
@@ -1467,13 +1489,14 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   border-radius: var(--radius);
   cursor: pointer;
 }
-.k-look-mode[data-on] strong {
-  color: var(--on-accent);
-}
-/* The second line goes with it. Muted ink on the accent fill was the one unreadable thing on the
-   panel — grey chosen for paper, sitting on gold. */
-.k-look-mode[data-on] .k-muted {
-  color: color-mix(in oklab, var(--on-accent) 80%, transparent);
+/* The chosen card (DESIGN.md §6, a selected chip drawn as a card): the aguada with its words in --ink
+   and the second line muted as on any surface — never the accent's pair, which on the aguada was white
+   on near-white. The edge goes --line-strong so the choice holds its shape in greyscale, and the
+   tinta head sits at the start of the card's name, where the eye reads first. */
+.k-look-mode[aria-checked="true"] {
+  background: var(--aguada);
+  border-color: var(--line-strong);
+  color: var(--ink);
 }
 .k-look-hues {
   display: flex;
@@ -1671,7 +1694,7 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   color: var(--ink);
 }
 .k-datapage-app:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 1px;
 }
 .k-datapage-app[aria-current="true"] {
@@ -1762,7 +1785,7 @@ body:has(.k-app-phone .k-tabbar) .k-inline-bar {
   border-bottom-color: var(--accent);
 }
 .k-data-tab:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -2057,7 +2080,7 @@ th.k-data-raw {
   cursor: pointer;
 }
 .k-files-open:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: -2px;
   border-radius: var(--radius-sm);
 }
@@ -2327,7 +2350,7 @@ th.k-data-raw {
   color: var(--ink);
 }
 .k-viewer-text:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 4px;
 }
 /* A catalog being fixed (docs/30): the same text, now a field, filling the viewer. */
@@ -2493,11 +2516,15 @@ th.k-data-raw {
   line-height: 1.3rem;
   text-align: center;
 }
+/* A filter in force is a value with a way to take it off, not a choice to toggle: the aguada says it is
+   set, and it takes no head (DESIGN.md §6) — the ✕ is its affordance. */
 .k-chip-picked {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   min-height: 2.25rem;
+  background: var(--aguada);
+  color: var(--ink);
   cursor: pointer;
 }
 .k-chip-x {
@@ -3004,7 +3031,7 @@ th.k-data-raw {
   transform: scale(0.95);
 }
 .k-action:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-action.k-row-action {
@@ -3070,7 +3097,7 @@ th.k-data-raw {
   background: color-mix(in oklab, var(--accent) 6%, var(--surface));
 }
 .k-add-row-btn:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: -3px;
 }
 .k-lead.k-add-row-mark {
@@ -3216,7 +3243,7 @@ th.k-data-raw {
   transform: scale(0.98);
 }
 .k-gallery > .k-card:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-card-media {
@@ -3877,7 +3904,7 @@ th.k-data-raw {
   color: var(--ink);
 }
 .k-form-close:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-form-body {
@@ -4025,7 +4052,7 @@ details.k-form-group[open] > summary::before {
   transform: rotate(45deg);
 }
 details.k-form-group > summary:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
@@ -4158,7 +4185,7 @@ details.k-form-group > summary:focus-visible {
   cursor: default;
 }
 .k-number-step:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 1px;
 }
 .k-duration {
@@ -4221,7 +4248,7 @@ details.k-form-group > summary:focus-visible {
   color: var(--ink);
 }
 .k-topbar-btn:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: -3px;
 }
 .k-topbar-icon {
@@ -4563,7 +4590,7 @@ button.k-prov:focus-visible {
 }
 .k-sidenav .k-tab:focus-visible,
 .k-tools .k-tool:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: -2px;
 }
 .k-sidenav .k-tab[data-active="true"] {
@@ -4919,7 +4946,7 @@ details.k-layout-fold[open] > summary::before {
   box-shadow: var(--shadow);
 }
 .k-segment:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 @media (pointer: coarse) {
@@ -5048,7 +5075,7 @@ details.k-layout-fold[open] > summary::before {
   cursor: grab;
 }
 .k-board-card-open:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: -2px;
   border-radius: var(--radius-sm);
 }
@@ -5179,7 +5206,7 @@ details.k-layout-fold[open] > summary::before {
   overflow: visible;
 }
 .k-chart-plot:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-chart-grid {
@@ -5305,7 +5332,7 @@ button.k-tl-card:hover {
   border-color: var(--accent-line);
 }
 button.k-tl-card:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-tl-thumb {
@@ -5508,7 +5535,7 @@ button.k-fold-head {
   color: var(--ink);
 }
 .k-fold-head:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
@@ -5617,7 +5644,7 @@ button.k-fold-head {
   background: var(--surface-sunken);
 }
 .k-row-grip:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 1px;
 }
 .k-row-n {
@@ -6181,7 +6208,7 @@ button.k-file-name:focus-visible {
   background: var(--ink);
 }
 .k-media-x:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 1px;
 }
 .k-media-add {
@@ -6207,7 +6234,7 @@ button.k-file-name:focus-visible {
   color: var(--ink);
 }
 .k-media-add:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-media-add-glyph {
@@ -6314,7 +6341,7 @@ button.k-file-name:focus-visible {
   font-weight: 600;
 }
 .k-enum-segment:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 @media (pointer: coarse) {
@@ -6363,7 +6390,7 @@ button.k-file-name:focus-visible {
   border-color: var(--accent);
 }
 .k-enum-trigger:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-enum-empty {
@@ -6531,7 +6558,7 @@ button.k-file-name:focus-visible {
   color: var(--ink);
 }
 .k-selchip-x:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 1px;
 }
 .k-relation-add {
@@ -6598,13 +6625,17 @@ button.k-file-name:focus-visible {
   width: 9.5rem;
   max-width: 45%;
 }
+/* The calendar: a Lucide icon in --ink-soft (DESIGN.md §3.5 — no emoji in the interface). */
 .k-date-open {
   flex: none;
+  display: grid;
+  place-items: center;
   width: 2.75rem;
   min-height: 2.75rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface);
+  color: var(--ink-soft);
   font-size: 1.1rem;
   cursor: pointer;
   transition: border-color var(--dur-fast) var(--ease);
@@ -6614,7 +6645,7 @@ button.k-file-name:focus-visible {
   border-color: var(--accent);
 }
 .k-date-open:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-date-chips {
@@ -6643,7 +6674,7 @@ button.k-file-name:focus-visible {
   font-weight: 600;
 }
 .k-date-chip:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 @media (pointer: coarse) {
@@ -6774,7 +6805,7 @@ button.k-file-name:focus-visible {
   font-weight: 600;
 }
 .k-date-day:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 1px;
 }
 .k-date-picker-actions {
@@ -6892,7 +6923,7 @@ details.k-check-done[open] > summary::before {
   border-radius: var(--radius-sm);
 }
 .k-check:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: -4px;
 }
 .k-check-mark {
@@ -6967,7 +6998,7 @@ details.k-check-done[open] > summary::before {
   background: var(--accent-tint);
 }
 .k-check-open:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: -4px;
 }
 .k-check-clear {
@@ -7153,20 +7184,20 @@ details.k-check-done[open] > summary::before {
 /* tokens-only: end — checklist */
 
 /* tokens-only: start — switches */
-/* A boolean is a switch (#97). The row is the hit target, 44px tall, label left, toggle right; the
-   knob moves on transform only and the accent says "on". `aria-checked` on the row or on the
-   toggle itself drives the look, so a form row and a bare toggle share these rules. */
+/* A boolean is a switch (#97). The row is the hit target, a list row's 56px (DESIGN.md §6), label
+   left, toggle right. `aria-checked` on the row or on the toggle itself drives the look, so a form
+   row and a bare toggle share these rules. */
 .k-switch-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   width: 100%;
-  min-height: 2.75rem;
+  min-height: 3.5rem;
   padding: var(--space-2) var(--space-1);
   margin: 0 calc(-1 * var(--space-1));
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--ink);
   font: inherit;
@@ -7175,11 +7206,21 @@ details.k-check-done[open] > summary::before {
   transition: background var(--dur-fast) var(--ease);
 }
 .k-switch-row:hover {
-  background: var(--surface-sunken);
+  background: var(--surface);
 }
-.k-switch-row:focus-visible {
-  outline: 2px solid var(--accent);
+.k-switch-row:focus-visible,
+button.k-switch:focus-visible {
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
+}
+/* Disabled (§6): 0.4, and no hover. */
+.k-switch-row:disabled,
+button.k-switch:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.k-switch-row:disabled:hover {
+  background: transparent;
 }
 .k-switch-text {
   display: flex;
@@ -7198,36 +7239,42 @@ details.k-check-done[open] > summary::before {
   font-size: 0.8rem;
   color: var(--ink-soft);
 }
+/* The toggle (DESIGN.md §6): a 44×28 pill. Off, the track is --surface-2 with a --stroke border in
+   --line-strong (the 3:1 edge §11.1 asks of a state) and a knob in --switch-knob; on, the track is --accent and
+   the knob --on-accent. The knob lands with the boing (§3.6) — the one moment this control has, and
+   only when a person flips it — and under reduced motion it simply is where it lands (§11.6).
+   In rem, so it grows with the text (§11.5): the knob is centred and travels the track's width less
+   its height, whatever the size. */
 .k-switch {
   flex: 0 0 auto;
   position: relative;
   display: inline-block;
+  box-sizing: border-box;
   width: 2.75rem;
-  height: 1.625rem;
+  height: 1.75rem;
   padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface-sunken);
+  border: var(--stroke) solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
   vertical-align: middle;
-  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  --switch-travel: 1rem;
 }
 button.k-switch {
   cursor: pointer;
 }
-button.k-switch:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
 .k-switch-knob {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: calc(1.625rem - 6px);
-  height: calc(1.625rem - 6px);
-  border-radius: 999px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  transition: transform var(--dur-fast) var(--ease);
+  top: 0;
+  bottom: 0;
+  left: calc((1.75rem - 2 * var(--stroke) - 1.25rem) / 2);
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: auto 0;
+  border-radius: 50%;
+  background: var(--switch-knob);
+  box-shadow: none;
+  transition: transform var(--dur-base) var(--ease-boing), background-color var(--dur-fast) var(--ease);
 }
 [aria-checked="true"] > .k-switch,
 .k-switch[aria-checked="true"] {
@@ -7236,30 +7283,29 @@ button.k-switch:focus-visible {
 }
 [aria-checked="true"] > .k-switch .k-switch-knob,
 .k-switch[aria-checked="true"] .k-switch-knob {
-  transform: translateX(calc(2.75rem - 1.625rem));
+  background: var(--on-accent);
+  transform: translateX(var(--switch-travel));
 }
-/* The chip version: the same toggle, smaller, after the label. On, the chip is the accent and the
-   toggle inverts so it still reads. */
+/* The same toggle inside a 32px filter chip, scaled to fit it: 36×22, the same parts and colours. */
 .k-chip-switch {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
 }
 .k-chip-switch .k-switch {
-  width: 2rem;
-  height: 1.2rem;
+  width: 2.25rem;
+  height: 1.375rem;
+  --switch-travel: 0.875rem;
 }
 .k-chip-switch .k-switch-knob {
-  width: calc(1.2rem - 6px);
-  height: calc(1.2rem - 6px);
+  left: calc((1.375rem - 2 * var(--stroke) - 0.875rem) / 2);
+  width: 0.875rem;
+  height: 0.875rem;
 }
-.k-chip-switch[aria-checked="true"] .k-switch {
-  background: var(--on-accent);
-  border-color: var(--on-accent);
-}
-.k-chip-switch[aria-checked="true"] .k-switch-knob {
-  transform: translateX(calc(2rem - 1.2rem));
-  background: var(--accent);
+@media (prefers-reduced-motion: reduce) {
+  .k-switch-knob {
+    transition: background-color var(--dur-fast) var(--ease);
+  }
 }
 /* tokens-only: end */
 .k-geo-input {
@@ -7557,10 +7603,12 @@ body:has(.k-tabbar) .k-toasts {
   padding: clamp(1.5rem, 8vh, 5rem) 0 var(--space-4);
   animation: k-route-in var(--dur-slow) var(--ease);
 }
+/* A label, not a state: --muted as every eyebrow (§3.1 — a status colour is never decoration, and the
+   Studio's one colour is Potyro's rosa, §10). */
 .k-studio-empty .k-studio-eyebrow {
   display: block;
   margin: 0 0 var(--space-2);
-  color: var(--warn);
+  color: var(--muted);
 }
 .k-studio-hero {
   margin: 0 0 var(--space-3);
@@ -7685,7 +7733,7 @@ body:has(.k-tabbar) .k-toasts {
   border-radius: var(--radius-sm);
 }
 .k-studio .k-thread-detail > summary:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-studio .k-thread-detail > p {
@@ -7907,7 +7955,7 @@ body:has(.k-tabbar) .k-toasts {
   border-radius: var(--radius-sm);
 }
 .k-ask-card-structure > summary:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-ask-card-structure > p {
@@ -9198,7 +9246,7 @@ body:has(.k-tabbar) .k-toasts {
   font-weight: 600;
 }
 .k-studio-tabs .k-tab:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-studio-tabs-spacer {
@@ -9734,7 +9782,7 @@ body:has(.k-tabbar) .k-toasts {
   box-shadow: var(--shadow);
 }
 .k-launch-sort-btn:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 1px;
 }
 .k-visually-hidden {
@@ -9965,7 +10013,7 @@ body:has(.k-tabbar) .k-toasts {
   border-color: var(--ink);
 }
 .k-tile-editor-swatch:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 1px;
 }
 .k-tile-editor-hue {
@@ -10738,7 +10786,7 @@ body:has(.k-tabbar) .k-toasts {
   transition: background 120ms var(--ease), border-color 120ms var(--ease);
 }
 .k-timeline-row:hover { background: var(--paper); }
-.k-timeline-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.k-timeline-row:focus-visible { outline: var(--stroke) solid var(--focus); outline-offset: 2px; }
 .k-timeline-entry[data-open] .k-timeline-row {
   border-color: var(--accent);
   background: color-mix(in oklab, var(--accent) 8%, var(--surface));
@@ -11033,7 +11081,7 @@ body:has(.k-tabbar) .k-toasts {
   color: var(--on-accent);
 }
 .k-member-input .k-person-chip:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -11243,7 +11291,7 @@ body:has(.k-tabbar) .k-toasts {
   border-color: var(--accent-line);
 }
 .k-lang-select:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
   border-color: var(--accent);
 }
@@ -11345,7 +11393,7 @@ body:has(.k-tabbar) .k-toasts {
   resize: vertical;
 }
 .k-wording-input:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
   border-color: var(--accent);
 }
@@ -12633,7 +12681,7 @@ body:has(.k-tabbar) .k-toasts {
   flex: none;
 }
 .k-ask-row label:has(input:focus-visible) {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-ask-row-body {
@@ -12763,55 +12811,62 @@ body:has(.k-tabbar) .k-toasts {
   flex: 0 0 auto;
   font-size: 0.85rem;
 }
-/* A switch drawn from a checkbox INPUT: a track and a knob (::after) that slides. Scoped to the input:
-   the span .k-switch of Switch/SwitchRow (views/switch.tsx) draws its own knob, and this ::after on it
-   was a second, stuck knob (owner, 2026-10-23). */
+/* A switch drawn from a checkbox INPUT: the same toggle as the switches block (DESIGN.md §6), its
+   knob an ::after. Scoped to the input: the span .k-switch of Switch/SwitchRow (views/switch.tsx)
+   draws its own knob, and this ::after on it was a second, stuck knob (owner, 2026-10-23). */
 input.k-switch {
   appearance: none;
   flex: 0 0 auto;
   position: relative;
-  width: 2.5rem;
-  height: 1.5rem;
+  box-sizing: border-box;
+  width: 2.75rem;
+  height: 1.75rem;
   margin: 0;
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--ink) 18%, var(--surface));
-  border: 1px solid var(--line);
+  border: var(--stroke) solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 input.k-switch::after {
   content: "";
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: calc(1.5rem - 6px);
-  height: calc(1.5rem - 6px);
+  top: 0;
+  bottom: 0;
+  left: calc((1.75rem - 2 * var(--stroke) - 1.25rem) / 2);
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: auto 0;
   border-radius: 50%;
-  background: var(--surface);
-  box-shadow: 0 1px 2px color-mix(in oklab, var(--ink) 30%, transparent);
-  transition: transform var(--dur-fast) var(--ease);
+  background: var(--switch-knob);
+  transition: transform var(--dur-base) var(--ease-boing), background-color var(--dur-fast) var(--ease);
 }
 input.k-switch:checked {
   background: var(--accent);
   border-color: var(--accent);
 }
 input.k-switch:checked::after {
+  background: var(--on-accent);
   transform: translateX(1rem);
 }
 input.k-switch:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 input.k-switch:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.4;
 }
 @media (prefers-reduced-motion: reduce) {
   input.k-switch,
-  input.k-switch::after,
   .k-tile-editor-live-row,
   .k-tile-editor-live-name {
     transition: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  input.k-switch::after {
+    transition: background-color var(--dur-fast) var(--ease);
   }
 }
 /* The shell's buttons have no disabled look of their own; here it matters, because "Ask" and "Add"
@@ -12999,7 +13054,7 @@ input.k-switch:disabled {
   color: var(--ink-faint);
 }
 .k-ask-target label:has(input:focus-visible) {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-ask-target-new {
@@ -13305,7 +13360,7 @@ input.k-switch:disabled {
   font-weight: 700;
 }
 .k-ask-decision button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: -2px;
 }
 .k-ask-sources-list {
@@ -14054,7 +14109,7 @@ input.k-switch:disabled {
   border-color: var(--ink-faint);
 }
 .k-share-net:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-share-net-mark {
@@ -14159,14 +14214,13 @@ input.k-switch:disabled {
 /* ---- The Start screen (#96; owner, 2026-10-15 — settles #93) ---------------------------------
    Windows Phone 8.1's Start: flat tiles of solid colour, square corners, no shadow, packed in a
    tight grid with small even gutters; big light type for the pane titles; a slim app bar. The tile
-   colour is the app's own (`--tile-bg`, darkened in tile-colour.ts until white reads on it), and the
-   only motion is Metro's: the press tilt, the live tile turning over, the turnstile when an app
-   opens — transforms and opacity only, and none of it under reduced motion. */
+   colour is the app's hour on the colour clock (`--tile-bg`, below), and the only motion is Metro's:
+   the press tilt, the live tile turning over, the turnstile when an app opens — transforms and
+   opacity only, and none of it under reduced motion. */
 /* tokens-only: start — start screen */
 .k-metro {
-  /* Tiles wear the app's traço (metro-tile.tsx); graphite reads on every hour of it (§3.1). */
+  /* What is not an app's tile (a group's folder) keeps graphite; an app's tile sets its own, below. */
   --tile-ink: var(--ink-on-traco);
-  --tile-ink-soft: color-mix(in oklab, var(--ink-on-traco) 80%, transparent);
   --metro-side: 12px;
   /* The app bar's height, so the last row of tiles can scroll clear of it. */
   --metro-bar: calc(4.25rem + var(--k-safe-bottom));
@@ -14369,6 +14423,27 @@ button.k-metro-group-name {
   touch-action: pan-y;
   transition: transform var(--dur) var(--ease), opacity var(--dur) var(--ease);
 }
+/* An app's tile, its row in All apps and its cell in a group's mosaic wear the app's hour as a button
+   wears it (DESIGN.md §3.1 `--accent` / `--on-accent`, `tilePair` in app-colour.ts): the traço with
+   graphite where graphite reads at AA, else the tinta with light words. Graphite on the bare traço falls
+   short of AA at four hours, and a tile carries small words. Declared on the tile itself, so the
+   theme's pair resolves there. */
+.k-metro .k-launch-tile.k-metro-tile,
+.k-metro .k-launch-tile.k-metro-row-open,
+.k-metro .k-metro-mosaic-cell {
+  --tile-bg: var(--tile-bg-l);
+  --tile-ink: var(--tile-ink-l);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .k-metro :is(.k-launch-tile.k-metro-tile, .k-launch-tile.k-metro-row-open, .k-metro-mosaic-cell) {
+    --tile-bg: var(--tile-bg-d);
+    --tile-ink: var(--tile-ink-d);
+    }
+}
+:root[data-theme="dark"] .k-metro :is(.k-launch-tile.k-metro-tile, .k-launch-tile.k-metro-row-open, .k-metro-mosaic-cell) {
+  --tile-bg: var(--tile-bg-d);
+  --tile-ink: var(--tile-ink-d);
+}
 .k-metro .k-launch-tile.k-metro-tile {
   position: relative;
   display: block;
@@ -14546,10 +14621,13 @@ button.k-metro-group-name {
   font-weight: 400;
   -webkit-line-clamp: 1;
 }
+/* The tile's own ink, as the headline: a line under the title is smaller and lighter in weight, never
+   fainter — ink softened by alpha fell under AA at a third of the hours. */
 .k-metro-live-line {
   font-size: 0.8rem;
+  font-weight: 400;
   line-height: 1.25;
-  color: var(--tile-ink-soft);
+  color: var(--tile-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -14568,7 +14646,6 @@ button.k-metro-group-name {
 /* Over a photo the words are white, on a shade from the bottom that the name and count sit on too. */
 .k-metro-face:has(> .k-metro-photo) {
   --tile-ink: var(--on-photo);
-  --tile-ink-soft: var(--on-photo-soft);
   color: var(--tile-ink);
 }
 .k-metro-face:has(> .k-metro-photo)::after {
@@ -15210,7 +15287,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-timer-btn:focus-visible,
 .k-timer-what:focus-visible,
 .k-timer-done:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-timer-chip[data-ringing] {
@@ -15358,7 +15435,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   transform: scale(0.99);
 }
 .k-claim-pick:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 .k-claim-none {
@@ -15496,7 +15573,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   color: var(--ink);
 }
 .k-move-quiet:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
@@ -15752,7 +15829,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   cursor: pointer;
 }
 .k-aggregate-open:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 3px;
   border-radius: 4px;
 }
@@ -17157,52 +17234,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   font-size: var(--text-small);
   font-weight: 500;
 }
-/* The toggle (§6): a 44×28 pill, the track outlined when off, the app's colour when on; the knob
-   lands with a boing. */
-.k-switch {
-  width: 44px;
-  height: 28px;
-  border: var(--stroke) solid var(--line-strong);
-  background: var(--surface-2);
-}
-.k-switch-knob {
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
-  background: var(--bg);
-  box-shadow: none;
-  transition: transform var(--dur-base) var(--ease-boing), background var(--dur-fast) var(--ease);
-}
-/* On: the row's switch carries `aria-checked` on the row (SwitchRow), the bare one on itself —
-   both must land the knob at 16px, or a form's "on" knob keeps the old travel and leaves the track. */
-[aria-checked="true"] > .k-switch,
-.k-switch[aria-checked="true"] {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-[aria-checked="true"] > .k-switch .k-switch-knob,
-.k-switch[aria-checked="true"] .k-switch-knob {
-  background: var(--on-accent);
-  transform: translateX(16px);
-}
-/* A chip that holds a toggle keeps it small enough for the chip. */
-.k-chip-switch .k-switch {
-  width: 36px;
-  height: 22px;
-}
-.k-chip-switch .k-switch-knob {
-  width: 14px;
-  height: 14px;
-}
-.k-chip-switch[aria-checked="true"] .k-switch .k-switch-knob,
-.k-chip-switch .k-switch[aria-checked="true"] .k-switch-knob {
-  transform: translateX(14px);
-}
-.k-switch-row {
-  min-height: 56px;
-  border-radius: var(--radius-md);
-}
+/* The toggle (§6) is drawn in one place, the switches block above. */
 
 /* Forms (§6, §11.7): the label visible above the field, in body type at 500; a group's title small. */
 .k-form-label {
@@ -18097,7 +18129,7 @@ html:has(.k-check-add) {
   cursor: pointer;
 }
 .k-free-panel-plan-btn:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--stroke) solid var(--focus);
   outline-offset: 2px;
 }
 /* The free engine's line in Model settings: how much is left, or why it stopped. */
