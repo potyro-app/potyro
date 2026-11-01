@@ -24,8 +24,9 @@ const PNPM = WINDOWS ? "pnpm.cmd" : "pnpm";
 function finished(page: string): string {
   return readFileSync(join(ROOT, "docs", "legal", `${page}.md`), "utf8")
     .replace(/^> \*\*Draft\.\*\*[^\n]*\n(?:>[^\n]*\n)*/m, "")
-    .replace(/<CONTACT EMAIL>/g, "privacy@example.org")
-    .replace(/<ABUSE EMAIL>/g, "abuse@example.org")
+    // The real addresses (filled in on 2026-11-01) become example ones, so the fixtures do not depend on them.
+    .replace(/<CONTACT EMAIL>|contact@potyro\.com/g, "privacy@example.org")
+    .replace(/<ABUSE EMAIL>|abuse@potyro\.com/g, "abuse@example.org")
     .replace(/<DATE>/g, "2026-11-01")
     .replace(/<[A-Z][^<>\n]*>/g, "a year");
 }

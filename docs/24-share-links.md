@@ -166,8 +166,8 @@ opening a package it fetched before.
 **Report.** The demo bar of a hosted link has a quiet **Report**: a mail to the report address the
 terms name, with the link without its key and the start of a notice. An inline link has none — it is
 on no server to remove. The address is `abuse` in `packages/shell/src/contacts.json` (read by the
-shell and by the gallery's "Report a link"); while it is still the `<ABUSE EMAIL>` placeholder,
-reports go to `general` (`contact@potyro.com`).
+shell and by the gallery's "Report a link"): abuse@potyro.com. Were it a placeholder (`<ABUSE
+EMAIL>`) again, reports would go to `general` (`contact@potyro.com`).
 
 ## 5. The preview image
 

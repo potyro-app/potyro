@@ -18,7 +18,7 @@ Effective: <DATE>
 ## Who runs Potyro
 
 Potyro is run by Edgar Zanella Alvarenga, an individual resident in Italy, not a company.
-Write to <CONTACT EMAIL>.
+Write to contact@potyro.com.
 
 In this text, "we" means that person. We decide how the data described here is handled, so under
 the EU's data protection law (the GDPR) we are its controller.
@@ -219,7 +219,7 @@ Some of these companies may handle data outside the EU, including in the United 
 ## Your rights
 
 You can ask us to show you the data we hold about you, correct it, delete it, limit what we do with
-it, or give it to you in a usable form. You can object to how we use it. Write to <CONTACT EMAIL>.
+it, or give it to you in a usable form. You can object to how we use it. Write to contact@potyro.com.
 
 There are no accounts, so we can only find your data if you tell us where it is: the link, the
 request, or your identity id (You, Advanced). We reply within one month.

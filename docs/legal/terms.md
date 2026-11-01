@@ -9,7 +9,7 @@ Effective: <DATE>
 ## Who you are dealing with
 
 Potyro at potyro.app is run by Edgar Zanella Alvarenga, an individual resident in Italy, not a company. Write
-to <CONTACT EMAIL>. In these terms, "we" means that person.
+to contact@potyro.com. In these terms, "we" means that person.
 
 How we handle your data is in the [privacy page](privacy.md). It is part of these terms.
 
@@ -95,7 +95,7 @@ on reports.
 ## Reporting illegal content
 
 If you find a link or other content on Potyro that you think is illegal, write to
-<ABUSE EMAIL>. Please include:
+abuse@potyro.com. Please include:
 
 - the link, or where the content is;
 - why you think it is illegal;
@@ -150,4 +150,4 @@ applies. If you do not agree with a change, stop using the service and export yo
 These terms are governed by Italian law. If you are a consumer living in the EU, you also keep the
 protection of the law of the country where you live, and you can go to the courts there.
 
-If something goes wrong, write to <CONTACT EMAIL> first. We will try to sort it out with you.
+If something goes wrong, write to contact@potyro.com first. We will try to sort it out with you.
