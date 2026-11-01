@@ -2,9 +2,9 @@
 // and by the gallery's build (gallery/src/build.mjs).
 //
 // `ABUSE_CONTACT` is the report address the terms name (docs/legal/terms.md, "Reporting illegal
-// content"; issue #11). It is the placeholder `<ABUSE EMAIL>` until the owner fills it in
-// contacts.json — and until then a report goes to the general address, which is read today, rather
-// than to a `mailto:` nobody can send to. Fill it in once and every "Report" follows.
+// content"; issue #11): abuse@potyro.com since 2026-11-01. Were it a placeholder (`<ABUSE EMAIL>`)
+// again, a report would go to the general address, which is read, rather than to a `mailto:` nobody
+// can send to. Change it in contacts.json once and every "Report" follows.
 
 import contacts from "./contacts.json";
 

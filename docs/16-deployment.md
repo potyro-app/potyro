@@ -854,7 +854,7 @@ and Apache does not tell the service which scheme it was reached by.
 
 `/etc/potyro/share-links.env` (mode 600, owned by root) holds the one secret,
 `SHARE_ADMIN_TOKEN=…` (made with `openssl rand -base64 33`), and the report address: a line
-`SHARE_ABUSE_CONTACT=` with the real address the terms name after it (the same one as `abuse` in
+`SHARE_ABUSE_CONTACT=abuse@potyro.com` (the address the terms name, the same as `abuse` in
 `packages/shell/src/contacts.json`). Until it is set — or while it is still a placeholder like
 `<ABUSE EMAIL>`, which the service says in its log at start — a taken-down link's page names
 `contact@potyro.com`. The token is the operator's token for taking a
