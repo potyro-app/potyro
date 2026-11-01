@@ -139,7 +139,7 @@ test("the piano package installs with its helpers as modules, no build step, and
   await page.goto("/");
   const dialog = await addFromDevice(page, [{ name: "piano.potyro-app.zip", mimeType: "application/zip", buffer: readFileSync(join(dir, "piano.potyro-app.zip")) }]);
   const card = dialog.getByRole("region", { name: /About Piano/ });
-  await expect(card).toContainText(/plan\.ts, progress\.ts,? and styles\.ts/);
+  await expect(card).toContainText(/plan\.ts, progress\.ts, styles\.ts,? and card\.ts/);
   // Its plan and its five catalogs (docs/30): six files, summed up.
   await expect(card).toContainText(/Comes with\s*6 files/);
   await dialog.getByRole("checkbox", { name: /I wrote this/ }).check();

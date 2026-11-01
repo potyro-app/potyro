@@ -198,16 +198,32 @@ msgid "Repeat"
 msgstr "Wiederholen"
 
 #: ctx.t
+msgid "{done}/{total} blocks today"
+msgstr "{done}/{total} Blöcke heute"
+
+#: ctx.t
+msgid "Day done"
+msgstr "Tag geschafft"
+
+#: ctx.t
+msgid "Day {day} of 7"
+msgstr "Tag {day} von 7"
+
+#: ctx.t
+msgid "This week"
+msgstr "Diese Woche"
+
+#: ctx.t
+msgid "It could not be shared."
+msgstr "Es ließ sich nicht teilen."
+
+#: ctx.t
 msgid " · week {n} of {total}"
 msgstr " · Woche {n} von {total}"
 
 #: ctx.t
 msgid "Day 7 · rest"
 msgstr "Tag 7 · Ruhetag"
-
-#: ctx.t
-msgid "Day {day} of 7"
-msgstr "Tag {day} von 7"
 
 #: ctx.t
 msgid " · review day"
@@ -220,10 +236,6 @@ msgstr "Wiederholung {n}"
 #: ctx.t
 msgid "The plan starts on {date}. Change it on the Modules tab."
 msgstr "Der Plan beginnt am {date}. Ändern kannst du das im Tab Module."
-
-#: ctx.t
-msgid "This week"
-msgstr "Diese Woche"
 
 #: ctx.t
 msgid "✓ Rested"
@@ -270,12 +282,16 @@ msgid "Reset"
 msgstr "Zurücksetzen"
 
 #: ctx.t
-msgid "Done when"
-msgstr "Geschafft, wenn"
+msgid "{minutes} practised"
+msgstr "{minutes} geübt"
 
 #: ctx.t
-msgid "{done}/{total} blocks today"
-msgstr "{done}/{total} Blöcke heute"
+msgid "Share"
+msgstr "Teilen"
+
+#: ctx.t
+msgid "Done when"
+msgstr "Geschafft, wenn"
 
 #: ctx.t
 msgid "You have met the last goal of this plan. Time to ask for a new one."
