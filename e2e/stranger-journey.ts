@@ -385,6 +385,9 @@ export async function noFreeRouteToGallery({ page, context, browser, baseURL, de
   await expect(remix.getByRole("listitem", { name: "The Studio, on your remix" })).toBeVisible({ timeout: 30_000 });
   await remix.getByRole("button", { name: "Close studio" }).click();
   await expect(gallery.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
+  // Its sample plants are there: on the Plants page, which lists them all — Today shows only what is
+  // due within a week, and the seed's dates move with the calendar (Monstera is due on the 15th).
+  await gallery.getByRole("navigation", { name: "Pages" }).getByRole("button", { name: "Plants" }).click();
   const monstera = gallery.getByText("Monstera").first();
   await expect(monstera).toBeVisible({ timeout: 30_000 });
   expect(await onTop(gallery, monstera)).toBe(true);
