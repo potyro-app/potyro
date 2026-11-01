@@ -5,6 +5,9 @@
 //   node scripts/ci-watch.mjs gate <sha>   a push to vazio's bare repo (its post-receive hook).
 //                                          CI runs BEFORE main moves: green → pushed to GitHub's
 //                                          main and deployed; red → GitHub's main never sees it.
+//                                          Nothing pushes there now: PRs merge on GitHub and cron
+//                                          deploys them. The hooks left the repository with #286
+//                                          (docs/16 "How it was"); this mode stays for them.
 //   node scripts/ci-watch.mjs              cron, every 5 minutes: the backstop for anything merged
 //                                          on GitHub. Main already moved; this runs CI on it and
 //                                          deploys it when green.
