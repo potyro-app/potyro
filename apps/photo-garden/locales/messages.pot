@@ -74,6 +74,18 @@ msgid "Drag across it to scatter the specks"
 msgstr ""
 
 #: ctx.t
+msgid "Share"
+msgstr ""
+
+#: ctx.t
+msgid "Kept “{title}” in your gallery"
+msgstr ""
+
+#: ctx.t
+msgid "It could not be shared."
+msgstr ""
+
+#: ctx.t
 msgid "Density"
 msgstr ""
 
@@ -118,15 +130,7 @@ msgid "The picture could not be saved."
 msgstr ""
 
 #: ctx.t
-msgid "Kept “{title}” in your gallery"
-msgstr ""
-
-#: ctx.t
 msgid "Delete"
-msgstr ""
-
-#: ctx.t
-msgid "Share"
 msgstr ""
 
 #: ctx.t
@@ -139,10 +143,6 @@ msgstr ""
 
 #: ctx.t
 msgid "It could not be saved here."
-msgstr ""
-
-#: ctx.t
-msgid "It could not be shared."
 msgstr ""
 
 #: ctx.t
