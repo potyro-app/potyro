@@ -133,7 +133,15 @@ const UNSETTABLE = new Set<Field["type"]>(["media", "file", "member"]);
 
 const labelOf = (key: string, field: Field): string => (field.label === undefined ? humanizeKey(key) : plainWords(field.label));
 
-function describeField(key: string, field: Field): string {
+/** How Ask tells the model to write a relation: to a row it proposes, or one the person has. */
+const proposalRelation = (field: Field & { type: "relation" }): string =>
+  `relation to ${field.to}${field.many ? " (a list)" : ""}: "@<ref>" of a ${field.to} row in this proposal, ` + `or { "match": "<its name>" } for one the person already has`;
+
+/**
+ * One field, in words a model can fill: its key, label and the rules on it. `relation` says how a
+ * link is written — Ask's proposal refs by default; the create loop's sample records (#486) use ids.
+ */
+export function describeField(key: string, field: Field, relation: (field: Field & { type: "relation" }) => string = proposalRelation): string {
   const rules: string[] = [];
   switch (field.type) {
     case "text":
@@ -167,13 +175,10 @@ function describeField(key: string, field: Field): string {
       rules.push('place: { "lat": number, "lng": number, "label"?: string }');
       break;
     case "relation":
-      rules.push(
-        `relation to ${field.to}${field.many ? " (a list)" : ""}: "@<ref>" of a ${field.to} row in this proposal, ` +
-          `or { "match": "<its name>" } for one the person already has`,
-      );
+      rules.push(relation(field));
       break;
     case "list": {
-      const sub = Object.entries(field.of).map(([k, f]) => describeField(k, f)).join("; ");
+      const sub = Object.entries(field.of).map(([k, f]) => describeField(k, f, relation)).join("; ");
       rules.push(`list of rows, each { ${sub} }`);
       break;
     }

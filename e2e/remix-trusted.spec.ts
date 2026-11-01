@@ -149,5 +149,6 @@ test("the gallery is one tap away: from Add an app", async ({ page }) => {
   await page.getByRole("button", { name: "Add an app" }).first().click();
   const gallery = page.getByRole("dialog", { name: "Add an app" }).getByRole("link", { name: /From the gallery/ });
   await expect(gallery).toHaveAttribute("href", process.env.POTYRO_GALLERY_URL ?? /\/$/);
-  await expect(gallery).toHaveAttribute("target", "_blank");
+  // In this tab (#487): the gallery's Make it mine comes back to the tab that holds the apps.
+  await expect(gallery).not.toHaveAttribute("target", /./);
 });
