@@ -2,8 +2,8 @@
 //
 // It opens on the conversation, full screen: what you want, the agent's questions when something is
 // not clear, and a card for every version it makes. The app itself is opened from its card, as the
-// app it will be — the whole screen on a phone, beside the conversation on a wide one — with the way
-// back always on its bar. The code and the version history are behind it, in the menu.
+// app it will be — under the Studio's bar on a phone, beside the conversation on a wide one — with
+// Close and the way back always on that bar (#489). The code and the version history are behind it, in the menu.
 //
 // Every version is SAVED as it is made. The old Studio built a draft and waited for a Save button,
 // so a closed tab or a reload lost both the app and what had been asked for it; with the
@@ -14,7 +14,7 @@
 //
 // Everything here runs the person's own app trusted (CLAUDE.md rule 3); studio-preview.tsx builds it.
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { AppLock, PackagedFile } from "@potyro/store";
@@ -112,6 +112,53 @@ export default defineApp({
   ],
 });
 `;
+
+/**
+ * The Studio's bar, measured onto the Studio as `--k-studio-bar-h`: on a phone the opened app stands
+ * under it (#489), so its Close and its tabs stay where they were — the bar's height follows the
+ * text size and the phone's status bar, so it is read, not assumed.
+ */
+function useBarHeight(root: RefObject<HTMLElement>, bar: RefObject<HTMLElement>): void {
+  useLayoutEffect(() => {
+    const el = bar.current;
+    const host = root.current;
+    if (!el || !host) return;
+    const put = (): void => host.style.setProperty("--k-studio-bar-h", `${el.getBoundingClientRect().height}px`);
+    put();
+    if (typeof ResizeObserver !== "function") return;
+    const watch = new ResizeObserver(put);
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, [root, bar]);
+}
+
+/** Focus that is nowhere a person can be: on the page itself, or on a control now inert. */
+function focusLost(): boolean {
+  const at = document.activeElement;
+  return !at || at === document.body || at.closest("[inert]") !== null;
+}
+
+/**
+ * On a phone the opened app covers the conversation, which turns inert (#489): the card's Open (or
+ * the code sheet's Run) that opened it can no longer hold focus. Focus moves to the app's region, so a
+ * keyboard or a screen reader is where the app is, not at the top of the page. When the app closes
+ * and focus went with it, it comes back to the Conversation tab, or — no tabs — to the Studio's menu.
+ */
+function usePhoneFocus(
+  covering: boolean,
+  region: RefObject<HTMLElement>,
+  conversationTab: RefObject<HTMLElement>,
+  bar: RefObject<HTMLElement>,
+): void {
+  const was = useRef(covering);
+  useEffect(() => {
+    if (covering === was.current) return;
+    was.current = covering;
+    if (!focusLost()) return;
+    if (covering) region.current?.focus({ preventScroll: true });
+    else (conversationTab.current ?? bar.current?.querySelector<HTMLElement>(".k-studio-more"))?.focus({ preventScroll: true });
+  }, [covering, region, conversationTab, bar]);
+}
 
 /** Wide enough for the conversation and the app side by side. Narrower, the app takes the screen. */
 const SIDE_BY_SIDE = "(min-width: 1100px)";
@@ -241,6 +288,11 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const free = useFreeAi();
   const wide = useWide();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLElement>(null);
+  useBarHeight(rootRef, barRef);
+  const previewRef = useRef<HTMLElement>(null);
+  const conversationTabRef = useRef<HTMLButtonElement>(null);
 
   const label = engineLabel(engineCfg);
   const ready = engineReady(engineCfg);
@@ -804,10 +856,19 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     }
   };
   const showPreview = previewOpen && preview !== null;
+  /** Leaving the app ends pointing at it, by whichever way back (the tab, or the preview's own). */
+  const closePreview = (): void => {
+    setPointing(false);
+    setPreviewOpen(false);
+  };
+  usePhoneFocus(showPreview && !wide, previewRef, conversationTabRef, barRef);
+  // On a phone the app covers the conversation and the box: out of reach, so out of the reading and
+  // Tab order too (#489), until the Conversation tab brings them back. The bar above stays live.
+  const covered: Record<string, string> = showPreview && !wide ? { inert: "" } : {};
   const tabs =
     canOpen && !wide ? (
       <div className="k-studio-tabs" role="tablist" aria-label={t`Studio`}>
-        <button type="button" role="tab" className="k-studio-tab" aria-selected={!showPreview} onClick={() => setPreviewOpen(false)}>
+        <button ref={conversationTabRef} type="button" role="tab" className="k-studio-tab" aria-selected={!showPreview} onClick={closePreview}>
           <Trans comment="Studio tab on a phone: the conversation">Conversation</Trans>
         </button>
         <button type="button" role="tab" className="k-studio-tab" aria-selected={showPreview} onClick={() => setPreviewOpen(true)}>
@@ -867,9 +928,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   };
 
   return (
-    <div className="k-studio k-traco" role="dialog" aria-label={t`App studio`} data-preview={showPreview || undefined} style={ROSA as CSSProperties}>
+    <div ref={rootRef} className="k-studio k-traco" role="dialog" aria-label={t`App studio`} data-preview={showPreview || undefined} style={ROSA as CSSProperties}>
       <div className="k-studio-chat">
-        <header className="k-studio-bar">
+        <header ref={barRef} className="k-studio-bar">
           <button type="button" className="k-studio-close" aria-label={t`Close studio`} onClick={onClose}>
             {I.close}
           </button>
@@ -899,7 +960,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           <ActionMenu label={t`Studio menu`} trigger={I.more} entries={menu} buttonClassName="k-studio-more" />
         </header>
 
-        <div className="k-studio-scroll" ref={scrollRef}>
+        <div className="k-studio-scroll" ref={scrollRef} {...covered}>
           <div className="k-studio-column">
             <ThreadView
               items={items}
@@ -919,7 +980,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               onFix={() => void fixHeld()}
               onKeep={() => void keepHeld()}
               onLook={() => setPreviewOpen(true)}
-              onSuggest={(s) => setDescription(s)}
+              onSuggest={noWay ? undefined : (s) => setDescription(s)}
               existing={hasApp}
               remix={remix}
               requests={requests}
@@ -928,8 +989,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           </div>
         </div>
 
-        <footer className="k-composer">
-          {noWay ? <FreePanel free={free} onAddKey={() => setSettingsOpen(true)} ownKey={ownKey} /> : null}
+        <footer className="k-composer" {...covered}>
+          {noWay ? <FreePanel free={free} onAddKey={() => setSettingsOpen(true)} ownKey={ownKey} request={description} /> : null}
           {noWay ? null : <VoiceStrip voice={voice} />}
           <div className="k-composer-box" hidden={noWay} data-pointed={point ? true : undefined} data-listening={listening || undefined}>
             {point ? (
@@ -1010,16 +1071,14 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         <PreviewScreen
           preview={preview}
           title={appName}
-          tabs={tabs}
+          underStudioBar={tabs !== null}
+          regionRef={previewRef}
           above={adjust}
           appAccent={hue !== undefined ? hueColour(hue) : undefined}
           appearance={appearance}
           version={items.reduce<number | undefined>((v, i) => (i.type === "version" && i.current ? i.seq : v), undefined)}
           unsaved={held !== null}
-          onBack={() => {
-            setPointing(false);
-            setPreviewOpen(false);
-          }}
+          onBack={closePreview}
           onSource={() => setTools("source")}
           pointing={pointing}
           onPoint={() => setPointing(true)}
