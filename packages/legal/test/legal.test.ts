@@ -11,12 +11,13 @@ import { legalFileFor, legalPagesPlugin } from "../src/vite.mjs";
 
 const real = { privacy: readFileSync(join(LEGAL_DIR, "privacy.md"), "utf8"), terms: readFileSync(join(LEGAL_DIR, "terms.md"), "utf8") };
 
-/** The texts as the owner will leave them: every placeholder filled, the draft note gone, the date set. */
+/** The texts as the owner will leave them: every placeholder filled (addresses as example ones), the draft note gone, the date set. */
 function finished(md: string): string {
   return md
     .replace(/^> \*\*Draft\.\*\*[^\n]*\n(?:>[^\n]*\n)*/m, "")
-    .replace(/<CONTACT EMAIL>/g, "privacy@example.org")
-    .replace(/<ABUSE EMAIL>/g, "abuse@example.org")
+    // The real addresses (filled in on 2026-11-01) become example ones, so the fixtures do not depend on them.
+    .replace(/<CONTACT EMAIL>|contact@potyro\.com/g, "privacy@example.org")
+    .replace(/<ABUSE EMAIL>|abuse@potyro\.com/g, "abuse@example.org")
     .replace(/<DATE>/g, "2026-11-01")
     .replace(/<HOSTING LOCATION>/g, "Finland")
     .replace(/<RETENTION, to decide>/g, "A year");

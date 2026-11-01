@@ -118,7 +118,8 @@ test("the gallery page: accessible, asks nothing of anyone else, Try it and Make
     const link = await tryIt.getAttribute("href");
     expect(link).toMatch(/\/s\/[A-Za-z0-9_-]+#k=[A-Za-z0-9_-]+$/);
     expect(await mine.getAttribute("href")).toBe(`${link}&remix=1`);
-    await expect(page.getByRole("link", { name: "Report a link" })).toHaveAttribute("href", /^mailto:contact@potyro\.com\?subject=/);
+    // The report address of the terms (`abuse` in packages/shell/src/contacts.json), filled in on 2026-11-01.
+    await expect(page.getByRole("link", { name: "Report a link" })).toHaveAttribute("href", /^mailto:abuse@potyro\.com\?subject=/);
     await expect(page.getByRole("link", { name: "Open Potyro" })).toHaveAttribute("href", "https://potyro.app/");
     // The workbench is empty since 2026-10-20: the page leaves the section out, heading and all.
     await expect(page.getByRole("heading", { name: "On the workbench" })).toHaveCount(0);

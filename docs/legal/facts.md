@@ -130,9 +130,9 @@ that names and who shares with whom can be seen on the relay.
 | F-58 | Hosting is Hetzner. The box is `65.109.228.5`. | docs/16 §8 table. RIPE RDAP for that address: netname `CLOUD-HEL1`, country `FI`, which points to Hetzner Cloud, Helsinki. | observed; the location to confirm in the Hetzner console. The public text has the placeholder `<HOSTING LOCATION>` until then |
 | F-59 | One relay, no backup yet. | #214 open: no nightly backup, no offsite copy, no restore drill. docs/16 mentions backups only as planned. | doc |
 | F-60 | The sync relay on potyro.app is live. | `/sync` did not answer a plain GET within 10 s (it expects a websocket). | **to verify** |
-| F-61 | Mail for potyro.com and potyro.app goes to Gandi. | `dig MX potyro.com` → `spool.mail.gandi.net`, `fb.mail.gandi.net` (same for potyro.app) | observed. Whether privacy@, abuse@, security@ exist: **to verify** |
+| F-61 | Mail for potyro.com and potyro.app goes to Gandi. | `dig MX potyro.com` → `spool.mail.gandi.net`, `fb.mail.gandi.net` (same for potyro.app) | observed. On 2026-11-01 Gandi's server accepted `RCPT TO` for contact@, abuse@ and security@potyro.com and rejected privacy@ ("User unknown"): the three exist, privacy@ does not |
 | F-62 | The gallery on potyro.com keeps no access log. | docs/16 "The gallery" (Caddy `log { output discard }`) | doc; whether it is applied on the server: **to verify** |
-| F-63 | The gallery's "Report a link" and a hosted demo link's Report mail the report address (`abuse` in `shell/src/contacts.json`); while that is the `<ABUSE EMAIL>` placeholder, contact@potyro.com. | docs/24 §4, §10; `gallery/src/build.mjs`; `shell/src/contact.ts`, `demo.tsx` | code |
+| F-63 | The gallery's "Report a link" and a hosted demo link's Report mail the report address (`abuse` in `shell/src/contacts.json`); abuse@potyro.com since 2026-11-01; were it a placeholder again, contact@potyro.com. | docs/24 §4, §10; `gallery/src/build.mjs`; `shell/src/contact.ts`, `demo.tsx` | code |
 | F-64 | potyro.app answers without a gate (public). | `curl -sI https://potyro.app/` → 200, no auth | observed |
 | F-65 | `/privacy` and `/terms` on potyro.app currently serve the app shell (the SPA fallback), not these texts. | `curl https://potyro.app/privacy` → the shell's `index.html` | observed |
 

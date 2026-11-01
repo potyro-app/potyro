@@ -827,14 +827,14 @@ docker run -d --name potyro-share-links --restart unless-stopped \
 docker logs potyro-share-links   # "[share-links] keeping shares in /data, page from /site/index.html, listening on 0.0.0.0:4203"
 ```
 
-The `--env-file` line is there only when `/etc/potyro/share-links.env` exists; today it does not.
+The `--env-file` line is there only when `/etc/potyro/share-links.env` exists; it does since 2026-11-01.
 
 `POTYRO_PUBLIC_ORIGIN` is what preview URLs are built on. Crawlers need absolute `https://` URLs,
 and the service does not read the scheme from the request.
 
 `/etc/potyro/share-links.env` (mode 600, owned by root; the names in
 `deploy/env.example/share-links.env.example`) holds the one secret, `SHARE_ADMIN_TOKEN` (made with
-`openssl rand -base64 33`), and the report address: `SHARE_ABUSE_CONTACT`, the real address the
+`openssl rand -base64 33`), and the report address: `SHARE_ABUSE_CONTACT=abuse@potyro.com`, the address the
 terms name (the same one as `abuse` in `packages/shell/src/contacts.json`). Until it is set — or
 while it is still a placeholder like `<ABUSE EMAIL>`, which the service says in its log at start —
 a taken-down link's page names `contact@potyro.com`. The token is the operator's token for taking a

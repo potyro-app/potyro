@@ -10,7 +10,7 @@ Report privately, never in a public issue or pull request:
 
 - **GitHub private vulnerability reporting**: on this repository's GitHub page, the **Security** tab,
   then **Report a vulnerability**. This is the preferred way.
-- **Email**: `<SECURITY EMAIL>`.
+- **Email**: security@potyro.com.
 
 Say what you found, the steps or a page that shows it, the browser or device, and the commit or the
 site (potyro.app, potyro.com) you tested. A short report is fine; we will ask for what is missing.
