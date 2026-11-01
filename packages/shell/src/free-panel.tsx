@@ -10,9 +10,9 @@
 // What the person already asked for is kept in the hidden box while the panel stands in its place
 // (#488): the panel says it back, in their words, on one line, so it does not look lost.
 
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { galleryUrl } from "./gallery-link.js";
+import { galleryUrl, openGallery } from "./gallery-link.js";
 import { freeUnreachable, refusalText, type FreeAi, stoppedNow } from "./free-ai.js";
 import { countOnce, countedThisMonth } from "./demand-counts.js";
 
@@ -31,6 +31,12 @@ interface Props {
   onAddKey: () => void;
   /** A key the person already has in Model settings, by its engine's name: then the first button uses it. */
   ownKey?: { label: string; use: () => void };
+  /**
+   * Called as the person leaves for the gallery, in this tab (#487): keep what the page holds. `true`
+   * (or nothing): go now. A promise: the Studio is asking first (something here would be lost), and
+   * the page goes only when it settles `true`.
+   */
+  onLeave?: () => boolean | void | Promise<boolean>;
   /** What is waiting in the box, to be sent once an engine can make it. */
   request?: string;
 }
@@ -40,11 +46,19 @@ export function askedLine(request: string | undefined): string {
   return (request ?? "").replace(/\s+/g, " ").trim();
 }
 
-export function FreePanel({ free, onAddKey, ownKey, request }: Props) {
+export function FreePanel({ free, onAddKey, ownKey, onLeave, request }: Props) {
   const { t } = useLingui();
   const asked = askedLine(request);
   const stop = stoppedNow(free);
   const keyName = ownKey?.label ?? "";
+  const leave = (e: MouseEvent<HTMLAnchorElement>): void => {
+    const go = onLeave?.();
+    if (!(go instanceof Promise)) return; // the link goes, as any link does
+    e.preventDefault();
+    void go.then((yes) => {
+      if (yes) openGallery();
+    });
+  };
   const [plan, setPlan] = useState<string | null>(countedThisMonth("want-plan") ? t`Counted, thanks. Nothing about you was sent.` : null);
 
   const wantPlan = async (): Promise<void> => {
@@ -105,7 +119,8 @@ export function FreePanel({ free, onAddKey, ownKey, request }: Props) {
             <Trans comment="Button: open Model settings to paste a key">Add a key</Trans>
           </button>
         )}
-        <a className="k-add k-free-panel-gallery" href={galleryUrl()} target="_blank" rel="noopener">
+        {/* In this tab (gallery-link.ts): the gallery's Make it mine comes back to the tab with your apps. */}
+        <a className="k-add k-free-panel-gallery" href={galleryUrl()} onClick={leave}>
           <Trans comment="Link: Potyro's gallery of apps, where one can be made your own with no key">Start from an app in the gallery</Trans>
         </a>
       </div>
