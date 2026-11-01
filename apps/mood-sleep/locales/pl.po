@@ -141,6 +141,10 @@ msgid "🌙  Log last night"
 msgstr "🌙  Zapisz ostatnią noc"
 
 #: ctx.t
+msgid "Share"
+msgstr "Udostępnij"
+
+#: ctx.t
 msgid "Sleep"
 msgstr "Sen"
 
@@ -195,6 +199,10 @@ msgstr "Średni nastrój"
 #: ctx.t
 msgid "Nights ≥ {h}h"
 msgstr "Noce ≥ {h} godz."
+
+#: ctx.t
+msgid "It could not be shared."
+msgstr "Nie udało się udostępnić."
 
 #: ctx.t
 msgid "Last night"

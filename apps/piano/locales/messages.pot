@@ -198,15 +198,31 @@ msgid "Repeat"
 msgstr ""
 
 #: ctx.t
+msgid "{done}/{total} blocks today"
+msgstr ""
+
+#: ctx.t
+msgid "Day done"
+msgstr ""
+
+#: ctx.t
+msgid "Day {day} of 7"
+msgstr ""
+
+#: ctx.t
+msgid "This week"
+msgstr ""
+
+#: ctx.t
+msgid "It could not be shared."
+msgstr ""
+
+#: ctx.t
 msgid " · week {n} of {total}"
 msgstr ""
 
 #: ctx.t
 msgid "Day 7 · rest"
-msgstr ""
-
-#: ctx.t
-msgid "Day {day} of 7"
 msgstr ""
 
 #: ctx.t
@@ -219,10 +235,6 @@ msgstr ""
 
 #: ctx.t
 msgid "The plan starts on {date}. Change it on the Modules tab."
-msgstr ""
-
-#: ctx.t
-msgid "This week"
 msgstr ""
 
 #: ctx.t
@@ -270,11 +282,15 @@ msgid "Reset"
 msgstr ""
 
 #: ctx.t
-msgid "Done when"
+msgid "{minutes} practised"
 msgstr ""
 
 #: ctx.t
-msgid "{done}/{total} blocks today"
+msgid "Share"
+msgstr ""
+
+#: ctx.t
+msgid "Done when"
 msgstr ""
 
 #: ctx.t
