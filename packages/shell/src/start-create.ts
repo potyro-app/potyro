@@ -13,6 +13,7 @@ import { createOpenRouterEngine, loadCorpus, type Language } from "@potyro/gener
 import { thinkingFor, type EngineConfig } from "./engines.js";
 import { buildAndValidate } from "./validate-app.js";
 import { runCandidate } from "./run-candidate.js";
+import { sampleSeed, type AppSeed, type Entities } from "./app-seed.js";
 import { loopEngineOptions, modifyLoopRefusal } from "./start-modify.js";
 
 export interface StartCreateOpts {
@@ -30,13 +31,27 @@ export interface StartCreateOpts {
 /** Whether this engine can drive the create loop — the same engines that drive the modify loop. */
 export const createLoopRefusal = modifyLoopRefusal;
 
-export async function startCreate(opts: StartCreateOpts): Promise<CreateLoopOutcome> {
+/**
+ * What the loop ended with; an app it made carries its sample records (#486) — the app's demo records,
+ * what a link anyone can try opens on: the ones the loop asked the model for once the app passed its
+ * run, each row checked as a use of the seed checks it (`sampleSeed`). None when its run threw, the
+ * reply was not rows, or fewer than two fit — the app then opens on an empty copy.
+ */
+export type StudioCreateOutcome = Exclude<CreateLoopOutcome, { kind: "source" }> | (Extract<CreateLoopOutcome, { kind: "source" }> & { seed?: AppSeed });
+
+export async function startCreate(opts: StartCreateOpts): Promise<StudioCreateOutcome> {
   const refused = createLoopRefusal(opts.engine);
   if (refused) return { kind: "failed", reason: refused, cause: "engine" };
   const check = (source: string): Promise<string[]> => buildAndValidate(source);
-  const run = (source: string) => runCandidate(source);
+  /** The entities of each candidate that passed its run, by its source: what its sample records are asked for in, and checked against. */
+  const passed = new Map<string, Entities>();
+  const run = async (source: string) => {
+    const { entities, ...report } = await runCandidate(source);
+    if (!report.errors.length && entities) passed.set(source, entities);
+    return report;
+  };
   const chat = loopEngineOptions(opts.engine);
-  return runCreateLoop({
+  const outcome = await runCreateLoop({
     // How hard the model thinks is the person's setting (#280); the escalation is its own switch.
     engine: createOpenRouterEngine(chat),
     model: chat.model,
@@ -50,7 +65,12 @@ export async function startCreate(opts: StartCreateOpts): Promise<CreateLoopOutc
     ...(opts.drafts ? { drafts: opts.drafts } : {}),
     check,
     run,
+    samples: (source) => passed.get(source),
     onStep: opts.onStep,
     signal: opts.signal,
   });
+  if (outcome.kind !== "source") return outcome;
+  const { samples, ...made } = outcome;
+  const seed = sampleSeed(samples, passed.get(made.source));
+  return seed ? { ...made, seed } : made;
 }
