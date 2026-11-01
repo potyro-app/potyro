@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type BrowserContext, type Locator, type Page, type Route } from "./console-guard";
 import { tileAction } from "./launcher-actions";
 import { makeDemoLink } from "./share-demo";
-import { openFromCard } from "./studio-helpers.js";
+import { asksForSamples, openFromCard } from "./studio-helpers.js";
 
 // The stranger journey (#124, its amendment of 2026-10-30), shared by the trusted and the prod spec.
 // Not a `.spec.ts`, so Playwright does not collect it.
@@ -22,10 +22,12 @@ export const MODEL = "deepseek/deepseek-v4-flash-0731";
 export const PROMPT = "a list of the plants I water and when";
 export const APP_NAME = "Watering";
 export const MY_PLANT = "Lemon tree on the balcony";
-/** What the share sheet says a demo link of an app with no sample records opens on. */
-export const OPENS_EMPTY = "It opens an empty copy of the app right away in any browser. No account, nothing to install. Your records stay with you.";
+/** What the share sheet says a demo link of an app with sample records opens on. */
+export const OPENS_ON_SAMPLES = "It opens the app right away in any browser, with sample records. No account, nothing to install. None of your records go with it.";
+/** The sample plants the faked model "writes" when the create loop asks for them (#486), as a stranger sees them. */
+export const SAMPLE_PLANTS = ["Monstera by the window", "Fern in the bathroom", "Aloe on the desk"] as const;
 
-/** What the model "writes" for the prompt: an app as a model would — no sample records of its own. */
+/** What the model "writes" for the prompt: an app as a model would. Its sample records come from a second call (`SAMPLE_PLANTS`). */
 export const APP_SOURCE = `import { defineApp } from "potyro";
 
 export default defineApp({
@@ -49,6 +51,8 @@ export default defineApp({
 
 export interface RelayLog {
   chats: Array<{ authorization?: string; model?: unknown }>;
+  /** How many times the create loop asked for sample records (#486): once per app made. */
+  samples: number;
   counts: unknown[];
 }
 
@@ -57,18 +61,26 @@ export interface RelayLog {
  * answers with the app above, in the OpenAI reply shape, with what is left; /count is accepted.
  */
 export async function fakeRelay(context: BrowserContext, opts: { chat: boolean }): Promise<RelayLog> {
-  const log: RelayLog = { chats: [], counts: [] };
+  const log: RelayLog = { chats: [], samples: 0, counts: [] };
   await context.route("**/ai/health", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(opts.chat ? { ok: true, chat: true, model: MODEL } : { ok: true, chat: false }) }),
   );
   await context.route("**/ai/v1/chat/completions", async (route: Route) => {
     const req = route.request();
-    log.chats.push({ authorization: req.headers().authorization, model: (req.postDataJSON() as { model?: unknown }).model });
+    const body = req.postDataJSON() as { model?: unknown };
+    log.chats.push({ authorization: req.headers().authorization, model: body.model });
+    // The one request for sample records (#486), after the app passed its run: plausible rows, dated
+    // around today, in the app's own shape — what a link anyone can try opens on.
+    const day = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+    const content = asksForSamples(body)
+      ? JSON.stringify({ plant: SAMPLE_PLANTS.map((name, i) => ({ id: `plant-${i + 1}`, name, watered: day(i * 3 + 1) })) })
+      : "```ts\n" + APP_SOURCE + "```";
+    if (asksForSamples(body)) log.samples += 1;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       headers: { "x-potyro-left-usd": "0.48" },
-      body: JSON.stringify({ choices: [{ message: { role: "assistant", content: "```ts\n" + APP_SOURCE + "```" }, finish_reason: "stop" }], usage: { cost: 0.004 } }),
+      body: JSON.stringify({ choices: [{ message: { role: "assistant", content }, finish_reason: "stop" }], usage: { cost: 0.004 } }),
     });
   });
   await context.route("**/ai/count", async (route) => {
@@ -141,14 +153,13 @@ export async function secondDevice(browser: Browser, baseURL: string, device: De
 
 /**
  * On Home, from the tile's ⋯: Share → A link anyone can try → Make the link. Returns the link. The
- * app the model wrote has no sample records, and the sheet says the link opens on an empty copy.
+ * app keeps the sample records the model wrote for it (#486), and the sheet says the link opens on them.
  */
 export async function demoLinkFromTile(page: Page): Promise<string> {
   await tileAction(page, APP_NAME, "share-sheet");
   const sheet = page.getByRole("dialog", { name: `Share ${APP_NAME}` });
   await expect(sheet.getByRole("heading", { name: "A link anyone can try" })).toBeVisible();
-  await expect(sheet.getByText(OPENS_EMPTY)).toBeVisible();
-  await expect(sheet).not.toContainText("sample records");
+  await expect(sheet.getByText(OPENS_ON_SAMPLES)).toBeVisible();
   const make = sheet.getByRole("button", { name: "Make the link" });
   expect(await onScreen(page, make)).toBe(true);
   await make.click();
@@ -255,16 +266,9 @@ export async function makeUseAndShare({ page, context, browser, baseURL, device,
   expect(await onTop(page, row)).toBe(true);
 
   // 4. Closed, the Studio leaves the person on Home, where the app has a tile.
+  //    On a phone too, with the app open: the Studio's bar stays above the preview (#489), so Close is
+  //    on top at once — one tap to leave.
   const close = studio.getByRole("button", { name: "Close studio" });
-  if (device === PHONE) {
-    // FINDING #489: on a phone the app is the whole screen and covers the Studio's Close, so the
-    // Conversation tab comes first — two taps to leave, and the covered Close is still in the reading
-    // order. This step encodes the bug on purpose: once #489 is fixed the next line fails, and it
-    // becomes the real assertion — Close on top at once, no tab first.
-    test.info().annotations.push({ type: "finding", description: "#489 on a phone the app preview covers the Studio's Close: two taps to leave, a covered button in the reading order" });
-    expect(await onTop(page, close)).toBe(false);
-    await studio.getByRole("region", { name: "App preview" }).getByRole("tab", { name: "Conversation" }).click();
-  }
   expect(await onTop(page, close)).toBe(true);
   await close.click();
   await expect(studio).toHaveCount(0);
@@ -273,18 +277,16 @@ export async function makeUseAndShare({ page, context, browser, baseURL, device,
   const link = await demoLinkFromTile(page);
   expect(link).toMatch(/\/s\/[A-Za-z0-9_-]{22}/);
 
-  // 5. A second device that has never used Potyro opens it: sealed, named, and none of the sharer's
-  //    records. FINDING #486: an app made in the Studio has no sample records of its own, so the demo
-  //    opens on the app's empty page (the sheet now says so: "an empty copy of the app"). This step
-  //    encodes it on purpose: once #486 gives such an app something to show, the empty page below is
-  //    no longer there and the step becomes the real assertion — the link opens on sample records.
-  test.info().annotations.push({ type: "finding", description: "#486 an app made in the Studio has no sample records: its demo link opens on an empty page" });
+  // 5. A second device that has never used Potyro opens it: sealed, named, on the sample records the
+  //    model wrote for it (#486: one request, after the app passed its run), and none of the sharer's.
+  expect(relay.samples).toBe(1);
   const { context: other, page: viewer } = await secondDevice(browser, baseURL, device, deployed);
   await fakeRelay(other, { chat: true });
   await viewer.goto(link);
   await expect(viewer.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
   await expect(viewer.locator("h1").first()).toHaveText(APP_NAME);
-  await expect(viewer.getByText("Nothing here yet.")).toBeVisible();
+  for (const name of SAMPLE_PLANTS) await expect(viewer.getByText(name)).toBeVisible({ timeout: 30_000 });
+  await expect(viewer.getByText("Nothing here yet.")).toHaveCount(0);
   await expect(viewer.locator(".k-demo-bar")).toContainText("Made with Potyro");
   await expect(viewer.getByText(MY_PLANT)).toHaveCount(0);
   // The demo works as it is: a plant added there shows, on top, in the sealed app.
@@ -337,23 +339,13 @@ export async function noFreeRouteToGallery({ page, context, browser, baseURL, de
   // Hidden, it is out of the accessibility tree: found with `includeHidden` to read what it holds.
   const box = studio.getByRole("textbox", { name: "Describe the app", includeHidden: true });
   await expect(box).toBeHidden();
-  // FINDING #488: the panel takes the composer's place, and what the person typed on Home is nowhere
-  // on screen (it waits in the hidden box until a key is added); the Studio's "Ideas to start from"
-  // stay above the panel and fill that hidden box — a tap that shows nothing. These lines encode the
-  // bug on purpose: once #488 is fixed they fail, and they become the real assertions — the words
-  // shown (or said to be kept), and the ideas hidden or off while the box is.
-  test.info().annotations.push({ type: "finding", description: "#488 the words typed on Home are hidden behind the key panel, and 'Ideas to start from' fill the hidden box" });
+  // The panel stands in the composer's place, and says back what the person asked for (#488): their
+  // words, on one line, kept in the box for when an engine can make it. "Ideas to start from" are off
+  // while the box is hidden: nothing to tap that would fill what cannot be seen.
   await expect(box).toHaveValue(PROMPT);
-  // In the Studio, that is: Home behind it still holds them in its own box, under the Studio.
-  await expect(studio.getByText(PROMPT).filter({ visible: true })).toHaveCount(0);
-  const idea = studio.getByRole("list", { name: "Ideas to start from" }).getByRole("button").first();
-  await expect(idea).toBeVisible();
-  const ideaWords = (await idea.textContent())!.trim();
-  await idea.click();
-  await expect(box).toHaveValue(ideaWords);
-  await expect(box).toBeHidden();
-  // The idea itself is the only place in the Studio its words show.
-  await expect(studio.getByText(ideaWords, { exact: true }).filter({ visible: true })).toHaveCount(1);
+  await expect(panel).toContainText(`You asked for: ${PROMPT}`);
+  await expect(studio.getByText(PROMPT).filter({ visible: true })).toHaveCount(1);
+  await expect(studio.getByRole("list", { name: "Ideas to start from" })).toHaveCount(0);
   // When the build names no gallery (VITE_POTYRO_GALLERY), the link is the live site's root: the
   // tests route it, or they would leave for potyro.com.
   const start = panel.getByRole("link", { name: "Start from an app in the gallery" });
@@ -361,28 +353,23 @@ export async function noFreeRouteToGallery({ page, context, browser, baseURL, de
   expect(await smallerSide(start)).toBeGreaterThanOrEqual(44);
   expect(await onTop(page, start)).toBe(true);
 
-  const opened = context.waitForEvent("page");
+  // The gallery opens in this tab (#487): no second tab to hold the storage against this one, so
+  // Make it mine goes through at the first press, with no refusal.
+  await expect(start).not.toHaveAttribute("target", /./);
   await start.click();
-  const gallery = await opened;
+  const gallery = page;
   await expect(gallery).toHaveURL(/^https:\/\/potyro\.com\//);
+  expect(context.pages()).toEqual([page]);
   await gallery.getByRole("link", { name: "Make it mine" }).click();
   const card = gallery.getByRole("dialog", { name: "Make it mine" });
   await expect(card.getByRole("heading", { name: "Plants" })).toBeVisible({ timeout: 30_000 });
   await card.getByRole("button", { name: "Make it mine" }).click();
-  // FINDING: the gallery opened in a tab of its own (target=_blank), and its Make it mine opens Potyro
-  // in that tab while the Studio's tab still holds the storage — so the copy is refused ("its files
-  // could not be saved. Potyro is open in another tab") and the person is asked to take Potyro over
-  // here. "Use it here", then Make it mine again, gets through. When that is fixed, these lines go and
-  // the copy is made at the first press.
-  test.info().annotations.push({ type: "finding", description: "Gallery → Make it mine is refused while the Studio's tab is open: 'Potyro is open in another tab'" });
-  const taken = gallery.getByRole("alertdialog", { name: "Potyro is open in another tab" });
-  await expect(taken).toBeVisible({ timeout: 30_000 });
-  await expect(card.getByRole("alert")).toContainText("Potyro is open in another tab");
-  await taken.getByRole("button", { name: "Use it here" }).click();
-  await card.getByRole("button", { name: "Make it mine" }).click();
   // Their own copy, open in the Studio, and the app behind it running on its sample plants.
   const remix = gallery.getByRole("dialog", { name: "App studio" });
   await expect(remix.getByRole("listitem", { name: "The Studio, on your remix" })).toBeVisible({ timeout: 30_000 });
+  await expect(gallery.getByRole("alertdialog", { name: "Potyro is open in another tab" })).toHaveCount(0);
+  await expect(gallery.getByText("Potyro is open in another tab")).toHaveCount(0);
+  expect(context.pages()).toEqual([page]);
   await remix.getByRole("button", { name: "Close studio" }).click();
   await expect(gallery.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
   // Its sample plants are there: on the Plants page, which lists them all — Today shows only what is
