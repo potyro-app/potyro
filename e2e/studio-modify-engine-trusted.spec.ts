@@ -1,5 +1,5 @@
 import { test, expect } from "./console-guard";
-import { ask, chooseOpenRouter, currentCard, openFromCard, openHistory, openNewStudio, openSource } from "./studio-helpers.js";
+import { ask, chooseOpenRouter, currentCard, openFromCard, openHistory, openNewStudio, openSource, asksForSamples, noSamples } from "./studio-helpers.js";
 
 // One action and one engine. The engine is chosen in Model settings and used by BOTH create and
 // modify — it used to follow whichever generate button you last pressed, so reaching the cloud for
@@ -14,6 +14,7 @@ test("the chosen engine drives BOTH create and modify", async ({ page }) => {
 
   await page.route("**/openrouter.ai/**", async (route) => {
     const body = route.request().postDataJSON() as { messages: Array<{ role: string; content: string }> };
+    if (asksForSamples(body)) return route.fulfill(noSamples());
     hits.push("openrouter");
     sent.push(JSON.stringify(body.messages));
     // The first (create) answer takes a moment, as a real one does: an instant reply left the
@@ -99,6 +100,7 @@ test("an edit-block reply changes only the lines it names, and the Studio says h
 
   let turn = 0;
   await page.route("**/openrouter.ai/**", async (route) => {
+    if (asksForSamples(route.request().postDataJSON())) return route.fulfill(noSamples());
     turn += 1;
     const content = turn === 1 ? "```ts\n" + CREATED + "\n```" : EDIT_REPLY;
     await route.fulfill({
@@ -223,6 +225,7 @@ test("a generate that needs repair is repaired with an edit, with the validator'
   const sent: string[] = [];
   await page.route("**/openrouter.ai/**", async (route) => {
     const body = route.request().postDataJSON() as { messages: Array<{ role: string; content: string }> };
+    if (asksForSamples(body)) return route.fulfill(noSamples());
     hits.push("openrouter");
     sent.push(JSON.stringify(body.messages));
     // 1: the first draft; 2: the second, independent draft, broken another way; 3: the repair.

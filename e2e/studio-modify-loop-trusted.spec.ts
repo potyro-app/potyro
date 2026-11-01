@@ -1,5 +1,5 @@
 import { test, expect } from "./console-guard";
-import { ask, chooseOpenRouter, currentCard, openFromCard, openNewStudio, openSource } from "./studio-helpers.js";
+import { ask, chooseOpenRouter, currentCard, openFromCard, openNewStudio, openSource, asksForSamples, noSamples } from "./studio-helpers.js";
 
 // The modify LOOP (#131), end to end in the Studio with a scripted OpenRouter: the model refuses
 // without looking, is sent to the tools, calls `lookup`, gets the real declaration back inside the
@@ -18,6 +18,7 @@ test("modify runs on the loop: an unlooked refusal is sent to lookup, then edits
 
   await page.route("**/openrouter.ai/**", async (route) => {
     const body = route.request().postDataJSON() as { messages: Array<{ role: string; content: string; tool_calls?: unknown }>; tools?: unknown[] };
+    if (asksForSamples(body)) return route.fulfill(noSamples());
     requests.push(body.messages);
     const n = requests.length;
     if (n === 1) return route.fulfill(reply({ content: "```ts\n" + APP + "\n```" })); // create

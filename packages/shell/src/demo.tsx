@@ -19,6 +19,7 @@ import { App } from "./App.js";
 import { capsForApp } from "./app-ai-caps.js";
 import { AddAppDialog } from "./add-app-dialog.js";
 import { applySeed, applyShippedFiles, fileFieldsOf } from "./add-app.js";
+import { seedThatFits } from "./app-seed.js";
 import { compose, type Composed } from "./compose.js";
 import { askToFetch } from "./open-libraries.js";
 import { inspectLibraries, prepareCode } from "./package-libraries.js";
@@ -169,7 +170,9 @@ export async function openDemo(pkg: AppPackage, caps: Capabilities, opts: { link
   // the device that made the link wrote them from the app's own sample data (docs/24 §3).
   declaredId = composed.runtime.definition.id || declaredId;
   const entities = composed.runtime.definition.entities ?? {};
-  await applySeed(store, pkg.seed, Object.keys(entities), fileFieldsOf(entities));
+  // Fitted to the app as it loads here (#486): a row its write gate would refuse does not go in, and a
+  // reference to it is taken out — whatever the device that made the link fitted it to.
+  await applySeed(store, seedThatFits(pkg.seed, entities), Object.keys(entities), fileFieldsOf(entities));
   // An app shown "for a group" opens on one of the demo's groups, not on "choose a group".
   await chooseDemoScope(composed.runtime);
   composed.runtime.core.invalidate();

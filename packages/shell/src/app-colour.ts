@@ -37,3 +37,19 @@ export function tracoStyle(colour: string | undefined, fallbackHue: number): Rec
 
 /** The liveliest version of a hue — what a swatch shows. The same in both themes. */
 export const tracoOf = (hue: number): string => cor(hue).light.traco;
+
+/**
+ * A Start tile's colours for a hue, both themes (`--tile-bg-l/-d`, `--tile-ink-l/-d`; `.k-metro` in
+ * styles.css picks the theme's): the hour's button pair, `--accent` / `--on-accent` (DESIGN.md §3.1).
+ * The traço with graphite where graphite reads on it at AA, else the tinta with white — so the small
+ * words on a tile read at every angle. Only the tile's own tokens: inside it `--accent` stays Potyro's.
+ */
+export function tilePair(hue: number): Record<string, string> {
+  const c = cor(hue);
+  return {
+    "--tile-bg-l": c.light.accent,
+    "--tile-ink-l": c.light.onAccent,
+    "--tile-bg-d": c.dark.accent,
+    "--tile-ink-d": c.dark.onAccent,
+  };
+}

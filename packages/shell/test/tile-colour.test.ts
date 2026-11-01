@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { TILE_CONTRAST, contrastWithWhite, parseColour, readableOnWhite, tileBackground } from "../src/tile-colour.js";
+import { contrast } from "@potyro/design";
+import { parseColour } from "../src/tile-colour.js";
+import { tilePair } from "../src/app-colour.js";
 import { checkTileContent, hasLiveFace, showTile, TILE_LIMITS } from "../src/tile-content.js";
-
-// A Metro tile is the app's own colour with white on it, readable whatever the colour (owner, 2026-10-15).
-
-const contrast = (css: string): number => contrastWithWhite(parseColour(css)!);
 
 describe("tile colour", () => {
   it("reads hex, rgb(), hsl() and oklch()", () => {
@@ -16,32 +14,18 @@ describe("tile colour", () => {
     expect(parseColour("not a colour")).toBeNull();
   });
 
-  it("knows white on white fails and white on black passes", () => {
-    expect(contrast("#ffffff")).toBeCloseTo(1, 2);
-    expect(contrast("#000000")).toBeCloseTo(21, 0);
-  });
-
-  it("darkens a pale accent until white on it reaches AA, keeping its hue", () => {
-    // Plants' own green: white on it is 1.8:1.
-    expect(contrast("#7FCF8E")).toBeLessThan(2);
-    const fixed = readableOnWhite(parseColour("#7FCF8E")!);
-    expect(contrastWithWhite(fixed)).toBeGreaterThanOrEqual(TILE_CONTRAST);
-    expect(contrastWithWhite(fixed)).toBeLessThan(TILE_CONTRAST + 0.3); // only as far as needed
-    expect(fixed.h).toBeCloseTo(parseColour("#7FCF8E")!.h, 0);
-    expect(contrast(tileBackground("#7FCF8E", 0))).toBeGreaterThanOrEqual(TILE_CONTRAST);
-  });
-
-  it("uses a colour that already passes exactly as the app wrote it", () => {
-    expect(tileBackground("#0050EF", 0)).toBe("#0050EF");
-    expect(tileBackground("  #1b5e20 ", 0)).toBe("#1b5e20");
-  });
-
-  it("falls back to a readable colour of the app's own hue, for every hue on the wheel", () => {
-    for (let h = 0; h < 360; h += 15) {
-      expect(contrast(tileBackground(undefined, h))).toBeGreaterThanOrEqual(TILE_CONTRAST);
-      expect(contrast(tileBackground(`oklch(80% 0.15 ${h})`, h))).toBeGreaterThanOrEqual(TILE_CONTRAST);
+  // DESIGN.md §3.1: a tile is its hour's button pair, so the small words on it read (AA) at every
+  // angle, in both themes. Graphite on the bare traço does not: roxo's is 4.1:1.
+  it("is the hour's button pair, readable at every angle in both themes", () => {
+    for (let h = 0; h < 360; h += 5) {
+      const p = tilePair(h);
+      expect(contrast(p["--tile-bg-l"]!, p["--tile-ink-l"]!), `light ${h}°`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(p["--tile-bg-d"]!, p["--tile-ink-d"]!), `dark ${h}°`).toBeGreaterThanOrEqual(4.5);
     }
-    expect(contrast(tileBackground("garbage", 200))).toBeGreaterThanOrEqual(TILE_CONTRAST);
+    // Roxo (10h): the tinta with white in the light, the dark theme's tinta with graphite in the dark.
+    expect(tilePair(300)).toEqual({ "--tile-bg-l": "#884dd5", "--tile-ink-l": "#ffffff", "--tile-bg-d": "#b995f7", "--tile-ink-d": "#1c1b1c" });
+    // Verde (5h): the traço with graphite, the same in both.
+    expect(tilePair(150)).toEqual({ "--tile-bg-l": "#49de78", "--tile-ink-l": "#231f20", "--tile-bg-d": "#49de78", "--tile-ink-d": "#1c1b1c" });
   });
 });
 

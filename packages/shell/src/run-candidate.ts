@@ -36,6 +36,13 @@ const RUN_MEMORY_BYTES = 64 * 1024 * 1024;
 /** The whole run — compile, load, logic, every page. Past this the app is reported as not finishing. */
 export const RUN_WALL_CLOCK_MS = 30_000;
 
+/**
+ * A run, and the entities of the app it ran (#486): what the create loop's one call for sample
+ * records describes to the model, and what its rows are checked against. Absent when the app did not
+ * load or the run did not finish. The run's own made-up records ("name 1") stay in the run.
+ */
+export type CandidateRun = RunReport & { entities?: AppDefinition["entities"] };
+
 export interface RunCandidateDeps {
   /** Test seam: compose the candidate on the given store. Defaults to the isolate, with a budget. */
   compose?: (source: string, store: MemoryStore) => Promise<Composed>;
@@ -83,7 +90,7 @@ async function pagesToRender(def: AppDefinition, runtime: PotyroRuntime): Promis
   return { pages, sealed };
 }
 
-async function run(source: string, deps: RunCandidateDeps): Promise<RunReport> {
+async function run(source: string, deps: RunCandidateDeps): Promise<CandidateRun> {
   const store = new MemoryStore();
   await store.open("run-candidate");
   let composed: Composed | undefined;
@@ -102,7 +109,9 @@ async function run(source: string, deps: RunCandidateDeps): Promise<RunReport> {
       sealed ? `${sealed} custom view${sealed === 1 ? " was" : "s were"} not run here — custom views run only as the person's own app` : null,
       standInNote(modules),
     ].filter((n): n is string => n !== null);
-    return notes.length ? { ...report, ran: [report.ran, ...notes].join("; ") } : report;
+    const ran = notes.length ? { ...report, ran: [report.ran, ...notes].join("; ") } : report;
+    // As the person reads it (labels in their language, #302): what the model is told the fields are.
+    return def.entities ? { ...ran, entities: def.entities } : ran;
   } finally {
     try {
       composed?.loaded.dispose();
@@ -113,9 +122,9 @@ async function run(source: string, deps: RunCandidateDeps): Promise<RunReport> {
 }
 
 /** Run a candidate source and report what broke. Rejects only when it cannot be composed at all. */
-export function runCandidate(source: string, deps: RunCandidateDeps = {}): Promise<RunReport> {
+export function runCandidate(source: string, deps: RunCandidateDeps = {}): Promise<CandidateRun> {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<RunReport>((resolve) => {
+  const timeout = new Promise<CandidateRun>((resolve) => {
     timer = setTimeout(
       () => resolve({ errors: [`it did not finish running in ${RUN_WALL_CLOCK_MS / 1000}s — something waits forever or never stops`], warnings: [], ran: "" }),
       RUN_WALL_CLOCK_MS,

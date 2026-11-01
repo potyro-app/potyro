@@ -114,7 +114,7 @@ export function DateInput({ field, value, onChange, label }: DateInputProps) {
           />
         ) : null}
         <button ref={openRef} type="button" className="k-date-open" aria-label={label ? t({ message: `Pick ${label}`, comment: "Button that opens a month grid for a date field; {label} is the field" }) : t`Pick a date`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
-          📅
+          <Glyph icon="calendar" size={20} />
         </button>
       </div>
       <div className="k-date-chips" role="group" aria-label={label ? t({ message: `${label} shortcuts`, comment: "The Today/Yesterday/Tomorrow chips under a date field; {label} is the field" }) : t`Shortcuts`}>

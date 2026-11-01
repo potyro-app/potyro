@@ -1,5 +1,5 @@
 import { test, expect } from "./console-guard";
-import { ask, chooseOpenRouter, openFromCard, openNewStudio } from "./studio-helpers.js";
+import { ask, chooseOpenRouter, openFromCard, openNewStudio, asksForSamples, noSamples } from "./studio-helpers.js";
 
 // "Potyro can't do this yet" (#263), end to end with a scripted OpenRouter: the agent looks a
 // barcode reader up, finds nothing declares one (the real lookup), answers NEEDS-PLATFORM, and a last
@@ -20,6 +20,7 @@ test("a request to the Potyro team: shown in plain words, reviewed, kept while t
   const model: Body[] = [];
   await page.route("**/openrouter.ai/**", async (route) => {
     const body = route.request().postDataJSON() as Body;
+    if (asksForSamples(body)) return route.fulfill(noSamples());
     model.push(body);
     const n = model.length;
     if (n === 1) return route.fulfill(reply({ content: "```ts\n" + APP + "\n```" }));
