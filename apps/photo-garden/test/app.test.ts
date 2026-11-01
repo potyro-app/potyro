@@ -38,6 +38,15 @@ describe("Photo Garden", () => {
     expect(fields.image).toMatchObject({ type: "file", folder: "garden" });
     expect(fields.style).toMatchObject({ type: "enum", options: ["flow", "points", "mosaic"] });
   });
+
+  it("offers no quick action: an artwork is made by keeping the canvas, never by a bare form (#484)", () => {
+    expect(app.quickActions).toEqual([]);
+  });
+
+  it("shares a kept picture through the share dialog, never by saving a copy", () => {
+    expect(source).toMatch(/ctx\.ui\s*\.share\(\{ title, files: \[file\] \}\)/);
+    expect(source).not.toMatch(/ctx\.files\.export\(kept\)/);
+  });
 });
 
 describe("in six languages (#303)", () => {
