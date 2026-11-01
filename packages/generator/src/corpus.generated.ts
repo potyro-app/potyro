@@ -4,7 +4,7 @@
 import type { Corpus } from "./corpus.js";
 
 export const CORPUS: Corpus = {
- "version": "88c38ec3",
+ "version": "b9dabbb2",
  "files": [
   {
    "path": "apps/breakout/breakout.app.ts",
@@ -2627,6 +2627,7 @@ export const CORPUS: Corpus = {
   ["es","Píxel","Pixel"],
   ["es","Quedarme","Stay"],
   ["es","Quedarme con esta app","Keep this app"],
+  ["es","Quedarse","Stay"],
   ["es","Quiere sol directo","Wants direct sun"],
   ["es","Quiero probarlas","Want to try"],
   ["es","Quitar","Remove"],
