@@ -1,15 +1,17 @@
 # deploy/
 
-The **actual** files running `https://apps.vaz.io`, kept here so the deployment is reviewable and
-reproducible rather than living only on the server.
+The files that run `https://potyro.app` and `https://potyro.com`, kept here so production can be
+rebuilt from the repository plus the owner's secrets. The whole deployment is described in
+[`../docs/16-deployment.md`](../docs/16-deployment.md).
 
 | File | Where it goes |
 |---|---|
-| `apps.vaz.io.conf` | `/etc/apache2/sites-available/apps.vaz.io.conf` |
-| `vazio-hooks/pre-receive`, `vazio-hooks/post-receive` | `~/appinator.git/hooks/` on the CI machine — the merge gate and deploy (docs/16 §8) |
+| `potyro.app.Caddyfile` | `/etc/caddy/Caddyfile` on `65.109.228.5`: potyro.app, potyro.com, and the names that forward to potyro.app |
+| `containers.sh` | run on that server, as root, from a checkout: copies each service's package into `/opt/potyro-*` and (re)creates its container |
+| `env.example/*.env.example` | one template per env file in `/etc/potyro/` (`requests.env`, `ai.env`, `share-links.env`): the variable names, never the values |
 
-The relay is not a file — it is a container, created once. Both are described end to end in
-[`../docs/16-deployment.md`](../docs/16-deployment.md).
+The shell itself is not here: it is static files, built and rsynced to `/srv/potyro/site` by the
+watcher on the CI machine (docs/16 §8).
 
-Nothing secret is here: the basic-auth hash lives at `/etc/apache2/karta.htpasswd` on the server and
-is not in this repository.
+Nothing secret is in this folder. The tokens and keys live in `/etc/potyro/*.env` on the server
+(root, mode 600), and their values are the owner's.
