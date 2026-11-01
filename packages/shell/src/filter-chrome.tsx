@@ -310,7 +310,7 @@ function RecordChips({ chip, runtime, params, setParam }: Omit<ChipProps, "entit
       </span>
       <div className="k-chips">
         {rows.map((r) => (
-          <button key={r.id} type="button" className="k-chip" data-on={selected.has(r.id)} onClick={() => toggle(r.id)}>
+          <button key={r.id} type="button" className="k-chip" data-on={selected.has(r.id)} aria-pressed={selected.has(r.id)} onClick={() => toggle(r.id)}>
             {String(r[displayField] ?? r.id)}
           </button>
         ))}
@@ -431,7 +431,7 @@ function OptionChips({ chip, entity, runtime, params, setParam }: ChipProps) {
       </span>
       <div className="k-chips">
         {options.map((opt) => (
-          <button key={opt} type="button" className="k-chip" data-on={isSelected(opt)} onClick={() => toggle(opt)}>
+          <button key={opt} type="button" className="k-chip" data-on={isSelected(opt)} aria-pressed={isSelected(opt)} onClick={() => toggle(opt)}>
             {optionLabel(field, opt)}
           </button>
         ))}
@@ -467,6 +467,7 @@ function GeoChip({ chip, runtime, params, setParam }: Omit<ChipProps, "entity">)
         type="button"
         className="k-chip"
         data-on={active}
+        aria-pressed={active}
         disabled={busy || !geo}
         onClick={active ? () => setParam(chip.param, undefined) : useLocation}
       >
