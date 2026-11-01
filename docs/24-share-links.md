@@ -85,8 +85,29 @@ The device that shares builds them, in this order:
    app's own sample data, kept beside the app when it was added (`UserApp.seed`, at most 64 KB of
    JSON — a bigger one is applied on install but not kept), and only for the entities it keeps.
    Never what the person added since. An inline link too long with them is made without them.
+   For an app made in the Studio, **the sample records the create loop asked for** (#486), kept
+   the same way. Once a candidate has passed its run, the loop makes ONE more call, through the same
+   engine as its other calls and metered the same way (`sample-records.ts`): the entities' fields —
+   keys, labels, types, options, limits — and today's date, asking for 3–5 plausible records per
+   entity, dated within 30 days of today, in the person's language; photos, files and people are
+   left out. The reply is read as JSON and checked row by row (`sampleSeed`, `app-seed.ts`); a row
+   that does not fit is dropped, and with fewer than two left — or a reply that is not JSON, or a
+   call that failed — the app keeps none and the share sheet says the link opens on an empty copy.
+   The run check's own made-up rows ("name 1") stay in the run. The cost of the call is its prompt
+   (about 250 tokens for a one-entity, two-field app, plus about 15 per further field) and a reply
+   of about 25 tokens a record.
+   **A kept seed is never narrowed.** It is fitted at the point of use, against the definition at
+   hand: when a link is made (the app's definition read in the sealed box), when a package is saved,
+   and on the viewer's device when the demo opens. A row goes only when the store's write gate would
+   refuse it (`fieldValueProblem` in write mode: a value's shape, enum options, min and max — never
+   whether a field is required, which the store does not ask), and a reference to a dropped row is
+   taken out of the rows that pointed at it. A version whose shape no longer fits gets fewer rows,
+   or none, and the share sheet's sentence follows what fits; putting an earlier version back from
+   History gets them all back. The person's own records are never read for one.
 3. Otherwise **nothing**: the app opens empty, as it would for anyone who adds it. That is honest,
-   and an app worth sharing is usable from empty.
+   and an app worth sharing is usable from empty. The share sheet says which (`hasSampleRecords`,
+   then the made link's `samples`): "with sample records" only when the link carries some, else "an
+   empty copy of the app" — an app made in the Studio has none of its own (#486).
 4. On the viewer's device, once the records are in, **the app's own demo** when it declares one
    (`defineApp({ demo })`, docs/04 §Demo): an app that lives on a feed plays a replay, since records
    written in advance would be stale by the time the link is opened. Only a demo link runs it.
@@ -279,7 +300,17 @@ leaves the page's origin, languages).
 
 In the app, the gallery is one tap from Add an app ("From the gallery"), the Classic launcher's ＋ menu
 and the Tiles launcher's app bar (`gallery-link.ts`; a build may point elsewhere with
-`VITE_POTYRO_GALLERY`).
+`VITE_POTYRO_GALLERY`), and from the Studio's key panel ("Start from an app in the gallery").
+
+It opens **in this tab**, never one of its own (#487): its Make it mine comes back into Potyro, and
+only one tab at a time holds the apps, so from a second tab the copy was refused as "Potyro is open in
+another tab". Leaving loses no record. Words in a prompt box are kept for the way back, for this tab
+only (`kept-idea.ts`, sessionStorage): the Studio's box, about its app or a new one, and Home's box
+when the person leaves from Home. One box owns the words at a time: Home's box starts with them and
+forgets them as soon as it is edited, cleared or sent, and it hands the Studio exactly what it holds,
+"" included, so words deleted there never come back; a Studio opened any other way starts with them
+and takes them. What cannot be kept — a version that failed a gate and was not kept, code edited in
+the Studio's editor and not saved — is asked about first ("Leave for the gallery?", Leave / Stay).
 
 ## 11. Links to a page of an app
 

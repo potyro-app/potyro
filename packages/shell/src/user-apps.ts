@@ -81,9 +81,12 @@ export interface UserApp {
   /** A remix's: the line of the app it remixed, so a link to that app opens the remix when it is all there is. */
   lineOf?: string;
   /**
-   * The sample records its package came with (`seed.json`, #253): the app's own demo data, never the
-   * person's. Kept so a demo link of it opens on them, as the package did (docs/24 §3). Only a small
-   * one is kept (`MAX_KEPT_SEED`): this record lives in the device's settings.
+   * The sample records its package came with (`seed.json`, #253), or, for an app made in the Studio,
+   * the ones the create loop asked the model for (#486): the app's own demo data, never the person's.
+   * Kept so a demo link of it opens on them, as the package did (docs/24 §3), and so a package saved
+   * from it carries them. Kept as it came, never narrowed: each use fits it to the app as it is then
+   * (app-seed.ts), so a version put back gets back the rows a later one could not take. Only a small
+   * one is kept (`MAX_KEPT_SEED`, every save): this record lives in the device's settings.
    */
   seed?: Record<string, Array<Record<string, unknown>>>;
 }
@@ -157,6 +160,7 @@ export async function saveUserApp(
     remixOf?: AppCredit;
     line?: string;
     lineOf?: string;
+    /** Absent keeps the one it has. */
     seed?: UserApp["seed"];
     origin?: VersionOrigin;
     note?: string;
@@ -225,8 +229,9 @@ export async function saveUserApp(
     // And which app it is: an edit is the same app, so links to it keep opening it.
     line: prev?.line ?? input.line,
     lineOf: prev?.lineOf ?? input.lineOf,
-    // And the sample records its package came with: a demo of it still opens on them.
-    seed: input.seed ?? prev?.seed,
+    // And the sample records its package came with: a demo of it still opens on them. Small ones only,
+    // whichever way they came (a package, the Studio): this list is rewritten on every write.
+    seed: seedToKeep(input.seed ?? prev?.seed),
   };
   write([record, ...apps.filter((a) => a.id !== id)]);
   const modules = hasOwnModules(record.lock) ? (input.modules ?? (await ownModules(record.lock))) : undefined;

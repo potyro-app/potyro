@@ -35,12 +35,13 @@ import { currentLocale } from "./locale.js";
 import { knownNoTools, rememberNoTools } from "./endpoint-tools.js";
 import { unreachableText } from "./endpoint-check.js";
 import { freeRefusal } from "./free-ai.js";
+import type { AppSeed } from "./app-seed.js";
 
 /** What a turn came to. `summary` is what the conversation says happened. */
 export type Outcome =
   /** `platformRequest`: the rest needs something Potyro itself lacks — a request the person may send (#263). */
-  /** `modules`: the app's own modules, every one, when the change edited any of them (#448). */
-  | { kind: "source"; source: string; summary: string; notDone?: string[]; platformRequest?: PlatformRequest; modules?: Record<string, string> }
+  /** `modules`: the app's own modules, every one, when the change edited any of them (#448). `seed`: a new app's demo records, the sample records the create loop asked for (#486). */
+  | { kind: "source"; source: string; summary: string; notDone?: string[]; platformRequest?: PlatformRequest; modules?: Record<string, string>; seed?: AppSeed }
   /** It was rewritten rather than edited, and lost what `loss` names. Never saved without asking. */
   | { kind: "loss"; source: string; summary: string; loss: string; modules?: Record<string, string> }
   | { kind: "question"; text: string }
@@ -269,7 +270,13 @@ export function studioEngine(
       }
       if (result.kind === "failed") return { ...notMade(result), ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}) };
       if (result.kind === "stopped") return notMade(result);
-      return { kind: "source", source: result.source, summary: "", ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}) };
+      return {
+        kind: "source",
+        source: result.source,
+        summary: "",
+        ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}),
+        ...("seed" in result && result.seed ? { seed: result.seed } : {}),
+      };
     } catch (e) {
       if (noTools(e)) return null;
       const away = unreachable(e);

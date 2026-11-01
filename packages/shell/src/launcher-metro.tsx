@@ -13,7 +13,6 @@
 // wall has painted, never before it.
 
 import { Glyph } from "@potyro/views";
-import { openGallery } from "./gallery-link.js";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject, type MutableRefObject } from "react";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -168,6 +167,8 @@ export interface MetroHomeProps {
   onOpen: (a: InstalledApp) => void;
   onNewApp: (prefill?: string) => void;
   onAdd: () => void;
+  /** To the gallery, in this tab: the launcher keeps what is in its prompt box first (#487). */
+  onGallery: () => void;
   onData: () => void;
   onLook: () => void;
   onYou: () => void;
@@ -256,7 +257,7 @@ export function MetroHome(p: MetroHomeProps) {
         )}
       </div>
       {p.children}
-      <AppBar onNewApp={() => p.onNewApp()} onAdd={p.onAdd} onGallery={openGallery} onFind={() => showPane("all", { search: true })} onData={p.onData} onLook={p.onLook} onYou={p.onYou} />
+      <AppBar onNewApp={() => p.onNewApp()} onAdd={p.onAdd} onGallery={p.onGallery} onFind={() => showPane("all", { search: true })} onData={p.onData} onLook={p.onLook} onYou={p.onYou} />
     </div>
   );
 }
@@ -711,9 +712,9 @@ function Folder(props: {
       >
         <span className="k-metro-mosaic" aria-hidden>
           {apps.slice(0, 4).map((a) => {
-            const { background, identity } = tileColours(a);
+            const { style, identity } = tileColours(a);
             return (
-              <span key={a.key} className="k-metro-mosaic-cell" style={{ "--tile-bg": background } as CSSProperties}>
+              <span key={a.key} className="k-metro-mosaic-cell" style={style as CSSProperties}>
                 <TileGlyph identity={identity} size={20} />
               </span>
             );
@@ -831,13 +832,13 @@ function AllApps(p: MetroHomeProps & { query: string; setQuery: (q: string) => v
   };
 
   const row = (a: InstalledApp) => {
-    const { background, accent, identity } = tileColours(a);
+    const { style, accent, identity } = tileColours(a);
     const on = wallTiles(wall).some((x) => x.tile.key === a.key);
     const appName = a.name;
     const attention = attentionOf(a.entry, p.now);
     return (
       <div key={a.key} className="k-launch-item k-metro-row" data-key={a.key} {...p.inertUnless(a.key)}>
-        <button type="button" className="k-launch-tile k-metro-row-open" data-active={p.isSelected(a) || undefined} style={{ "--tile-accent": accent, "--tile-bg": background } as CSSProperties} onClick={() => p.onOpen(a)}>
+        <button type="button" className="k-launch-tile k-metro-row-open" data-active={p.isSelected(a) || undefined} style={{ "--tile-accent": accent, ...style } as CSSProperties} onClick={() => p.onOpen(a)}>
           <span className="k-launch-avatar k-metro-mini" data-kind={identity.kind} aria-hidden>
             <TileGlyph identity={identity} size={24} />
             {attention.total ? <span className="k-launch-badge">{attention.total > 99 ? "99+" : attention.total}</span> : null}
@@ -891,7 +892,7 @@ function AllApps(p: MetroHomeProps & { query: string; setQuery: (q: string) => v
         ? sorted.map(row)
         : [...letters.entries()].map(([letter, apps]) => (
             <section key={letter} className="k-metro-letter-group" aria-label={letter}>
-              <button type="button" className="k-metro-letter" data-letter={letter} aria-label={t`${letter} — jump to another letter`} onClick={() => setJumping(true)} style={{ "--tile-bg": tileColours(apps[0]!).background } as CSSProperties}>
+              <button type="button" className="k-metro-letter" data-letter={letter} aria-label={t`${letter} — jump to another letter`} onClick={() => setJumping(true)}>
                 {letter === "#" ? "#" : letter.toLocaleLowerCase()}
               </button>
               {apps.map(row)}

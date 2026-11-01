@@ -627,6 +627,19 @@ which app it is across devices, so a link made on one device opens the right cop
 source is a package with no files; an export bundle is read as a package too, which is how a backup
 installs on a device that never had the app.
 
+`seed.json` is never the person's records. An app added from a package keeps the seed it came with;
+an app made in the Studio keeps sample records the create loop asked for: once a candidate has
+passed its run, the loop makes one more model call, through the same engine (and the same
+metering), for 3–5 plausible records per entity — the entities' fields, labels and options and
+today's date go in, names and text come back in the person's language. Each row is checked by the
+rule the store's write gate holds every record to (`fieldValueProblem`; whether a field is required
+is not asked, as the store does not ask it); rows that fail are dropped, and with fewer than two left
+the app keeps none (`packages/generator/src/agent/sample-records.ts`, `packages/shell/src/app-seed.ts`,
+#486). The run check's own rows ("name 1") only exercise the code and never become the seed. The
+kept seed is never narrowed: it is fitted to the app at the point of use — a demo link, Studio →
+Files → Save as a package, a demo opening — so a later version that cannot take a row simply carries
+fewer, and History putting back an earlier version gets them all back.
+
 Everything comes in sealed. A file from this device or pasted source may be marked "I wrote this"
 on the card; a link never can, and an update that arrives by link drops a trusted app back into the
 sealed box, so a link cannot put new code into an app that runs with full authority.
@@ -1013,7 +1026,9 @@ composes two of them and escalates from the on-device model to the cloud when th
 has not converged. Keys are kept in the tab's sessionStorage, gone when the tab closes, never in
 localStorage — unless the person turns on **Remember on this device** beside a key, which puts it in
 the device's secret vault. With no engine that can run (no free allowance and no key), the Studio
-shows what a key is and where to get one, and the gallery, instead of a disabled button. The shell
+shows what a key is and where to get one, and the gallery, instead of a disabled button (the
+gallery opens in the same tab; the box's words wait for the way back, and a version or code not kept
+is asked about first: docs/24 §10). The shell
 counts, anonymously and at most once a month, a key typed and a press of "I'd pay for a plan"
 (docs/23 "Counts"; off in You). Potyro, OpenRouter and an OpenAI-compatible endpoint carry tool calls end to end, so they can
 investigate and run the loops below; the others get one turn with the reference and the

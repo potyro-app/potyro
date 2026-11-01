@@ -55,6 +55,24 @@ const quiet = () => {
 };
 
 describe("runCandidate", () => {
+  it("says which entities the app it ran keeps — never the records it made up to run it on (#486)", async () => {
+    const app = defineApp({
+      id: "notes-seed",
+      name: "Notes",
+      version: "1.0.0",
+      schemaVersion: 1,
+      entities: { note: { label: "Note", displayField: "title", fields: { title: { type: "text", required: true }, done: { type: "boolean" } } } },
+      pages: [{ id: "all", title: "All", view: { type: "list", entity: "note", display: { primary: "title" } } }],
+    } as never);
+    const report = await runCandidate("", { compose: direct(app), settleMs: 400 });
+    expect(report.errors).toEqual([]);
+    expect(Object.keys(report.entities ?? {})).toEqual(["note"]);
+    expect(report.entities?.note?.fields.title).toMatchObject({ type: "text", required: true });
+    // The run's own rows ("title 1") stay in the run: nothing of them comes back.
+    expect(JSON.stringify(report)).not.toContain("title 1");
+    expect(report).not.toHaveProperty("seed");
+  });
+
   it("passes an app whose logic runs and whose pages show their records", async () => {
     const report = await runCandidate("", { compose: direct(notes()), settleMs: 400 });
     expect(report.errors).toEqual([]);

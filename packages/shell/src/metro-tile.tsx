@@ -1,4 +1,4 @@
-// One tile on the wall (#96, owner 2026-10-15): flat, square, the app's own colour, white on it.
+// One tile on the wall (#96, owner 2026-10-15): flat, square, the app's own colour, words that read on it.
 //
 // Its plain face is the app's mark in the middle and its name bottom-left — Windows Phone's anatomy.
 // A medium or wide tile whose app declares a live tile turns over now and then to its live face
@@ -7,7 +7,7 @@
 // happens under `prefers-reduced-motion` — the live face then simply shows.
 //
 // The marks from #87 stay: a shield on a sealed app, the sync mark on a synced one, and the
-// attention badge from #86 — on a Metro tile they sit in its corners, white on the app's colour.
+// attention badge from #86 — on a Metro tile they sit in its corners, in the tile's own ink.
 
 import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useRef } from "react";
@@ -17,17 +17,22 @@ import { useLocale } from "@potyro/i18n";
 import { attentionOf, describeAttention, type InstalledApp } from "./launcher-store.js";
 import { tileIdentity } from "./tile-identity.js";
 import { TileGlyph } from "./tile-glyph.js";
-import { hueOf, tracoOf } from "./app-colour.js";
+import { hueOf, tilePair } from "./app-colour.js";
 import { hasLiveFace } from "./tile-content.js";
 import type { Placed, TileSize } from "./launcher-wall.js";
 
-/** The tile's colours: the app's own (contrast-checked) and, kept for the tile editor's preview, the raw accent. */
-export function tileColours(app: InstalledApp): { background: string; accent: string; identity: ReturnType<typeof tileIdentity> } {
+/**
+ * The tile's colours: the app's hour on the colour clock (DESIGN.md §3.1) as both themes' tile tokens,
+ * and — kept for the tile editor's preview — the raw accent the app declared. A tile wears the hour's
+ * button pair (`--accent` / `--on-accent`): the traço with graphite where graphite reads on it at AA,
+ * else the tinta with white. Small words sit on a tile, and graphite on the bare traço falls short of
+ * AA at four hours (rosa, vermelho, anil, roxo). styles.css picks the theme's pair (`.k-metro`).
+ */
+export function tileColours(app: InstalledApp): { style: Record<string, string>; accent: string; identity: ReturnType<typeof tileIdentity> } {
   const identity = tileIdentity(app);
-  // The app's hour on the colour clock (DESIGN.md §3.1), the same block Home's card wears: a person's
-  // chosen hue, else the app's declared colour's hue, else the one its key gives. Graphite on it.
+  // A person's chosen hue, else the app's declared colour's hue, else the one its key gives.
   const hue = typeof app.hue === "number" ? app.hue : (hueOf(identity.accent) ?? identity.hue);
-  return { background: tracoOf(hue), accent: identity.accent, identity };
+  return { style: tilePair(hue), accent: identity.accent, identity };
 }
 
 /** The badge's number: what wants attention (#86) first, else the live tile's own count. */
@@ -94,7 +99,7 @@ export interface MetroTileProps {
 export function MetroTile(p: MetroTileProps) {
   useLocale(); // the attention words are read in the active language
   const { app, size, place } = p;
-  const { background, accent, identity } = tileColours(app);
+  const { style: colours, accent, identity } = tileColours(app);
   const attention = attentionOf(app.entry, p.now);
   const badge = badgeOf(app, p.now);
   const face = app.face;
@@ -158,7 +163,7 @@ export function MetroTile(p: MetroTileProps) {
         data-face={showLive ? "live" : "plain"}
         aria-pressed={p.editing ? p.chosen : undefined}
         tabIndex={p.tabbable ? 0 : -1}
-        style={{ "--tile-accent": accent, "--tile-bg": background } as CSSProperties}
+        style={{ "--tile-accent": accent, ...colours } as CSSProperties}
         onClick={p.onActivate}
         onKeyDown={p.onKeyDown}
         onFocus={p.onFocus}

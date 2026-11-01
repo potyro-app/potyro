@@ -1,14 +1,10 @@
-// A Metro tile is the app's own colour with white on it (owner, 2026-10-15), and white has to be
-// readable on whatever colour an app declares: Plants says `#7FCF8E`, a pale green white text all but
-// vanishes on (1.8:1). So the tile keeps the colour's hue and chroma and darkens it, in OKLCH, until
-// white on it reaches WCAG AA for normal text (4.5:1) — the name on a tile is small text. A colour
-// that already passes is used exactly as the app wrote it.
+// Any CSS colour an app may write in `theme.accent` (a hex, `rgb()`, `hsl()`, `oklch()`, a name),
+// read as OKLCH. The shell keeps only its HUE: every level of an app's colour — a tile, a button, a
+// link — comes from the colour clock (DESIGN.md §3.1, `app-colour.ts`), never from the colour as the
+// app wrote it, and never adjusted by hand.
 //
-// The arithmetic is Björn Ottosson's OKLab, and WCAG 2's relative luminance. Pure, so it is tested
-// in Node; parsing a colour name (`teal`) needs the browser and falls back to it only when present.
-
-/** White on the tile must reach this. AA for normal text, with a hair of room for rounding. */
-export const TILE_CONTRAST = 4.6;
+// The arithmetic is Björn Ottosson's OKLab. Pure, so it is tested in Node; parsing a colour name
+// (`teal`) needs the browser and falls back to it only when present.
 
 export interface Oklch {
   l: number; // 0..1
@@ -32,46 +28,6 @@ function rgbToOklch([r8, g8, b8]: Rgb): Oklch {
   const B = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_;
   const h = ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360;
   return { l: L, c: Math.hypot(A, B), h };
-}
-
-/** Linear sRGB for an OKLCH colour; channels outside 0..1 mean it is outside the sRGB gamut. */
-function oklchToLinear({ l, c, h }: Oklch): Rgb {
-  const a = c * Math.cos((h * Math.PI) / 180);
-  const b = c * Math.sin((h * Math.PI) / 180);
-  const l_ = (l + 0.3963377774 * a + 0.2158037573 * b) ** 3;
-  const m_ = (l - 0.1055613458 * a - 0.0638541728 * b) ** 3;
-  const s_ = (l - 0.0894841775 * a - 1.291485548 * b) ** 3;
-  return [
-    4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_,
-    -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_,
-    -0.0041960863 * l_ - 0.7034186147 * m_ + 1.707614701 * s_,
-  ];
-}
-
-const inGamut = (rgb: Rgb): boolean => rgb.every((v) => v >= -0.0005 && v <= 1.0005);
-
-/** WCAG relative luminance of an OKLCH colour (clipped into sRGB). */
-export function luminance(colour: Oklch): number {
-  const [r, g, b] = oklchToLinear(colour).map((v) => Math.min(1, Math.max(0, v))) as unknown as Rgb;
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/** Contrast of white text on this colour. */
-export function contrastWithWhite(colour: Oklch): number {
-  return 1.05 / (luminance(colour) + 0.05);
-}
-
-/** The colour with chroma reduced just enough to sit inside sRGB at its lightness. */
-function intoGamut(colour: Oklch): Oklch {
-  if (inGamut(oklchToLinear(colour))) return colour;
-  let lo = 0;
-  let hi = colour.c;
-  for (let i = 0; i < 24; i++) {
-    const mid = (lo + hi) / 2;
-    if (inGamut(oklchToLinear({ ...colour, c: mid }))) lo = mid;
-    else hi = mid;
-  }
-  return { ...colour, c: lo };
 }
 
 const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
@@ -130,34 +86,4 @@ export function parseColour(input: string): Oklch | null {
   if (fn) return fn;
   const named = viaBrowser(s);
   return named ? rgbToOklch(named) : null;
-}
-
-// Lightness rounded DOWN: rounding up could lift a colour that just passes back under the line.
-const fmt = (c: Oklch): string => `oklch(${(Math.floor(c.l * 1000) / 10).toFixed(1)}% ${c.c.toFixed(3)} ${c.h.toFixed(1)})`;
-
-/** The colour, darkened only as far as white on it needs to reach `TILE_CONTRAST`. */
-export function readableOnWhite(colour: Oklch): Oklch {
-  const start = intoGamut(colour);
-  if (contrastWithWhite(start) >= TILE_CONTRAST) return start;
-  let lo = 0;
-  let hi = start.l;
-  for (let i = 0; i < 28; i++) {
-    const mid = (lo + hi) / 2;
-    if (contrastWithWhite(intoGamut({ ...start, l: mid })) >= TILE_CONTRAST) lo = mid;
-    else hi = mid;
-  }
-  return intoGamut({ ...start, l: lo });
-}
-
-/**
- * The tile's background for an app's colour: the colour itself when white reads on it, else the same
- * hue darkened until it does. `fallbackHue` is used when the colour cannot be read at all.
- */
-export function tileBackground(accent: string | undefined, fallbackHue: number): string {
-  const parsed = accent ? parseColour(accent) : null;
-  if (parsed) {
-    const fixed = readableOnWhite(parsed);
-    return fixed === parsed || (Math.abs(fixed.l - parsed.l) < 1e-6 && Math.abs(fixed.c - parsed.c) < 1e-6) ? accent!.trim() : fmt(fixed);
-  }
-  return fmt(readableOnWhite({ l: 0.58, c: 0.13, h: fallbackHue }));
 }
