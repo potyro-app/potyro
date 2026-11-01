@@ -25,7 +25,7 @@ import { legalPagesPlugin } from "../legal/src/vite.mjs";
  * A shared app's realm is a srcdoc iframe — not a fetch, so it still loads — and this is what stops
  * that frame navigating itself to a URL (which its sandbox allows and its own CSP cannot). The same
  * policy is a <meta> in index.html, which is what the Capacitor WebView gets (it serves no headers);
- * the header here and in deploy/apps.vaz.io.conf is the same policy again, for the dev server,
+ * the header here and in deploy/potyro.app.Caddyfile is the same policy again, for the dev server,
  * `vite preview` and the deployed site. Keep all three in step.
  */
 const SHELL_CSP = "frame-src 'none'";

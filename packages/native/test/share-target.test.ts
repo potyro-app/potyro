@@ -57,7 +57,7 @@ describe("share target", () => {
   it("knows a file opened with Potyro from an invite link, and names it from its address", () => {
     expect(isOpenedFile("content://com.android.providers.downloads.documents/document/notes%20week.md")).toBe(true);
     expect(isOpenedFile("file:///sdcard/Download/a.md")).toBe(true);
-    expect(isOpenedFile("https://apps.vaz.io/#join=abc")).toBe(false);
+    expect(isOpenedFile("https://potyro.app/#join=abc")).toBe(false);
     expect(nameFromUri("content://x/document/notes%20week.md")).toBe("notes week.md");
     expect(nameFromUri("content://x/document/raw%3A%2Fstorage%2Fa.json")).toBe("a.json");
     expect(nameFromUri("content://x/document/1234")).toBe("1234");
