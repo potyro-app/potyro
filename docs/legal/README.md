@@ -16,16 +16,16 @@ review are HTML comments (`<!-- -->`), so they do not show when the page is serv
 
 ## Placeholders
 
-`Edgar Zanella Alvarenga`, `<CONTACT EMAIL>`, `<ABUSE EMAIL>`, `<DATE>` (the date each text takes effect) and
-`<RETENTION, to decide>` (how long emails are kept). `<ABUSE EMAIL>` is also `abuse` in
-`packages/shell/src/contacts.json` (the app's and the gallery's "Report") and the share service's
-`SHARE_ABUSE_CONTACT` (the page of a link taken down; until it is set, that page names
-`contact@potyro.com`): fill in all three together. The hosting location reads "Germany or
-Finland, to confirm" (facts.md F-58: the address looks like Hetzner's Helsinki cloud).
-`Edgar Zanella Alvarenga`, `<CONTACT EMAIL>`, `<ABUSE EMAIL>`, `<DATE>` (the day each text takes
-effect, on its `Effective:` line, written `YYYY-MM-DD`), `<RETENTION, to decide>` (how long emails
-are kept) and `<HOSTING LOCATION>` (where Hetzner hosts potyro.app; facts.md F-58: the address looks
-like Hetzner's Helsinki cloud, to confirm in the Hetzner console).
+Still open: `<DATE>` (the day each text takes effect, on its `Effective:` line, written
+`YYYY-MM-DD`), `<RETENTION, to decide>` (how long emails are kept) and `<HOSTING LOCATION>` (where
+Hetzner hosts potyro.app; facts.md F-58: the address looks like Hetzner's Helsinki cloud, to confirm
+in the Hetzner console).
+
+Filled in on 2026-11-01: the person responsible (`Edgar Zanella Alvarenga`), the contact address
+(contact@potyro.com) and the report address (abuse@potyro.com; facts.md F-61). The report address
+lives in three places that must agree: the texts, `abuse` in `packages/shell/src/contacts.json` (the
+app's and the gallery's "Report") and the share service's `SHARE_ABUSE_CONTACT` (the page of a link
+taken down; while it is unset, that page names `contact@potyro.com`).
 
 ## Where they will be served
 
