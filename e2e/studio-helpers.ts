@@ -5,6 +5,21 @@ import { expect, type Locator, type Page } from "@playwright/test";
 
 export const studioOf = (page: Page): Locator => page.locator(".k-studio");
 
+/**
+ * The create loop's one request for sample records (#486), made once a new app passed its run: told
+ * apart from the loop's own turns by its system prompt. A spec that scripts the model turn by turn
+ * answers it with `noSamples` first, so its script is not shifted by it.
+ */
+export const asksForSamples = (body: unknown): boolean => JSON.stringify(body ?? "").includes("You write sample records");
+
+/** An answer to it with no records: the new app keeps none, and opens on an empty copy. */
+export const noSamples = (headers: Record<string, string> = {}) => ({
+  status: 200,
+  headers,
+  contentType: "application/json",
+  body: JSON.stringify({ choices: [{ message: { role: "assistant", content: "{}" }, finish_reason: "stop" }] }),
+});
+
 /** From the home screen: a Studio opened there is for making a new app. */
 export async function openNewStudio(page: Page): Promise<Locator> {
   await page.goto("/");

@@ -5,15 +5,16 @@
 // saved. It is SHOWN only when someone opens it — tapping its card, or Preview — because the
 // conversation is the screen now, and an app pushed underneath it could not be seen as it will run.
 //
-// Opened, it is a screen of its own. On a phone it is the whole screen; on a wide one it stands
-// beside the conversation. Either way the app's fixed bars, its full-screen pages and its dialogs
+// Opened, it is a screen of its own. On a phone it is the whole screen under the Studio's bar, which
+// keeps Close and the Conversation tab in reach (#489); on a wide one it stands beside the
+// conversation. Either way the app's fixed bars, its full-screen pages and its dialogs
 // belong to THAT screen: the frame is a containing block for anything fixed inside it, the app's
 // form sheets are portalled into it (`PortalRootContext`), and it has its own dialog host. Before
 // this, a form opened in the preview covered the Studio, and the app's dialogs opened over the chat.
 
 import { themeClass, type Appearance } from "./app-theme.js";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useRef, useState, useEffect, type ReactNode } from "react";
+import { useRef, useState, useEffect, type ReactNode, type Ref } from "react";
 import { MemoryStore, type Store } from "@potyro/store";
 import { createWebCapabilities } from "@potyro/capabilities";
 import { capsForApp } from "./app-ai-caps.js";
@@ -161,8 +162,17 @@ export interface PreviewScreenProps {
   onPoint: () => void;
   onPointCancel: () => void;
   onPicked: (pointed: Pointed) => void;
-  /** On a phone the Studio's two tabs (Conversation, App) stand where the way back was. */
-  tabs?: ReactNode;
+  /**
+   * On a phone the app stands under the Studio's bar. When that bar shows the tabs (Conversation,
+   * App), they are the way back (DESIGN.md §10) and this bar has no way back of its own. When it
+   * does not — an app run from hand-written code before there is one — this bar keeps its own.
+   */
+  underStudioBar?: boolean;
+  /**
+   * The preview's region, focusable (tabIndex -1) but not in the Tab order: on a phone, when what
+   * opened the app is now covered, the Studio moves focus here so it is not lost to the page.
+   */
+  regionRef?: Ref<HTMLElement>;
   /** The quick adjustments above the app (DESIGN.md §10): its name, its colour. */
   above?: ReactNode;
   /** The colour chosen for the app here, as the launcher's tile would carry it. */
@@ -172,7 +182,7 @@ export interface PreviewScreenProps {
 }
 
 /** The opened app: a bar with the way back, and the app's own screen under it. */
-export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource, onPromote, pointing, onPoint, onPointCancel, onPicked, tabs, above, appAccent, appearance }: PreviewScreenProps) {
+export function PreviewScreen({ preview, title, version, unsaved, onBack, onSource, onPromote, pointing, onPoint, onPointCancel, onPicked, underStudioBar, regionRef, above, appAccent, appearance }: PreviewScreenProps) {
   const { t } = useLingui();
   const screenRef = useRef<HTMLDivElement>(null);
   // The portal root is the screen element itself, which exists only after the first render.
@@ -182,7 +192,7 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
   const def = preview.composed.runtime.definition;
   const promote = preview.sealed && onPromote ? onPromote : undefined;
   return (
-    <section className="k-preview" aria-label={t`App preview`} data-pointing={pointing || undefined}>
+    <section ref={regionRef} tabIndex={-1} className="k-preview" aria-label={t`App preview`} data-pointing={pointing || undefined} data-under-bar={underStudioBar || undefined}>
       {pointing ? (
         // The bar says what the mode is and how to leave it — never the app's own controls.
         <header className="k-preview-bar k-point-bar" role="status">
@@ -203,7 +213,7 @@ export function PreviewScreen({ preview, title, version, unsaved, onBack, onSour
         </header>
       ) : (
         <header className="k-preview-bar">
-          {tabs ?? (
+          {underStudioBar ? null : (
           <button type="button" className="k-preview-back" aria-label={t`Back to the chat`} onClick={onBack}>
             {/* Beside the conversation the chat is already there, so this closes the app instead. */}
             <span aria-hidden><Glyph icon="arrow-left" size={16} /></span> <span className="k-preview-back-word">

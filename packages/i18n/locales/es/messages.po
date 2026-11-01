@@ -3886,6 +3886,11 @@ msgstr "Necesita una biblioteca de internet para abrirse, y dijiste que ahora no
 msgid "It needs to know one thing"
 msgstr "Necesita saber una cosa"
 
+#. Share sheet, A link anyone can try, for an app with no sample records of its own (one made in the Studio)
+#: ../shell/src/share-sheet.tsx
+msgid "It opens an empty copy of the app right away in any browser. No account, nothing to install. Your records stay with you."
+msgstr "Abre una copia vacía de la app al instante en cualquier navegador. Sin cuenta, nada que instalar. Tus registros se quedan contigo."
+
 #: ../shell/src/install-row.tsx
 msgid "It opens like an app."
 msgstr "Se abre como una app."
@@ -8237,6 +8242,11 @@ msgstr "Tú y tus dispositivos"
 #: ../shell/src/move-page.tsx
 msgid "You are the same person here as there, with the same recovery words."
 msgstr "Eres la misma persona aquí que allí, con las mismas palabras de recuperación."
+
+#. Over the key panel: what the person typed, kept until an app can be made from it; {asked} is their own words
+#: ../shell/src/free-panel.tsx
+msgid "You asked for: <0>{asked}</0>"
+msgstr "Pediste: <0>{asked}</0>"
 
 #: ../shell/src/studio.tsx
 msgid "You can go back to the version before from History."
