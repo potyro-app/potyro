@@ -165,6 +165,7 @@
  "e2e/split-settle-trusted.spec.ts": 6.6,
  "e2e/split-trusted.spec.ts": 60.5,
  "e2e/storage-owner-trusted.spec.ts": 31.5,
+ "e2e/stranger-journey-trusted.spec.ts": 84,
  "e2e/studio-app-actions-trusted.spec.ts": 9.4,
  "e2e/studio-cases-trusted.spec.ts": 5.7,
  "e2e/studio-conversation-trusted.spec.ts": 21,
