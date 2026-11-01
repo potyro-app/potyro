@@ -1,5 +1,5 @@
 import { test, expect } from "./console-guard";
-import { ask, chooseOpenRouter, currentCard, openFromCard, openNewStudio, openSource } from "./studio-helpers.js";
+import { ask, chooseOpenRouter, currentCard, openFromCard, openNewStudio, openSource, asksForSamples, noSamples } from "./studio-helpers.js";
 
 // The modify loop RUNS a candidate before accepting it (#262), end to end in the conversation-first
 // Studio with a scripted OpenRouter. The run happens in the browser: the candidate is bundled, loaded
@@ -30,6 +30,7 @@ test("a candidate that validates but throws when it runs is sent back with the e
   const requests: Msg[][] = [];
   await page.route("**/openrouter.ai/**", async (route) => {
     const body = route.request().postDataJSON() as { messages: Msg[] };
+    if (asksForSamples(body)) return route.fulfill(noSamples());
     requests.push(body.messages);
     const n = requests.length;
     return route.fulfill(reply(n === 1 ? { content: "```ts\n" + APP + "\n```" } : { content: n === 2 ? BROKEN : FIXED }));
