@@ -17350,16 +17350,18 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   transform: none;
 }
 /* On a phone: two tabs, Conversation and App (§10). */
+/* Each tab is a thumb's target, 44px, with 8px between the two (DESIGN.md §3.4, §11.4): on a phone
+   with the app open they are the way back. The pill around them stays. */
 .k-studio-tabs {
   flex: none;
   display: inline-flex;
-  gap: 2px;
+  gap: var(--space-2);
   padding: 2px;
   border-radius: var(--radius-pill);
   background: var(--surface);
 }
 .k-studio-tab {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 1rem;
   border: 0;
   border-radius: var(--radius-pill);
@@ -17483,6 +17485,11 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
 .k-preview {
   background: var(--bg);
 }
+/* Focused only to keep focus from being lost when the app opens over what opened it (studio.tsx
+   usePhoneFocus): a region, not a control, so no ring. */
+.k-preview:focus {
+  outline: none;
+}
 .k-preview-bar {
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
@@ -17490,9 +17497,10 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   border-bottom: var(--stroke) solid var(--line);
   background: var(--bg);
 }
+/* A thumb's target each (DESIGN.md §3.4, §11.4); the bar's gap keeps 8px between them. */
 .k-preview-back,
 .k-preview-code {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 0.9rem;
   border: var(--stroke) solid var(--line-strong);
   border-radius: var(--radius-pill);
@@ -17502,7 +17510,7 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
   font-size: var(--text-small);
 }
 .k-preview-point {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 0.9rem;
   border: 0;
   background: var(--aguada);
@@ -17575,6 +17583,24 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
     border-radius: 32px;
     background: var(--bg);
     overflow: clip;
+  }
+}
+/* On a phone the app stands under the Studio's bar (#489): Close, the tabs and the menu stay where
+   they were, in reach, and the app has the rest of the screen. The bar measures itself onto
+   `--k-studio-bar-h` (studio.tsx `useBarHeight`); the phone's status bar is already in it. */
+.k-studio {
+  --k-studio-bar-h: 0px;
+}
+@media (max-width: 1099.98px) {
+  .k-studio[data-preview] .k-preview {
+    top: var(--k-studio-bar-h);
+  }
+  .k-studio[data-preview] .k-preview-bar {
+    padding-top: var(--space-2);
+  }
+  /* No way back on this bar (the tabs above are it): the app's name starts it. */
+  .k-studio[data-preview] .k-preview[data-under-bar] .k-preview-title {
+    justify-content: flex-start;
   }
 }
 .k-preview-adjust-name {
@@ -18080,6 +18106,18 @@ html:has(.k-check-add) {
   border-radius: var(--radius-lg);
   background: var(--surface-raised);
   box-shadow: var(--shadow);
+}
+.k-free-panel-asked {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+.k-free-panel-asked-words {
+  color: var(--ink);
+  font-weight: 600;
 }
 .k-free-panel-stop {
   margin: 0;

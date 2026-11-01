@@ -37,7 +37,11 @@ export interface ThreadViewProps {
   onFix: () => void;
   onKeep: () => void;
   onLook: () => void;
-  onSuggest: (text: string) => void;
+  /**
+   * A suggestion tapped: its words go in the box. Absent while the box is not there to fill (the key
+   * panel stands in its place, #488): then no suggestions are offered, since a tap would show nothing.
+   */
+  onSuggest?: (text: string) => void;
   /** Nothing has been said yet in a conversation that is about an app that already exists. */
   existing: boolean;
   /**
@@ -67,7 +71,7 @@ export interface RemixGreeting {
 }
 
 /** The Studio's first words to a remix: an answer-side turn, so it reads as the Studio talking. */
-function RemixHello({ remix, onSuggest }: { remix: RemixGreeting; onSuggest: (text: string) => void }) {
+function RemixHello({ remix, onSuggest }: { remix: RemixGreeting; onSuggest?: (text: string) => void }) {
   const { t } = useLingui();
   return (
     <li className="k-thread-turn k-thread-theirs k-remix-hello" aria-label={t({ message: "The Studio, on your remix", comment: "The Studio's greeting on a remix, for a screen reader" })}>
@@ -75,7 +79,7 @@ function RemixHello({ remix, onSuggest }: { remix: RemixGreeting; onSuggest: (te
       <p className="k-thread-answer k-remix-ask">
         <Trans comment="The Studio's first words on a remix">This is your own copy. What would you like to change?</Trans>
       </p>
-      {remix.suggestions.length ? (
+      {remix.suggestions.length && onSuggest ? (
         <ul className="k-studio-suggest k-remix-suggest" aria-label={t({ message: "Changes to start from", comment: "Suggested changes for a remix" })}>
           {remix.suggestions.map((s) => (
             <li key={s}>
@@ -130,18 +134,20 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
         <p className="k-studio-lede">
           <Trans>Describe it in your own words. If something isn’t clear I’ll ask first, then build it — you can open it, use it, and keep changing it here.</Trans>
         </p>
-        <ul className="k-studio-suggest" aria-label={t`Ideas to start from`}>
-          {SUGGESTIONS.map((d) => {
-            const s = t(d);
-            return (
-              <li key={s}>
-                <button type="button" className="k-studio-chip" onClick={() => onSuggest(s)}>
-                  {s}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        {onSuggest ? (
+          <ul className="k-studio-suggest" aria-label={t`Ideas to start from`}>
+            {SUGGESTIONS.map((d) => {
+              const s = t(d);
+              return (
+                <li key={s}>
+                  <button type="button" className="k-studio-chip" onClick={() => onSuggest(s)}>
+                    {s}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
       </div>
     );
   }
