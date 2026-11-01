@@ -1,5 +1,6 @@
 // Shared steps for the share-files specs (docs/04 §Share): install the Cards fixture (trusted or
-// sealed), open a card, and stand in for the browser's share sheet.
+// sealed), open a card, and stand in for the browser's share sheet — which keeps what it was handed,
+// so an app's spec can read the picture it shared.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, type Page } from "./console-guard";
@@ -32,17 +33,40 @@ export interface Shared {
  */
 export async function fakeShareSheet(page: Page, opts: { files: boolean } = { files: true }): Promise<void> {
   await page.addInitScript((filesOk) => {
-    const w = window as unknown as { __shared: unknown[] };
+    const w = window as unknown as { __shared: unknown[]; __sharedFiles: File[] };
     w.__shared = [];
+    // The files themselves too, for a spec that reads the picture it was handed (sharedPicture).
+    w.__sharedFiles = [];
     Object.defineProperty(navigator, "canShare", { configurable: true, value: (d: { files?: File[] }) => (d.files?.length ? filesOk : true) });
     Object.defineProperty(navigator, "share", {
       configurable: true,
       value: async (d: { title?: string; text?: string; url?: string; files?: File[] }) => {
+        w.__sharedFiles.push(...(d.files ?? []));
         const files = await Promise.all((d.files ?? []).map(async (f) => ({ name: f.name, type: f.type, size: f.size, head: Array.from(new Uint8Array(await f.slice(0, 8).arrayBuffer())) })));
         w.__shared.push({ title: d.title, text: d.text, url: d.url, files });
       },
     });
   }, opts.files);
+}
+
+/**
+ * The last file the share sheet was handed, drawn on a canvas the page keeps as `window.__picture`
+ * (its 2D context): a spec then reads the picture itself in a `page.evaluate`, not merely that some
+ * file went. Answers the picture's size and file name.
+ */
+export async function drawSharedPicture(page: Page): Promise<{ w: number; h: number; name: string; type: string }> {
+  return page.evaluate(async () => {
+    const w = window as unknown as { __sharedFiles: File[]; __picture?: CanvasRenderingContext2D };
+    const f = w.__sharedFiles.at(-1)!;
+    const bmp = await createImageBitmap(f);
+    const c = document.createElement("canvas");
+    c.width = bmp.width;
+    c.height = bmp.height;
+    const g = c.getContext("2d", { willReadFrequently: true })!;
+    g.drawImage(bmp, 0, 0);
+    w.__picture = g;
+    return { w: c.width, h: c.height, name: f.name, type: f.type };
+  });
 }
 
 export const shared = (page: Page): Promise<Shared[]> => page.evaluate(() => (window as unknown as { __shared: Shared[] }).__shared);
