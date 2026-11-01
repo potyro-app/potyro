@@ -9,25 +9,13 @@
 //     files travel, by path;
 //   - its libraries' bytes: the lock says where each comes from and what it must hash to, and the
 //     device that opens the link fetches it from there, with consent, as on any install (#266).
-import { fileSpace, isReservedPath, MemoryStore, packAppPackage, SRC_DIR, type AppCredit, type AppPackage, type PackagedFile, type Store } from "@potyro/store";
+import { fileSpace, isReservedPath, MemoryStore, packAppPackage, SRC_DIR, type AppCredit, type PackagedFile, type Store } from "@potyro/store";
 import type { UserApp } from "./user-apps.js";
 import { hasSeeder, seedIfEmpty } from "./seed.js";
 import { creditToShare } from "./credit-words.js";
+import { plainSeedRow as plainRow, seedRows, seedThatFits, type AppSeed, type Entities } from "./app-seed.js";
 
-export type DemoSeed = NonNullable<AppPackage["seed"]>;
-
-/** Fields a store adds to every record: not the app's data, and never worth carrying. */
-const STORE_FIELDS = new Set(["createdAt", "updatedAt"]);
-
-/** A record as JSON: dates as their ISO text, nothing a seed cannot hold. */
-function plainRow(row: Record<string, unknown>): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(row)) {
-    if (STORE_FIELDS.has(k) || v === undefined) continue;
-    out[k] = v instanceof Date ? v.toISOString() : v;
-  }
-  return JSON.parse(JSON.stringify(out)) as Record<string, unknown>;
-}
+export type DemoSeed = AppSeed;
 
 /**
  * Demo records for an app (docs/24 §3): its own first-run sample data, written into a throwaway store
@@ -37,10 +25,13 @@ function plainRow(row: Record<string, unknown>): Record<string, unknown> {
  * Never reads the app's own store.
  *
  * An app added from a package has no seeder here: its sample data is the `seed.json` its package came
- * with, kept beside it (`packageSeed`), and that is what travels — only for the entities it keeps.
+ * with, kept beside it (`packageSeed`), and that is what travels — only for the entities it keeps. So
+ * is an app made in the Studio's: the sample records the create loop asked for (app-seed.ts, #486).
+ * With the app's definition at hand (`defined`), that seed is fitted to it first: only the rows the
+ * app as it is now would take travel, and the kept seed itself is left as it is.
  */
-export async function demoSeed(appId: string, entities: readonly string[], packageSeed?: DemoSeed): Promise<DemoSeed | undefined> {
-  if (!hasSeeder(appId)) return fromPackage(packageSeed, entities);
+export async function demoSeed(appId: string, entities: readonly string[], packageSeed?: DemoSeed, defined?: Entities): Promise<DemoSeed | undefined> {
+  if (!hasSeeder(appId)) return fromPackage(defined ? seedThatFits(packageSeed, defined) : packageSeed, entities);
   const scratch = new MemoryStore();
   await scratch.open(`demo:${appId}`);
   try {
@@ -66,6 +57,43 @@ function fromPackage(seed: DemoSeed | undefined, entities: readonly string[]): D
     if (rows?.length) out[entity] = rows.map((r) => plainRow(r));
   }
   return Object.keys(out).length ? out : undefined;
+}
+
+/**
+ * The entities an app as saved declares, read in the sealed box and never run with authority
+ * (validate-app.ts), its libraries standing in as the run check has them: what its kept seed is fitted
+ * to when a link is made (#486). Undefined when it cannot be read here — then the seed travels as
+ * kept, and the device that opens the link fits it to the app as it loads there (demo.tsx).
+ */
+export async function savedEntities(app: Pick<UserApp, "id" | "source">): Promise<Entities> {
+  // A link made without its pictures, after one with them was too long, reads the same app again.
+  const key = `${app.id}\n${app.source}`;
+  if (lastRead?.key !== key) lastRead = { key, entities: readEntities(app) };
+  return lastRead.entities;
+}
+
+let lastRead: { key: string; entities: Promise<Entities> } | null = null;
+
+async function readEntities(app: Pick<UserApp, "id" | "source">): Promise<Entities> {
+  try {
+    const [{ loadDefinition }, { modulesOf }, { withLibrariesStoodIn }] = await Promise.all([import("./validate-app.js"), import("./app-modules.js"), import("./package-modules.js")]);
+    const def = await loadDefinition(app.source, withLibrariesStoodIn(await modulesOf(app.id)));
+    return def.entities as unknown as Entities;
+  } catch (e) {
+    console.warn("[potyro] the app's sample records go as kept; its definition could not be read:", e);
+    return undefined;
+  }
+}
+
+/**
+ * Whether a demo link of this app would open on sample records (#486): its own seeder's, or the rows of
+ * its kept seed that fit the app as it is now. What the share sheet says before the link is made.
+ */
+export async function linkHasSamples(app: UserApp): Promise<boolean> {
+  if (hasSeeder(app.id)) return true;
+  if (!app.seed) return false;
+  const defined = await savedEntities(app);
+  return seedRows(defined ? seedThatFits(app.seed, defined) : app.seed) > 0;
 }
 
 /** The files an app shipped with, from its folder, by path. Never a file the person added. */
@@ -128,7 +156,11 @@ export interface DemoPackage {
 }
 
 /** Everything `packDemo` needs, read from this device for a saved app. */
-export async function demoPackageFor(app: UserApp, opts: { by?: string; pictures?: boolean } = {}): Promise<DemoPackage> {
+export async function demoPackageFor(
+  app: UserApp,
+  /** `entitiesOf`: how the app's definition is read for fitting its kept seed (`savedEntities`); a seam for tests. */
+  opts: { by?: string; pictures?: boolean; entitiesOf?: (app: UserApp) => Promise<Entities> } = {},
+): Promise<DemoPackage> {
   const [{ inspect }, { appCode, modulesOf }] = await Promise.all([import("./app-source.js"), import("./app-modules.js")]);
   const shape = await inspect(app.source);
   const entities = shape.entities.map((e) => e.key);
@@ -150,7 +182,10 @@ export async function demoPackageFor(app: UserApp, opts: { by?: string; pictures
     }
   }
   const credit = creditToShare(app, opts.by);
-  const seed = await demoSeed(app.id, entities, app.seed);
+  // A kept seed (a package's, or a Studio app's) is fitted to the app as it is now (#486): a version
+  // whose shape no longer takes a row carries fewer, and the seed itself is left as it was.
+  const defined = app.seed && !hasSeeder(app.id) ? await (opts.entitiesOf ?? savedEntities)(app) : undefined;
+  const seed = await demoSeed(app.id, entities, app.seed, defined);
   // What its first screens show come first: that is what the app is for, at a glance (preview-card.ts).
   const shown = shape.pages.filter((p) => !p.hidden && p.entity).map((p) => p.entity!);
   const byScreen = [...new Set([...shown, ...entities])];

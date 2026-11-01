@@ -28,6 +28,12 @@ describe("the Studio's create goes through the loop (#262 phase 3)", () => {
     expect(next.briefs.at(-1)).toBe("a reading tracker");
   });
 
+  it("an app that passed carries its sample records: its demo records (#486)", async () => {
+    const seed = { book: [{ id: "book-1", title: "Piranesi" }, { id: "book-2", title: "Dune" }] };
+    const out = await create({ kind: "source", source: "APP", warnings: [], draft: 1, candidate: 1, seed } as CreateLoopOutcome);
+    expect(out).toEqual({ kind: "source", source: "APP", summary: "", seed });
+  });
+
   it("a question before building is the question (#261)", async () => {
     expect(await create({ kind: "question", text: "Paper books, or e-books too?" })).toEqual({ kind: "question", text: "Paper books, or e-books too?" });
   });

@@ -33,7 +33,13 @@
 // lacks (#263), offered where the loop has evidence; the person's language (#301) in the opening
 // message; thinking hard for the one turn after the loop got stuck (#280); a step budget for the whole
 // loop, and a candidate budget of its own.
+//
+// An app that passed its run gets ONE more call (#486, sample-records.ts): 3–5 plausible sample
+// records per entity, what a link anyone can try opens on — never the run's own made-up rows. Only
+// when the caller says what the app's entities are (`samples`), outside the step budget (the app is
+// already made), and through the same engine, so it is metered like every other call.
 
+import type { EntityDef } from "potyro";
 import type { ChatEngine, ChatMessage, ToolCallOnMessage } from "../chat-backend.js";
 import { readEditsOrFile } from "../guarded-modify.js";
 import { describeEditFailures } from "../edits.js";
@@ -45,6 +51,7 @@ import { runTool, toolSpecs, type AgentTool } from "./tools.js";
 import type { LoopStep } from "./loop.js";
 import { describeToolTurn, freshStartNote, oneLine, toolTurnSignature, type TurnedBack } from "./loop-recovery.js";
 import { repeatsItself, type GiveUp } from "./modify-loop.js";
+import { askSampleRecords, type SampleReply } from "./sample-records.js";
 import { NEEDS_PLATFORM, askAfterGiveUp, platformLineIn, platformOffer, platformSignal, writePlatformRequest, type PlatformRequest } from "./platform-request.js";
 
 export type CreateLoopOutcome =
@@ -60,6 +67,8 @@ export type CreateLoopOutcome =
       /** Which independent first draft's conversation it came from, and which candidate it was — counted from 1. */
       draft: number;
       candidate: number;
+      /** The sample records the model wrote for it (#486), read as JSON and not yet checked: the caller fits them. */
+      samples?: SampleReply;
     }
   /** It asked before building (#261): show the question; the answer comes back with the next request. */
   | { kind: "question"; text: string }
@@ -97,6 +106,13 @@ export interface CreateLoopDeps {
   draftSteps?: number;
   /** Think hard for the one turn after the loop got stuck (#280). */
   escalate?: boolean;
+  /**
+   * The entities of an app that passed its run (#486): given, the loop asks the model once more, for
+   * sample records in their shape. Undefined, or absent, and no call is made.
+   */
+  samples?: (source: string) => Promise<Readonly<Record<string, EntityDef>> | undefined> | Readonly<Record<string, EntityDef>> | undefined;
+  /** Today, for the sample records' dates. Now when absent. */
+  today?: Date;
   onStep?: (step: LoopStep) => void;
   signal?: AbortSignal;
 }
@@ -223,6 +239,23 @@ async function gate(deps: CreateLoopDeps, source: string): Promise<Verdict> {
   return { problem: null, rank: [0, report.warnings.length], warnings: report.warnings, passed: `compiles, validates and runs (${report.ran || "nothing to run"})${looks}` };
 }
 
+/** An app that passed its run, with the sample records the model wrote for it (#486) — or as it was, when there are none. */
+async function withSamples(deps: CreateLoopDeps, outcome: Extract<CreateLoopOutcome, { kind: "source" }>): Promise<CreateLoopOutcome> {
+  if (!deps.samples || deps.signal?.aborted) return outcome;
+  const entities = await Promise.resolve(deps.samples(outcome.source)).catch(() => undefined);
+  if (!entities || !Object.keys(entities).length) return outcome;
+  deps.onStep?.({ kind: "thinking" });
+  const samples = await askSampleRecords({
+    engine: deps.engine,
+    ...(deps.model ? { model: deps.model } : {}),
+    entities,
+    today: deps.today ?? new Date(),
+    ...(deps.language ? { language: deps.language } : {}),
+    ...(deps.signal ? { signal: deps.signal } : {}),
+  });
+  return samples ? { ...outcome, samples } : outcome;
+}
+
 export async function runCreateLoop(deps: CreateLoopDeps): Promise<CreateLoopOutcome> {
   const maxSteps = deps.maxSteps ?? DEFAULT_MAX_STEPS;
   const maxCandidates = deps.maxCandidates ?? DEFAULT_MAX_CANDIDATES;
@@ -289,7 +322,7 @@ export async function runCreateLoop(deps: CreateLoopDeps): Promise<CreateLoopOut
       if (verdict.problem === null) {
         candidates += 1;
         deps.onStep?.({ kind: "candidate", passed: true, n: candidates, draft: last?.draft ?? 1, detail: `${verdict.passed} — the app its own check passed` });
-        return { kind: "source", source, warnings: verdict.warnings, draft: last?.draft ?? 1, candidate: candidates };
+        return withSamples(deps, { kind: "source", source, warnings: verdict.warnings, draft: last?.draft ?? 1, candidate: candidates });
       }
     }
     const best = [...tried].sort(better)[0];
@@ -465,7 +498,7 @@ export async function runCreateLoop(deps: CreateLoopDeps): Promise<CreateLoopOut
     deps.onStep?.({ kind: "candidate", passed: verdict.problem === null, n: candidates, draft: chain.draft, detail: verdict.problem ?? verdict.passed });
     if (verdict.problem === null) {
       const seed = platformLineIn(reply.rationale ?? reply.text);
-      return {
+      return withSamples(deps, {
         kind: "source",
         source: reply.source,
         ...(reply.rationale ? { rationale: reply.rationale } : {}),
@@ -473,7 +506,7 @@ export async function runCreateLoop(deps: CreateLoopDeps): Promise<CreateLoopOut
         draft: chain.draft,
         candidate: candidates,
         ...(seed ? { platformRequest: await request(chain, seed) } : {}),
-      };
+      });
     }
     const back = { tried: oneLine(reply.rationale ?? "") || (reply.via === "edits" ? `a correction of ${reply.applied} edit${reply.applied === 1 ? "" : "s"}` : "an app"), reason: oneLine(verdict.problem, 240) };
     refused.set(reply.source, back);
