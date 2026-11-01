@@ -1,6 +1,6 @@
 ---
 title: Deployment
-description: Deploying the shell, the sync relay and the optional services on your own domain, as it was done.
+description: What runs on potyro.app and how it was put there: the shell, the sync relay and the optional services, with Caddy in front.
 status: current
 order: 16
 ---
@@ -8,15 +8,47 @@ order: 16
 # Deploying Potyro on your own domain (KA-34)
 
 **`https://potyro.app` is the live deployment**: public, with no gate in front of it, the shell, the
-sync relay and all four optional services answering there (each section below says what was checked,
-and when). It runs on its own server behind Caddy, whose configuration is not in this repository.
+sync relay and all four optional services on one server behind Caddy. Everything that server runs is
+in [`deploy/`](../deploy/README.md): the Caddyfile, a script with every container's command, and a
+template for each env file. Only the secrets are not, and their values are the owner's.
 
-The recipe below was **written by deploying `https://apps.vaz.io`**, the first site and a private
-test: Apache, gated with basic auth so only invited people could reach it, the relay not exposed on
-its own. It is a real recipe, not a sketch — the awkward parts are the ones that actually bit — and
-it is how to put Potyro on a domain of your own; its paths and hostnames are that deployment's.
-`apps.vaz.io` itself has not been updated since 2026-10-17 ([Redeploying](#redeploying)). Read
-[What this does NOT protect](#what-this-does-not-protect) before pointing anyone at either shape.
+This document is that deployment, written so it can be rebuilt, and so it can be copied: to put
+Potyro on a domain of your own, change the names and the address and follow the same steps. Read
+[What this does NOT protect](#what-this-does-not-protect) before pointing anyone at it. The first
+site, `apps.vaz.io` (Apache, behind basic auth), and the CI gates that came before the current one
+are in [How it was](#how-it-was), at the end.
+
+## As deployed
+
+Read on the server on 2026-11-01 (`docker ps`, `docker inspect`, `/etc/caddy/Caddyfile`); the
+health checks under each service were run on 2026-10-30.
+
+| Service | Container | Port (127.0.0.1) | Code | Data | Env file | Caddy route |
+|---|---|---|---|---|---|---|
+| The shell | — (static files) | — | `/srv/potyro/site` ← `packages/shell/dist` | — | — | everything not below: `try_files`, then `index.html` |
+| Sync relay | `potyro-relay` | 4201 | `/opt/potyro-relay` (a `jazz-run` pin and its install) | `/var/lib/potyro/sync.db` | — | `handle_path /sync*` |
+| Request relay | `potyro-requests` | 4202 | `/opt/potyro-requests` ← `packages/platform-requests` | — (memory) | `/etc/potyro/requests.env` | `handle_path /requests/*` |
+| Share service | `potyro-share-links` | 4203 | `/opt/potyro-share-links` ← `packages/share-links` | `/var/lib/potyro/shares`; reads `/srv/potyro/site` | none yet (`-e` on the run line; `share-links.env` to be added) | `@share` (`/s/<id>`, its preview) and `handle /share-api/*` |
+| AI relay | `potyro-ai` | 4204 | `/opt/potyro-ai` ← `packages/ai-relay` | `/var/lib/potyro-ai/ai-ledger.json` | `/etc/potyro/ai.env` | `handle_path /ai/*` |
+| Rooms relay | `potyro-rooms` | 4205 | `/opt/potyro-rooms` ← `packages/rooms` | — (memory) | — (`-e` on the run line) | `handle /rooms/*` |
+| The gallery | — (static files) | — | `/srv/potyro.com` ← `dist/gallery` | — | — | the `potyro.com, www.potyro.com` site |
+
+Around it:
+
+| | |
+|---|---|
+| Server | `65.109.228.5`, hostname `potyro`, Hetzner Cloud (RIPE netname `CLOUD-HEL1`, Finland). Admin over ssh as `aivuk`, with sudo. |
+| Web server | Caddy 2.11.7, `/etc/caddy/Caddyfile` = [`deploy/potyro.app.Caddyfile`](../deploy/potyro.app.Caddyfile). It gets and renews every name's certificate itself (Let's Encrypt, account `ops@potyro.com`). No access log on potyro.app (Caddy keeps none unless told) and none on potyro.com (`output discard`). |
+| Containers | All `node:22-bookworm`, `--restart unless-stopped`, published on `127.0.0.1` only, made by [`deploy/containers.sh`](../deploy/containers.sh). The code dirs under `/opt` are rsynced copies of the packages. |
+| Secrets | `/etc/potyro/*.env`, root, mode 600. Their variables, never their values, are in [`deploy/env.example/`](../deploy/env.example/). |
+| Deploy user | `deploy` (uid 1001) owns `/srv/potyro/site`. Each key in its `authorized_keys` is `restrict,command="/usr/bin/rrsync /srv/potyro/site"`: it can rsync into the site root and do nothing else. |
+| DNS | `potyro.app` and `potyro.com` A → `65.109.228.5`. `www.potyro.app`, `potyro.org` and `www.potyro.org` redirect to `https://potyro.app` (302). Mail (MX) is Gandi's. |
+| CI machine | `vazio`, a home server: it runs the gate and the watcher that deploys `main` ([§8](#8-shipping-the-gate-and-the-watcher-on-vazio)). |
+
+Being applied now (in `deploy/`, so in force once the owner reloads Caddy): the `/ai/*` route
+streams with `flush_interval -1` and 310 s timeouts ([AI for apps](#ai-for-apps-docs23-deployed)),
+and the shell's `try_files` serves `/privacy` and `/terms` as their pages
+([The privacy page and the terms](#the-privacy-page-and-the-terms-117-built-not-yet-served)).
 
 ## What actually has to run
 
@@ -32,30 +64,18 @@ working with the relay down; it just stops reaching other people until it comes 
 
 Optional services sit beside them: the [request relay](#requests-to-the-potyro-team-263-deployed),
 the [free AI allowance](#ai-for-apps-docs23-deployed) for apps, the [share links](#demo-links-and-their-previews-docs24-deployed)
-and the [rooms relay](#rooms-for-multiplayer-apps-docs26-deployed) for multiplayer apps.
-Each section says what is running on potyro.app. Without them requests wait on the device, apps' AI runs on
-the person's own key, links carry the whole app, and multiplayer apps cannot meet.
+and the [rooms relay](#rooms-for-multiplayer-apps-docs26-deployed) for multiplayer apps. All four
+run on potyro.app. Without them requests wait on the device, apps' AI runs on the person's own key,
+links carry the whole app, and multiplayer apps cannot meet.
 
-## The deployments, as configured
-
-**potyro.app** (live): host `65.109.228.5`, web root `/srv/potyro/site` (§8), Caddy in front, no
-gate. Checked 2026-10-30: `/` answers 200 without credentials, `/sync` upgrades, and `/ai/health`,
-`/share-api/health`, `/rooms/health` and `/requests/health` answer ok.
-
-**apps.vaz.io** (the private test this recipe was written on; not updated since 2026-10-17):
-
-| | |
-|---|---|
-| Host | `vaz.io` (Debian 13), Apache 2 already serving ~28 other vhosts |
-| Site | `/var/www/karta` ← `packages/shell/dist` |
-| Relay | Docker container `potyro-relay`, `127.0.0.1:4201`, db at `/var/lib/potyro/sync.db` |
-| Vhost | `/etc/apache2/sites-available/apps.vaz.io.conf` |
-| Gate | Basic auth, `/etc/apache2/karta.htpasswd`, user `potyro` |
-| TLS | the existing **wildcard** `*.vaz.io` certificate — nothing new to issue or renew |
+Everything is on **one origin**. The shell derives its relay (`wss://<host>/sync`) and every service
+(`/ai`, `/requests`, `/share-api`, `/rooms`) from the origin it is served from, so the proxy in front
+routes paths and nothing is configured at build time. The services need no CORS for the site, only
+for the native apps' WebViews (docs/27 §2.1).
 
 ---
 
-## 1. Build the shell (on your machine)
+## 1. Build the shell
 
 ```bash
 pnpm i
@@ -70,33 +90,28 @@ Build-time knobs, all optional:
 | `VITE_POTYRO_GENERATOR` | unset | Only once a deployment can actually reach a model — see [The agent](#the-agent). |
 | `VITE_POTYRO_SITE` | the page's own origin | **Native builds only** (Android, iOS): the site the app belongs to, e.g. `https://potyro.app`. The relay, `/ai`, `/requests`, `/share-api` and the links people send are derived from it (`shell/src/site.ts`, docs/27 §2.1); the per-service variables still win. |
 
-Neither site sets **either** of the first two: potyro.app's build is the watcher's plain `vite build`
-(§8). The build derives `wss://potyro.app/sync` from the origin it is served from, which is the whole point of the default: proxy one path and sync works with no
-build-time configuration at all.
+potyro.app's build sets none of them: it is the watcher's plain `vite build` (§8).
 
 ## 2. Upload it
 
 ```bash
-rsync -az --delete packages/shell/dist/ e@vaz.io:/var/www/karta/
+rsync -az --delete packages/shell/dist/ potyro-deploy:
 ```
 
-`--delete` matters: without it, old hashed assets accumulate forever.
+`potyro-deploy` is an ssh alias for `deploy@65.109.228.5` (§8), whose key `rrsync` locks to
+`/srv/potyro/site`, so the target is relative to that root. `--delete` matters: without it, old
+hashed assets accumulate forever. On your own server, any web root and any account that can write it.
 
 ## 3. Run the relay
 
-The server has **Node 20**, and cojson needs **22**. Rather than install a second Node system-wide,
-the relay runs in a container — which also sidesteps the `better-sqlite3` native build, the thing
-that makes `--db` fail on some machines.
+```bash
+sudo deploy/containers.sh relay      # on the server, from a checkout (the script's header says how)
+```
+
+The script writes `/opt/potyro-relay/package.json` with the `jazz-run` version pinned in the root
+`package.json`, installs it in a throwaway Node 22 container, and runs:
 
 ```bash
-# once: pin the version, install it with the right Node
-sudo mkdir -p /opt/potyro-relay /var/lib/potyro && sudo chown -R "$USER": /opt/potyro-relay /var/lib/potyro
-cat > /opt/potyro-relay/package.json <<'JSON'
-{ "name": "potyro-relay", "private": true, "dependencies": { "jazz-run": "0.20.19" } }
-JSON
-docker run --rm -v /opt/potyro-relay:/app -w /app node:22-bookworm npm install --omit=dev
-
-# the service itself
 docker run -d --name potyro-relay --restart unless-stopped \
   -p 127.0.0.1:4201:4201 \
   -v /opt/potyro-relay:/app -v /var/lib/potyro:/data -w /app \
@@ -104,6 +119,8 @@ docker run -d --name potyro-relay --restart unless-stopped \
   node node_modules/.bin/jazz-run sync --host 0.0.0.0 --port 4201 --db /data/sync.db
 ```
 
+It runs in a container because cojson needs Node **22**, whatever the server has, and the container
+also sidesteps the `better-sqlite3` native build, the thing that makes `--db` fail on some machines.
 Three details, each load-bearing:
 
 - **`--db`, never `--in-memory`.** With in-memory storage a restart loses everything the relay was
@@ -111,9 +128,10 @@ Three details, each load-bearing:
   else's diverge permanently. `pnpm dev` uses `--in-memory` because a dev relay has nothing worth
   keeping. Yours does.
 - **`-p 127.0.0.1:4201:4201`** — published to loopback only, so the relay is reachable only through
-  Apache. Bound to `0.0.0.0` it would be an open, unauthenticated websocket on the public internet.
+  Caddy. Bound to `0.0.0.0` it would be an unauthenticated websocket on the internet with nothing in
+  front of it, not even the proxy's TLS.
 - **Pin the version.** `jazz-run` must match the `cojson` the shell was built against (`0.20.19`
-  here). Read it from the repo's `package.json`, not from `latest`.
+  today). The script reads it from the repo's `package.json`, never `latest`.
 
 `--restart unless-stopped` plus `systemctl is-enabled docker` → `enabled` means it comes back after
 a reboot. The client reconnects on its own when the relay bounces.
@@ -177,7 +195,7 @@ inside other people's spaces are never touched — they are part of those spaces
 
 ```bash
 # 0. Once: the script is one file with no dependencies.
-rsync -az packages/store/scripts/erase-space.mjs e@vaz.io:/opt/potyro-tools/
+rsync -az packages/store/scripts/erase-space.mjs aivuk@65.109.228.5:/opt/potyro-tools/
 # 1. Ask first: the person removes the app from every device (for a shared space: every member does).
 # 2. Stop the relay: the script refuses while it has the file open (it takes an exclusive lock).
 docker stop potyro-relay
@@ -211,224 +229,201 @@ cojson's own delete (a signed tombstone the relay keeps, after which it refuses 
 cojson 0.20 can delete a space's CoValues that way but not the group itself, and `jazz-run sync` does
 not turn on erasing the content of deleted CoValues (`enableDeletedCoValuesErasure`). Not built.
 
-## 4. The Apache vhost
+## 4. Caddy in front
 
-`proxy_wstunnel`, `rewrite`, `headers` and `ssl` were already enabled — check yours with
-`ls /etc/apache2/mods-enabled/`. The full file is at
-`/etc/apache2/sites-available/apps.vaz.io.conf`; the parts that matter:
+The whole file is [`deploy/potyro.app.Caddyfile`](../deploy/potyro.app.Caddyfile); it goes to
+`/etc/caddy/Caddyfile`. The `potyro.app` block, without its comments:
 
-```apache
-<VirtualHost *:443>
-    ServerName apps.vaz.io
+```caddy
+potyro.app {
+	encode zstd gzip
 
-    SSLEngine on
-    # A WILDCARD cert (*.vaz.io) already covers this name — nothing to issue, nothing to renew.
-    SSLCertificateFile      /etc/letsencrypt/live/vaz.io/cert.pem
-    SSLCertificateKeyFile   /etc/letsencrypt/live/vaz.io/privkey.pem
-    SSLCertificateChainFile /etc/letsencrypt/live/vaz.io/fullchain.pem
+	header {
+		Content-Security-Policy "frame-src 'none'"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
 
-    DocumentRoot /var/www/karta
-    <Directory /var/www/karta>
-        Options -Indexes +FollowSymLinks
-        Require all granted
-    </Directory>
+	handle_path /sync* {
+		reverse_proxy 127.0.0.1:4201
+	}
+	handle /rooms/* {
+		reverse_proxy 127.0.0.1:4205
+	}
+	@share path_regexp share ^/s/[A-Za-z0-9_-]{22}(/preview\.(jpg|png))?/?$
+	handle @share {
+		reverse_proxy 127.0.0.1:4203
+	}
+	handle /share-api/* {
+		reverse_proxy 127.0.0.1:4203
+	}
+	handle_path /ai/* {
+		reverse_proxy 127.0.0.1:4204 {
+			flush_interval -1
+			transport http {
+				response_header_timeout 310s
+				read_timeout 310s
+			}
+		}
+	}
+	handle_path /requests/* {
+		reverse_proxy 127.0.0.1:4202
+	}
 
-    # The private-test gate. Covers the websocket too: same origin, so the browser replays these
-    # credentials on the upgrade request.
-    <Location "/">
-        AuthType Basic
-        AuthName "Potyro"
-        AuthUserFile /etc/apache2/karta.htpasswd
-        Require valid-user
-    </Location>
-
-    RewriteEngine On
-
-    # The relay, FIRST — before the SPA rule, or /sync is answered with index.html.
-    RewriteCond %{HTTP:Upgrade} =websocket [NC]
-    RewriteRule ^/sync(.*)$ ws://127.0.0.1:4201$1 [P,L]
-    RewriteRule ^/sync(.*)$ http://127.0.0.1:4201$1 [P,L]
-    ProxyPreserveHost On
-    ProxyTimeout 600      # a sync connection is long-lived and mostly idle
-
-    # SPA: anything that is not a real file is the shell.
-    RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI} !-f
-    RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI} !-d
-    RewriteRule . /index.html [L]
-</VirtualHost>
+	handle {
+		root * /srv/potyro/site
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@fresh path / /index.html /sw.js /privacy* /terms*
+		header @fresh Cache-Control "no-cache"
+		try_files {path} {path}.html {path}index.html /index.html
+		file_server
+	}
+}
 ```
 
-> **The one that bit.** Write that SPA condition against `%{DOCUMENT_ROOT}%{REQUEST_URI}`, not
-> `%{REQUEST_FILENAME}`. In `<VirtualHost>` context mod_rewrite runs *before* the URL is mapped to a
-> path, so `REQUEST_FILENAME` is still the URI and `!-f` is true for **everything** — every real
-> asset gets answered with `index.html`. The site loads and looks fine; the icons and the manifest
-> come back as `text/html`, so it is a broken PWA wearing a working site.
+What each part is for:
 
-Cache headers are worth getting right too — hashed assets `immutable`, `index.html` and `sw.js`
-`no-cache`, or a deploy stays invisible until someone clears their cache.
+- **`handle` blocks are exclusive.** A request goes to one of them only, the most specific that
+  matches, and the block with no matcher (the shell) always comes last, so every service path is
+  answered by its service and never by `index.html`. A path that reaches the shell by mistake looks
+  like a working site and is a broken service: the Studio reads an HTML answer from `/requests/` as "not reachable" and keeps saving.
+- **`handle_path` takes the prefix off; `handle` keeps it.** `jazz-run`, the AI relay and the request
+  relay serve at their root (`/health`, `/complete`, `/platform-requests`). The rooms relay and the
+  share service serve under `/rooms/` and `/share-api/` themselves.
+- **Websockets need nothing.** `reverse_proxy` passes an upgrade through as it is, for `/sync` and
+  `/rooms/`, and Caddy's defaults put no timeout on an open connection.
+- **`frame-src 'none'`** on every response: the shell embeds no frame that fetches, and this is what
+  stops a shared app's sandboxed frame navigating itself to a URL (#272, docs/22 §3.2).
+  `index.html` carries the same as a `<meta>` for the native WebView, which serves no headers.
+- **Cache headers.** Hashed assets are `immutable`; `index.html`, `sw.js` and the legal pages are
+  `no-cache`, or a deploy stays invisible until someone clears their cache.
+- **`try_files`** sends every path that is not a file to `index.html`, the app. `{path}.html` and
+  `{path}index.html` are for the legal pages
+  ([below](#the-privacy-page-and-the-terms-117-built-not-yet-served)).
+- **Addresses.** Caddy's `reverse_proxy` sets `X-Forwarded-For` to the peer it saw and ignores what
+  the client sent (no `trusted_proxies`), so the services count each address by the last entry. Leave
+  `trusted_proxies` unset unless something (a CDN) stands in front of Caddy.
 
-## 5. Gate it
+After any change:
 
 ```bash
-sudo htpasswd -cB /etc/apache2/karta.htpasswd potyro      # -c only the first time
-sudo chown root:www-data /etc/apache2/karta.htpasswd && sudo chmod 640 /etc/apache2/karta.htpasswd
+caddy validate --config /etc/caddy/Caddyfile     # "Valid configuration"
+sudo systemctl reload caddy                      # reload, not restart: open websockets are kept
 ```
 
-Add a person: `sudo htpasswd -B /etc/apache2/karta.htpasswd <name>` (no `-c`). No reload needed —
-Apache reads the file per request.
-
-Basic auth covers the websocket because it is the **same origin**. That is the reason to keep the
-relay on this host under `/sync` rather than on a separate one: a split origin would need its own
-gate and its own credentials, and the browser would not replay these.
-
-## 6. Enable it — config test first
-
-There are other sites on this Apache. **Never reload without testing**, or one typo takes all of
-them down:
+## 5. Check it
 
 ```bash
-sudo a2ensite apps.vaz.io.conf
-sudo apache2ctl configtest        # must end in "Syntax OK"
-sudo systemctl reload apache2     # reload, not restart — existing connections are kept
+curl -s -o /dev/null -w '%{http_code}\n' https://potyro.app/                             # 200, no credentials
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' https://potyro.app/icon-512.png  # 200 image/png
+curl -sI https://potyro.app/ | grep -i content-security-policy                           # frame-src 'none'
+curl -s https://potyro.app/version.json                                                  # names the live commit
 ```
 
-`configtest` on this server also prints pre-existing warnings from *other* vhosts (missing
-DocumentRoots, a deprecated `NameVirtualHost`). Read them, then ignore them — `Syntax OK` is the line
-that matters.
-
-## 7. Check it
-
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' https://apps.vaz.io/                 # 401 — the gate works
-curl -su USER:PASS -o /dev/null -w '%{http_code} %{content_type}\n' https://apps.vaz.io/
-curl -su USER:PASS -o /dev/null -w '%{http_code} %{content_type}\n' https://apps.vaz.io/icon-512.png
-```
-
-The icon **must** come back `image/png`. If it says `text/html`, the SPA rule is eating real files —
-see the warning in step 4.
+The icon **must** come back `image/png`. If it says `text/html`, the fallback to `index.html` is
+answering real files, which is a broken PWA wearing a working site. Each service's own check is in
+its section.
 
 Then the only check that really counts, in two browsers:
 
-1. Open the site on device A. There is no Studio (see below), so start from a built-in example or an
-   app you built locally.
+1. Open the site on device A, and open an app (a built-in one is fine).
 2. Share it. Answer the name prompt.
 3. Open the link on device B. It should receive the app **source** and the **data** over sync.
 4. Write on each side. Each should see the other without a reload.
 5. `💬 Chat` should be present, and a message should arrive attributed to the other person **by name**.
 
-That whole flow was run against the live deployment before this document was written, in two real
-browser contexts through `wss://apps.vaz.io/sync`.
-
 If sync never connects, check the relay URL first: **⌾ You → Sync relay** shows the one in force.
 
-## Redeploying
+## 6. Backups (#214)
 
-**The CI machine does it.** Every five minutes a cron watcher on `vazio` looks at GitHub's `main`; when
-it is new, it runs the gate on it and deploys it when green ([§8](#8-merging-and-deploying-the-gate-on-vazio)).
-By hand, from a clean checkout of `origin/main` that has passed the gate in that same checkout:
+**None yet.** There is no nightly copy, no offsite copy and no restore drill; how they will be
+made is #214. What holds state on the server today:
 
-```bash
-pnpm ci:local all --post     # the gate; `deploy` refuses anything that has not passed it
-pnpm ci:local deploy         # build, rsync to potyro-deploy: (potyro.app), write version.json
-```
+| What | Where | |
+|---|---|---|
+| The relay's database | `/var/lib/potyro/sync.db` | every shared space, encrypted, and every shared file's bytes ([below](#what-the-relay-holds-for-a-shared-apps-files-255)). |
+| The share links | `/var/lib/potyro/shares` | each link's sealed package and preview; a lost one answers 404. |
+| The AI ledger | `/var/lib/potyro-ai/ai-ledger.json` | the month's spend; lost, the caps start the month again from zero. |
+| The secrets | `/etc/potyro/*.env` | the owner's to keep, apart from the data, never in the repository. |
 
-`deploy` refuses a commit that is not `origin/main` or has not passed every step, so what is live is
-always something the gate passed. `https://potyro.app/version.json` names the live commit.
+The Caddyfile, the containers and the code are in the repository and need no backup. The rooms
+relay and the request relay keep nothing on disk.
 
-**Only potyro.app is deployed.** Since 2026-10-17 the gate no longer updates apps.vaz.io: it stays on
-the last commit it was given, and this section's setup of it is history.
+## 7. Redeploying
 
-No restart, no reload. The relay only needs touching when `cojson` changes version, in
-which case bump the pin in `/opt/potyro-relay/package.json`, re-run the `npm install` container, and
-`docker restart potyro-relay`.
+- **The shell**: the watcher on vazio deploys every green `main` within minutes (§8). No restart, no
+  reload.
+- **A service**: from a checkout on the server, `sudo deploy/containers.sh <name>` (or none for all).
+  It copies the package again and restarts the container only if its code changed; a service's
+  state on disk survives. After editing an env file, `sudo RECREATE=1 deploy/containers.sh <name>`:
+  an env file is read when a container is created.
+- **The relay** needs touching only when `cojson` changes version: bump `jazz-run` in the root
+  `package.json` with it, and `sudo deploy/containers.sh relay` installs the new pin and restarts it.
 
-## 8. Merging and deploying: the gate on vazio
+## 8. Shipping: the gate and the watcher on vazio
 
 Every GitHub Actions workflow is off. The owner disabled them by hand on 2026-10-25 (`ci.yml`,
-`ship.yml`, `bench.yml`, `baselines.yml`), because Blacksmith's runners cost too much. A push runs
-nothing, and `pnpm ship` fails: GitHub refuses to dispatch a disabled workflow. Do not turn one back
-on without the owner. The gate is `pnpm ci:local all`, and the CI machine, `vazio`, runs it on every
-new `main` and deploys `main` when it is green: its cron watcher (below) is on again (checked
-2026-10-30: `crontab -l` has the line, and `~/ci-watch.log` shows `8dda1fc` gated and deployed that
-afternoon).
+`ship.yml`, `bench.yml`, `baselines.yml`), because the runners cost too much. A push runs nothing,
+and `pnpm ship` fails: GitHub refuses to dispatch a disabled workflow. Do not turn one back on
+without the owner. The gate is `pnpm ci:local all`, run on the CI machine, `vazio`, and vazio's cron
+watcher deploys `main` when it is green.
 
 A pull request ships in four steps:
 
 1. **Rebase** the branch on `origin/main`, so the gate judges what main will be.
 2. **Run the gate** on that head: `pnpm ci:local all --post`. Every step, the whole browser suite
    as parallel shards ([below](#the-browser-suite-runs-as-parallel-shards)); `--post` puts a
-   `local-ci` status on the commit, so the PR shows the result. Run it on the CI machine, `vazio`.
-   A laptop takes ~45 minutes, and under that load some shards fail on timeouts: re-run a failed
-   spec alone (`pnpm exec playwright test <file> --workers=1`) before calling it real.
+   `local-ci` status on the commit, so the PR shows the result. Run it on vazio (its gate worktree,
+   below). A laptop takes ~45 minutes, and under that load some shards fail on timeouts: re-run a
+   failed spec alone (`pnpm exec playwright test <file> --workers=1`) before calling it real.
 3. **Merge** the PR on GitHub with a merge commit (`gh pr merge <pr> --merge`).
-4. **Deploy** main. The watcher does it within a few minutes of the merge, once the gate is green on
-   the merge commit (`ssh vazio tail -f ci-watch.log` to follow it). By hand: the merge commit is
-   new, so `pnpm ci:local deploy` refuses it until the gate has run on it too. Either run
-   `pnpm ci:local all` on main and then `deploy`, or do what the workflow's deploy job did, which is
-   §2's upload with the current target:
+4. **Deploy** main. The watcher does it: every five minutes it fetches `main` into its own checkout,
+   runs `pnpm ci:local all` on the merge commit, and deploys it only if that commit is still
+   `origin/main` when the gate is green. Follow it with `ssh vazio tail -f ci-watch.log`. A red main
+   leaves the site on the last green commit. **While vazio sleeps, nothing deploys**; it catches up
+   when it wakes.
 
-   ```bash
-   git fetch -q origin && git checkout -q --detach origin/main     # a clean checkout, not your work
-   pnpm install --frozen-lockfile
-   pnpm --filter @potyro/shell exec vite build
-   echo "{\"commit\":\"$(git rev-parse HEAD)\",\"deployedAt\":\"$(date -u +%FT%TZ)\"}" \
-     > packages/shell/dist/version.json
-   rsync -az --delete packages/shell/dist/ potyro-deploy:
-   curl -s https://potyro.app/version.json                          # names the commit
-   ```
+`pnpm ci:local deploy` is the deploy step itself (`deploy()` in `scripts/ci-local.mjs`). It refuses a
+commit that is not `origin/main`, has tracked changes, or has not passed every step in that same
+checkout. It builds the shell, writes `dist/version.json` (`{commit, deployedAt}`), rsyncs `dist/` to
+`POTYRO_DEPLOY_TARGET` (default `potyro-deploy:`) with `--delete`, and reads the target's
+`version.json` back to check it names the commit. A target already serving the commit is left alone.
 
-   `potyro-deploy` is the ssh alias for `deploy@65.109.228.5`, whose key `rrsync` locks to the web
-   root `/srv/potyro/site` (the table below). The target is relative to that root.
+**By hand**, when the watcher cannot (vazio is off): from a clean checkout of `origin/main` on a
+machine that has the deploy key,
 
-`node scripts/ci-select.mjs` still says which browser specs a change touches. Nothing runs it now;
-the gate runs everything.
-
-### How it was: the ship gate on GitHub Actions (2026-10-19 to 2026-10-25)
-
-For six days the gate ran on GitHub Actions, on Blacksmith's runners (GitHub's own were blocked by
-the account's billing). Every push to a branch ran `ci.yml`: the checks and a ten-file browser smoke,
-~4 min. `pnpm ship <pr>` (`scripts/ship.mjs`) dispatched `ship.yml` on the PR's head, waited, and
-merged when green with `gh pr merge --match-head-commit`. `ship.yml` ran the checks and the browser
-specs `scripts/ci-select.mjs` picked from the files the change touched: all of them as sixteen
-shards when it touched what every spec boots (the shell, views, runtime, host, store, schema and
-the e2e helpers), a named few for one app or one surface, none for docs. On main it ran everything,
-then built and rsynced the shell to potyro.app with the `POTYRO_DEPLOY_KEY` repository secret.
-The whole suite took under 4 min, and it cost too much to keep. The workflows and
-`scripts/bench-ci.sh` are still in the repository.
-
-### vazio as the gate and the deployer
-
-Until 2026-10-19 GitHub Actions was unavailable, so the CI machine (`vazio`) was both the gate and
-the deployer, and since the workflows went off it is again. Of what follows, the **cron watcher** is
-what runs today. The push path through `pnpm ship` is history: `scripts/ship.mjs` now dispatches
-the disabled `ship.yml`. Until 2026-10-19, **merge with `pnpm ship <pr-number>`** meant:
-
-```
-laptop:  pnpm ship 232          merge commit on GitHub's main, pushed to vazio:appinator.git
-vazio:   pre-receive            refuses at once anything but main, or a main not built on GitHub's
-         post-receive           in the background: full local CI on that exact commit
-           green →              pushed to GitHub's main (the PR shows merged) → deployed
-           red   →              nothing moves; the local-ci check on the commit says why
+```bash
+git fetch -q origin && git checkout -q --detach origin/main     # a clean checkout, not your work
+pnpm install --frozen-lockfile
+pnpm ci:local all && pnpm ci:local deploy                       # the gate, then the deploy
 ```
 
-The gate runs **before** main moves, so a red commit never reaches GitHub's main. The push returns
-at once; follow with `ssh vazio tail -f ci-watch.log`. `ship` wakes vazio if it is asleep.
+or, when the commit has passed the gate elsewhere, the same steps `deploy` takes:
 
-**Merged on GitHub instead?** cron is the backstop. Every five minutes `ci-watch.mjs` checks
-GitHub's main; when it is new, it runs the gate on it and deploys it when green. A red main leaves
-the site on the last green commit. It also moves the bare repo along, so the next `ship` builds on
-it. **While vazio sleeps, neither runs.** They catch up when it wakes.
+```bash
+pnpm --filter @potyro/shell exec vite build
+echo "{\"commit\":\"$(git rev-parse HEAD)\",\"deployedAt\":\"$(date -u +%FT%TZ)\"}" \
+  > packages/shell/dist/version.json
+rsync -az --delete packages/shell/dist/ potyro-deploy:
+curl -s https://potyro.app/version.json                          # names the commit
+```
 
-The pieces on `vazio`:
+`node scripts/ci-select.mjs` still says which browser specs a change touches. The gate runs them all.
+
+### The pieces on vazio
 
 | | |
 |---|---|
-| Bare repo | `~/appinator.git`, with `hooks/pre-receive` and `hooks/post-receive` from [`deploy/vazio-hooks/`](../deploy/vazio-hooks/). |
-| Checkout | `~/appinator-deploy`, the watcher's own. It is checked out detached at whatever is being judged, so nothing is ever edited there. |
-| Lock | `~/.karta-ci.lock`, shared by the hook and cron, so the watcher judges one commit at a time. (Ports no longer need it: every shard claims its own block, below.) |
-| Key | `~/.ssh/potyro_deploy`. It is authorized on the server as `command="/usr/bin/rrsync /var/www/karta",restrict …`, so it can rsync into the web root and do nothing else: no shell, no other path. |
-| ssh alias | `Host potyro-deploy` in `~/.ssh/config` → `deploy@65.109.228.5` (potyro.app, web root `/srv/potyro/site`), its key locked by `rrsync` to the web root. (`Host karta-deploy` → `e@vaz.io`, apps.vaz.io, is no longer a target.) |
-| cron | `*/5 * * * * cd ~/appinator-deploy && PATH=$HOME/.npm-global/bin:/usr/bin:/bin POTYRO_DEPLOY_TARGET="potyro-deploy:" flock -n ~/.karta-ci.lock node scripts/ci-watch.mjs >> ~/ci-watch.log 2>&1` |
+| Reached by | `ssh vazio` (on the LAN, or through the owner's jump host). |
+| Watcher checkout | `~/appinator-deploy`, the watcher's own. It is checked out detached at whatever is being judged, so nothing is ever edited there. |
+| Gate worktree | `~/potyro-gate`, with `~/gate-queue.sh`, where PR heads are gated (step 2). Both live only on vazio. |
+| Lock | `~/.karta-ci.lock`, so the watcher judges one commit at a time. (The name is from before the rename; changing it means changing the crontab line.) Ports need no lock: every shard claims its own block, below. |
+| Key | `~/.ssh/potyro_deploy_actions`, authorized for `deploy@65.109.228.5` as `restrict,command="/usr/bin/rrsync /srv/potyro/site"`: it can rsync into the web root and nothing else — no shell, no other path. |
+| ssh alias | `Host potyro-deploy` in `~/.ssh/config` → `deploy@65.109.228.5` with that key. `POTYRO_DEPLOY_TARGET=potyro-deploy:` is relative to the web root, because `rrsync` anchors every path there. |
+| cron (the line as of 2026-10-30) | `*/5 * * * * cd ~/appinator-deploy && PATH=$HOME/.npm-global/bin:/usr/bin:/bin POTYRO_DEPLOY_TARGET="potyro-deploy:" flock -n ~/.karta-ci.lock node scripts/ci-watch.mjs >> ~/ci-watch.log 2>&1` |
 
 ### The browser suite runs as parallel shards
 
@@ -487,12 +482,6 @@ files are dealt by index. The deal is written to
 `.ci-local/<sha>/e2e-plan.json` the first time and reused, so a resumed or re-run shard runs exactly
 the files it ran before.
 
-What was installed on vazio before the rename may still say `KARTA_DEPLOY_TARGET` (the crontab no
-longer does: it says `POTYRO_DEPLOY_TARGET`, checked 2026-10-30); `ci-local.mjs` reads either name.
-
-`POTYRO_DEPLOY_TARGET=potyro-deploy:` is relative to the web root, because `rrsync` anchors every path
-there. After changing a hook in `deploy/vazio-hooks/`, copy it to `~/appinator.git/hooks/` on vazio.
-
 ## The agent
 
 **A deployed build has the Studio, but not the `claude -p` engine.** `/__generate`, which `claude -p`
@@ -512,9 +501,8 @@ which the shell does not call yet.
 
 ## Requests to the Potyro team (#263): deployed
 
-**Running on potyro.app** (`/requests/health` answered `{"ok":true}` on 2026-10-30). The setup below
-is as it was written for apps.vaz.io, behind its gate.
-
+**Running on potyro.app**: container `potyro-requests`, port 4202, `/requests/*`
+(`/requests/health` answered `{"ok":true}` on 2026-10-30).
 
 When the Studio's agent finds that what someone asked for needs something Potyro itself lacks, it
 writes a request in their words and the Studio offers to send it. People have no GitHub account, so
@@ -536,7 +524,7 @@ What it accepts and does, so you know what you are putting on the internet:
 | Route | `POST /platform-requests` (and `GET /health`). Nothing else. |
 | What is in a request | The request's title and body in the person's words, the app's **structure** (its declaration as data, every function and piece of code shown as a marker — never its records), the app's name, the language, a request id and a random device id. |
 | Size | 64 KiB a request, checked before parsing; per-part caps after (`LIMITS` in `src/request.ts`). Too long is refused, never cut. |
-| Rate limit | 5 a day per device id **and** 20 a day per address (the first `X-Forwarded-For` entry, which Apache sets), in memory. |
+| Rate limit | 5 a day per device id **and** 20 a day per address (the last `X-Forwarded-For` entry, which Caddy sets), in memory. |
 | Duplicates | A title that normalises to an open issue's under the same label (`platform-request`, or `translation` for a wording suggestion) (case, accents, punctuation, filler words, plurals and word order ignored) becomes a **comment** on that issue rather than a new one. |
 | Retries | The same request id again gets the first answer back; it is filed once. |
 | On the issue | The words quoted, marked as untrusted text, and the structure folded away. Never the device id or the address. |
@@ -560,22 +548,20 @@ On the server, out of the repository and readable by root only:
 
 ```bash
 sudo mkdir -p /etc/potyro && sudo install -m 600 /dev/null /etc/potyro/requests.env
-sudoedit /etc/potyro/requests.env
-#   GITHUB_TOKEN=github_pat_…
-#   POTYRO_REQUESTS_REPO=fuzue/potyro
-#   HOST=0.0.0.0          # inside the container; published to loopback only, below
-#   PORT=4202
+sudoedit /etc/potyro/requests.env     # the names in deploy/env.example/requests.env.example
+#   GITHUB_TOKEN           the token above
+#   POTYRO_REQUESTS_REPO   fuzue/potyro
+#   HOST                   0.0.0.0, inside the container; published to loopback only, below
+#   PORT                   4202
 ```
 
 ### 2. Run it
 
 Node 22 runs the TypeScript as it is (`--experimental-strip-types`); the package has no
-dependencies, so there is nothing to install. The same container shape as the relay:
+dependencies, so there is nothing to install. `sudo deploy/containers.sh requests` copies
+`packages/platform-requests` to `/opt/potyro-requests` and runs:
 
 ```bash
-# from a checkout of the commit you are deploying
-rsync -az --delete packages/platform-requests/ e@vaz.io:/opt/potyro-requests/
-
 docker run -d --name potyro-requests --restart unless-stopped \
   -p 127.0.0.1:4202:4202 \
   --env-file /etc/potyro/requests.env \
@@ -585,29 +571,19 @@ docker run -d --name potyro-requests --restart unless-stopped \
 docker logs potyro-requests     # "[platform-requests] filing into fuzue/potyro, listening on 0.0.0.0:4202"
 ```
 
-Without `GITHUB_TOKEN` it refuses to start. `-p 127.0.0.1:…` keeps it reachable only through Apache,
+Without `GITHUB_TOKEN` it refuses to start. `-p 127.0.0.1:…` keeps it reachable only through Caddy,
 for the same reason as the sync relay.
 
-### 3. Put it behind the site's gate
+### 3. Route it
 
-In the vhost (`deploy/apps.vaz.io.conf`), next to the `/sync` rules and **before** the SPA rule — or
-`/requests/…` is answered with `index.html`, which the Studio reads as "not reachable" and keeps
-saving:
-
-```apache
-    # Requests to the Potyro team (#263): the relay files them as GitHub issues.
-    RewriteRule ^/requests/(.*)$ http://127.0.0.1:4202/$1 [P,L]
-```
-
-Same origin, so the basic-auth gate covers it and the browser needs no CORS. Then
-`sudo apache2ctl configtest` and `sudo systemctl reload apache2`, as in §6, and copy the new vhost
-into `deploy/` so the repository says what runs.
+`handle_path /requests/*` → `127.0.0.1:4202` ([§4](#4-caddy-in-front)). The prefix is taken off:
+the relay answers `/platform-requests` and `/health`. Same origin, so the browser needs no CORS.
 
 ### 4. Check it
 
 ```bash
-curl -su USER:PASS https://apps.vaz.io/requests/health                       # {"ok":true}
-curl -su USER:PASS -X POST https://apps.vaz.io/requests/platform-requests \
+curl -s https://potyro.app/requests/health                                    # {"ok":true}
+curl -s -X POST https://potyro.app/requests/platform-requests \
   -H 'content-type: application/json' -d '{}'                                 # 400 {"ok":false,…}
 ```
 
@@ -615,22 +591,21 @@ Then send one from the Studio for real (ask a change that needs, say, a barcode 
 issue it opens, and close it. A request saved earlier on a device goes the next time that device
 opens the Studio.
 
-**The Android app** is not on this origin: build it with `VITE_POTYRO_REQUESTS=https://apps.vaz.io/requests`
-— and note that the basic-auth gate then stands in its way, so it keeps saving until the gate is
-lifted or the route is exempted from it (with the rate limit as its only guard).
+**The Android and iOS apps** are not on this origin, and this service sends no CORS headers, so
+from them a request keeps waiting on the device (docs/27 §2.1).
 
-**Updating it:** rsync the package again and `docker restart potyro-requests`. Its rate limits and
+**Updating it:** `sudo deploy/containers.sh requests`. Its rate limits and
 its index of open issues are in memory; a restart forgets them, and the index is read again from
 GitHub on the next request.
 
 ## AI for apps (docs/23): deployed
 
-**Running at `https://potyro.app/ai/`** behind Caddy (`/ai/health` answered `{"ok":true}` on
-2026-10-30). The running relay predates the chat route and the counts (#468): on 2026-10-30
-`POST /ai/v1/chat/completions` and `GET /ai/count` answered 404 there, so only `/complete` and
-`/health` are live until the container is updated. Who pays: a **free allowance** first, through a small relay that holds Potyro's
-OpenRouter key (`packages/ai-relay`), then the person's own key from Model settings. It serves two
-kinds of request:
+**Running at `https://potyro.app/ai/`**: container `potyro-ai`, port 4204, `/ai/*` (`/ai/health`
+answered `{"ok":true}` on 2026-10-30). The running relay predates the chat route and the counts
+(#468): on 2026-10-30 `POST /ai/v1/chat/completions` and `GET /ai/count` answered 404 there, so only
+`/complete` and `/health` are live until the container is updated. Who pays: a **free allowance**
+first, through a small relay that holds Potyro's OpenRouter key (`packages/ai-relay`), then the
+person's own key from Model settings. It serves two kinds of request:
 
 - **`POST /ai/complete`** — apps' AI (`ctx.caps.ai`): read a photo, a text or a recording. The relay
   decides everything but the parts. This is what the shell uses today.
@@ -678,17 +653,17 @@ logging **off**. On the server, out of the repository and readable by root only:
 
 ```bash
 sudo install -m 600 /dev/null /etc/potyro/ai.env
-sudoedit /etc/potyro/ai.env
-#   OPENROUTER_API_KEY=sk-or-v1-…
-#   AI_MONTHLY_CAP_USD=10
-#   AI_DAY_USD=1.25
-#   AI_LEDGER=/data/ai-ledger.json
-#   AI_CHAT_MODELS=deepseek/deepseek-v4-flash-0731
-#   AI_DEVICE_MONTH_USD=0.5
-#   AI_CHAT_OFF_FILE=/data/chat-off
-#   TRUST_PROXY=caddy
-#   HOST=0.0.0.0          # inside the container; published to loopback only, below
-#   PORT=4204
+sudoedit /etc/potyro/ai.env     # the names in deploy/env.example/ai.env.example
+#   OPENROUTER_API_KEY     the key above
+#   AI_MONTHLY_CAP_USD     10
+#   AI_DAY_USD             1.25
+#   AI_LEDGER              /data/ai-ledger.json
+#   AI_CHAT_MODELS         deepseek/deepseek-v4-flash-0731
+#   AI_DEVICE_MONTH_USD    0.5
+#   AI_CHAT_OFF_FILE       /data/chat-off
+#   TRUST_PROXY            caddy
+#   HOST                   0.0.0.0, inside the container; published to loopback only, below
+#   PORT                   4204
 ```
 
 Every variable, with its default, is at the top of `packages/ai-relay/src/server.ts`. The new ones:
@@ -711,12 +686,10 @@ Every variable, with its default, is at the top of `packages/ai-relay/src/server
 ### 2. Run it
 
 No dependencies. Port **4204**: 4201 is the sync relay, 4202 the request relay and 4203 the share
-links (docs/24).
+links (docs/24). `sudo deploy/containers.sh ai` copies `packages/ai-relay` to `/opt/potyro-ai` and
+runs:
 
 ```bash
-rsync -az --delete packages/ai-relay/ SERVER:/opt/potyro-ai/
-sudo mkdir -p /var/lib/potyro-ai
-
 docker run -d --name potyro-ai --restart unless-stopped \
   -p 127.0.0.1:4204:4204 \
   --env-file /etc/potyro/ai.env \
@@ -730,12 +703,12 @@ Without `OPENROUTER_API_KEY` it refuses to start.
 
 ### 3. Route it (Caddy)
 
-In the `potyro.app` site block, **before** the shell's `file_server` (or `/ai/…` is answered with
-`index.html`):
+In the `potyro.app` site block ([§4](#4-caddy-in-front)):
 
 ```caddy
-    # The free AI allowance (docs/23). Not under `encode`: a streamed answer goes out as it comes.
-    handle /ai/* {
+    # The free AI allowance (docs/23). The prefix is taken off: the relay serves /health,
+    # /complete, /v1/chat/completions and /count.
+    handle_path /ai/* {
         reverse_proxy 127.0.0.1:4204 {
             flush_interval -1
             transport http {
@@ -746,13 +719,20 @@ In the `potyro.app` site block, **before** the shell's `file_server` (or `/ai/�
     }
 ```
 
+`handle_path`, so `/ai/complete` reaches the relay as `/complete`. (The relay also accepts its routes
+with the `/ai` prefix kept, so a `handle /ai/*` route works too; potyro.app's takes it off.)
+
 **The timeout must match the relay's.** The chat route gives OpenRouter 300 s for the whole request,
-so nothing in front of it may give up sooner. Caddy's own defaults have no response-header or read
-timeout, so with the block above nothing cuts in early; but if the site (or the global options'
-`servers { timeouts { write … } }`) sets one, it must be over 300 s for `/ai/*`. OpenRouter's
-keep-alive lines keep the connection busy while a model thinks; `flush_interval -1` sends them on at
-once. Leave `trusted_proxies` unset unless something (a CDN) stands in front of Caddy: the relay's
+so nothing in front of it may give up sooner: hence 310 s. If the site (or the global options'
+`servers { timeouts { write … } }`) ever sets a shorter one, it must be over 300 s for `/ai/*`.
+OpenRouter's keep-alive lines keep the connection busy while a model thinks; `flush_interval -1`
+sends them, and each piece of a streamed answer, on at once. The site's `encode` covers this route
+too; the streamed check below is what shows the pieces still arrive one by one. Leave
+`trusted_proxies` unset unless something (a CDN) stands in front of Caddy: the relay's
 `TRUST_PROXY=caddy` relies on the last `X-Forwarded-For` entry being the peer Caddy saw.
+
+The `flush_interval` and the timeouts are in `deploy/potyro.app.Caddyfile` and were being put on
+the server on 2026-11-01; until then the live route was a plain `reverse_proxy 127.0.0.1:4204`.
 
 `caddy validate --config /etc/caddy/Caddyfile`, then `sudo systemctl reload caddy`.
 
@@ -799,14 +779,15 @@ same requests work there.
 person's own key; pick one with image input and structured outputs on OpenRouter. For the chat route
 it is `AI_CHAT_MODELS`; the Studio must ask for a model in that list.
 
-**Updating it:** rsync the package again and `docker restart potyro-ai`. The ledger survives.
+**Updating it:** `sudo deploy/containers.sh ai`. The ledger survives. This is also what brings the
+chat route and the counts to potyro.app, while the running relay is older than them (above).
 
 ## Demo links and their previews (docs/24): deployed
 
-**Running on potyro.app** (`/share-api/health` answered `{"ok":true}` on 2026-10-30). The setup below
-is as it was written for apps.vaz.io, behind its gate; potyro.app has none, so §3 does not apply
-there.
-
+**Running on potyro.app**: container `potyro-share-links`, port 4203, `/s/<id>` and `/share-api/*`
+(`/share-api/health` answered `{"ok":true}` on 2026-10-30). It runs without its env file so far:
+no `SHARE_ADMIN_TOKEN` (links are taken down on the server) and no `SHARE_ABUSE_CONTACT` (a
+taken-down link names `contact@potyro.com`).
 
 A demo link opens an app running in the browser with sample records, and a chat shows a preview
 card for it (title, one line, a picture). The site is static, so the preview needs a small service
@@ -828,89 +809,66 @@ What the service accepts and does:
 
 ### 1. Run it
 
-Node 22 runs the TypeScript as it is, and the package has no dependencies. Same container shape as
-the relay and the requests relay. It reads the built shell's `index.html` (read-only) on every
-request, so a deploy shows at once.
+Node 22 runs the TypeScript as it is, and the package has no dependencies. It reads the built
+shell's `index.html` (read-only) on every request, so a deploy shows at once.
+`sudo deploy/containers.sh share-links` copies `packages/share-links` to `/opt/potyro-share-links`
+and runs:
 
 ```bash
-sudo mkdir -p /var/lib/potyro/shares && sudo chown -R "$USER": /var/lib/potyro/shares
-rsync -az --delete packages/share-links/ e@vaz.io:/opt/potyro-share-links/
-
 docker run -d --name potyro-share-links --restart unless-stopped \
   -p 127.0.0.1:4203:4203 \
   -e HOST=0.0.0.0 -e PORT=4203 \
   -e POTYRO_SHARES_DIR=/data -e POTYRO_SHELL_INDEX=/site/index.html \
-  -e POTYRO_PUBLIC_ORIGIN=https://apps.vaz.io \
-  -e TRUST_PROXY=caddy \
+  -e POTYRO_PUBLIC_ORIGIN=https://potyro.app \
   --env-file /etc/potyro/share-links.env \
-  -v /opt/potyro-share-links:/app:ro -v /var/lib/potyro/shares:/data -v /var/www/karta:/site:ro -w /app \
+  -v /opt/potyro-share-links:/app:ro -v /var/lib/potyro/shares:/data -v /srv/potyro/site:/site:ro -w /app \
   node:22-bookworm \
   node --experimental-strip-types src/server.ts
 docker logs potyro-share-links   # "[share-links] keeping shares in /data, page from /site/index.html, listening on 0.0.0.0:4203"
 ```
 
-`POTYRO_PUBLIC_ORIGIN` is what preview URLs are built on. Crawlers need absolute `https://` URLs,
-and Apache does not tell the service which scheme it was reached by.
+The `--env-file` line is there only when `/etc/potyro/share-links.env` exists; it does since 2026-11-01.
 
-`/etc/potyro/share-links.env` (mode 600, owned by root) holds the one secret,
-`SHARE_ADMIN_TOKEN=…` (made with `openssl rand -base64 33`), and the report address: a line
-`SHARE_ABUSE_CONTACT=abuse@potyro.com` (the address the terms name, the same as `abuse` in
-`packages/shell/src/contacts.json`). Until it is set — or while it is still a placeholder like
-`<ABUSE EMAIL>`, which the service says in its log at start — a taken-down link's page names
-`contact@potyro.com`. The token is the operator's token for taking a
+`POTYRO_PUBLIC_ORIGIN` is what preview URLs are built on. Crawlers need absolute `https://` URLs,
+and the service does not read the scheme from the request.
+
+`/etc/potyro/share-links.env` (mode 600, owned by root; the names in
+`deploy/env.example/share-links.env.example`) holds the one secret, `SHARE_ADMIN_TOKEN` (made with
+`openssl rand -base64 33`), and the report address: `SHARE_ABUSE_CONTACT=abuse@potyro.com`, the address the
+terms name (the same one as `abuse` in `packages/shell/src/contacts.json`). Until it is set — or
+while it is still a placeholder like `<ABUSE EMAIL>`, which the service says in its log at start —
+a taken-down link's page names `contact@potyro.com`. The token is the operator's token for taking a
 link down over HTTPS ([below](#taking-a-link-down)); at least 32 characters, or the service will not
 start. Leave it out and the takedown route does not exist; links are then taken down on the server
 itself. It is in a file, not on the command line, so it is not in `ps`, the shell's history or
-`docker inspect`'s `Cmd`. The service never logs it.
+`docker inspect`'s `Cmd`. The service never logs it. Adding the file changes the container's run
+line, so the next `sudo deploy/containers.sh share-links` re-creates it; after editing it,
+`sudo RECREATE=1 deploy/containers.sh share-links`.
 
-`TRUST_PROXY=caddy` (the default) believes the LAST `X-Forwarded-For` entry: Caddy writes it, and so
-does Apache's `mod_proxy`, which appends the peer it saw. Anything before it is what the client sent.
-`none` ignores the header (a service reached directly). The rule and its test are the AI relay's
-(`packages/share-links/src/address.ts` is a copy of `packages/ai-relay/src/address.ts`).
+`TRUST_PROXY` is unset, so the default, `caddy`: it believes the LAST `X-Forwarded-For` entry,
+which Caddy writes; anything before it is what the client sent. `none` ignores the header (a service
+reached directly). The rule and its test are the AI relay's (`packages/share-links/src/address.ts`
+is a copy of `packages/ai-relay/src/address.ts`).
 
-### 2. Route it, before the SPA rule
+### 2. Route it, before the shell
 
-In `deploy/apps.vaz.io.conf`, next to `/sync`:
+`@share` (`^/s/<22 characters>(/preview.jpg|png)?/?$`) and `handle /share-api/*` →
+`127.0.0.1:4203`, both keeping the path ([§4](#4-caddy-in-front)). Previews need these routes open
+to anyone: WhatsApp, Telegram, iMessage, Discord and X fetch `/s/<id>` and the picture without
+credentials, so a gate in front of these routes would cut every preview.
 
-```apache
-    # Demo links (docs/24): the link's page, its preview picture, and the share API.
-    RewriteRule ^/s/([A-Za-z0-9_-]{22})(/preview\.(jpg|png))?/?$ http://127.0.0.1:4203/s/$1$2 [P,L]
-    RewriteRule ^/share-api/(.*)$ http://127.0.0.1:4203/share-api/$1 [P,L]
-```
-
-Then `sudo apache2ctl configtest`, `sudo systemctl reload apache2` (§6), and copy the vhost back
-into `deploy/`.
-
-### 3. The gate
-
-**Previews cannot work behind basic auth.** WhatsApp, Telegram, iMessage, Discord and X fetch
-`/s/<id>` and the picture without credentials. While `apps.vaz.io` is a private test, the gate
-stays. Invited people still get the short link and the demo, but chats show no card. When the site
-goes public, or to test previews before then, exempt exactly these paths:
-
-```apache
-    <LocationMatch "^/s/[A-Za-z0-9_-]{22}(/preview\.(jpg|png))?/?$">
-        Require all granted
-    </LocationMatch>
-```
-
-That alone shows the **preview**. Opening the demo also needs the shell's assets (`/assets/`,
-`/sw.js`, the manifest, the icons) and `GET /share-api/shares/<id>/payload` reachable without the
-gate. Exempting those is deciding to make the site public, so take that decision on purpose and not
-as a side effect of this section.
-
-### 4. Check it
+### 3. Check it
 
 ```bash
-curl -s https://apps.vaz.io/share-api/health                                   # {"ok":true}
+curl -s https://potyro.app/share-api/health                                   # {"ok":true}
 ```
 
 Then make a link from a tile (*Share → Make the link*). It should look like `/s/<id>#k=…`, and the
 sheet should not say "without a preview picture". Check:
 
-- `curl -s https://apps.vaz.io/s/<id> | grep og:` shows the title and the image URL.
+- `curl -s https://potyro.app/s/<id> | grep og:` shows the title and the image URL.
 - The image URL answers `image/jpeg`.
-- Pasting the link into a chat shows the card, once the gate allows it (§3).
+- Pasting the link into a chat shows the card.
 
 **Disk:** links are never expired. Budget about 20–60 KB per link (sealed package + picture);
 `du -sh /var/lib/potyro/shares` to watch it. No more than 2 GB of new links a day are kept, and none
@@ -924,7 +882,8 @@ or anything else the terms say may be removed. **Who may run it:** the operator 
 the reason is kept with the takedown, with no end date. Keep it to what was decided and why (the
 notice's date, the rule or law); the reporter's name and address stay in the mail, not here.
 
-From anywhere, over HTTPS (Node 18 or later; a whole link is fine, its key after `#` is never sent).
+From anywhere, over HTTPS, once `SHARE_ADMIN_TOKEN` is set (it is not yet on potyro.app; Node 18
+or later; a whole link is fine, its key after `#` is never sent).
 Paste the token at the silent prompt, so it is in neither the screen nor the shell's history. The
 script sends it only to an `https://` site (or to this machine):
 
@@ -1008,10 +967,9 @@ high on purpose: one chat service's crawler fetches the cards of everyone who pa
 
 ## Rooms for multiplayer apps (docs/26): deployed
 
-First deployed 2026-10-16; **running on potyro.app** (`/rooms/health` answered ok on 2026-10-30, and
-an upgrade with `Origin: https://potyro.app` got 101 where `https://apps.vaz.io` got 403). The setup
-below is as it was written for apps.vaz.io.
-
+First deployed 2026-10-16; **running on potyro.app**: container `potyro-rooms`, port 4205,
+`/rooms/*` (`/rooms/health` answered ok on 2026-10-30, and an upgrade with
+`Origin: https://potyro.app` got 101 where `https://apps.vaz.io` got 403).
 
 Real-time multiplayer apps (the first is a draw-and-guess game whose rooms are joined by a share
 link) need a server that passes messages between the people in a room. `packages/rooms` is that
@@ -1030,95 +988,64 @@ What it accepts and does, so you know what you are putting on the internet:
 | What it holds | Only what is live, in memory: the rooms that have members, each member's random id and display name, and per-address counts. **Nothing on disk.** A room is gone when its last member leaves. |
 | What it reads | Each frame's size and rate, and whether a text frame begins with the envelope's reserved prefix. Never the payload. |
 | Limits | 64 KiB a message, 16 members a room, 8 rooms and 64 connections at once per address, 30 messages/s (bursts of 60) and 64 KiB/s (bursts of 256 KiB) per connection, 1 MiB queued for a slow member, 2000 rooms and 5000 connections in all; a room with no message for 30 minutes is closed. Each one closes with its own code (docs/26 §3). |
-| Address | The **last** `X-Forwarded-For` entry — the one Apache appends. The first entry is whatever the client sent, so it is never used for limits. |
-| Origins | By default browsers only from `https://potyro.app`, `https://localhost` (the Android app) and `capacitor://localhost` (`DEFAULT_ORIGINS` in `src/server.ts`; `https://apps.vaz.io` until #458); anything else gets HTTP 403 on the upgrade. potyro.app's accepts `https://potyro.app`. |
-| Keepalive | A ping every 30 s; a member that has not answered the last one is dropped. That also keeps Apache's `ProxyTimeout 600` from cutting a quiet room. |
+| Address | The **last** `X-Forwarded-For` entry — the one Caddy writes. The first entry is whatever the client sent, so it is never used for limits. |
+| Origins | By default browsers only from `https://potyro.app`, `https://localhost` (the Android app) and `capacitor://localhost` (`DEFAULT_ORIGINS` in `src/server.ts`); anything else gets HTTP 403 on the upgrade. potyro.app's container sets the same list in `ROOMS_ORIGINS`. |
+| Keepalive | A ping every 30 s; a member that has not answered the last one is dropped. That also keeps a quiet room's connection from looking idle to anything in between. |
 | Logs | Its own start and stop. Never a payload, a room id, a name or an address. |
 
 ### 1. Run it
 
 Port **4205**: 4201 is the sync relay, 4202 the request relay, 4203 the share links, 4204 the AI
-relay. Unlike those three, this package has **one dependency**, the `ws` websocket library (pinned
-in its `package.json`), so it needs one `npm install`, the way the sync relay does. Everything else
-is the same container shape:
+relay. Unlike those, this package has **one dependency**, the `ws` websocket library (pinned in its
+`package.json`), so it needs one `npm install`, the way the sync relay does.
+`sudo deploy/containers.sh rooms` copies `packages/rooms` to `/opt/potyro-rooms` (never
+`node_modules`, so the server's installed `ws` stays and the laptop's pnpm links never arrive),
+installs `ws` in a throwaway Node 22 container when the package changed, and runs:
 
 ```bash
-# from a checkout of the commit you are deploying
-ssh e@vaz.io 'sudo mkdir -p /opt/potyro-rooms && sudo chown -R "$USER": /opt/potyro-rooms'
-rsync -az --delete --exclude node_modules packages/rooms/ e@vaz.io:/opt/potyro-rooms/
-
-# on the server: install ws (once, and again whenever package.json changes)
-docker run --rm -v /opt/potyro-rooms:/app -w /app node:22-bookworm npm install --omit=dev --no-package-lock
-
 docker run -d --name potyro-rooms --restart unless-stopped \
   -p 127.0.0.1:4205:4205 \
   -e HOST=0.0.0.0 -e PORT=4205 \
+  -e ROOMS_ORIGINS=https://potyro.app,https://localhost,capacitor://localhost \
   -v /opt/potyro-rooms:/app:ro -w /app \
   node:22-bookworm \
   node --experimental-strip-types src/server.ts
 docker logs potyro-rooms   # "[rooms] origins https://potyro.app https://localhost capacitor://localhost, listening on 0.0.0.0:4205"
 ```
 
-No secrets, so no env file. `-p 127.0.0.1:…` keeps it reachable only through Apache, for the same
-reason as the sync relay: published on `0.0.0.0` it would be an open websocket relay on the public
-internet with no gate in front of it. `--exclude node_modules` keeps the server's installed `ws`
-(and keeps the laptop's pnpm links off the server).
+No secrets, so no env file. `-p 127.0.0.1:…` keeps it reachable only through Caddy, for the same
+reason as the sync relay.
 
 Every limit is an environment variable (`ROOMS_MAX_MEMBERS`, `ROOMS_MESSAGES_PER_SECOND`, …, the
 full list at the top of `src/server.ts`); a value that is not a positive number stops it starting.
-`ROOMS_ORIGINS` replaces the origin list (comma-separated, or `*`). Add `-e NAME=value` to the
-`docker run` and re-create the container to change one. The default named `https://apps.vaz.io`
-until #458: a relay re-created from a later commit for a site that still serves pages from there
-needs `-e ROOMS_ORIGINS=https://apps.vaz.io,https://localhost,capacitor://localhost`.
+`ROOMS_ORIGINS` replaces the origin list (comma-separated, or `*`). To change one, add it to the
+`docker run` line in `deploy/containers.sh` and run the script again: a changed line re-creates the
+container.
 
-### 2. Put it behind the site's gate, with the upgrade
+### 2. Route it
 
-In `deploy/apps.vaz.io.conf`, next to the `/sync` rules and **before** the SPA rule (or `/rooms/…`
-is answered with `index.html`). Like `/sync`, an upgrade is proxied as a websocket and anything else
-goes to the same place over http, so `/rooms/health` works and a misrouted request says so:
-
-```apache
-    # Rooms for multiplayer apps (docs/26): a websocket per room, and its health check.
-    RewriteCond %{HTTP:Upgrade} =websocket [NC]
-    RewriteRule ^/rooms/(.*)$ ws://127.0.0.1:4205/rooms/$1 [P,L]
-    RewriteRule ^/rooms/(.*)$ http://127.0.0.1:4205/rooms/$1 [P,L]
-```
-
-`proxy_wstunnel` is already enabled for `/sync`; the query string (`?name=`) is passed on as it is.
-`ProxyPreserveHost On` and `ProxyTimeout 600` from the `/sync` block already apply. Then
-`sudo apache2ctl configtest`, `sudo systemctl reload apache2` (§6), and copy the vhost back into
-`deploy/` so the repository says what runs.
-
-**The basic-auth gate** covers `/rooms/` from the site itself: same origin, so the browser replays
-the credentials on the upgrade, exactly as for `/sync`. It does **not** work for the Android app
-(origin `https://localhost`, another origin: no credentials are sent, and the upgrade gets a 401). To
-let the APK in before the site goes public, exempt exactly this route; the relay's own limits are
-then its only guard:
-
-```apache
-    <LocationMatch "^/rooms/">
-        Require all granted
-    </LocationMatch>
-```
+`handle /rooms/*` → `127.0.0.1:4205`, the path kept ([§4](#4-caddy-in-front)). The upgrade is passed
+through as it is, the query string (`?name=`) too, and `/rooms/health` answers over plain http.
+potyro.app has no gate, so the native apps, which are other origins and send no credentials, reach
+it as the site does.
 
 ### 3. Check it
 
 ```bash
-curl -su USER:PASS https://apps.vaz.io/rooms/health        # {"ok":true,"rooms":0,"connections":0}
+curl -s https://potyro.app/rooms/health        # {"ok":true,"rooms":0,"connections":0}
 
 # a real upgrade: expect "HTTP/1.1 101 Switching Protocols", then the welcome frame's text
 ROOM=$(head -c16 /dev/urandom | base64 | tr '+/' '-_' | tr -d '=')
-curl -su USER:PASS --http1.1 -i -N --max-time 3 \
+curl -s --http1.1 -i -N --max-time 3 \
   -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' \
-  -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' -H 'Origin: https://apps.vaz.io' \
-  "https://apps.vaz.io/rooms/$ROOM?name=check"
+  -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' -H 'Origin: https://potyro.app' \
+  "https://potyro.app/rooms/$ROOM?name=check"
 ```
 
 The second should print `{"potyro-rooms":1,"type":"welcome",…}` after the headers. A `200` with HTML
-instead means the SPA rule answered first; a `403` means the `Origin` is not on the list.
+instead means the shell's route answered first; a `403` means the `Origin` is not on the list.
 
-**Updating it:** rsync the package again (with `--exclude node_modules`), run the `npm install`
-container again if `package.json` changed, and `docker restart potyro-rooms`. A restart closes every
+**Updating it:** `sudo deploy/containers.sh rooms`. A restart closes every
 member with 1001 ("relay restarting"); apps reconnect, and since nothing was kept, nothing is lost
 but the current member ids.
 
@@ -1183,11 +1110,11 @@ needs to change: the account is the same.)
 
 ## The gallery on potyro.com (docs/24 §10): deployed 2026-10-16
 
-The gallery is a static folder: `index.html`, `gallery.css`, `gallery.js`, `favicon.svg` and
-`shots/*.jpg`. Nothing runs on the server for it, it keeps no logs of its own, and it loads nothing
-from anyone else (no fonts, analytics or CDN), so it can be served with a strict policy. Until
-potyro.com has a website, the gallery is its front page. All its paths are relative, so it works at
-`/` or under `/gallery/` without being rebuilt.
+The gallery is a static folder: `index.html`, `gallery.css`, `gallery.js`, its own fonts, logo and
+tokens, `favicon.svg` and `shots/*.jpg`. Nothing runs on the server for it, it keeps no logs, and it
+loads nothing from anyone else (no outside fonts, analytics or CDN), so it is served with a strict
+policy. Until potyro.com has a website, the gallery is its front page. All its paths are relative,
+so it works at `/` or under `/gallery/` without being rebuilt.
 
 ### 1. Make the links (once per change to the list, from a machine with a browser)
 
@@ -1208,41 +1135,28 @@ passed, and no records but the apps' own samples (docs/24 §3). The share servic
 
 ```bash
 pnpm gallery:build                    # → dist/gallery/ (refuses data with a problem, or a missing screenshot)
-rsync -av --delete dist/gallery/ SERVER:/srv/potyro.com/
+rsync -av --delete dist/gallery/ aivuk@65.109.228.5:/srv/potyro.com/
 ```
+
+By hand, with an account that can write `/srv/potyro.com`: the deploy key cannot, since `rrsync`
+holds it to the app's web root. Nothing deploys the gallery automatically.
 
 ### 3. Serve it (Caddy)
 
-```caddy
-potyro.com, www.potyro.com {
-    root * /srv/potyro.com
-    encode zstd gzip
-    file_server
+The `potyro.com, www.potyro.com` block of [`deploy/potyro.app.Caddyfile`](../deploy/potyro.app.Caddyfile):
+`file_server` from `/srv/potyro.com`, `no-cache` on the page, a day's cache on its files, and
+`log { output discard }`, so the server keeps no record of a visit. Its policy:
 
-    header {
-        Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        X-Content-Type-Options "nosniff"
-        Referrer-Policy "no-referrer"
-        Permissions-Policy "camera=(), microphone=(), geolocation=()"
-        -Server
-    }
-    # The page and its data change on every build; the style, script and pictures are named by version.
-    @page path / /index.html
-    header @page Cache-Control "no-cache"
-    @assets path /gallery.css /gallery.js /shots/* /favicon.svg
-    header @assets Cache-Control "public, max-age=86400"
-
-    # No access log: a gallery that keeps no record of you, on the server too.
-    log {
-        output discard
-    }
-}
+```
+default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self';
+base-uri 'none'; form-action https://potyro.app; frame-ancestors 'none'
 ```
 
-`img-src data:` is for the page's paper grain, an inline SVG. The page's data is a
-`<script type="application/json">` block, which a CSP does not treat as a script. The page has no form
-and no inline script or style, so it needs nothing looser.
+`img-src data:` is for the page's paper grain, an inline SVG; `font-src 'self'` for its own fonts.
+`form-action https://potyro.app` is for the one form, the "describe an app" box, which opens the
+app with the words (`gallery/src/build.mjs`). The page's data is a `<script type="application/json">`
+block, which a CSP does not treat as a script. There is no inline script or style, so it needs
+nothing looser.
 
 ### 4. Check it
 
@@ -1261,19 +1175,22 @@ tap one card's **Try it** (the app opens sealed) and **Make it mine** (the Make 
 in words ("to confirm", "to decide", "to verify"), no `Effective: YYYY-MM-DD` line, or its Draft
 note, no build makes them**: `vite build` and `pnpm gallery:build` print one line instead
 (`legal: /privacy and /terms not built: …`) and the app and the gallery link nothing. That is the
-state of main today, and both sites deploy as they always have.
+state of main today (2026-11-01: both texts still have placeholders and the Draft note), and both
+sites deploy as they always have.
 
 Once the owner has filled the texts, the next build of each site has them, with nothing to set:
 
 - **potyro.app** (the watcher's `vite build`): `privacy.html`, `privacy/index.html`, the same for
-  terms, and `legal/` in `packages/shell/dist`. The SPA fallback must not answer `/privacy` with the
-  app: Caddy's `try_files` (or whatever sends unknown paths to `index.html`) must try the file
-  first, for example `try_files {path} {path}.html {path}/index.html /index.html`. The live
-  Caddyfile is not in this repository, so check it after the first deploy with the pages.
+  terms, and `legal/` in `packages/shell/dist`. The shell's route serves them:
+  `try_files {path} {path}.html {path}index.html /index.html` answers `/privacy` with `privacy.html`
+  and `/privacy/` with `privacy/index.html`, and `@fresh` marks them `no-cache`. A plain
+  `try_files {path} /index.html`, as the server had until 2026-11-01, answers both with the app:
+  try_files matches a path without a trailing slash only against files, and `privacy` is a directory
+  (checked with Caddy 2.11.7).
 - **potyro.com** (`pnpm gallery:build`, rsync as above): `privacy/index.html`, `terms/index.html`
-  and `legal/` beside the gallery. The `file_server` above serves them as they are (`/privacy`
-  redirects to `/privacy/`). They have no script and no inline style, so the CSP above holds. Add
-  them to the no-cache rule: `@page path / /index.html /privacy/* /terms/*`.
+  and `legal/` beside the gallery. The `file_server` serves them as they are (`/privacy` redirects
+  to `/privacy/`). They have no script and no inline style, so the CSP above holds. They are not in
+  the block's `no-cache` rule yet: add `/privacy/* /terms/*` to `@page` when they are first served.
 
 The service worker serves a navigation network first, so `/privacy` comes from the server whenever
 the device is online; offline it is the copy from the last visit, or the app if there is none. Every
@@ -1291,11 +1208,11 @@ curl -sL https://potyro.com/privacy | grep -c 'data-legal="privacy"'  # 1
 
 Be straight with anyone you invite:
 
-- **The relay is unauthenticated** (KA-29). On a gated site the basic-auth gate is the only thing in
-  front of it; on potyro.app, which has no gate, nothing is (`/sync` upgrades without credentials,
-  checked 2026-10-30). Anyone who reaches it can push and fetch CoValues by id — they cannot *read* them (everything is
-  encrypted to the space's members, and the decryption key travels in a URL fragment that never
-  reaches the server), but they can consume storage.
+- **The relay is unauthenticated** (KA-29). On potyro.app, which has no gate, nothing is in front of
+  it (`/sync` upgrades without credentials, checked 2026-10-30). Anyone who reaches it can push and
+  fetch CoValues by id — they cannot *read* them (everything is encrypted to the space's members, and
+  the decryption key travels in a URL fragment that never reaches the server), but they can consume
+  storage.
 - **You can see the social graph** (KA-33). Transactions are encrypted; group and account metadata
   are not. As operator you can see which accounts share which spaces, and when they are active. Do
   not claim "we can see nothing" — it is not true yet.
@@ -1306,6 +1223,7 @@ Be straight with anyone you invite:
   [Erasing a space or an account from the relay](#erasing-a-space-or-an-account-from-the-relay-119).
 - **Anyone with a share link is in.** The invite secret is the whole capability; there is no second
   factor and no way to revoke one link short of rotating the space's keys (KA-17).
+- **No backups yet** ([§6](#6-backups-214)). A lost disk is every shared space and every link.
 - **The first load is ~2.1 MB gzipped.** Not a security issue, but it is what a phone on mobile data
   will feel first.
 
@@ -1315,3 +1233,36 @@ Be straight with anyone you invite:
 a deployed build can be wrong about: that there is a relay URL, that it can be changed without
 devtools, that no agent surface is offered, and that a built-in app runs with no server behind it.
 The dev server hides every one of those by construction — which is why KA-28 existed at all.
+
+## How it was
+
+History, kept short; the files are in the repository's history.
+
+**apps.vaz.io, the first site (2026-08-10 to 2026-10-17).** A private test on the owner's existing
+Debian server, beside ~28 other Apache vhosts: the shell in `/var/www/karta`, the relay in the same
+container shape as today's, the vaz.io wildcard certificate, and HTTP basic auth over everything
+(the browser replays the credentials on a same-origin websocket upgrade, so one gate covered `/sync`
+too). Its vhost was `deploy/apps.vaz.io.conf` until #286. What it taught:
+
+- In `<VirtualHost>` context mod_rewrite runs before the URL is mapped to a path, so an SPA rule
+  written against `%{REQUEST_FILENAME}` answered every real file with `index.html` (icons and the
+  manifest came back `text/html`); the condition had to be `%{DOCUMENT_ROOT}%{REQUEST_URI}`.
+- A gate is in the way of everything that comes without credentials: chat apps fetching a link's
+  preview, the native apps (other origins, which send none), and anyone opening a demo link. Routes
+  had to be exempted one by one, and each exemption was a piece of the site made public.
+
+It has not been deployed since 2026-10-17, when potyro.app became the only target. People's apps
+move from it with the [move](#moving-to-a-new-home-appsvazio--potyroapp).
+
+**The push gate on vazio (until 2026-10-19).** `pnpm ship` pushed the merge commit to a bare repo on
+vazio, whose `pre-receive` hook refused anything not built on GitHub's main and whose `post-receive`
+ran `node scripts/ci-watch.mjs gate <sha>`: green → pushed to GitHub's main and deployed, red →
+nothing moved. The hooks were `deploy/vazio-hooks/` until #286; `ci-watch.mjs` still has the `gate`
+mode.
+
+**The ship gate on GitHub Actions (2026-10-19 to 2026-10-25).** On Blacksmith's runners: every push
+ran `ci.yml` (the checks and a ten-file browser smoke, ~4 min); `pnpm ship <pr>` dispatched
+`ship.yml` on the PR's head, ran the specs `scripts/ci-select.mjs` picked (all of them, as sixteen
+shards, when the change touched what every spec boots), and merged when green; main then ran
+everything and rsynced the shell with the `POTYRO_DEPLOY_KEY` secret. It cost too much and was
+switched off; the workflows and `scripts/bench-ci.sh` are still in the repository.

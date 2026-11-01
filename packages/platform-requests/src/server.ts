@@ -5,9 +5,9 @@
 //   PORT                   default 4202
 //   HOST                   default 127.0.0.1 — reachable only through the proxy in front of it
 //
-// Behind Apache, on the same origin as the site (`/requests/` → here), so the site's gate covers it
-// and the browser needs no CORS. The sender's address is the LAST `X-Forwarded-For` entry:
-// Apache appends the real peer, and anything before it is whatever the client sent (#348). Bound to
+// Behind the site's proxy (Caddy on potyro.app), on the same origin as the site (`/requests/` → here),
+// so the browser needs no CORS. The sender's address is the LAST `X-Forwarded-For` entry:
+// the proxy appends the real peer, and anything before it is whatever the client sent (#348). Bound to
 // loopback, only the proxy reaches it.
 
 import { createServer, type Server } from "node:http";

@@ -22,7 +22,7 @@ import { shareRequest } from "../src/ui-bridge.js";
 import type { UserApp } from "../src/user-apps.js";
 
 const ID = "AbCdEfGhIjKlMnOpQrStUv";
-const DEMO = `https://apps.vaz.io/s/${ID}#k=secret`;
+const DEMO = `https://potyro.app/s/${ID}#k=secret`;
 
 describe("a link's target", () => {
   it("goes on a demo link after its key, and reads back", () => {
@@ -42,7 +42,7 @@ describe("a link's target", () => {
   });
 
   it("is a link on its own when there is no demo to carry", () => {
-    expect(withAppTarget("https://apps.vaz.io/", { line: "id:x", params: {} })).toBe("https://apps.vaz.io/#app=id%3Ax");
+    expect(withAppTarget("https://potyro.app/", { line: "id:x", params: {} })).toBe("https://potyro.app/#app=id%3Ax");
   });
 
   it("round-trips text a URL has to escape", () => {
@@ -138,12 +138,12 @@ describe("making a link to an app's page", () => {
 
   it("is the app's demo link with where to land, made once per version of the app", async () => {
     let made = 0;
-    const deps = { demoLink: async () => `https://apps.vaz.io/s/${ID}${++made}#k=key${made}`, stillShared: () => true };
+    const deps = { demoLink: async () => `https://potyro.app/s/${ID}${++made}#k=key${made}`, stillShared: () => true };
     const first = await makeAppLink(app(), "draw-guess", { page: "play", params: { code: "A" } }, deps);
-    expect(first).toBe(`https://apps.vaz.io/s/${ID}1#k=key1&app=id%3Adraw-guess&to=play&p.code=A`);
+    expect(first).toBe(`https://potyro.app/s/${ID}1#k=key1&app=id%3Adraw-guess&to=play&p.code=A`);
     // Another invite, same app: the same demo, no new upload.
     const again = await makeAppLink(app(), "draw-guess", { page: "play", params: { code: "B" } }, deps);
-    expect(again).toBe(`https://apps.vaz.io/s/${ID}1#k=key1&app=id%3Adraw-guess&to=play&p.code=B`);
+    expect(again).toBe(`https://potyro.app/s/${ID}1#k=key1&app=id%3Adraw-guess&to=play&p.code=B`);
     expect(made).toBe(1);
     // The app changed: a new demo, so a friend gets the version they are invited to.
     await makeAppLink(app({ source: "S2" }), "draw-guess", { page: "play", params: {} }, deps);
@@ -152,7 +152,7 @@ describe("making a link to an app's page", () => {
 
   it("makes a new demo when the old one was taken down", async () => {
     let made = 0;
-    const deps = { demoLink: async () => `https://apps.vaz.io/s/${ID}#k=key${++made}`, stillShared: () => false };
+    const deps = { demoLink: async () => `https://potyro.app/s/${ID}#k=key${++made}`, stillShared: () => false };
     await makeAppLink(app(), "draw-guess", { page: "play", params: {} }, deps);
     await makeAppLink(app(), "draw-guess", { page: "play", params: {} }, deps);
     expect(made).toBe(2);
@@ -173,7 +173,7 @@ describe("making a link to an app's page", () => {
   });
 
   it("from inside a demo starts from that demo's own link, without its intents", () => {
-    expect(demoLinkText({ kind: "hosted", id: ID, key: "secret", remix: true }, "https://apps.vaz.io", `/s/${ID}`)).toBe(DEMO);
+    expect(demoLinkText({ kind: "hosted", id: ID, key: "secret", remix: true }, "https://potyro.app", `/s/${ID}`)).toBe(DEMO);
   });
 });
 

@@ -16,7 +16,7 @@ Start with [How Potyro works](00-how-potyro-works.md). The rest goes deeper, one
 - [Testing Strategy](09-testing.md) — The test layers, the must-pass invariants and what CI runs.
 - [Testing guide](12-testing-guide.md) — A hands-on walkthrough of everything built: how to try Potyro and give feedback.
 - [Native Android](13-native-android.md) — Running Potyro on an Android device through Capacitor: build, install, the device checklist.
-- [Deployment](16-deployment.md) — Deploying the shell, the sync relay and the optional services on your own domain, as it was done.
+- [Deployment](16-deployment.md) — What runs on potyro.app and how it was put there: the shell, the sync relay and the optional services, with Caddy in front.
 - [Glossary](21-glossary.md) — Potyro's own words in six languages.
 - [Browser realm](22-browser-realm-prototype.md) — Shared apps in a sandboxed iframe and Worker: the prototype's measurements and what shipped.
 - [AI in apps](23-ai-in-apps.md) — ctx.caps.ai: the API, the permission, who pays, the model, where each part lives.

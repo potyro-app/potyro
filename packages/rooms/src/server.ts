@@ -5,7 +5,7 @@
 //   HOST                          default 127.0.0.1 — reachable only through the proxy in front of it
 //   ROOMS_ORIGINS                 comma-separated browser origins allowed to connect, or "*";
 //                                 default https://potyro.app,https://localhost,capacitor://localhost
-//   ROOMS_TRUST_PROXY             default 1 — the address is the LAST X-Forwarded-For entry (Apache's)
+//   ROOMS_TRUST_PROXY             default 1 — the address is the LAST X-Forwarded-For entry (the proxy's)
 //   ROOMS_MAX_MESSAGE_BYTES       default 65536
 //   ROOMS_MAX_MEMBERS             default 16 a room
 //   ROOMS_PER_ADDRESS             default 8 rooms at once per address
@@ -18,7 +18,7 @@
 //   ROOMS_MAX_ROOMS               default 2000 for the whole relay
 //   ROOMS_MAX_CONNECTIONS         default 5000 for the whole relay
 //
-// Behind Apache on the site's origin (`/rooms/` → here, with the websocket upgrade), like the sync
+// Behind Caddy on the site's origin (`/rooms/` → here, with the websocket upgrade), like the sync
 // relay. It logs its start and stop, never a payload, a room id or an address.
 import { pathToFileURL } from "node:url";
 import type { AddressInfo } from "node:net";

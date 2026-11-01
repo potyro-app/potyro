@@ -49,8 +49,9 @@ Code: `packages/host/src/realm/` (docs/22 §10).
   deletes the RTC constructors before any other code runs (`NO_WEBRTC` in `frame.ts`). Workers never
   had them.
 - **No navigating away.** The shell is served with `frame-src 'none'` (`packages/shell/index.html`,
-  `SHELL_CSP` in `packages/shell/vite.config.ts`, and the server's header: potyro.app sends it), so a
-  sandboxed frame cannot navigate itself to a server to leak data (docs/22 §3.2, §10.4).
+  `SHELL_CSP` in `packages/shell/vite.config.ts`, and the header potyro.app's Caddy sends,
+  `deploy/potyro.app.Caddyfile`), so a sandboxed frame cannot navigate itself to a server to leak
+  data (docs/22 §3.2, §10.4).
 - **Only through `ctx`, over a MessagePort.** The app reaches the host by messages on its port. The
   host accepts only operations on an allow-list (`OPS` in `protocol.ts`) and only for ctx ids it
   issued to that app (the last 512; `CTX_WINDOW` in `realm-host.ts`). Each operation is the same
@@ -106,6 +107,9 @@ apps in a QuickJS-WASM isolate instead, still sealed, with the same mediated `ct
 
 ## 7. What our servers see
 
+All of them run on one server, behind Caddy on potyro.app, each published to that machine's
+loopback only (docs/16 has the table, `deploy/` the configuration):
+
 - **Sync relay**: it stores and forwards encrypted data; the keys are with the members of a space,
   and an invite's key travels in a link fragment that never reaches a server (docs/16).
 - **Share service** (demo links): it holds the app encrypted with a fresh key per link, the key in the
@@ -153,7 +157,7 @@ The surface a security review should cover, from docs/22 §10.5 and §11.5:
 - the realm CSP (`REALM_CSP`) and the iframe's `sandbox="allow-scripts"`; the `postMessage(…, "*")`
   at start that hands over the ports (the ports, not the origin, are the trust boundary);
 - the shell's `frame-src 'none'`, which must stay in step in `index.html`, `vite.config.ts` and the
-  server's configuration;
+  server's configuration (`deploy/potyro.app.Caddyfile`);
 - the watchdog: deadlines and what pauses them, the heartbeat, the flood guards, the fall back to
   QuickJS on `RealmStartError`;
 - what crosses by structured clone (Blobs, bytes, Dates in and out; getters are read during the copy);

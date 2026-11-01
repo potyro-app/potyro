@@ -493,15 +493,17 @@ function firefoxStatus() {
  * Build the shell and put it live. Refuses anything but a green origin/main, so what is live is
  * always something that passed the gate — never a branch, never an edit on top of a commit.
  *
-* Where it goes is `POTYRO_DEPLOY_TARGET`: one rsync destination, or several separated by commas or
+ * Where it goes is `POTYRO_DEPLOY_TARGET`: one rsync destination, or several separated by commas or
  * spaces — every site that serves the shell. The build is the same for all of them: the shell
  * finds its relay and services from its own origin. Only potyro.app is deployed (apps.vaz.io was
  * dropped 2026-10-17); the default is its ssh alias, whose key is locked to the web root by `rrsync`,
- * so the target is relative to that root (docs/16 §8). `version.json` in each web root
- * names the commit it serves, and a target already serving this commit is left alone.
+ * so the target is relative to that root (docs/16 §8). The old name, `KARTA_DEPLOY_TARGET`, is no
+ * longer read: vazio's crontab sets `POTYRO_DEPLOY_TARGET`, and its value is this default anyway.
+ * `version.json` in each web root names the commit it serves, and a target already serving this
+ * commit is left alone.
  */
 function deploy() {
-  const targets = (process.env.POTYRO_DEPLOY_TARGET ?? process.env.KARTA_DEPLOY_TARGET ?? "potyro-deploy:")
+  const targets = (process.env.POTYRO_DEPLOY_TARGET ?? "potyro-deploy:")
     .split(/[\s,]+/)
     .filter(Boolean);
   for (const s of ["ok", "fail"]) rmSync(join(dir, `deploy.${s}`), { force: true });
