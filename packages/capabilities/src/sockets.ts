@@ -69,7 +69,7 @@ export interface PlatformOpenOptions {
 export interface SocketCap {
   /** Resolves once the connection is open; rejects with a `SocketOpenError`. */
   open(url: string, opts: PlatformOpenOptions, events: PlatformSocketEvents): Promise<PlatformSocket>;
-  /** Potyro's rooms relay, `wss://apps.vaz.io/rooms` — absent when this build knows none. */
+  /** Potyro's rooms relay, `wss://potyro.app/rooms` — absent when this build knows none. */
   readonly roomsUrl?: string;
   /** End every open connection now ("left": the person left the app; "hidden": the page was hidden a while). */
   closeAll(why: "left" | "hidden"): void;

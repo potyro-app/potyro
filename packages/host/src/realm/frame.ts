@@ -15,7 +15,7 @@
 //   - WebRTC: CSP does not govern ICE, and no engine honours `webrtc 'block'`. Each frame deletes the
 //     constructors before anything else runs (`NO_WEBRTC`). Workers never had them.
 //   - The frame navigating itself: the iframe sandbox allows it, the frame's own CSP cannot stop it.
-//     The SHELL's `frame-src 'none'` does (index.html, deploy/apps.vaz.io.conf), and the host also
+//     The SHELL's `frame-src 'none'` does (index.html, deploy/potyro.app.Caddyfile), and the host also
 //     treats a second `load` as the frame being gone.
 
 import { REALM_CSP, type ViewInit } from "./protocol.js";
