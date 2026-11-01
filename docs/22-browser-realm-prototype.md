@@ -505,8 +505,8 @@ Chromium, Firefox and WebKit:
 |---|---|---|
 | Dev server (`pnpm dev`, `dev:sandbox`) | header (`server.headers`, `shell/vite.config.ts`) + `<meta>` | `shell-csp-sandbox.spec.ts`, all three engines |
 | Production build, `vite preview` | header (`preview.headers`) + `<meta>` | `shell-csp-prod.spec.ts` (`pnpm test:e2e:prod`), all three engines |
-| Deployed site (Apache) | `Header always set Content-Security-Policy "frame-src 'none'"` (`deploy/apps.vaz.io.conf`) + `<meta>` | a local Apache serving `dist/` with that line copied from the file, all three engines |
-| potyro.app (Caddy, config not in the repository) | header + `<meta>` | the header is served (`curl -I https://potyro.app/`, 2026-10-30); the escape spec has not been run against it |
+| The first site, apps.vaz.io (Apache, no longer served from this repository) | `Header always set Content-Security-Policy "frame-src 'none'"` + `<meta>` | a local Apache serving `dist/` with that line, all three engines |
+| potyro.app (Caddy, `deploy/potyro.app.Caddyfile`) | header + `<meta>` | the header is served (`curl -I https://potyro.app/`, 2026-10-30); the escape spec has not been run against it |
 | Capacitor WebView | `<meta>` in `dist/index.html` only (it serves no headers; `cap copy` copies `dist` as it is) | a server that sends no headers at all, all three engines: the `<meta>` alone stops it. Not run on a device here — the Android probe (§5) is the device step. |
 
 The realm loaded and the escape and watchdog specs passed behind each of those servers too.

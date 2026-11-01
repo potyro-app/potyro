@@ -1225,8 +1225,9 @@ services sit beside them, each a Node process with no dependency on any Potyro p
 | platform requests | `packages/platform-requests` | requests to the team, filed as GitHub issues | identify a person |
 
 Without the optional four, requests wait on the device, apps' AI runs on the person's own key,
-links carry the whole app, and multiplayer apps cannot meet. docs/16 is the deployment: how each is
-built, run behind the same gate, and checked, and which of them is live today.
+links carry the whole app, and multiplayer apps cannot meet. On potyro.app all five run on one
+server, behind one Caddy, with no gate in front: docs/16 is the deployment, what runs there and how
+each is built, run and checked, and `deploy/` holds the Caddyfile and the containers' commands.
 
 <details><summary>Where in the code</summary>
 
