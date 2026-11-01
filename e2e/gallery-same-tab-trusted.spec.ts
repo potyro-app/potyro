@@ -68,8 +68,10 @@ test("from the key panel: the gallery and Make it mine, in one tab, with no refu
   // The remix's Studio is about the copy: the idea for a new app is not put in its box.
   await expect(remix.getByRole("textbox", { name: "Describe the app", includeHidden: true })).not.toHaveValue(PROMPT);
   await remix.getByRole("button", { name: "Close studio" }).click();
-  // The copy runs, on its sample plants.
+  // The copy runs, on its sample plants: on the Plants page, which lists them all (Today shows only
+  // what is due within a week, and the seed's dates move with the calendar).
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
+  await page.getByRole("navigation", { name: "Pages" }).getByRole("button", { name: "Plants" }).click();
   await expect(page.getByText("Monstera").first()).toBeVisible({ timeout: 30_000 });
 
   // Back on Home the idea is still theirs: in Home's box, and in the Studio's when it opens again.
