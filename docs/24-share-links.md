@@ -300,7 +300,17 @@ leaves the page's origin, languages).
 
 In the app, the gallery is one tap from Add an app ("From the gallery"), the Classic launcher's ＋ menu
 and the Tiles launcher's app bar (`gallery-link.ts`; a build may point elsewhere with
-`VITE_POTYRO_GALLERY`).
+`VITE_POTYRO_GALLERY`), and from the Studio's key panel ("Start from an app in the gallery").
+
+It opens **in this tab**, never one of its own (#487): its Make it mine comes back into Potyro, and
+only one tab at a time holds the apps, so from a second tab the copy was refused as "Potyro is open in
+another tab". Leaving loses no record. Words in a prompt box are kept for the way back, for this tab
+only (`kept-idea.ts`, sessionStorage): the Studio's box, about its app or a new one, and Home's box
+when the person leaves from Home. One box owns the words at a time: Home's box starts with them and
+forgets them as soon as it is edited, cleared or sent, and it hands the Studio exactly what it holds,
+"" included, so words deleted there never come back; a Studio opened any other way starts with them
+and takes them. What cannot be kept — a version that failed a gate and was not kept, code edited in
+the Studio's editor and not saved — is asked about first ("Leave for the gallery?", Leave / Stay).
 
 ## 11. Links to a page of an app
 

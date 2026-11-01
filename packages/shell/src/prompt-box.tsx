@@ -21,12 +21,16 @@ export interface PromptBoxProps {
   compact?: boolean;
   /** Focus the box when it appears (not on a phone, where the keyboard would cover the apps). */
   autoFocus?: boolean;
+  /** What the box starts with: words the person typed before, and kept (kept-idea.ts). */
+  initial?: string;
+  /** Told what the box holds after each edit (a clear included): the words are this box's now. */
+  onEdit?: (text: string) => void;
 }
 
-export function PromptBox({ sendLabel, onSend, examples = [], compact = false, autoFocus = false }: PromptBoxProps) {
+export function PromptBox({ sendLabel, onSend, examples = [], compact = false, autoFocus = false, initial = "", onEdit }: PromptBoxProps) {
   const { t } = useLingui();
   const id = useId();
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initial);
   const send = (): void => onSend(text.trim());
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -39,7 +43,7 @@ export function PromptBox({ sendLabel, onSend, examples = [], compact = false, a
       <label className="k-prompt-label" htmlFor={id}>
         {t({ message: "Describe your app", comment: "The label over the prompt box" })}
       </label>
-      <div className="k-prompt-field">
+      <div className="k-prompt-field" data-filled={text ? true : undefined}>
         <textarea
           id={id}
           className="k-prompt-box"
@@ -51,7 +55,10 @@ export function PromptBox({ sendLabel, onSend, examples = [], compact = false, a
               : t({ message: "e.g. a shopping list for the house, split by store", comment: "The prompt box's placeholder: a concrete example, never a label" })
           }
           autoFocus={autoFocus}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            onEdit?.(e.target.value);
+          }}
           onKeyDown={onKey}
         />
         <button type="button" className="k-prompt-send" aria-label={sendLabel} title={sendLabel} onClick={send}>
