@@ -32,7 +32,7 @@ describe("the piano app's package", () => {
   it("carries the source as written, its helpers in src/ and the plan in files/", () => {
     const pkg = pack();
     expect(pkg.source).toBe(readFileSync(join(PIANO, "piano.app.tsx"), "utf8"));
-    expect(pkg.modules.map((m) => m.path).sort()).toEqual(["plan.ts", "progress.ts", "styles.ts"]);
+    expect(pkg.modules.map((m) => m.path).sort()).toEqual(["card.ts", "plan.ts", "progress.ts", "styles.ts"]);
     // Its catalogs too (docs/30): files it ships, beside the plan.
     expect(pkg.files.map((f) => f.path).sort()).toEqual(["locales/de.po", "locales/es.po", "locales/it.po", "locales/pl.po", "locales/pt-BR.po", "plan.json"]);
     expect(pkg.lock).toBeUndefined();
@@ -53,6 +53,6 @@ describe("the piano app's package", () => {
   });
 
   it("without its modules the shell cannot bundle it — the reason the old build step inlined them", async () => {
-    await expect(bundleAppSource(pack().source, esbuild, stubs)).rejects.toThrow(/plan\.js/);
+    await expect(bundleAppSource(pack().source, esbuild, stubs)).rejects.toThrow(/\.\/(card|plan|progress|styles)\.js/);
   });
 });

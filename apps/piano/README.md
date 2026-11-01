@@ -8,6 +8,7 @@ plan.json        the plan: phases → weeks → blocks, resources with URLs, goa
 plan.ts          the contract plan.json must satisfy, and validatePlan()
 progress.ts      where you are and how you move: goal-based advance, repeat, modules, rest/review day
 styles.ts        the app's stylesheet, as a string
+card.ts          the "Day done" picture, drawn on a canvas
 piano.app.tsx    the UI (Today, Log, Plan, Modules, Sessions); reads plan.json with ctx.files
 test/            the plan validates, the progress logic, the app
 ```
@@ -55,6 +56,10 @@ Shape, in brief (see `plan.ts` for the full contract):
   links and a done check. Day 7 of the cycle (counted from the start date) is the rest day; on the
   review weekday block 5 becomes "Record + log", which opens the week-log form prefilled with the
   days practised this cycle. Done checks are `session` records, one per day.
+- **Day done**: with every block ticked, Today says so with the minutes practised, and **Share**
+  draws a 1080×1350 picture of the day — a keyboard across the top, the minutes, the blocks done and
+  the week (`card.ts`) — and hands it to `ctx.ui.share`: Potyro's share dialog shows the picture,
+  then sends it through the share sheet where the device has one, or saves a copy.
 - **Goal met → next** and **Repeat this week** are the only ways to move. The calendar never does.
 - **Modules** starts blues or jazz for N weeks; blocks 2 and 4 follow the module, the rest the main
   plan, and when the module ends (or you leave) the plan resumes where you left it. Settings for the

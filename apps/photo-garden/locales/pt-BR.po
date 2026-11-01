@@ -74,6 +74,18 @@ msgid "Drag across it to scatter the specks"
 msgstr "Arraste o dedo por cima para espalhar as partículas"
 
 #: ctx.t
+msgid "Share"
+msgstr "Compartilhar"
+
+#: ctx.t
+msgid "Kept “{title}” in your gallery"
+msgstr "“{title}” foi para a sua galeria"
+
+#: ctx.t
+msgid "It could not be shared."
+msgstr "Não deu para compartilhar."
+
+#: ctx.t
 msgid "Density"
 msgstr "Densidade"
 
@@ -118,16 +130,8 @@ msgid "The picture could not be saved."
 msgstr "Não foi possível salvar a imagem."
 
 #: ctx.t
-msgid "Kept “{title}” in your gallery"
-msgstr "“{title}” foi para a sua galeria"
-
-#: ctx.t
 msgid "Delete"
 msgstr "Excluir"
-
-#: ctx.t
-msgid "Share"
-msgstr "Compartilhar"
 
 #: ctx.t
 msgid "Save a copy"
@@ -140,10 +144,6 @@ msgstr "Fechar"
 #: ctx.t
 msgid "It could not be saved here."
 msgstr "Não deu para salvar aqui."
-
-#: ctx.t
-msgid "It could not be shared."
-msgstr "Não deu para compartilhar."
 
 #: ctx.t
 msgid "Delete “{title}”?"
