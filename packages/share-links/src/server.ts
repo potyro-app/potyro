@@ -1,7 +1,7 @@
 // The share service as a process: `node --experimental-strip-types src/server.ts` on Node 22 (docs/16).
 //
 //   POTYRO_SHARES_DIR              required — where shares are kept (one folder each)
-//   POTYRO_SHELL_INDEX             the built shell's index.html — default /var/www/karta/index.html
+//   POTYRO_SHELL_INDEX             the built shell's index.html — default /srv/potyro/site/index.html (potyro.app's web root)
 //   POTYRO_PUBLIC_ORIGIN           https://potyro.app — what preview URLs are built on
 //   SHARE_ADMIN_TOKEN              the operator's token for DELETE /share-api/admin/shares/<id> (at least 32
 //                                  characters; `openssl rand -base64 33`). Unset: that route does not exist,
@@ -114,7 +114,7 @@ async function main(): Promise<void> {
     console.error("POTYRO_SHARES_DIR is not set: the share service keeps shares there, and will not start without it.");
     process.exit(1);
   }
-  const index = process.env.POTYRO_SHELL_INDEX ?? "/var/www/karta/index.html";
+  const index = process.env.POTYRO_SHELL_INDEX ?? "/srv/potyro/site/index.html";
   const port = Number(process.env.PORT ?? 4203);
   const host = process.env.HOST ?? "127.0.0.1";
   let trustProxy: TrustProxy;

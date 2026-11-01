@@ -149,10 +149,10 @@ high-rate input (pointer moves) into one message per animation frame or two.
   messages encrypts them with a key carried in the share link's fragment, which never reaches a
   server — the same idea as Potyro's sync.
 - **Origin check.** Browsers may connect only from the origins the operator lists in
-  `ROOMS_ORIGINS`. Unset, the code's default is the first site, `https://apps.vaz.io`, the Android
-  app, `https://localhost`, and `capacitor://localhost` for an iOS build (`DEFAULT_ORIGINS` in
-  `packages/rooms/src/server.ts`); the potyro.app deployment accepts `https://potyro.app` and refuses
-  `https://apps.vaz.io` (checked 2026-10-30). A request without an `Origin` header (not a browser) is allowed: anything that
+  `ROOMS_ORIGINS`. Unset, the code's default is `https://potyro.app`, the Android app,
+  `https://localhost`, and `capacitor://localhost` for an iOS build (`DEFAULT_ORIGINS` in
+  `packages/rooms/src/server.ts`); the potyro.app deployment sets the same list (`deploy/containers.sh`)
+  and refuses the first site, `https://apps.vaz.io` (checked 2026-10-30). A request without an `Origin` header (not a browser) is allowed: anything that
   is not a browser can claim any origin anyway, so the check only stops other websites from using the
   relay through their visitors' browsers.
 

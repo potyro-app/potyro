@@ -1,0 +1,111 @@
+# Potyro — potyro.app (the app) and the names that forward to it. docs/16.
+# Caddy gets and renews every name's certificate by itself (Let's Encrypt).
+#
+# This is /etc/caddy/Caddyfile on 65.109.228.5 (Caddy 2) as it ran on 2026-11-01, with the changes
+# the server is being given now: the `/ai/*` route streams and waits 310 s (docs/16 "AI for apps"),
+# and the shell's block serves `/privacy` and `/terms` as their pages, not cached (#117).
+# After an edit: `caddy validate --config /etc/caddy/Caddyfile`, then `sudo systemctl reload caddy`.
+# Nothing secret is in it.
+{
+	email ops@potyro.com
+}
+
+potyro.app {
+	encode zstd gzip
+
+	header {
+		# The shell embeds no frame that fetches (#272, docs/22 §3.2): stops a shared app's
+		# sandboxed frame navigating itself to a URL. index.html carries the same as a <meta>.
+		Content-Security-Policy "frame-src 'none'"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# The CRDT relay (a websocket). The prefix is taken off: jazz-run serves at its root.
+	handle_path /sync* {
+		reverse_proxy 127.0.0.1:4201
+	}
+
+	# Rooms for multiplayer apps (docs/26). The relay's own routes start with /rooms/.
+	handle /rooms/* {
+		reverse_proxy 127.0.0.1:4205
+	}
+
+	# Demo links (docs/24): the link's page, its preview picture, and the share API.
+	@share path_regexp share ^/s/[A-Za-z0-9_-]{22}(/preview\.(jpg|png))?/?$
+	handle @share {
+		reverse_proxy 127.0.0.1:4203
+	}
+	handle /share-api/* {
+		reverse_proxy 127.0.0.1:4203
+	}
+
+	# The free AI allowance for apps (docs/23). The prefix is taken off: the relay serves /health,
+	# /complete, /v1/chat/completions and /count. A chat answer is a stream: `flush_interval -1`
+	# sends each piece on as it comes, and the timeouts are over the relay's own 300 s, so nothing
+	# here gives up before it does.
+	handle_path /ai/* {
+		reverse_proxy 127.0.0.1:4204 {
+			flush_interval -1
+			transport http {
+				response_header_timeout 310s
+				read_timeout 310s
+			}
+		}
+	}
+
+	# Requests to the Potyro team (#263): the relay files them as GitHub issues.
+	handle_path /requests/* {
+		reverse_proxy 127.0.0.1:4202
+	}
+
+	# The app itself: every path that is not a file is the shell.
+	#
+	# `{path}.html` and `{path}index.html` are for the privacy page and the terms (#117,
+	# packages/legal): a build that has them carries privacy.html, privacy/index.html and the same
+	# for terms, and `/privacy` and `/privacy/` must be that page, not the app. `{path}` alone finds
+	# neither: try_files matches a path without a trailing slash only against files, and `privacy`
+	# is a directory, so both fell through to index.html (checked with Caddy 2.11.7). The build has
+	# no other .html file but index.html, so nothing else changes.
+	handle {
+		root * /srv/potyro/site
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@fresh path / /index.html /sw.js /privacy* /terms*
+		header @fresh Cache-Control "no-cache"
+		try_files {path} {path}.html {path}index.html /index.html
+		file_server
+	}
+}
+
+# potyro.com: the gallery (docs/24 §10, docs/16), a static page with nothing from anyone else.
+potyro.com, www.potyro.com {
+	root * /srv/potyro.com
+	encode zstd gzip
+	file_server
+
+	header {
+		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action https://potyro.app; frame-ancestors 'none'"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+	@page path / /index.html
+	header @page Cache-Control "no-cache"
+	@assets path /gallery.css /gallery.js /tokens.css /hours.css /fonts/* /logo/* /shots/* /favicon.svg
+	header @assets Cache-Control "public, max-age=86400"
+
+	# No access log: a gallery that keeps no record of you, on the server too.
+	log {
+		output discard
+	}
+}
+
+# Until there is more to say there, the other names forward to the app.
+potyro.org, www.potyro.org, www.potyro.app {
+	redir https://potyro.app{uri} 302
+}

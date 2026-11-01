@@ -1,7 +1,7 @@
 // The site this build belongs to — where its relay, its services and its links live.
 //
 // On the web that is the page's own address: the shell, `/sync`, `/ai`, `/requests` and
-// `/share-api` share one origin (deploy/apps.vaz.io.conf), and a link a person sends is the page they
+// `/share-api` share one origin (deploy/potyro.app.Caddyfile), and a link a person sends is the page they
 // are on. Inside the native app there is no such page. The WebView is `https://localhost` on Android
 // and `capacitor://localhost` on iOS, served from the phone itself, so every address derived from
 // `location` pointed at the phone: an invite link nobody else could open, a relay at

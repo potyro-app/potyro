@@ -11,9 +11,9 @@ const page = (href: string) => {
 
 describe("the site a build belongs to", () => {
   it("is the page itself on the web, exactly as before", () => {
-    expect(siteFrom({ location: page("https://apps.vaz.io/"), native: false })).toEqual({
-      origin: "https://apps.vaz.io",
-      host: "apps.vaz.io",
+    expect(siteFrom({ location: page("https://potyro.app/"), native: false })).toEqual({
+      origin: "https://potyro.app",
+      host: "potyro.app",
       path: "/",
       secure: true,
       configured: false,
@@ -33,9 +33,9 @@ describe("the site a build belongs to", () => {
 
   it("is what the build names, on the phone and on the web alike", () => {
     for (const native of [true, false]) {
-      expect(siteFrom({ configured: "https://apps.vaz.io/", location: page("capacitor://localhost/"), native })).toEqual({
-        origin: "https://apps.vaz.io",
-        host: "apps.vaz.io",
+      expect(siteFrom({ configured: "https://potyro.app/", location: page("capacitor://localhost/"), native })).toEqual({
+        origin: "https://potyro.app",
+        host: "potyro.app",
         path: "/",
         secure: true,
         configured: true,
@@ -45,9 +45,9 @@ describe("the site a build belongs to", () => {
   });
 
   it("ignores a name that is not an http(s) address instead of failing the app", () => {
-    expect(siteFrom({ configured: "apps.vaz.io", native: true })).toBeNull();
+    expect(siteFrom({ configured: "potyro.app", native: true })).toBeNull();
     expect(siteFrom({ configured: "capacitor://localhost", native: true })).toBeNull();
-    expect(siteFrom({ configured: "", location: page("https://apps.vaz.io/"), native: false })?.configured).toBe(false);
+    expect(siteFrom({ configured: "", location: page("https://potyro.app/"), native: false })?.configured).toBe(false);
   });
 });
 
@@ -64,17 +64,17 @@ describe("what reads it", () => {
 
   it("an iOS build told its site syncs with, asks and links to that site", async () => {
     onIos();
-    vi.stubEnv("VITE_POTYRO_SITE", "https://apps.vaz.io");
+    vi.stubEnv("VITE_POTYRO_SITE", "https://potyro.app");
     vi.stubEnv("DEV", false);
     const { syncRelayUrl } = await import("../src/open-store.js");
     const { aiRelayEndpoint } = await import("../src/app-ai.js");
     const { requestsEndpoint } = await import("../src/platform-requests.js");
     const { shareServiceUrl } = await import("../src/share-service.js");
     expect(currentSite()?.configured).toBe(true);
-    expect(syncRelayUrl()).toBe("wss://apps.vaz.io/sync");
-    expect(aiRelayEndpoint()).toBe("https://apps.vaz.io/ai/complete");
-    expect(requestsEndpoint()).toBe("https://apps.vaz.io/requests/platform-requests");
-    expect(shareServiceUrl()).toBe("https://apps.vaz.io/share-api");
+    expect(syncRelayUrl()).toBe("wss://potyro.app/sync");
+    expect(aiRelayEndpoint()).toBe("https://potyro.app/ai/complete");
+    expect(requestsEndpoint()).toBe("https://potyro.app/requests/platform-requests");
+    expect(shareServiceUrl()).toBe("https://potyro.app/share-api");
   });
 
   it("an iOS build told nothing stays local instead of syncing with the phone", async () => {

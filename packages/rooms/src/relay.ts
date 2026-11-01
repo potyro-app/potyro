@@ -37,8 +37,8 @@ export interface RelayOptions {
   origins: readonly string[] | "*";
   /**
    * Take the client's address from the LAST `X-Forwarded-For` entry — the one the proxy in front
-   * appended — rather than the socket. Default true: the relay is meant to sit behind Apache on
-   * loopback. The first entry is whatever the client sent, so it is never used.
+   * appended — rather than the socket. Default true: the relay is meant to sit behind the site's proxy
+   * (Caddy) on loopback. The first entry is whatever the client sent, so it is never used.
    */
   trustProxy?: boolean;
   /** Lifecycle lines only (start, stop, errors). Never a payload, a room id or an address. */
