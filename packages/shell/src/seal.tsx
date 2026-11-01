@@ -19,10 +19,15 @@ export function SealMark({ hue, size = 16 }: { hue: number; size?: number }) {
   );
 }
 
-/** The seal itself: the mark and the words, a link to Potyro. */
-export function Seal({ hue }: { hue: number }) {
+/**
+ * The seal itself: the mark and the words, a link to Potyro — in this tab, as the demo bar's is: every
+ * way on from Potyro's site (Make it mine, a prompt) comes back into Potyro, and only one tab holds
+ * your apps (gallery-link.ts, #487). `beside`: the app is drawn inside another page (the Studio's
+ * preview), which a tap on the seal must not take away.
+ */
+export function Seal({ hue, beside = false }: { hue: number; beside?: boolean }) {
   return (
-    <a className="k-seal" href={GALLERY_URL} target="_blank" rel="noopener" data-k-seal>
+    <a className="k-seal" href={GALLERY_URL} {...(beside ? { target: "_blank", rel: "noopener" } : {})} data-k-seal>
       <SealMark hue={hue} />
       <span className="k-seal-words">
         <Trans comment="The seal at the foot of an app made with Potyro by someone else; links to potyro.com">Made with Potyro</Trans>

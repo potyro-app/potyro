@@ -80,16 +80,42 @@ describe("the demo package", () => {
     expect(await demoSeed("mood-sleep", ["checkin"], { checkin: [] })).toBeUndefined();
   });
 
+  it("with the app's definition at hand, only the rows its write gate takes travel — a required field missing is fine", async () => {
+    const kept = { checkin: [{ date: "2026-09-21", hours: 7.25 }, { date: "2026-09-22", hours: 30 }, { hours: 6 }] };
+    const defined = { checkin: { fields: { date: { type: "datetime", required: true }, hours: { type: "number", min: 0, max: 24 } } } } as never;
+    expect(await demoSeed("mood-sleep", ["checkin"], kept, defined)).toEqual({ checkin: [{ date: "2026-09-21", hours: 7.25 }, { hours: 6 }] });
+    expect(kept.checkin).toHaveLength(3);
+  });
+
   it("a demo link of an app added from a package opens on the package's seed (Sleep & Mood, Notes…)", async () => {
     const source = `import { defineApp } from "potyro";
 export default defineApp({ id: "mood-sleep", name: "Sleep & Mood", version: "1.0.0", schemaVersion: 1, entities: { checkin: { fields: { date: { type: "date" } } } }, pages: [{ id: "all", title: "All", view: { type: "list", entity: "checkin" } }] });
 `;
     const { demoPackageFor } = await import("../src/demo-package.js");
-    const demo = await demoPackageFor({ id: "mood-sleep", name: "Sleep & Mood", source, updatedAt: "2026-10-16", seed: { checkin: [{ date: "2026-09-21" }] } });
+    // Where its definition cannot be read (here: no bundler outside a browser), the seed goes as kept.
+    const demo = await demoPackageFor({ id: "mood-sleep", name: "Sleep & Mood", source, updatedAt: "2026-10-16", seed: { checkin: [{ date: "2026-09-21" }] } }, { entitiesOf: async () => undefined });
     expect(readAppPackage(demo.zip).seed).toEqual({ checkin: [{ date: "2026-09-21" }] });
     // And the app without them, for an inline link that would be too long with them.
     expect(demo.bare).toBeDefined();
     expect(readAppPackage(demo.bare!).seed).toBeUndefined();
+  });
+
+  it("fits a kept seed to the app as it is now when the link is made (#486), and leaves the kept one as it is", async () => {
+    const source = `import { defineApp } from "potyro";
+export default defineApp({ id: "watering", name: "Watering", version: "1.0.0", schemaVersion: 1, entities: { plant: { fields: { name: { type: "text" }, light: { type: "enum", options: ["shade"] } } } }, pages: [{ id: "all", title: "All", view: { type: "list", entity: "plant" } }] });
+`;
+    const kept = { plant: [{ id: "p1", name: "Monstera", light: "shade" }, { id: "p2", name: "Lemon tree", light: "sun" }] };
+    const app = { id: "watering", name: "Watering", source, updatedAt: "2026-10-31", seed: kept };
+    const entities = { plant: { fields: { name: { type: "text" }, light: { type: "enum", options: ["shade"] } } } } as never;
+    const { demoPackageFor, linkHasSamples } = await import("../src/demo-package.js");
+    const demo = await demoPackageFor(app, { entitiesOf: async () => entities });
+    expect(readAppPackage(demo.zip).seed).toEqual({ plant: [kept.plant[0]] });
+    expect(demo.seed).toEqual({ plant: [kept.plant[0]] });
+    expect(app.seed).toEqual({ plant: [{ id: "p1", name: "Monstera", light: "shade" }, { id: "p2", name: "Lemon tree", light: "sun" }] });
+    // A version none of whose rows fits opens empty, and the sheet can say so before the link is made.
+    const none = await demoPackageFor(app, { entitiesOf: async () => ({ plant: { fields: { light: { type: "enum", options: ["bright"] } } } }) as never });
+    expect(none.seed).toBeUndefined();
+    expect(await linkHasSamples({ id: "watering", name: "Watering", source: "other", updatedAt: "2026-10-31" })).toBe(false);
   });
 
   it("packs the source, its own modules, shipped files, demo records and credit — never library bytes", () => {

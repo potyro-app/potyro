@@ -2,8 +2,8 @@
 //
 // It opens on the conversation, full screen: what you want, the agent's questions when something is
 // not clear, and a card for every version it makes. The app itself is opened from its card, as the
-// app it will be — the whole screen on a phone, beside the conversation on a wide one — with the way
-// back always on its bar. The code and the version history are behind it, in the menu.
+// app it will be — under the Studio's bar on a phone, beside the conversation on a wide one — with
+// Close and the way back always on that bar (#489). The code and the version history are behind it, in the menu.
 //
 // Every version is SAVED as it is made. The old Studio built a draft and waited for a Save button,
 // so a closed tab or a reload lost both the app and what had been asked for it; with the
@@ -14,7 +14,7 @@
 //
 // Everything here runs the person's own app trusted (CLAUDE.md rule 3); studio-preview.tsx builds it.
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { AppLock, PackagedFile } from "@potyro/store";
@@ -39,6 +39,8 @@ import { canGenerate } from "./generate-client.js";
 import { checkFreeEngine, useEngineConfig } from "./engine-store.js";
 import { freeNotNow, useFreeAi } from "./free-ai.js";
 import { FreePanel } from "./free-panel.js";
+import { leaveForGallery as leaveFor } from "./gallery-link.js";
+import { forgetKeptIdea, keepIdea, keptIdea } from "./kept-idea.js";
 import { shellDialogs } from "./dialog.js";
 import { followChat, syncChat } from "./chat-sync.js";
 import { adoptDraft, appendMessage, briefSince, clearChat, earlierConversation, isDraftId, listMessages, newDraftId, threadItems, type ChatItem, type NewMessage } from "./studio-chat.js";
@@ -68,6 +70,8 @@ import { getEntry, updateEntry } from "./launcher-store.js";
 import { hueColour } from "./tile-identity.js";
 import type { Appearance } from "./app-theme.js";
 import { tracoOf } from "./app-colour.js";
+import type { AppSeed } from "./app-seed.js";
+import { fixedLanding, keptAnyway, seedToSave, type Held, type OwnEdit } from "./studio-held.js";
 
 /** The eleven hours an app may wear (DESIGN.md §10); 12 o'clock is Potyro's own and stays empty. */
 const HOURS = HORAS.filter((h) => h.hora !== 12);
@@ -111,6 +115,53 @@ export default defineApp({
 });
 `;
 
+/**
+ * The Studio's bar, measured onto the Studio as `--k-studio-bar-h`: on a phone the opened app stands
+ * under it (#489), so its Close and its tabs stay where they were — the bar's height follows the
+ * text size and the phone's status bar, so it is read, not assumed.
+ */
+function useBarHeight(root: RefObject<HTMLElement>, bar: RefObject<HTMLElement>): void {
+  useLayoutEffect(() => {
+    const el = bar.current;
+    const host = root.current;
+    if (!el || !host) return;
+    const put = (): void => host.style.setProperty("--k-studio-bar-h", `${el.getBoundingClientRect().height}px`);
+    put();
+    if (typeof ResizeObserver !== "function") return;
+    const watch = new ResizeObserver(put);
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, [root, bar]);
+}
+
+/** Focus that is nowhere a person can be: on the page itself, or on a control now inert. */
+function focusLost(): boolean {
+  const at = document.activeElement;
+  return !at || at === document.body || at.closest("[inert]") !== null;
+}
+
+/**
+ * On a phone the opened app covers the conversation, which turns inert (#489): the card's Open (or
+ * the code sheet's Run) that opened it can no longer hold focus. Focus moves to the app's region, so a
+ * keyboard or a screen reader is where the app is, not at the top of the page. When the app closes
+ * and focus went with it, it comes back to the Conversation tab, or — no tabs — to the Studio's menu.
+ */
+function usePhoneFocus(
+  covering: boolean,
+  region: RefObject<HTMLElement>,
+  conversationTab: RefObject<HTMLElement>,
+  bar: RefObject<HTMLElement>,
+): void {
+  const was = useRef(covering);
+  useEffect(() => {
+    if (covering === was.current) return;
+    was.current = covering;
+    if (!focusLost()) return;
+    if (covering) region.current?.focus({ preventScroll: true });
+    else (conversationTab.current ?? bar.current?.querySelector<HTMLElement>(".k-studio-more"))?.focus({ preventScroll: true });
+  }, [covering, region, conversationTab, bar]);
+}
+
 /** Wide enough for the conversation and the app side by side. Narrower, the app takes the screen. */
 const SIDE_BY_SIDE = "(min-width: 1100px)";
 
@@ -153,23 +204,6 @@ function changedPaths(a: Record<string, string> | undefined, b: Record<string, s
 
 /** Whether `draft` holds anything `saved` does not: an edit, a new file, a deleted one. */
 const modulesDiffer = (draft: Record<string, string>, saved: Record<string, string> | undefined): boolean => changedPaths(draft, saved).size > 0;
-
-/** A version that was made and failed a gate, so it was not saved. */
-interface Held {
-  source: string;
-  summary: string;
-  /** What was asked, for the version's note if it is kept. */
-  note: string;
-  issues: string[];
-  loss: string | null;
-  /** Its libraries, already fetched with the person's say-so (#266). */
-  libraries: StudioLibraries | null;
-  /** The modules it edited (#448), kept with it if it is kept. */
-  own?: OwnEdit;
-}
-
-/** Modules a version edited (#448): every module's text, and the files and lock entries they make. */
-type OwnEdit = { texts: Record<string, string>; code: { lock: AppLock; files: PackagedFile[] } };
 
 export interface StudioProps {
   onClose: () => void;
@@ -220,7 +254,14 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const [copied, setCopied] = useState(false);
   const [held, setHeld] = useState<Held | null>(null);
   const [working, setWorking] = useState<string | null>(null);
-  const [description, setDescription] = useState(initialDescription ?? "");
+  // What was in the box when the person left for the gallery from here (#487), for this app (or a new
+  // one): back in the box, unless they came with words of their own. Either way, taken.
+  const [description, setDescription] = useState(() => initialDescription ?? keptIdea(opened?.id ?? null) ?? "");
+  useEffect(() => {
+    if (keptIdea(opened?.id ?? null) !== undefined) forgetKeptIdea();
+    // once, as the Studio opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const descriptionRef = useRef(description);
   descriptionRef.current = description;
   // The microphone (docs/29): what was in the box when it started, and then what is heard after it.
@@ -256,6 +297,11 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const free = useFreeAi();
   const wide = useWide();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLElement>(null);
+  useBarHeight(rootRef, barRef);
+  const previewRef = useRef<HTMLElement>(null);
+  const conversationTabRef = useRef<HTMLButtonElement>(null);
 
   const label = engineLabel(engineCfg);
   const ready = engineReady(engineCfg);
@@ -372,6 +418,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   }, [appId, source]);
   // Edited, made or deleted since the last save: each is a change Save keeps.
   const changedModules = changedPaths(draftModules, savedModules);
+  // Something here that lives only in this page: a version made and not kept (it failed a gate), or
+  // code edited in the Studio's editor and not saved. Leaving the page loses it.
+  const unkept = held !== null || changedModules.size > 0 || draftSource !== (source ?? STARTER);
 
   const engine = async () => studioEngine(engineCfg, (text) => setWorking(text ?? ""), await modulesOf(appRef.current ?? undefined));
 
@@ -389,6 +438,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     extra: Pick<NewMessage, "platform"> = {},
     /** Modules edited by hand (#448): their files go on this device first, and their lock with the version. */
     own?: OwnEdit,
+    /** A new app's sample records (#486): its demo records. A changed app keeps the ones it has, as they are. */
+    made?: AppSeed,
   ): Promise<void> => {
     const existing = appRef.current ? getUserApp(appRef.current) : undefined;
     // Saved in the app's OWN language: a translated app keeps one stored name, and each device shows
@@ -412,6 +463,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         rationale: summary || undefined,
         origin,
         ...(existing ? {} : { line: newLine() }),
+        // Stored as it came: each use fits it to the version at hand (app-seed.ts).
+        ...seedToSave(!existing, made),
       },
       new Date().toISOString(),
     );
@@ -481,6 +534,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     extra: Pick<NewMessage, "platform"> = {},
     /** The app's own modules, when the change edited any (#448): checked and kept with it. */
     modules?: Record<string, string>,
+    /** A new app's sample records (#486). */
+    made?: AppSeed,
   ): Promise<void> => {
     setWorking(t`Checking it`);
     let src = next;
@@ -511,7 +566,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       }
     }
     if (issues.length || lost) {
-      setHeld({ source: src, summary: said, note, issues, loss: lost, libraries, ...(own ? { own } : {}) });
+      setHeld({ source: src, summary: said, note, issues, loss: lost, libraries, ...(own ? { own } : {}), ...(made ? { made } : {}) });
       setPreview(built ?? preview);
       const problems = issues.join("\n- ");
       await say({
@@ -523,7 +578,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       });
       return;
     }
-    await keep(src, built, said, note, undefined, libraries, extra, own);
+    await keep(src, built, said, note, undefined, libraries, extra, own, made);
   };
 
   const answer = async (outcome: Outcome, note: string): Promise<void> => {
@@ -545,6 +600,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       outcome.kind === "loss" ? outcome.loss : null,
       outcome.kind === "source" ? platformAsk(outcome.platformRequest) : {},
       outcome.modules,
+      outcome.kind === "source" ? outcome.seed : undefined,
     );
   };
 
@@ -584,7 +640,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     setWorking("");
     try {
       const fixed = await (await engine()).repair(held.source, held.issues, held.own?.texts);
-      await land(fixed.source, `${held.summary} ${fixed.summary}`.trim(), held.note, fixed.loss, {}, fixed.modules ?? held.own?.texts);
+      const l = fixedLanding(held, fixed);
+      await land(l.source, l.summary, l.note, l.loss, {}, l.modules, l.made);
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
       await say({ kind: "failure", text: t`Could not fix it: ${reason}` });
@@ -592,6 +649,23 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       setWorking(null);
     }
   };
+
+  /**
+   * The key panel's gallery link (#487): the gallery opens in this tab, so the Studio goes with the
+   * page. The box's words are kept for the way back (kept-idea.ts); a version not kept or code not
+   * saved cannot be, so the person is asked first — never left to find it gone.
+   */
+  const leaveForGallery = (): true | Promise<boolean> =>
+    leaveFor({
+      unkept,
+      keep: () => keepIdea(descriptionRef.current, appRef.current),
+      ask: () =>
+        shellDialogs.confirm(t({ message: "Leave for the gallery?", comment: "Asked before the Studio's page goes to the gallery while a change in it is not kept" }), {
+          detail: t`The change you have not kept here is lost.`,
+          ok: t({ message: "Leave", comment: "Button: go to the gallery, losing the change not kept" }),
+          cancel: t({ message: "Stay", comment: "Button: stay in the Studio, with the change" }),
+        }),
+    });
 
   const keepHeld = async (): Promise<void> => {
     if (!held) return;
@@ -603,7 +677,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     );
     if (!go) return;
     const kept = t`Kept with problems.`;
-    await keep(h.source, preview, `${h.summary} ${kept}`.trim(), h.note, undefined, h.libraries, {}, h.own);
+    const k = keptAnyway(h, kept);
+    await keep(k.source, preview, k.summary, k.note, undefined, k.libraries, {}, k.own, k.made);
   };
 
   /** An older card: put that version back, as a new version — nothing after it is lost. */
@@ -810,10 +885,19 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     }
   };
   const showPreview = previewOpen && preview !== null;
+  /** Leaving the app ends pointing at it, by whichever way back (the tab, or the preview's own). */
+  const closePreview = (): void => {
+    setPointing(false);
+    setPreviewOpen(false);
+  };
+  usePhoneFocus(showPreview && !wide, previewRef, conversationTabRef, barRef);
+  // On a phone the app covers the conversation and the box: out of reach, so out of the reading and
+  // Tab order too (#489), until the Conversation tab brings them back. The bar above stays live.
+  const covered: Record<string, string> = showPreview && !wide ? { inert: "" } : {};
   const tabs =
     canOpen && !wide ? (
       <div className="k-studio-tabs" role="tablist" aria-label={t`Studio`}>
-        <button type="button" role="tab" className="k-studio-tab" aria-selected={!showPreview} onClick={() => setPreviewOpen(false)}>
+        <button ref={conversationTabRef} type="button" role="tab" className="k-studio-tab" aria-selected={!showPreview} onClick={closePreview}>
           <Trans comment="Studio tab on a phone: the conversation">Conversation</Trans>
         </button>
         <button type="button" role="tab" className="k-studio-tab" aria-selected={showPreview} onClick={() => setPreviewOpen(true)}>
@@ -873,9 +957,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   };
 
   return (
-    <div className="k-studio k-traco" role="dialog" aria-label={t`App studio`} data-preview={showPreview || undefined} style={ROSA as CSSProperties}>
+    <div ref={rootRef} className="k-studio k-traco" role="dialog" aria-label={t`App studio`} data-preview={showPreview || undefined} style={ROSA as CSSProperties}>
       <div className="k-studio-chat">
-        <header className="k-studio-bar">
+        <header ref={barRef} className="k-studio-bar">
           <button type="button" className="k-studio-close" aria-label={t`Close studio`} onClick={onClose}>
             {I.close}
           </button>
@@ -905,7 +989,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           <ActionMenu label={t`Studio menu`} trigger={I.more} entries={menu} buttonClassName="k-studio-more" />
         </header>
 
-        <div className="k-studio-scroll" ref={scrollRef}>
+        <div className="k-studio-scroll" ref={scrollRef} {...covered}>
           <div className="k-studio-column">
             <ThreadView
               items={items}
@@ -925,7 +1009,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               onFix={() => void fixHeld()}
               onKeep={() => void keepHeld()}
               onLook={() => setPreviewOpen(true)}
-              onSuggest={(s) => setDescription(s)}
+              onSuggest={noWay ? undefined : (s) => setDescription(s)}
               existing={hasApp}
               remix={remix}
               requests={requests}
@@ -934,8 +1018,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           </div>
         </div>
 
-        <footer className="k-composer">
-          {noWay ? <FreePanel free={free} onAddKey={() => setSettingsOpen(true)} ownKey={ownKey} /> : null}
+        <footer className="k-composer" {...covered}>
+          {noWay ? <FreePanel free={free} onAddKey={() => setSettingsOpen(true)} ownKey={ownKey} onLeave={leaveForGallery} request={description} /> : null}
           {noWay ? null : <VoiceStrip voice={voice} />}
           <div className="k-composer-box" hidden={noWay} data-pointed={point ? true : undefined} data-listening={listening || undefined}>
             {point ? (
@@ -1016,16 +1100,14 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         <PreviewScreen
           preview={preview}
           title={appName}
-          tabs={tabs}
+          underStudioBar={tabs !== null}
+          regionRef={previewRef}
           above={adjust}
           appAccent={hue !== undefined ? hueColour(hue) : undefined}
           appearance={appearance}
           version={items.reduce<number | undefined>((v, i) => (i.type === "version" && i.current ? i.seq : v), undefined)}
           unsaved={held !== null}
-          onBack={() => {
-            setPointing(false);
-            setPreviewOpen(false);
-          }}
+          onBack={closePreview}
           onSource={() => setTools("source")}
           pointing={pointing}
           onPoint={() => setPointing(true)}

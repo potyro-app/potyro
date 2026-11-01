@@ -3886,6 +3886,11 @@ msgstr "Ele precisa de uma biblioteca da internet pra abrir, e você disse agora
 msgid "It needs to know one thing"
 msgstr "Ele precisa saber uma coisa"
 
+#. Share sheet, A link anyone can try, for an app with no sample records of its own (one made in the Studio)
+#: ../shell/src/share-sheet.tsx
+msgid "It opens an empty copy of the app right away in any browser. No account, nothing to install. Your records stay with you."
+msgstr "Abre na hora uma cópia vazia do app em qualquer navegador. Sem conta, sem instalar nada. Seus registros ficam com você."
+
 #: ../shell/src/install-row.tsx
 msgid "It opens like an app."
 msgstr "Abre como um app."
@@ -4133,14 +4138,21 @@ msgstr "Depois →"
 msgid "Launcher actions"
 msgstr "Ações da tela de apps"
 
+#. Button: go to the gallery, losing the change not kept
 #. Button: leave a shared app
 #: ../shell/src/remove-app.ts
+#: ../shell/src/studio.tsx
 msgid "Leave"
 msgstr "Sair"
 
 #: ../shell/src/remove-app.ts
 msgid "Leave “{name}”?"
 msgstr "Sair de “{name}”?"
+
+#. Asked before the Studio's page goes to the gallery while a change in it is not kept
+#: ../shell/src/studio.tsx
+msgid "Leave for the gallery?"
+msgstr "Ir para a galeria?"
 
 #: ../shell/src/chrome.tsx
 #: ../shell/src/chrome.tsx
@@ -6468,6 +6480,11 @@ msgstr "Ligando o microfone"
 msgid "Starts with"
 msgstr "Começa com"
 
+#. Button: stay in the Studio, with the change
+#: ../shell/src/studio.tsx
+msgid "Stay"
+msgstr "Ficar"
+
 #. Point chip: a kind of view, lower case
 #: ../shell/src/point-target.ts
 msgid "steps"
@@ -6866,6 +6883,10 @@ msgstr "O código do app"
 #: ../shell/src/backup-switch.tsx
 msgid "The apps already there stay there. This deletes nothing, and neither does turning sync off for one app."
 msgstr "Os apps que já estão lá continuam lá. Isso não apaga nada, e desligar a sincronização de um app também não."
+
+#: ../shell/src/studio.tsx
+msgid "The change you have not kept here is lost."
+msgstr "A alteração que você não manteve aqui se perde."
 
 #: ../shell/src/share-sheet.tsx
 msgid "The clip could not be recorded: {why}"
@@ -8221,6 +8242,11 @@ msgstr "Você e seus aparelhos"
 #: ../shell/src/move-page.tsx
 msgid "You are the same person here as there, with the same recovery words."
 msgstr "Você é a mesma pessoa aqui e lá, com as mesmas palavras de recuperação."
+
+#. Over the key panel: what the person typed, kept until an app can be made from it; {asked} is their own words
+#: ../shell/src/free-panel.tsx
+msgid "You asked for: <0>{asked}</0>"
+msgstr "Você pediu: <0>{asked}</0>"
 
 #: ../shell/src/studio.tsx
 msgid "You can go back to the version before from History."

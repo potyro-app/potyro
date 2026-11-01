@@ -41,6 +41,8 @@ export { runModifyLoop, type GiveUp, type ModifyLoopDeps, type ModifyLoopOutcome
 // The create loop (#262 phase 3): the same edges as modify-loop.ts, plus ../prompt.js (buildUserMessage).
 export { runCreateLoop, DEFAULT_DRAFTS, type CreateLoopDeps, type CreateLoopOutcome } from "./create-loop.js";
 export { CREATE_AGENT_SYSTEM_PROMPT } from "./create-system-prompt.js";
+// The create loop's one call for sample records (#486): potyro (humanizeKey, plainWords), ../language.js and ask.ts — no new edge.
+export { askSampleRecords, sampleMessages, readSampleReply, describeSampleShape, SAMPLE_SYSTEM_PROMPT, type SampleReply, type SampleRequest } from "./sample-records.js";
 export { conversationRecap, conversationRounds, buildConversationTool, DEFAULT_RECAP_ROUNDS, type ConversationEntry, type ConversationKind } from "./conversation.js";
 export { NEEDS_PLATFORM, appStructure, platformSignal, type PlatformRequest } from "./platform-request.js";
 export { MODIFY_AGENT_SYSTEM_PROMPT } from "./modify-system-prompt.js";

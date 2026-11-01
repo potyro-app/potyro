@@ -1,5 +1,5 @@
 import { test, expect } from "./console-guard";
-import { ask, openFromCard, openNewStudio } from "./studio-helpers.js";
+import { ask, openFromCard, openNewStudio, asksForSamples, noSamples } from "./studio-helpers.js";
 
 // An app made against an OpenAI-compatible endpoint (#121), end to end: the person names a server
 // by its address, tests the connection, and the create loop runs against it. The server here is
@@ -16,8 +16,9 @@ test("an app made against an OpenAI-compatible endpoint, with none of OpenRouter
   await page.route("**/openrouter.ai/**", (route) => route.abort());
   await page.route(`${BASE}/**`, async (route) => {
     const req = route.request();
-    sent.push({ method: req.method(), url: req.url(), headers: await req.allHeaders(), body: req.method() === "POST" ? (req.postDataJSON() as Record<string, unknown>) : null });
     const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
+    if (req.method() === "POST" && asksForSamples(req.postDataJSON())) return route.fulfill(noSamples(cors));
+    sent.push({ method: req.method(), url: req.url(), headers: await req.allHeaders(), body: req.method() === "POST" ? (req.postDataJSON() as Record<string, unknown>) : null });
     if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
     if (req.url().endsWith("/models")) return route.fulfill({ status: 200, headers: cors, contentType: "application/json", body: JSON.stringify({ object: "list", data: [{ id: "local-coder", object: "model" }] }) });
     return route.fulfill({
@@ -66,6 +67,7 @@ test("a model that takes no tools still makes the app, in one plain turn, and th
     const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
     if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
     const body = req.postDataJSON() as Record<string, unknown>;
+    if (asksForSamples(body)) return route.fulfill(noSamples(cors));
     posts.push(body);
     // Ollama's own words for llama3, with its status.
     if (body.tools) {
