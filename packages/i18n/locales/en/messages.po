@@ -3886,6 +3886,11 @@ msgstr "It needs a library from the internet to open, and you said not now."
 msgid "It needs to know one thing"
 msgstr "It needs to know one thing"
 
+#. Share sheet, A link anyone can try, for an app with no sample records of its own (one made in the Studio)
+#: ../shell/src/share-sheet.tsx
+msgid "It opens an empty copy of the app right away in any browser. No account, nothing to install. Your records stay with you."
+msgstr "It opens an empty copy of the app right away in any browser. No account, nothing to install. Your records stay with you."
+
 #: ../shell/src/install-row.tsx
 msgid "It opens like an app."
 msgstr "It opens like an app."
@@ -8237,6 +8242,11 @@ msgstr "You and your devices"
 #: ../shell/src/move-page.tsx
 msgid "You are the same person here as there, with the same recovery words."
 msgstr "You are the same person here as there, with the same recovery words."
+
+#. Over the key panel: what the person typed, kept until an app can be made from it; {asked} is their own words
+#: ../shell/src/free-panel.tsx
+msgid "You asked for: <0>{asked}</0>"
+msgstr "You asked for: <0>{asked}</0>"
 
 #: ../shell/src/studio.tsx
 msgid "You can go back to the version before from History."

@@ -113,6 +113,7 @@ function TagsInput({ field, value, onChange }: { field: Extract<Field, { type: "
             type="button"
             className="k-chip"
             data-on={selected.has(o)}
+            aria-pressed={selected.has(o)}
             onClick={() => {
               const next = new Set(selected);
               if (next.has(o)) next.delete(o);
@@ -145,7 +146,7 @@ function FreeTags({ selected, onChange }: { selected: string[]; onChange: (v: un
       {selected.length ? (
         <div className="k-chips">
           {selected.map((tag) => (
-            <span key={tag} className="k-chip k-tag" data-on="true">
+            <span key={tag} className="k-chip k-tag">
               {tag}
               <button type="button" className="k-tag-x" aria-label={t`Remove ${tag}`} onClick={() => onChange(selected.filter((x) => x !== tag))}>
                 ✕
