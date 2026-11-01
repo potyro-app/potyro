@@ -63,6 +63,7 @@ import { optionLabel } from "@potyro/views";
 import { acceptLinkParams } from "potyro";
 import type { Arrival } from "./app-link.js";
 import { tracoStyle, hueOf } from "./app-colour.js";
+import { addsByHand, quickActionsOf, type QuickActionDef } from "./quick-actions.js";
 import { I } from "./icons.js";
 import { AppColourContext, IconFilesContext } from "@potyro/views";
 import { isImagePath } from "potyro";
@@ -82,17 +83,6 @@ interface EditorState {
   onCreated?: (id: string) => void;
 }
 
-// Declarative quick action (mirrors potyro's QuickAction; kept structural to avoid a hard dep here).
-interface QuickActionDef {
-  id: string;
-  label: string;
-  icon?: string;
-  entity: string;
-  mode?: "auto" | "form" | "menu" | "instant";
-  open?: boolean;
-  openPage?: string;
-  prefill?: Record<string, unknown>;
-}
 
 interface QuickMenuState {
   qa: QuickActionDef;
@@ -610,7 +600,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
   const onEdit = (entity: string, id: string): void => setEditor({ entity, id });
   // Placing a point on the map opens the create form already carrying it — unless the app said nothing
   // is added by hand (`quickActions: []`, a live feed's records): then a map has no place button.
-  const handAdds = (def as { quickActions?: unknown[] }).quickActions?.length !== 0;
+  const declaredQuick = (def as { quickActions?: QuickActionDef[] }).quickActions;
+  const handAdds = addsByHand(declaredQuick);
   const onCreate = handAdds
     ? (entity: string, initial: Record<string, unknown>): void => setEditor({ entity, initial, openAfter: false })
     : undefined;
@@ -618,14 +609,10 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
   const entityLabel = (e: string): string => def.entities[e]?.label ?? e;
   const addLabel = (noun: string): string => t({ message: `Add: ${noun}`, comment: "A quick action that makes a new record; noun is the app's word for it" });
 
-  // Quick actions: the app's declared triggers, else an auto "Add: <Entity>" per top-level object —
-  // never "New <Entity>", which would have to agree with the noun (docs/20 Q3). A declared empty list
-  // is an app saying "none": records it makes itself (a live feed's) are not for adding by hand.
-  const declaredQuick = (def as { quickActions?: QuickActionDef[] }).quickActions;
-  // An entity only the app's code writes (`editableBy: "app"`) is never offered for adding by hand.
-  const quickActions: QuickActionDef[] = (
-    declaredQuick ? declaredQuick : baseEntities.map((e): QuickActionDef => ({ id: `new-${e}`, label: addLabel(entityLabel(e)), entity: e, mode: "auto", open: true }))
-  ).filter((qa) => byPeople(runtime, qa.entity));
+  // Quick actions (quick-actions.ts): the app's declared triggers, else an "Add: <Entity>" per
+  // top-level object; a declared empty list is an app saying "none". An entity only the app's code
+  // writes (`editableBy: "app"`) is never offered for adding by hand.
+  const quickActions: QuickActionDef[] = quickActionsOf(declaredQuick, baseEntities, (e) => addLabel(entityLabel(e))).filter((qa) => byPeople(runtime, qa.entity));
 
   // Which enum field a quick action picks inline (the "menu" style): explicit menu → the first enum;
   // auto → a lone enum with no OTHER required fields ("select the type"); form → none.
