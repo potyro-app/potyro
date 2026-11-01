@@ -13,7 +13,6 @@
 // wall has painted, never before it.
 
 import { Glyph } from "@potyro/views";
-import { openGallery } from "./gallery-link.js";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject, type MutableRefObject } from "react";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -168,6 +167,8 @@ export interface MetroHomeProps {
   onOpen: (a: InstalledApp) => void;
   onNewApp: (prefill?: string) => void;
   onAdd: () => void;
+  /** To the gallery, in this tab: the launcher keeps what is in its prompt box first (#487). */
+  onGallery: () => void;
   onData: () => void;
   onLook: () => void;
   onYou: () => void;
@@ -256,7 +257,7 @@ export function MetroHome(p: MetroHomeProps) {
         )}
       </div>
       {p.children}
-      <AppBar onNewApp={() => p.onNewApp()} onAdd={p.onAdd} onGallery={openGallery} onFind={() => showPane("all", { search: true })} onData={p.onData} onLook={p.onLook} onYou={p.onYou} />
+      <AppBar onNewApp={() => p.onNewApp()} onAdd={p.onAdd} onGallery={p.onGallery} onFind={() => showPane("all", { search: true })} onData={p.onData} onLook={p.onLook} onYou={p.onYou} />
     </div>
   );
 }
