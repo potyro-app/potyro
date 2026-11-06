@@ -254,3 +254,35 @@ describe("the storage worker client", () => {
     expect(isStorageElsewhere(err)).toBe(true);
   });
 });
+
+describe("deleting a database", () => {
+  it("asks the worker to remove the file, under the name the file has", async () => {
+    const { deleteWorkerSqlite } = await import("../src/sqlite-worker-client.js");
+    const { factory, ops } = opsWorker();
+    const deleted: string[] = [];
+    const recording: WorkerFactory = () => {
+      const w = factory();
+      const post = w.postMessage.bind(w);
+      w.postMessage = (message: unknown) => {
+        const m = message as { op: string; db: string };
+        if (m.op === "delete") deleted.push(m.db);
+        post(message);
+      };
+      return w;
+    };
+    await deleteWorkerSqlite("user:write together", recording);
+    expect(ops).toEqual(["delete"]);
+    // The same name `openWorkerSqliteHandle` gives the file: the namespace's odd characters replaced.
+    expect(deleted).toEqual(["user-write-together"]);
+  });
+
+  it("forgets the open connection, so the next open of that name is a real one", async () => {
+    const { deleteWorkerSqlite } = await import("../src/sqlite-worker-client.js");
+    const { factory, ops } = opsWorker();
+    const first = await openWorkerSqlite("gone", factory);
+    await deleteWorkerSqlite("gone", factory);
+    const second = await openWorkerSqlite("gone", factory);
+    expect(second).not.toBe(first);
+    expect(ops).toEqual(["open", "delete", "open"]);
+  });
+});
