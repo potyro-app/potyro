@@ -132,6 +132,11 @@ Read this before you rely on Potyro for something that matters.
   secrets are encrypted with a non-extractable WebCrypto key, but any script on the origin can still
   ask that key to decrypt. It removes the secret lying in the clear, nothing more. The native vault
   on Android and iOS is hardware-backed (`packages/identity/src/vault.ts`; docs/10, #57).
+- **A record's link is the record.** A link made with `ctx.ui.share({ record })` (docs/24 §12)
+  carries, in its fragment, an invite secret for that record's own group: whoever has the link can
+  read the record — and write it, if the link said so — and whatever points at it, for as long as
+  the group exists. Nothing else of the app's. Treat the link as you would the document. Taking a
+  link back is not built yet.
 - **The sync operator can see the social graph.** Transactions are encrypted; group and account
   metadata are not. Whoever runs the sync relay can see which accounts share which spaces, and when
   they are active (docs/16, "What this does NOT protect").

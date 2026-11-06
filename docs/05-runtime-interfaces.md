@@ -54,6 +54,12 @@ export interface Store {
   textRuns?(entity: string, id: Id, field: string): Promise<TextRun[]>;
   textAnchor?(entity: string, id: Id, field: string, at: number): Promise<string>;
   textIndex?(entity: string, id: Id, field: string, anchor: string): Promise<number | null>;
+  // records shared one by one (`share: "record"`, docs/24 §12): what this device may do with one, an
+  // invite to one (its group, its CoValue, a secret), and joining one from such an invite. Optional:
+  // only a store with peers has groups; the host answers "admin" for everything without them.
+  recordAccess?(entity: string, id: Id): Promise<"reader" | "writer" | "admin">;
+  createRecordInvite?(entity: string, id: Id, role: "writer" | "reader"): Promise<RecordInvite>;
+  joinRecord?(invite: RecordInvite): Promise<Record | null>;
   transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T>;
 
   // reactivity — notify on entity change; runtime re-runs JS queries
@@ -81,7 +87,7 @@ export interface Store {
   subscribeFiles?(cb: () => void): Unsubscribe;
   // what the app declared: field types (KA-38 set merge) and who may edit what (KA-21 creatorOnly,
   // enforced by a synced store from its signed log — another member's edit to such a row does not take)
-  describe?(schema: StoreSchema, rules?: { creatorOnly?: readonly string[] }): void;
+  describe?(schema: StoreSchema, rules?: { creatorOnly?: readonly string[]; sharedRecords?: readonly string[] }): void;
   storedSchemaVersion(): Promise<number>;  runMigrations(plan: MigrationPlan): Promise<void>;
 }
 export type Unsubscribe = () => void;
