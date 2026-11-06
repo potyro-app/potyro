@@ -68,14 +68,28 @@ export async function makeRecordLink(app: UserApp, declaredId: string | undefine
 }
 
 /**
- * The link maker `ctx.ui.share({ record })` ends in, for the open app `id`: on a synced copy the link
- * is made at once; on one that does not sync yet, sync is turned on first, and the app comes back
- * with the same request (see `syncForRecordShare`).
+ * Before the share dialog opens for `ctx.ui.share({ record })` on the open app `id`: nothing to do on
+ * a synced copy (`true`); on one that does not sync yet, sync is turned on first — asked, and then a
+ * reload, after which the app comes back with the same request (`syncForRecordShare`) — or the
+ * person said not now (`false`), and no dialog opens.
  */
+export async function prepareRecordShare(id: string, share: HeldShare): Promise<boolean> {
+  const app = getUserApp(id);
+  if (!app) throw new Error("app not found");
+  if (app.sync) return true;
+  try {
+    await syncForRecordShare(app, share);
+    return true;
+  } catch (e) {
+    if (e instanceof SyncDeclined) return false;
+    throw e;
+  }
+}
+
+/** The link maker `ctx.ui.share({ record })` ends in, for the open app `id`, on its synced store. */
 export async function recordLinkFor(id: string, store: Store, share: HeldShare): Promise<string> {
   const app = getUserApp(id);
   if (!app) throw new Error("app not found");
-  if (!app.sync) await syncForRecordShare(app, share);
   const { declaredAppId } = await import("./source-declared.js");
   return makeRecordLink(app, await declaredAppId(app.source), store, share.record);
 }

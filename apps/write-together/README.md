@@ -6,9 +6,10 @@ pinned to the words — an Etherpad for Potyro.
 Open a document and write. Everyone who has the app with you sees your words as you type, under
 your colour; theirs come in under theirs. **Preview** reads the document as a page. Select some
 words (or just put the caret somewhere) and tap **+ Comment**: the comment stays on those words
-through everyone's edits, and says so when they are deleted. Sharing is the app's own "Use it
-together" for now, which shares every document in it; sharing one document on its own, with its own
-link, is a platform feature in the making. Alone, the app is simply a notebook.
+through everyone's edits, and says so when they are deleted. **Invite** makes a link to this one
+document — to write in it, or only to read it. Whoever opens the link gets the document, live, with
+its comments, and nothing else of yours; they can keep the app, and the document stays theirs to
+open. Alone, the app is simply a notebook.
 
 ## How it works
 
@@ -25,9 +26,10 @@ reads who wrote what (`runs`) rather than anything a copy could claim.
 - `editor.tsx` — the screen: a transparent textarea over a backdrop that draws the same text with
   each writer's tint; the toolbar's marks (`marks.ts`, as Notes has them); the comments panel.
 - `markdown.tsx` — the preview, drawn as React elements, never as HTML from the text.
-- `write-together.app.tsx` — the app: `doc`, `comment` (anchored with `ctx.text(...).anchor`) and
-  `writer` (one colour per person, resolved in creation order so two people who opened the document
-  at the same moment never share one).
+- `write-together.app.tsx` — the app: `doc` (shared one by one: `share: "record"`, docs/24 §12),
+  `comment` (anchored with `ctx.text(...).anchor`) and `writer` (one colour per person and document,
+  resolved in creation order so two people who opened the document at the same moment never share
+  one). Comments and writers point at the document, so they travel with it.
 
 Colours appear once a second person has written in a document; alone, a document is just a document.
 

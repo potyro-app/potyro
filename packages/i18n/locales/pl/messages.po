@@ -2529,7 +2529,7 @@ msgstr "Nie udało się tego przenieść"
 #. placeholder {0}: e instanceof Error ? e.message : String(e)
 #: ../shell/src/main.tsx
 msgid "Could not open the shared record: {0}"
-msgstr ""
+msgstr "Nie udało się otworzyć udostępnionego wpisu: {0}"
 
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
@@ -5293,7 +5293,7 @@ msgstr "Otwórz aplikację"
 #. Button: turn sync on to open a shared record
 #: ../shell/src/main.tsx
 msgid "Open it"
-msgstr ""
+msgstr "Otwórz"
 
 #: ../shell/src/main.tsx
 #: ../shell/src/move-page.tsx
@@ -6285,7 +6285,7 @@ msgstr "Udostępnij link"
 
 #: ../shell/src/record-share.ts
 msgid "Share one of “{name}”'s records? This turns on sync for the app and copies its data into the synced store. Only the record you share leaves this device."
-msgstr ""
+msgstr "Udostępnić jeden wpis z „{name}”? To włączy synchronizację aplikacji i skopiuje jej dane do zsynchronizowanego magazynu. Z tego urządzenia wychodzi tylko wpis, który udostępnisz."
 
 #: ../shell/src/share-page.tsx
 msgid "Share text to Potyro from another app and it will wait here for you to pick where it goes."
@@ -6419,7 +6419,7 @@ msgstr "Ktoś ci ją wysłał albo zrobiono ją gdzie indziej."
 
 #: ../shell/src/main.tsx
 msgid "Someone shared a record of “{name}” with you. Opening it turns on sync for your copy of the app: your copy's data is kept on Potyro's relay, encrypted, so the record can reach you and stay up to date."
-msgstr ""
+msgstr "Ktoś udostępnił ci wpis z „{name}”. Otwarcie go włączy synchronizację twojej kopii aplikacji: dane twojej kopii będą przechowywane na serwerze pośredniczącym Potyro, zaszyfrowane, aby wpis mógł do ciebie dotrzeć i być aktualny."
 
 #: ../shell/src/people-panel.tsx
 msgid "someone who left"
@@ -7001,7 +7001,7 @@ msgstr "Nie udało się utworzyć linku. Tekst nadal można wysłać."
 
 #: ../shell/src/record-share.ts
 msgid "The link needs the app to sync, and that was not allowed."
-msgstr ""
+msgstr "Link wymaga synchronizacji aplikacji, a na to nie zezwolono."
 
 #. Start of the email that reports a demo link; the person writes their reasons under the second line
 #: ../shell/src/demo.tsx
@@ -7112,7 +7112,7 @@ msgstr "Serwer odrzucił klucz ({status}). Sprawdź klucz."
 
 #: ../shell/src/main.tsx
 msgid "The shared record was not opened: it needs sync, which was not allowed."
-msgstr ""
+msgstr "Udostępniony wpis nie został otwarty: wymaga synchronizacji, na którą nie zezwolono."
 
 #: ../shell/src/version-notes.ts
 msgid "the source before history was kept"
@@ -7250,7 +7250,7 @@ msgstr "Nie udało się odczytać tej aplikacji: {unreadable}"
 
 #: ../shell/src/record-share.ts
 msgid "This app does not sync yet, so a record of it cannot be shared on its own."
-msgstr ""
+msgstr "Ta aplikacja jeszcze nie synchronizuje, więc nie można udostępnić osobno jej wpisu."
 
 #: ../shell/src/app-source.ts
 msgid "this app doesn't call defineApp with a plain object"
@@ -7383,7 +7383,7 @@ msgstr "Ta rozmowa jest za długa na darmowy limit. Zacznij nową aplikację alb
 
 #: ../shell/src/record-share.ts
 msgid "This copy of the app does not sync, so a shared record cannot reach it."
-msgstr ""
+msgstr "Ta kopia aplikacji nie synchronizuje, więc udostępniony wpis nie może do niej dotrzeć."
 
 #: ../shell/src/remove-app.ts
 msgid "This deletes the app AND its data — every record you have added to it. It cannot be undone."
@@ -7732,7 +7732,7 @@ msgstr "Wyłączyć synchronizację dla „{name}”? Jej dane zostaną skopiowa
 #. Button: turn sync on so a record can be shared
 #: ../shell/src/record-share.ts
 msgid "Turn on sync"
-msgstr ""
+msgstr "Włącz synchronizację"
 
 #: ../shell/src/launcher.tsx
 msgid "Turn on sync for “{name}”? Its data will be copied into the synced store. The old copy is kept, so you can turn this back off."

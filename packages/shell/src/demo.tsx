@@ -13,7 +13,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { pickLanguage, word, type Person } from "potyro";
 import { languagePrefs } from "./locale.js";
-import { MemoryStore, readAppPackage, type AppPackage, type Store } from "@potyro/store";
+import { MemoryStore, isReservedPath, readAppPackage, type AppPackage, type Store } from "@potyro/store";
 import type { Capabilities } from "@potyro/capabilities";
 import { App } from "./App.js";
 import { capsForApp } from "./app-ai-caps.js";
@@ -140,8 +140,9 @@ export async function openDemo(pkg: AppPackage, caps: Capabilities, opts: { link
     await store.open(`demo:${pkg.declared?.id ?? "app"}`);
   }
   // Its shipped files and its code, before any of it runs: an app that reads `levels.json` at the top
-  // finds it, as it would once kept.
-  await applyShippedFiles(store, code.files, { update: false });
+  // finds it, as it would once kept. A synced store never holds the app's code (#281): the live viewer
+  // keeps it in memory (`memoryModules`, below) and writes only what the app ships.
+  await applyShippedFiles(store, live ? code.files.filter((f) => !isReservedPath(f.path)) : code.files, { update: false });
   const modules = memoryModules(code.lock, new Map(code.files.map((f) => [f.path, f.data])));
 
   const toaster = new Toaster();
