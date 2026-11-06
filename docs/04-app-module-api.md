@@ -220,6 +220,7 @@ interface Ctx {
   patch<E>(entity: string, id: string, data: Partial<E>): Promise<Resolved<E>>;
   increment(entity: string, id: string, field: string, delta: number): Promise<Resolved<E>>;  // a count several people add to (KA-38)
   text(entity: string, id: string, field: string): CtxText;   // a text several people type into: "Writing together" below
+  access(entity: string, id: string): Promise<"reader" | "writer" | "admin">;   // what this device may do with a record shared on its own (docs/24 §12)
   delete(entity: string, id: string): Promise<void>;
   transaction<T>(fn: (tx: Ctx) => Promise<T>): Promise<T>;
   // Values are checked against their declared field (KA-21). create/patch REJECT a value that does
@@ -700,6 +701,24 @@ const where = await body.index(at);                // its position now, or null 
   text written with `patch` before is the starting point.
 - The same across the realm's port for a sealed app. A new optional member and a new optional field
   flag: no app's `schemaVersion` changes.
+
+### A record shared on its own (`share: "record"`, `ctx.access`, `ctx.ui.share({ record })`, docs/24 §12)
+
+"Use it together" shares the whole app. An entity declared `share: "record"` shares each record by
+its own link, with the records that point at it (a document with its comments):
+
+```ts
+entities: { doc: { share: "record", fields: { … } }, comment: { fields: { doc: { type: "relation", to: "doc" }, … } } }
+
+await ctx.ui.share({ text: "Write with me", record: { entity: "doc", id, role: "writer", page: "doc", param: "docId" } });
+const may = await ctx.access("doc", id);   // "reader" | "writer" | "admin": look, change, also invite
+```
+
+The shell makes the link (the app never sees a secret) and turns sync on first when the copy does
+not sync yet. Whoever opens it gets that record — live, in their own copy of the app or in the
+sealed viewer — and nothing else. `role: "reader"` makes a look-only link; a reader's writes are
+refused in words, so an editor reads `ctx.access` and shows itself read-only. A new optional
+declaration and two optional members: no app's `schemaVersion` changes.
 
 ### Voice input (`ctx.caps.speech`, docs/29)
 
