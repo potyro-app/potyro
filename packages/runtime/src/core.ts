@@ -4,7 +4,7 @@ import { actionInfo, actionInputProblem, appLanguages, FieldValueError, isContex
 // reconciliation, and binding resolution. React hooks (hooks.ts) wrap this. Everything goes
 // through the Host so trusted (direct) and untrusted (isolate) execution are uniform.
 
-import type { AppDefinition, Ctx, Id, Language, Words, Localized, PotyroRecord, Person, Resolved, Space, Value, View } from "potyro";
+import type { AppDefinition, Ctx, CtxText, Id, Language, Words, Localized, PotyroRecord, Person, Resolved, Space, TextEdit, Value, View } from "potyro";
 import type { BindingRef, Host, LoadedApp, MakeCtxBase, NavBridge, UiBridge } from "@potyro/host";
 import { formatLocaleFor, GuestBook } from "@potyro/host";
 import type { Capabilities } from "@potyro/capabilities";
@@ -327,6 +327,13 @@ export class RuntimeCore {
     return new Proxy(ctx, {
       get: (target, key, receiver) => {
         const value = Reflect.get(target, key, receiver);
+        if (key === "text" && typeof value === "function") {
+          // `text()` hands back a handle; its `edit` is the write, tracked like the others.
+          return (...args: unknown[]) => {
+            const handle = (value as (...a: unknown[]) => CtxText).apply(target, args);
+            return { ...handle, edit: (edits: TextEdit[], opts?: { base?: string }) => this.track(handle.edit(edits, opts)) };
+          };
+        }
         if (!WRITES.has(key) || typeof value !== "function") return value;
         return (...args: unknown[]) => this.track((value as (...a: unknown[]) => Promise<unknown>).apply(target, args));
       },

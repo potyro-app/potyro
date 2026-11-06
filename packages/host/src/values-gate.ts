@@ -8,9 +8,10 @@
 // Why refuse at all, when the app's own code wrote it? Because in a shared app the other copies
 // would have to survive it too, and the next reader cannot tell a bug from a tampered change.
 
-import { FieldValueError, fieldValueProblem, humanizeKey, plainWords, recordValueProblem, sanitiseListRows, type AppDefinition, type Field } from "potyro";
+import { FieldValueError, fieldValueProblem, humanizeKey, plainWords, recordValueProblem, sanitiseListRows, type AppDefinition, type Field, type TextEdit } from "potyro";
 import { isGuestId, type Store } from "@potyro/store";
 import type { GuestBook } from "./guests.js";
+import { applyEdit } from "./text-transform.js";
 
 /** How a field is named in a message: its label — already in the person's language when the
  *  definition is the localized one the ctx passes (#302). */
@@ -87,6 +88,39 @@ function sameStored(a: unknown, b: unknown): boolean {
 }
 
 /** `increment` only counts: the field it names must hold a number. */
+/** `ctx.text` names a field declared `text` with `collaborative: true`; anything else is refused by name. */
+export function assertCollaborativeText(definition: AppDefinition, entity: string, field: string): void {
+  const declared = definition.entities[entity]?.fields[field];
+  if (!declared) throw new FieldValueError(`${humanizeKey(entity)} has no field "${field}".`);
+  if (declared.type !== "text" || !declared.collaborative) {
+    throw new FieldValueError(`${labelOf(declared, field)} is not a collaborative text: declare it { type: "text", collaborative: true } to edit it with ctx.text.`);
+  }
+}
+
+/** The shape of edits handed to `ctx.text(...).edit`, checked before any store sees them. */
+export function checkTextEdits(edits: unknown): TextEdit[] {
+  if (!Array.isArray(edits)) throw new TypeError("ctx.text: edit takes an array of edits");
+  return edits.map((e, i) => {
+    const o = (e ?? {}) as Record<string, unknown>;
+    if (typeof o.insert === "string" && Number.isInteger(o.at) && (o.at as number) >= 0) return { at: o.at as number, insert: o.insert };
+    if (Number.isInteger(o.from) && Number.isInteger(o.to) && (o.from as number) >= 0 && (o.to as number) >= (o.from as number)) return { from: o.from as number, to: o.to as number };
+    throw new TypeError(`ctx.text: edit ${i} is neither { at, insert } nor { from, to }`);
+  });
+}
+
+/** Every `TextEdit` applied to a plain string, in order: the fallback where no store can merge. */
+export function applyTextEdits(text: string, edits: TextEdit[]): string {
+  return edits.reduce(applyEdit, text);
+}
+
+/** The `base` an edit may name: a string, or nothing. */
+export function checkTextBase(opts: unknown): string | undefined {
+  const base = (opts as { base?: unknown } | null | undefined)?.base;
+  if (base === undefined || base === null) return undefined;
+  if (typeof base !== "string") throw new TypeError("ctx.text: edit's base must be a string");
+  return base;
+}
+
 export function assertCountable(definition: AppDefinition, entity: string, field: string): void {
   const declared = definition.entities[entity]?.fields[field];
   if (declared && declared.type !== "number" && declared.type !== "duration") {

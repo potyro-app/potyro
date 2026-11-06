@@ -42,6 +42,7 @@ Everything below is invisible at runtime unless something is built to see it.
 | **Read-modify-write** | `patch({ n: row.n + 1 })` | Increments are lost. Counters, tallies, "N of M". |
 | **Multi-record invariant** | swap, move, transfer, "settle up" | The pair can fuse or split. No cross-record atomicity exists. |
 | **Whole-array fields** | `patch({ tags: [...tags, t] })` | The array is one field: one person's whole edit is dropped. **Closed for DECLARED set fields** (`tags`, `relation`/`member` `many`): the store diffs the array and writes one key per element. Still open for an array held as anything else. |
+| **Whole-text fields** | `patch({ body: textarea.value })` | The text is one field: two people typing at once keep the newer save. **Closed for a `text` field declared `collaborative: true`** edited through `ctx.text(…).edit` (docs/04 "Writing together"): the words are a text CRDT of their own, merged character by character. Still open for a plain text field, and for a collaborative one written whole with `patch`. |
 | **Allocation / uniqueness** | "next free number", a code, a slug | Two peers allocate the same one. |
 | **Derived values stored** | `total` written alongside the parts | Diverges from the parts, permanently. |
 | **Delete vs edit** | one deletes while another edits | The edit lands on a record nothing lists. |

@@ -45,6 +45,15 @@ export interface Store {
   insert(entity: string, data: Partial<Record>): Promise<Record>;
   update(entity: string, id: Id, patch: Partial<Record>): Promise<Record>;
   delete(entity: string, id: Id): Promise<void>;
+  increment?(entity: string, id: Id, field: string, delta: number): Promise<number>;  // KA-38: a count as deltas; only a CRDT store adds them up
+  // a `text` field with `collaborative: true` (docs/04 "Writing together"): edits rather than the
+  // whole text, so a CRDT store merges two people typing at once; who typed what, from the signing
+  // session; an anchor that follows a character. Optional: the host falls back to read-modify-write
+  // and "everything is mine" on a store without them (a local-only app is single-writer).
+  editText?(entity: string, id: Id, field: string, edits: TextEdit[]): Promise<string>;
+  textRuns?(entity: string, id: Id, field: string): Promise<TextRun[]>;
+  textAnchor?(entity: string, id: Id, field: string, at: number): Promise<string>;
+  textIndex?(entity: string, id: Id, field: string, anchor: string): Promise<number | null>;
   transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T>;
 
   // reactivity — notify on entity change; runtime re-runs JS queries

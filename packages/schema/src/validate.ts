@@ -44,7 +44,7 @@ export const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
     default: z.any().optional(),
   };
 
-  const text = z.object({ type: z.literal("text"), multiline: z.boolean().optional(), ...common });
+  const text = z.object({ type: z.literal("text"), multiline: z.boolean().optional(), collaborative: z.boolean().optional(), ...common });
   const richtext = z.object({ type: z.literal("richtext"), ...common });
   const number = z.object({
     type: z.literal("number"),

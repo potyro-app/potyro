@@ -209,6 +209,15 @@ export function makeRealmCtx(base: CtxBase, tx: Transport, opts: RealmCtxOptions
     create: (entity, data) => call("create", String(entity), data),
     patch: (entity, rid, data) => call("patch", String(entity), String(rid), data),
     increment: (entity, rid, field, delta) => call("increment", String(entity), String(rid), String(field), Number(delta)),
+    text: (entity, rid, field) => {
+      const target = [String(entity), String(rid), String(field)];
+      return {
+        edit: (edits, opts) => call("text.edit", ...target, edits, opts?.base === undefined ? null : { base: String(opts.base) }),
+        runs: () => call("text.runs", ...target),
+        anchor: (at) => call("text.anchor", ...target, Number(at)),
+        index: (anchor) => call("text.index", ...target, String(anchor)),
+      };
+    },
     delete: async (entity, rid) => {
       await call("delete", String(entity), String(rid));
     },

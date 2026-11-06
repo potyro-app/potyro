@@ -10,7 +10,9 @@ import { hostPure, PURE_ERROR } from "../format.js";
 import type { Store } from "@potyro/store";
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
 import { prefetchRelated, resolveRecord, type ResolveDeps } from "../resolve.js";
-import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, everyone } from "../values-gate.js";
+import { applyTextEdits, assertCollaborativeText, assertCountable, assertPatchFits, assertValuesFit, checkTextBase, checkTextEdits, currentPeople, everyone } from "../values-gate.js";
+import { afterEarlierEdits } from "../text-queue.js";
+import { mapEditsOnto } from "../text-transform.js";
 import { guestBookOf } from "../guests.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "../authorship.js";
 import { deserialize, serialize } from "./marshal.js";
@@ -207,6 +209,53 @@ class IsolateLoadedApp implements LoadedApp {
         const row = await this.store.get(entity, id);
         if (!row) throw new Error(`increment: ${entity}/${id} not found`);
         return serialize(await resolveRecord(this.resolveDeps, entity, row, false));
+      }
+      case "text.edit":
+      case "text.runs":
+      case "text.anchor":
+      case "text.index": {
+        // The same surface as the direct ctx's `text` (make-ctx.ts), for an app that runs here.
+        const entity = op.entity as string;
+        const id = op.id as string;
+        const field = op.field as string;
+        assertCollaborativeText(this.shown(), entity, field);
+        const current = async (): Promise<string> => {
+          const row = await this.store.get(entity, id);
+          if (!row) throw new Error(`ctx.text: ${entity}/${id} not found`);
+          const v = (row as Record<string, unknown>)[field];
+          return typeof v === "string" ? v : "";
+        };
+        if (op.op === "text.edit") {
+          const edits = checkTextEdits(op.edits);
+          const base = checkTextBase(op.opts);
+          await afterEarlierEdits(this.store, entity, id, field, async () => {
+            const now = await current();
+            const mapped = base === undefined ? edits : mapEditsOnto(base, now, edits);
+            if (!mapped.length) return;
+            if (this.store.editText) await this.store.editText(entity, id, field, mapped);
+            else await this.store.update(entity, id, { [field]: applyTextEdits(now, mapped) } as Partial<PotyroRecord>);
+          });
+          const row = await this.store.get(entity, id);
+          if (!row) throw new Error(`ctx.text: ${entity}/${id} not found`);
+          return serialize(await resolveRecord(this.resolveDeps, entity, row, false));
+        }
+        if (op.op === "text.runs") {
+          if (this.store.textRuns) return serialize(await this.store.textRuns(entity, id, field));
+          const text = await current();
+          return serialize(text ? [{ text, by: this.ctxHost?.me.id ?? null }] : []);
+        }
+        if (op.op === "text.anchor") {
+          const n = Math.max(0, Math.floor(Number(op.at)) || 0);
+          if (this.store.textAnchor) return serialize(await this.store.textAnchor(entity, id, field, n));
+          const text = await current();
+          return serialize(n >= text.length ? "end" : `i:${n}`);
+        }
+        const anchor = String(op.anchor);
+        if (this.store.textIndex) return serialize(await this.store.textIndex(entity, id, field, anchor));
+        const text = await current();
+        if (anchor === "end") return serialize(text.length);
+        const n = anchor.startsWith("i:") ? Number(anchor.slice(2)) : NaN;
+        return serialize(Number.isInteger(n) && n >= 0 ? Math.min(n, text.length) : null);
       }
       case "data.delete":
         await this.store.delete(op.entity as string, op.id as string);
