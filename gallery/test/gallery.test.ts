@@ -39,9 +39,11 @@ describe("the gallery's data", () => {
     // the examples follow, then the live feeds and Notes, whose demos open on a replay and on notes
     // (#389). An app on an open PR waits for it.
     expect(publishable(g).map((a) => a.id)).toEqual([
-      "mood-sleep", "draw-guess", "mirror-monsters", "photo-garden", "daily-puzzle", "photo-puzzle", "palette-catcher", "piano",
-      "recipes", "groceries", "plants", "places", "split", "workout", "receipt-split",
-      "pantry", "plant-doctor", "poster-event", "earthquakes", "word-watch", "ticker", "markdown-notes",
+      // The most alive first — the apps with screens and mechanisms of their own — the small
+      // utilities last (owner, 2026-11-06: "more complex like this one must have a higher priority").
+      "write-together", "draw-guess", "piano", "photo-garden", "mirror-monsters", "daily-puzzle", "photo-puzzle", "palette-catcher",
+      "mood-sleep", "earthquakes", "word-watch", "ticker", "plant-doctor", "poster-event", "receipt-split", "markdown-notes", "pantry",
+      "recipes", "groceries", "plants", "places", "split", "workout",
       "countdowns", "where-i-parked", "which-is-cheaper", "qr-maker",
     ]);
     // The workbench is empty (2026-10-20): every app that was on it has shipped.
