@@ -17,7 +17,7 @@
 // through everyone's edits, and read as "the words are gone" once those are deleted.
 import type { Resolved, TextRun, ViewProps } from "potyro";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { applyEditsToRuns, diffEdits, freeColor, hashColor, initials, mapIndex, merge3, resolveColors, segments, strokeOf, tintOf, type Placed } from "./diff.js";
+import { applyEditsToRuns, diffEdits, fitRuns, freeColor, hashColor, initials, mapIndex, merge3, resolveColors, segments, strokeOf, tintOf, type Placed } from "./diff.js";
 import { renderMarkdown } from "./markdown.js";
 import { applyMark, markForKey, TOOLS, type Mark } from "./marks.js";
 import { SyncLoop } from "./loop.js";
@@ -49,6 +49,9 @@ function useSharedText(props: ViewProps, docId: string, body: string, ready: boo
     const end = focused ? mapIndex(textRef.current, next, el.selectionEnd) : null;
     textRef.current = next;
     setText(next);
+    // Words that arrived from someone else are drawn at once, uncoloured until the next answer names
+    // their writer; everything already coloured stays coloured.
+    setRuns((r) => fitRuns(r, next, null));
     if (el && focused && start !== null && end !== null) requestAnimationFrame(() => el.setSelectionRange(start, end));
   };
 
@@ -59,7 +62,8 @@ function useSharedText(props: ViewProps, docId: string, body: string, ready: boo
       .runs()
       .then(
         (r) => {
-          if (n === runsAsked.current) setRuns(r);
+          // The answer spells the text as the host had it; the screen may be keystrokes ahead by now.
+          if (n === runsAsked.current) setRuns(fitRuns(r, textRef.current, me));
         },
         () => undefined,
       );
@@ -242,14 +246,9 @@ export function Editor(props: ViewProps) {
   const open = comments.filter((c) => !c.done);
   const done = comments.filter((c) => !!c.done);
 
-  // ---- sharing ----
-  const invite = async (): Promise<void> => {
-    const space = ctx.space;
-    if (!space) return ctx.ui.toast(ctx.t(W.shareSolo));
-    if (space.role !== "admin") return ctx.ui.toast(ctx.t(W.shareNotAdmin));
-    const url = await space.invite();
-    await ctx.ui.share({ title: ctx.t(W.appName), text: ctx.t(W.shareText, { title: title || ctx.t(W.untitled) }), url });
-  };
+  // Sharing one document on its own is a platform feature in the making (a record in a group of
+  // its own, with its own link). Until it lands, the app's menu shares the whole app, and this
+  // screen offers no button that would share more than it says.
 
   if (loading) return <p className="wt-wait">{ctx.t(W.opening)}</p>;
   if (!record) return <p className="wt-wait">{ctx.t(W.missing)}</p>;
@@ -324,9 +323,6 @@ export function Editor(props: ViewProps) {
             </span>
             {open.length ? <span className="wt-count">{open.length}</span> : null}
           </button>
-          <button type="button" className="wt-wide" onClick={() => void invite()}>
-            {ctx.t(W.share)}
-          </button>
         </div>
         <div className="wt-row" role="toolbar" aria-label="Markdown">
           {TOOLS.map((t) => (
@@ -341,9 +337,6 @@ export function Editor(props: ViewProps) {
           <div className="wt-people" aria-label="Writers">
             {authors.map((by) => swatch(by, by === me))}
           </div>
-          <button type="button" className="wt-narrow" onClick={() => void invite()}>
-            {ctx.t(W.share)}
-          </button>
         </div>
       </div>
       <div className="wt-body">
