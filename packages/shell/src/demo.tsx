@@ -13,7 +13,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { pickLanguage, word, type Person } from "potyro";
 import { languagePrefs } from "./locale.js";
-import { MemoryStore, readAppPackage, type AppPackage } from "@potyro/store";
+import { MemoryStore, readAppPackage, type AppPackage, type Store } from "@potyro/store";
 import type { Capabilities } from "@potyro/capabilities";
 import { App } from "./App.js";
 import { capsForApp } from "./app-ai-caps.js";
@@ -37,6 +37,7 @@ import { shareEvent } from "./share-events.js";
 import { creditLine } from "./credit-words.js";
 import { chooseDemoScope } from "./scope.js";
 import { holdArrival, lineFor, withAppTarget, type AppTarget } from "./app-link.js";
+import { holdRecordJoin, type RecordLinkPayload } from "./record-link.js";
 import { reportAddress, reportMailto } from "./contact.js";
 
 /** The person using a demo: nobody in particular, and never this device's identity. */
@@ -115,7 +116,7 @@ export interface DemoSession {
  * Open the app in the package, sealed, on a store in memory, with its demo records. Asks before
  * fetching a library, as opening any sealed app does; a "no" is `DemoDeclined`.
  */
-export async function openDemo(pkg: AppPackage, caps: Capabilities, opts: { link?: string } = {}): Promise<DemoSession> {
+export async function openDemo(pkg: AppPackage, caps: Capabilities, opts: { link?: string; record?: RecordLinkPayload } = {}): Promise<DemoSession> {
   const name = demoName(pkg);
   const libraries = await inspectLibraries(pkg);
   const missing = libraries.lines.filter((l) => !l.here);
@@ -123,8 +124,21 @@ export async function openDemo(pkg: AppPackage, caps: Capabilities, opts: { link
   if (missing.length && !(await askToFetch(name, missing))) throw new DemoDeclined(name);
   const code = await prepareCode(pkg);
 
-  const store = new MemoryStore();
-  await store.open(`demo:${pkg.declared?.id ?? "app"}`);
+  // A record's link (docs/24 §12): the viewer joins the record itself, live, so its store is a synced
+  // one of its own — this device's identity, Potyro's relay — rather than records in memory. Nothing
+  // of the sharer's but that record reaches it, and nothing of this device's leaves.
+  const live = opts.record;
+  let me: Person = demoPerson();
+  let store: Store;
+  if (live) {
+    const [{ openStore }, identity] = await Promise.all([import("./open-store.js"), import("@potyro/identity")]);
+    const person = await identity.ensureIdentity();
+    me = { id: person.id, name: person.name };
+    store = await openStore(`demo:${pkg.line ?? pkg.declared?.id ?? "app"}`, { sync: true });
+  } else {
+    store = new MemoryStore();
+    await store.open(`demo:${pkg.declared?.id ?? "app"}`);
+  }
   // Its shipped files and its code, before any of it runs: an app that reads `levels.json` at the top
   // finds it, as it would once kept.
   await applyShippedFiles(store, code.files, { update: false });
@@ -162,7 +176,7 @@ export async function openDemo(pkg: AppPackage, caps: Capabilities, opts: { link
       timers: timerHub.bridgeFor(`demo:${pkg.declared?.id ?? "app"}`, name),
     }),
     nav: createNavBridge((pageId, param) => navHost.navigate(pageId, param)),
-    me: demoPerson(),
+    me,
     // Its custom views draw in their own sealed frames, as any shared app's do (#267).
     loadIsolated: await createSharedAppLoader(store, undefined, { source: pkg.source, modules, appKey: `demo:${pkg.declared?.id ?? "app"}`, name }),
   });
@@ -170,9 +184,15 @@ export async function openDemo(pkg: AppPackage, caps: Capabilities, opts: { link
   // the device that made the link wrote them from the app's own sample data (docs/24 §3).
   declaredId = composed.runtime.definition.id || declaredId;
   const entities = composed.runtime.definition.entities ?? {};
-  // Fitted to the app as it loads here (#486): a row its write gate would refuse does not go in, and a
-  // reference to it is taken out — whatever the device that made the link fitted it to.
-  await applySeed(store, seedThatFits(pkg.seed, entities), Object.keys(entities), fileFieldsOf(entities));
+  if (live) {
+    // The record, and the records that point at it, as the sharer's device has them now.
+    const { joinRecordInto } = await import("./record-share.js");
+    await joinRecordInto(store, live);
+  } else {
+    // Fitted to the app as it loads here (#486): a row its write gate would refuse does not go in, and a
+    // reference to it is taken out — whatever the device that made the link fitted it to.
+    await applySeed(store, seedThatFits(pkg.seed, entities), Object.keys(entities), fileFieldsOf(entities));
+  }
   // An app shown "for a group" opens on one of the demo's groups, not on "choose a group".
   await chooseDemoScope(composed.runtime);
   composed.runtime.core.invalidate();
@@ -199,7 +219,7 @@ const INVITE_OFFER_AFTER_MS = 3 * 60_000;
  * `reportLink`: the hosted link's own address, without its key — what a report names (#11). Only a
  * hosted link has one: an inline link carries the whole app in itself and is on no server to remove.
  */
-export function DemoScreen({ session, pkg, startRemix, target, reportLink }: { session: DemoSession; pkg: AppPackage; startRemix?: boolean; target?: AppTarget; reportLink?: string }) {
+export function DemoScreen({ session, pkg, startRemix, target, reportLink, record }: { session: DemoSession; pkg: AppPackage; startRemix?: boolean; target?: AppTarget; reportLink?: string; record?: RecordLinkPayload }) {
   const { t } = useLingui();
   // Keep and Make it mine are the same card (docs/24 §6): a remix is a copy of your own, opened in the Studio.
   const [adding, setAdding] = useState<"keep" | "remix" | null>(startRemix ? "remix" : null);
@@ -281,6 +301,8 @@ export function DemoScreen({ session, pkg, startRemix, target, reportLink }: { s
             shareEvent(adding === "remix" ? "demo-remixed" : "demo-kept");
             // Kept from a link to one of its pages: the copy opens there (docs/24 §11).
             if (target) holdArrival(done.app.id, target);
+            // Kept from a record's link: the copy joins the record as it opens (docs/24 §12).
+            if (record) holdRecordJoin(done.app.id, record);
             leaveDemoPath();
           }}
         />

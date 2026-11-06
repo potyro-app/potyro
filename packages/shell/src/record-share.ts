@@ -1,0 +1,87 @@
+// Making a record's link (docs/24 §12), and joining one.
+//
+// A record's invite is minted by the store with peers, so the app must sync first: turning it on
+// is a copy and a page load (toggle-sync.ts, the launcher's share), after which the app opens again
+// on the synced store and asks for the same link — held across the load (record-link.ts).
+import { t } from "@lingui/core/macro";
+import type { Store } from "@potyro/store";
+import type { ShownShare } from "@potyro/host";
+import { withAppTarget, lineFor, type AppTarget } from "./app-link.js";
+import { demoLinkFor, siteRoot } from "./app-link-make.js";
+import { holdRecordShare, withRecordLink, type HeldShare, type RecordLinkPayload } from "./record-link.js";
+import { shellDialogs } from "./dialog.js";
+import { getUserApp, type UserApp } from "./user-apps.js";
+
+export class SyncDeclined extends Error {
+  constructor() {
+    super(t`The link needs the app to sync, and that was not allowed.`);
+  }
+}
+
+/**
+ * Turn sync on for `app` so a record's link can be minted — with the person's say-so — and reload,
+ * holding what the app asked to share so the link is offered again on the synced copy. Resolves
+ * `false` when the app already syncs (nothing to do); never resolves `true`: a reload follows.
+ */
+export async function syncForRecordShare(app: UserApp, share: HeldShare): Promise<false> {
+  if (app.sync) return false;
+  const [{ canSync, cannotSyncMessage }, { askToSync }, { toggleAppSync }, { inspect }, { askNameIfUnnamed }] = await Promise.all([
+    import("./open-store.js"),
+    import("./sync-consent.js"),
+    import("./toggle-sync.js"),
+    import("./app-source.js"),
+    import("./identity-panel.js"),
+  ]);
+  if (!canSync()) {
+    await shellDialogs.confirm(cannotSyncMessage());
+    throw new SyncDeclined();
+  }
+  if (!(await askToSync(app))) throw new SyncDeclined();
+  const name = app.name;
+  const ok = await shellDialogs.confirm(t`Share one of “${name}”'s records? This turns on sync for the app and copies its data into the synced store. Only the record you share leaves this device.`, {
+    ok: t({ message: "Turn on sync", comment: "Button: turn sync on so a record can be shared" }),
+    cancel: t`Not now`,
+  });
+  if (!ok) throw new SyncDeclined();
+  const shape = await inspect(app.source);
+  await toggleAppSync(app.id, shape.entities.map((e) => e.key), true, new Date().toISOString(), app.source);
+  await askNameIfUnnamed();
+  holdRecordShare(app.id, share);
+  location.reload();
+  // The page is going away; whoever awaits this never sees an answer.
+  return new Promise<false>(() => {});
+}
+
+/**
+ * A record's link, from the app as it is saved now: the app's demo link (so a stranger gets the
+ * app), where to land, and the record's invite. The store must be the synced one, open.
+ */
+export async function makeRecordLink(app: UserApp, declaredId: string | undefined, store: Store, record: NonNullable<ShownShare["record"]>): Promise<string> {
+  if (!store.createRecordInvite) throw new Error(t`This app does not sync yet, so a record of it cannot be shared on its own.`);
+  const invite = await store.createRecordInvite(record.entity, record.id, record.role);
+  const line = lineFor(app, declaredId);
+  if (!line) throw new Error("This app has no id to make a link to it with");
+  const target: AppTarget = { line, ...(record.page ? { page: record.page } : {}), params: record.page && record.param ? { [record.param]: record.id } : {} };
+  const demo = await demoLinkFor(app);
+  const payload: RecordLinkPayload = { ...invite, role: record.role, ...(declaredId ? { appId: declaredId } : {}), name: app.name };
+  return withRecordLink(withAppTarget(demo ?? siteRoot(), target), payload);
+}
+
+/**
+ * The link maker `ctx.ui.share({ record })` ends in, for the open app `id`: on a synced copy the link
+ * is made at once; on one that does not sync yet, sync is turned on first, and the app comes back
+ * with the same request (see `syncForRecordShare`).
+ */
+export async function recordLinkFor(id: string, store: Store, share: HeldShare): Promise<string> {
+  const app = getUserApp(id);
+  if (!app) throw new Error("app not found");
+  if (!app.sync) await syncForRecordShare(app, share);
+  const { declaredAppId } = await import("./source-declared.js");
+  return makeRecordLink(app, await declaredAppId(app.source), store, share.record);
+}
+
+/** Join a record from its link into `store` (the app's, synced). Words for the person when it cannot. */
+export async function joinRecordInto(store: Store, payload: RecordLinkPayload): Promise<void> {
+  if (!store.joinRecord) throw new Error(t`This copy of the app does not sync, so a shared record cannot reach it.`);
+  await store.joinRecord(payload);
+}

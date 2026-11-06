@@ -16,19 +16,22 @@ export type AppUiExtras = Pick<UiBridge, "keepAwake" | "timers">;
 
 /** Makes the link `ctx.ui.share({ app })` asks for (docs/24 §11), for the app this bridge belongs to. */
 export type AppLinkMaker = (target: NonNullable<ShownShare["app"]>) => Promise<string>;
+/** Makes the link `ctx.ui.share({ record })` asks for (docs/24 §12): one record, with its invite. */
+export type RecordLinkMaker = (share: { text?: string; title?: string; record: NonNullable<ShownShare["record"]> }) => Promise<string>;
 
 /**
  * What the share dialog is handed. A link to an app's page is made by `makeLink` while the dialog is
  * already up; where no link can be made for this app (the Studio's preview, a headless runtime), the
  * words go alone — and with no words, there is nothing to send.
  */
-export function shareRequest(opts: ShownShare, makeLink?: AppLinkMaker): { text?: string; url?: string; title?: string; files?: File[]; makeLink?: () => Promise<string> } | null {
-  const { app, ...rest } = opts;
+export function shareRequest(opts: ShownShare, makeLink?: AppLinkMaker, makeRecordLink?: RecordLinkMaker): { text?: string; url?: string; title?: string; files?: File[]; makeLink?: () => Promise<string> } | null {
+  const { app, record, ...rest } = opts;
   if (app && makeLink) return { ...rest, makeLink: () => makeLink(app) };
+  if (record && makeRecordLink) return { ...rest, makeLink: () => makeRecordLink({ ...(rest.text ? { text: rest.text } : {}), ...(rest.title ? { title: rest.title } : {}), record }) };
   return rest.text || rest.url || rest.files?.length ? rest : null;
 }
 
-export function createUiBridge(onToast: (msg: string) => void, picker?: PickerHost, dialogs?: DialogHost, questions?: UiHost, makeLink?: AppLinkMaker, extras?: AppUiExtras): UiBridge {
+export function createUiBridge(onToast: (msg: string) => void, picker?: PickerHost, dialogs?: DialogHost, questions?: UiHost, makeLink?: AppLinkMaker, extras?: AppUiExtras, makeRecordLink?: RecordLinkMaker): UiBridge {
   return {
     toast: (msg) => onToast(msg),
     // Headless fallback (validate-app's throwaway runtime, tests): no UI, so nothing is confirmed.
@@ -44,7 +47,7 @@ export function createUiBridge(onToast: (msg: string) => void, picker?: PickerHo
     ...(dialogs
       ? {
           share: async (opts: ShownShare) => {
-            const request = shareRequest(opts, makeLink);
+            const request = shareRequest(opts, makeLink, makeRecordLink);
             return request ? dialogs.send(request) : false;
           },
         }

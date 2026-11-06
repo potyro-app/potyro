@@ -52,7 +52,7 @@ function keepDemo(appId: string, demo: KeptDemo): void {
 }
 
 /** Where the site is, for a link with no demo in it. */
-function siteRoot(): string {
+export function siteRoot(): string {
   const site = currentSite();
   return site?.configured ? `${site.origin}${site.path}` : `${location.origin}${siteBase(location.pathname)}`;
 }
@@ -82,7 +82,7 @@ function defaultStillShared(link: string): boolean {
 }
 
 /** The demo link for this version of the app: the one made before, or a new one. Null when none can be made. */
-async function demoLinkFor(app: UserApp, deps: AppLinkDeps): Promise<string | null> {
+export async function demoLinkFor(app: UserApp, deps: AppLinkDeps = {}): Promise<string | null> {
   const sig = demoSignature(app);
   const kept = keptDemos()[app.id];
   const stillShared = deps.stillShared ?? defaultStillShared;
