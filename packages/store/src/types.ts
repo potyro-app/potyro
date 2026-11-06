@@ -40,8 +40,25 @@ export type StoreSchema = Record<string, Record<string, Field>>;
  * so another member's edit simply does not take, whatever their copy did. A store without peers has
  * nothing to enforce and may ignore it.
  */
+/** What a link to one record carries (docs/24 §12): where it is, and the secret that lets its holder in. */
+export interface RecordInvite {
+  entity: string;
+  id: Id;
+  /** The record's own group. */
+  group: string;
+  /** The record's CoValue. */
+  map: string;
+  secret: string;
+}
+
 export interface StoreRules {
   creatorOnly?: readonly string[];
+  /**
+   * Entities whose records are shared one by one (`share: "record"`, docs/24 §12). A store with
+   * peers makes each such record in a group of its own, with the records that point at it; a
+   * store without peers has nothing to separate and may ignore it.
+   */
+  sharedRecords?: readonly string[];
 }
 
 /** A file's index entry as a store keeps it: what the app sees, plus the blob key of its bytes. */
@@ -136,6 +153,16 @@ export interface Store {
   textAnchor?(entity: string, id: Id, field: string, at: number): Promise<string>;
   /** Where an anchor's character is now, or `null` once it has been deleted. */
   textIndex?(entity: string, id: Id, field: string, anchor: string): Promise<number | null>;
+  /**
+   * Records shared one by one (`share: "record"`, docs/24 §12; record-sharing.ts). What this device
+   * may do with a record — look, change, or also invite others to it; an invite to ONE record, to
+   * carry in a link's fragment; and joining one from such an invite, after which the record (with
+   * the records that point at it) is listed here as if it were the device's own. Optional: only a
+   * store with peers has groups; the host answers "admin" for everything on a store without them.
+   */
+  recordAccess?(entity: string, id: Id): Promise<"reader" | "writer" | "admin">;
+  createRecordInvite?(entity: string, id: Id, role: "writer" | "reader"): Promise<RecordInvite>;
+  joinRecord?(invite: RecordInvite): Promise<PotyroRecord | null>;
   transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T>;
 
   // reactivity — notify on entity change; runtime re-runs JS queries

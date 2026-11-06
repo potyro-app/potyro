@@ -515,6 +515,8 @@ export class RealmLoadedApp implements LoadedApp {
         return ctx.text(s(0), s(1), s(2)).anchor(Number(a[3]));
       case "text.index":
         return ctx.text(s(0), s(1), s(2)).index(s(3));
+      case "access":
+        return ctx.access(s(0), s(1));
       case "delete":
         return ctx.delete(s(0), s(1));
       case "storage.get":

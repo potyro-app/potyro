@@ -323,7 +323,7 @@ export interface CtxUi {
    * The page must declare the params (`link: { params: [...] }`); values are text. A link only opens
    * the page: nothing runs because of it.
    */
-  share(opts: { text?: Words; url?: string; title?: Words; app?: ShareAppLink; files?: ShareFile[] }): Promise<boolean>;
+  share(opts: { text?: Words; url?: string; title?: Words; app?: ShareAppLink; record?: RecordLink; files?: ShareFile[] }): Promise<boolean>;
   /**
    * Keep the screen on while a page needs watching — a recipe being cooked, a workout under way —
    * until `release()`, or until the person leaves the app. No permission: it only stops the screen
@@ -351,6 +351,23 @@ export interface ShareAppLink {
   page: string;
   params?: Record<string, string>;
 }
+
+/**
+ * A link to ONE record of an entity declared `share: "record"` (docs/24 §12): whoever opens it gets
+ * that record live, with the records that point at it, and nothing else. `role` `"writer"` (default)
+ * or `"reader"`; only the record's maker (or the app's admin) makes one. `page`/`param`: where to land.
+ */
+export interface RecordLink {
+  entity: string;
+  id: Id;
+  role?: "writer" | "reader";
+  page?: string;
+  /** The page's link param that takes the record's id (`link: { params: [...] }`). */
+  param?: string;
+}
+
+/** What this device may do with one record: look, change it, or also invite others to it (docs/24 §12). */
+export type Access = "reader" | "writer" | "admin";
 
 /**
  * A file for `ctx.ui.share`: a picture or file the app made (a Blob — `cam.snap()`, `canvas.toBlob` — bytes, or
@@ -471,18 +488,19 @@ export interface Ctx {
   get(entity: string, id: Id): Promise<Resolved | null>;
   create(entity: string, data: Record<string, unknown>): Promise<Resolved>;
   patch(entity: string, id: Id, data: Record<string, unknown>): Promise<Resolved>;
-  /**
-   * Add to a number — use this instead of `patch` for anything people count.
-   *
-   * `patch(id, { n: record.n + 1 })` from two people at once loses a press: both read 0, both write
-   * 1. Stating the CHANGE lets the store add them up. `record.n` is still one number.
-   */
+  /** Add to a number: `patch(id, { n: record.n + 1 })` from two people at once loses a press; the CHANGE lets the store add them up. */
   increment(entity: string, id: Id, field: string, delta: number): Promise<Resolved>;
   /**
    * A text several people type into at once (a `text` field with `collaborative: true`): `edit` what
    * changed, so everyone's keystrokes merge; `runs` who typed what; an `anchor` that follows a character.
    */
   text(entity: string, id: Id, field: string): CtxText;
+  /**
+   * What this device may do with a record: `"reader"` look, `"writer"` change, `"admin"` also invite
+   * others (the record's maker, or an admin of the app). For a record of an entity declared
+   * `share: "record"` it is the record's own answer; for any other, the app's.
+   */
+  access(entity: string, id: Id): Promise<Access>;
   delete(entity: string, id: Id): Promise<void>;
   transaction<T>(fn: (tx: Ctx) => Promise<T>): Promise<T>;
 

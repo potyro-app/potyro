@@ -113,7 +113,8 @@ export function Editor(props: ViewProps) {
   const body = typeof record?.body === "string" ? record.body : "";
   const ready = !loading && !!record;
   const { text, confirmed, runs, area, change, handle } = useSharedText(props, docId, body, ready, me);
-  const { rows: writers } = runtime.useQuery("writer");
+  const writerSpec = useMemo(() => ({ filter: (w: Resolved) => docIdOf(w) === docId }), [docId]);
+  const { rows: writers } = runtime.useQuery("writer", writerSpec);
   const commentSpec = useMemo(() => ({ filter: (c: Resolved) => docIdOf(c) === docId, sort: (a: Resolved, b: Resolved) => String(a.createdAt).localeCompare(String(b.createdAt)) }), [docId]);
   const { rows: comments } = runtime.useQuery("comment", commentSpec);
 
@@ -125,6 +126,20 @@ export function Editor(props: ViewProps) {
   const [draft, setDraft] = useState("");
   const [current, setCurrent] = useState<string | null>(null);
   const [title, setTitle] = useState("");
+  // What this device may do here (docs/24 §12): a reader looks, a writer types, an admin invites.
+  const [access, setAccess] = useState<"reader" | "writer" | "admin">("writer");
+  useEffect(() => {
+    if (!ready) return;
+    let live = true;
+    ctx.access("doc", docId).then(
+      (a) => live && setAccess(a),
+      () => undefined,
+    );
+    return () => {
+      live = false;
+    };
+  }, [ready, docId, record?.updatedAt]);
+  const readOnly = access === "reader";
   const backdrop = useRef<HTMLDivElement>(null);
   const claimed = useRef(false);
   const placedAsked = useRef(0);
@@ -132,9 +147,9 @@ export function Editor(props: ViewProps) {
   // ---- who writes in which colour ----
   const mine = writers.find((w) => personId(w.person) === me);
   useEffect(() => {
-    if (!ready || mine || claimed.current || !writers) return;
+    if (!ready || mine || claimed.current || !writers || readOnly) return;
     claimed.current = true;
-    void ctx.create("writer", { person: me, color: freeColor(writers.map((w) => Number(w.color))) }).catch(() => undefined);
+    void ctx.create("writer", { doc: docId, person: me, color: freeColor(writers.map((w) => Number(w.color))) }).catch(() => undefined);
   }, [ready, mine, writers.length]);
   const colors = useMemo(() => resolveColors(writers.map((w) => ({ person: personId(w.person), color: Number(w.color) || 0, createdAt: String(w.createdAt) }))), [writers]);
   const colorOf = (by: string | null): number => (by === null ? hashColor("") : (colors.get(by) ?? hashColor(by)));
@@ -246,9 +261,23 @@ export function Editor(props: ViewProps) {
   const open = comments.filter((c) => !c.done);
   const done = comments.filter((c) => !!c.done);
 
-  // Sharing one document on its own is a platform feature in the making (a record in a group of
-  // its own, with its own link). Until it lands, the app's menu shares the whole app, and this
-  // screen offers no button that would share more than it says.
+  // ---- inviting: this document's own link, to write or only to read (docs/24 §12) ----
+  const invite = async (): Promise<void> => {
+    const role = await ctx.ui.sheet({
+      title: ctx.t(W.inviteWho),
+      items: [
+        { id: "writer", label: ctx.t(W.inviteWrite), icon: "pencil" },
+        { id: "reader", label: ctx.t(W.inviteRead), icon: "eye" },
+      ],
+    });
+    if (role !== "writer" && role !== "reader") return;
+    const name = title || ctx.t(W.untitled);
+    await ctx.ui.share({
+      title: ctx.t(W.appName),
+      text: ctx.t(role === "writer" ? W.inviteText : W.inviteReadText, { title: name }),
+      record: { entity: "doc", id: docId, role, page: "doc", param: "docId" },
+    });
+  };
 
   if (loading) return <p className="wt-wait">{ctx.t(W.opening)}</p>;
   if (!record) return <p className="wt-wait">{ctx.t(W.missing)}</p>;
@@ -292,7 +321,7 @@ export function Editor(props: ViewProps) {
         </div>
         {c.quote ? <div className={`wt-quote${gone ? " wt-gone" : ""}`}>{gone ? ctx.t(W.gone) : `“${String(c.quote)}”`}</div> : null}
         <p>{String(c.text)}</p>
-        <div className="wt-note-acts" onClick={(e) => e.stopPropagation()}>
+        <div className="wt-note-acts" onClick={(e) => e.stopPropagation()} hidden={readOnly}>
           <button type="button" onClick={() => resolve(c, !c.done)}>
             {c.done ? ctx.t(W.reopen) : ctx.t(W.resolve)}
           </button>
@@ -323,20 +352,30 @@ export function Editor(props: ViewProps) {
             </span>
             {open.length ? <span className="wt-count">{open.length}</span> : null}
           </button>
+          {access === "admin" ? (
+            <button type="button" className="wt-wide" onClick={() => void invite()}>
+              {ctx.t(W.invite)}
+            </button>
+          ) : null}
         </div>
         <div className="wt-row" role="toolbar" aria-label="Markdown">
           {TOOLS.map((t) => (
-            <button key={t.mark} type="button" title={t.title} aria-label={t.title} className={t.mark === "italic" ? "wt-i" : t.mark === "code" ? "wt-code" : undefined} disabled={preview} onMouseDown={(e) => e.preventDefault()} onClick={() => mark(t.mark)}>
+            <button key={t.mark} type="button" title={t.title} aria-label={t.title} className={t.mark === "italic" ? "wt-i" : t.mark === "code" ? "wt-code" : undefined} disabled={preview || readOnly} onMouseDown={(e) => e.preventDefault()} onClick={() => mark(t.mark)}>
               {t.label}
             </button>
           ))}
-          <button type="button" disabled={preview} onMouseDown={(e) => e.preventDefault()} onClick={() => void startComment()}>
+          <button type="button" disabled={preview || readOnly} onMouseDown={(e) => e.preventDefault()} onClick={() => void startComment()}>
             + {ctx.t(W.comment)}
           </button>
           <span className="wt-gap" />
           <div className="wt-people" aria-label="Writers">
             {authors.map((by) => swatch(by, by === me))}
           </div>
+          {access === "admin" ? (
+            <button type="button" className="wt-narrow" onClick={() => void invite()}>
+              {ctx.t(W.invite)}
+            </button>
+          ) : null}
         </div>
       </div>
       <div className="wt-body">
@@ -362,7 +401,9 @@ export function Editor(props: ViewProps) {
               ref={area}
               className="wt-text"
               value={text}
-              placeholder={ctx.t(W.placeholder)}
+              readOnly={readOnly}
+              title={readOnly ? ctx.t(W.readOnly) : undefined}
+              placeholder={readOnly ? ctx.t(W.readOnly) : ctx.t(W.placeholder)}
               aria-label={ctx.t(W.write)}
               spellCheck
               onChange={(e) => change(e.target.value)}

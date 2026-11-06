@@ -2,7 +2,7 @@
 // real (namespaced to the app via its own Store); `caps` are trust-mediated. Time is fixed at
 // construction so computed values are deterministic within an evaluation pass.
 
-import type { FileInfo, AiImage, Ctx, CtxFiles, Field, FileRef, Id, Page, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, ShareAppLink, UiItem, Value, Words } from "potyro";
+import type { EntityDef, RecordLink, FileInfo, AiImage, Ctx, CtxFiles, Field, FileRef, Id, Page, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, ShareAppLink, UiItem, Value, Words } from "potyro";
 import { checkFormFields, checkLinkRequest, localize, localizeFields, word } from "potyro";
 import { formatLocaleFor, makeFormat, translate, type WordsContext } from "./format.js";
 import { applyTextEdits, assertCollaborativeText, assertCountable, assertPatchFits, assertValuesFit, checkTextBase, checkTextEdits, currentPeople, everyone } from "./values-gate.js";
@@ -43,11 +43,12 @@ const SHARE_MAX = 10_000;
  * pages, with params that page declares; the shell makes the address, so the app never names one.
  */
 export function checkShare(
-  opts: { text?: Words; url?: string; title?: Words; app?: ShareAppLink; files?: unknown } | undefined,
+  opts: { text?: Words; url?: string; title?: Words; app?: ShareAppLink; record?: RecordLink; files?: unknown } | undefined,
   say: (w: Words | undefined) => string,
   pages: ReadonlyArray<Pick<Page, "id" | "link">> = [],
+  entities: Readonly<Record<string, Pick<EntityDef, "share">>> = {},
 ): ShownShare {
-  if (opts == null || typeof opts !== "object") throw new Error("ui.share needs { text }, { url }, { app } or { files }");
+  if (opts == null || typeof opts !== "object") throw new Error("ui.share needs { text }, { url }, { app }, { record } or { files }");
   // Anything given as `files` but an empty list counts here; `checkShareFiles` says what is wrong with it.
   const hasFiles = opts.files != null && !(Array.isArray(opts.files) && opts.files.length === 0);
   const text = opts.text === undefined || opts.text === null ? undefined : say(opts.text);
@@ -63,10 +64,26 @@ export function checkShare(
     url = parsed.href;
   }
   const app = opts.app === undefined || opts.app === null ? undefined : checkLinkRequest(opts.app, pages);
-  if (app && url) throw new Error("ui.share takes `url` or `app`, not both");
-  if (!text && !url && !app && !hasFiles) throw new Error("ui.share needs { text }, { url }, { app } or { files }");
+  const record = opts.record === undefined || opts.record === null ? undefined : checkRecordLink(opts.record, pages, entities);
+  if ([url, app, record].filter(Boolean).length > 1) throw new Error("ui.share takes one of `url`, `app` or `record`");
+  if (!text && !url && !app && !record && !hasFiles) throw new Error("ui.share needs { text }, { url }, { app }, { record } or { files }");
   if (text && text.length > SHARE_MAX) throw new Error(`ui.share: \`text\` is longer than ${SHARE_MAX} characters`);
-  return { ...(text ? { text } : {}), ...(url ? { url } : {}), ...(app ? { app } : {}), ...(opts.title === undefined ? {} : { title: say(opts.title) }) };
+  return { ...(text ? { text } : {}), ...(url ? { url } : {}), ...(app ? { app } : {}), ...(record ? { record } : {}), ...(opts.title === undefined ? {} : { title: say(opts.title) }) };
+}
+
+/** `ui.share({ record })`, checked: an entity declared `share: "record"`, a role, and a landing page that takes the id. */
+function checkRecordLink(r: RecordLink, pages: ReadonlyArray<Pick<Page, "id" | "link">>, entities: Readonly<Record<string, Pick<EntityDef, "share">>>): NonNullable<ShownShare["record"]> {
+  if (typeof r !== "object" || r === null) throw new Error("ui.share: `record` is { entity, id }");
+  const entity = String(r.entity ?? "");
+  const id = String(r.id ?? "");
+  if (!entity || !id) throw new Error("ui.share: `record` names an entity and an id");
+  if (entities[entity]?.share !== "record") throw new Error(`ui.share: ${entity} is not declared share: "record", so one of its records cannot be shared on its own`);
+  const role = r.role === undefined ? "writer" : r.role;
+  if (role !== "writer" && role !== "reader") throw new Error('ui.share: a record link\'s role is "writer" or "reader"');
+  if (r.page === undefined) return { entity, id, role };
+  const param = r.param === undefined ? undefined : String(r.param);
+  const page = checkLinkRequest({ page: String(r.page), params: param ? { [param]: id } : {} }, pages);
+  return { entity, id, role, page: page.page, ...(param ? { param } : {}) };
 }
 
 /** At most this many files in one `ui.share`. */
@@ -454,6 +471,11 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       return resolveRecord(deps, entity, row);
     },
 
+    async access(entity, id) {
+      // A store without peers has no groups: everything in it is the person's own.
+      return store.recordAccess ? store.recordAccess(entity, id) : "admin";
+    },
+
     text(entity, id, field) {
       assertCollaborativeText(deps.definition, entity, field);
       const current = async (): Promise<string> => {
@@ -600,7 +622,7 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       },
       progress: (label) => ui.progress?.(say(label)) ?? { update: () => {}, done: () => {} },
       share: async (opts) => {
-        const shared = checkShare(opts, say, app.definition.pages);
+        const shared = checkShare(opts, say, app.definition.pages, app.definition.entities);
         const files = await checkShareFiles(store, opts?.files);
         if (!ui.share) return false;
         return ui.share(files.length ? { ...shared, files } : shared);

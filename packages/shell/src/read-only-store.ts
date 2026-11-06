@@ -87,6 +87,11 @@ export function guardedStore(store: Store, refusal: () => string | null): Store 
     textRuns: store.textRuns ? (entity, id, field) => store.textRuns!(entity, id, field) : undefined,
     textAnchor: store.textAnchor ? (entity, id, field, at) => store.textAnchor!(entity, id, field, at) : undefined,
     textIndex: store.textIndex ? (entity, id, field, anchor) => store.textIndex!(entity, id, field, anchor) : undefined,
+    // A record shared on its own (docs/24 §12): what this device may do with it and its invite are
+    // reads; joining one writes the record into this copy's index.
+    recordAccess: store.recordAccess ? (entity, id) => store.recordAccess!(entity, id) : undefined,
+    createRecordInvite: store.createRecordInvite ? (entity, id, role) => store.createRecordInvite!(entity, id, role) : undefined,
+    joinRecord: store.joinRecord ? write((invite: Parameters<NonNullable<Store["joinRecord"]>>[0]) => store.joinRecord!(invite)) : undefined,
     putBlob: write((b: Blob) => store.putBlob(b)),
     putBlobWithKey: store.putBlobWithKey ? write((key: string, b: Blob) => store.putBlobWithKey!(key, b)) : undefined,
     kvSet: write((k: string, v: string) => store.kvSet(k, v)),

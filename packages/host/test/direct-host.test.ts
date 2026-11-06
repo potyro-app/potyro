@@ -314,8 +314,8 @@ describe("ctx.ui questions", () => {
     const ctx = await base({ share });
     expect(await ctx.ui.share({ text: { en: "Daily #1 3/6" }, title: "Share", url: "https://potyro.app/a b" })).toBe(true);
     expect(share).toHaveBeenLastCalledWith({ text: "Daily #1 3/6", title: "Share", url: "https://potyro.app/a%20b" });
-    await expect(ctx.ui.share({})).rejects.toThrow(/needs \{ text \}, \{ url \}, \{ app \} or \{ files \}/);
-    await expect(ctx.ui.share({ files: [] })).rejects.toThrow(/needs \{ text \}, \{ url \}, \{ app \} or \{ files \}/);
+    await expect(ctx.ui.share({})).rejects.toThrow(/needs \{ text \}, \{ url \}, \{ app \}, \{ record \} or \{ files \}/);
+    await expect(ctx.ui.share({ files: [] })).rejects.toThrow(/needs \{ text \}, \{ url \}, \{ app \}, \{ record \} or \{ files \}/);
     await expect(ctx.ui.share({ url: "javascript:alert(1)" })).rejects.toThrow(/http\(s\)/);
     await expect(ctx.ui.share({ url: "not a link" })).rejects.toThrow(/whole http\(s\) address/);
     await expect(ctx.ui.share({ text: "x".repeat(10_001) })).rejects.toThrow(/longer than/);

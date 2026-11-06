@@ -16,19 +16,33 @@ export type AppUiExtras = Pick<UiBridge, "keepAwake" | "timers">;
 
 /** Makes the link `ctx.ui.share({ app })` asks for (docs/24 §11), for the app this bridge belongs to. */
 export type AppLinkMaker = (target: NonNullable<ShownShare["app"]>) => Promise<string>;
+/** What `ctx.ui.share({ record })` asks for: the words, and the one record (docs/24 §12). */
+export type RecordShare = { text?: string; title?: string; record: NonNullable<ShownShare["record"]> };
+/**
+ * Makes a record's link: `prepare` runs BEFORE the share dialog opens — the app may have to turn sync
+ * on first, which asks, and the dialog host shows one dialog at a time — and answers whether to go
+ * on; `make` mints the link while the dialog is up.
+ */
+export interface RecordLinkMaker {
+  prepare(share: RecordShare): Promise<boolean>;
+  make(share: RecordShare): Promise<string>;
+}
 
 /**
  * What the share dialog is handed. A link to an app's page is made by `makeLink` while the dialog is
  * already up; where no link can be made for this app (the Studio's preview, a headless runtime), the
  * words go alone — and with no words, there is nothing to send.
  */
-export function shareRequest(opts: ShownShare, makeLink?: AppLinkMaker): { text?: string; url?: string; title?: string; files?: File[]; makeLink?: () => Promise<string> } | null {
-  const { app, ...rest } = opts;
+export function shareRequest(opts: ShownShare, makeLink?: AppLinkMaker, makeRecordLink?: RecordLinkMaker): { text?: string; url?: string; title?: string; files?: File[]; makeLink?: () => Promise<string> } | null {
+  const { app, record, ...rest } = opts;
   if (app && makeLink) return { ...rest, makeLink: () => makeLink(app) };
+  if (record && makeRecordLink) return { ...rest, makeLink: () => makeRecordLink.make(recordShare(opts)) };
   return rest.text || rest.url || rest.files?.length ? rest : null;
 }
 
-export function createUiBridge(onToast: (msg: string) => void, picker?: PickerHost, dialogs?: DialogHost, questions?: UiHost, makeLink?: AppLinkMaker, extras?: AppUiExtras): UiBridge {
+const recordShare = (opts: ShownShare): RecordShare => ({ ...(opts.text ? { text: opts.text } : {}), ...(opts.title ? { title: opts.title } : {}), record: opts.record! });
+
+export function createUiBridge(onToast: (msg: string) => void, picker?: PickerHost, dialogs?: DialogHost, questions?: UiHost, makeLink?: AppLinkMaker, extras?: AppUiExtras, makeRecordLink?: RecordLinkMaker): UiBridge {
   return {
     toast: (msg) => onToast(msg),
     // Headless fallback (validate-app's throwaway runtime, tests): no UI, so nothing is confirmed.
@@ -44,7 +58,9 @@ export function createUiBridge(onToast: (msg: string) => void, picker?: PickerHo
     ...(dialogs
       ? {
           share: async (opts: ShownShare) => {
-            const request = shareRequest(opts, makeLink);
+            // A record's link may need sync turned on first, which asks: before the dialog, not under it.
+            if (opts.record && makeRecordLink && !(await makeRecordLink.prepare(recordShare(opts)))) return false;
+            const request = shareRequest(opts, makeLink, makeRecordLink);
             return request ? dialogs.send(request) : false;
           },
         }
