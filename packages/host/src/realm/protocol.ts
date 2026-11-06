@@ -65,6 +65,7 @@ export const OPS = [
   "text.runs",
   "text.anchor",
   "text.index",
+  "access",
   "delete",
   "storage.get",
   "storage.set",

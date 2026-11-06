@@ -88,6 +88,12 @@ export interface ShownShare {
   title?: string;
   /** A link to this app: one of its pages, with the params that page declares (`link.params`). */
   app?: { page: string; params: Record<string, string> };
+  /**
+   * A link to ONE record of an entity declared `share: "record"` (docs/24 §12), checked against the
+   * definition. The shell mints the record's invite (the app's store must sync; it asks) and makes
+   * the address; the app never sees a secret.
+   */
+  record?: { entity: string; id: string; role: "writer" | "reader"; page?: string; param?: string };
   /** Files, resolved from the app's own store and named (at most 10, 25 MB together). */
   files?: File[];
 }

@@ -28,7 +28,7 @@ export interface FieldCommon {
 export interface TextField extends FieldCommon {
   type: "text";
   multiline?: boolean;
-  /** Typed into by several people at once; edited with `ctx.text`. */
+  /** Several type at once (`ctx.text`). */
   collaborative?: boolean;
 }
 

@@ -80,6 +80,8 @@ export type {
   CtxText,
   TextEdit,
   TextRun,
+  Access,
+  RecordLink,
   CtxUi,
   UiItem,
   UiProgress,
