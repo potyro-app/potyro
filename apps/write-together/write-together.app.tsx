@@ -19,11 +19,25 @@ import type { Ctx, Resolved } from "potyro";
 import { Editor } from "./editor.js";
 import { W } from "./words.js";
 
-/** The first line of a document that says more than its title, for the list. */
+/**
+ * The first line of a document that says more than its title, for the list: never a heading (the
+ * title says that), and read as words, not markdown — a list's dash, a quote's mark, bold and links
+ * stripped.
+ */
 export function firstLine(body: unknown, title = ""): string {
   const text = typeof body === "string" ? body : "";
-  const plain = (l: string) => l.replace(/^\s{0,3}#{1,6}\s+/, "").replace(/^\s*([-*+]|\d+[.)])\s+/, "").replace(/^\s*>\s?/, "").trim();
-  const line = text.split("\n").map(plain).find((l) => l && l !== title.trim());
+  const plain = (l: string) =>
+    l
+      .replace(/^\s*([-*+]|\d+[.)])\s+(\[[ xX]\]\s+)?/, "")
+      .replace(/^\s*>\s?/, "")
+      .replace(/\*\*([^*]+)\*\*|\*([^*]+)\*|_([^_]+)_|`([^`]+)`/g, (_m, a, b, c, d) => a ?? b ?? c ?? d)
+      .replace(/\[([^\]]+)\]\([^)\s]+\)/g, "$1")
+      .trim();
+  const line = text
+    .split("\n")
+    .filter((l) => !/^\s{0,3}#{1,6}\s/.test(l))
+    .map(plain)
+    .find((l) => l && l !== title.trim());
   return (line ?? "").slice(0, 120);
 }
 
