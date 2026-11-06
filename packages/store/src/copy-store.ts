@@ -96,6 +96,9 @@ export async function copyStoreData(
   const result: CopyStoreResult = { records: 0, kv: 0, blobs: 0, skippedBlobs: [], files: 0, skippedFiles: [] };
   const mediaRefs = new Map<string, MediaRef>();
 
+  // Entities in the order given, which the callers take from the definition: an entity whose records
+  // are shared one by one is declared before the ones that point at it, so a child finds its
+  // parent's group here (record-sharing.ts). A child copied before its parent lands in the space.
   for (const entity of opts.entities) {
     const rows = await from.all(entity);
     for (const row of rows) {

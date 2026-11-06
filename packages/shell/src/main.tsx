@@ -65,6 +65,7 @@ import { watchLiveCamera } from "./camera-indicator.js";
 import { loadFaces } from "./faces/faces-loader.js";
 import { demoLinkText, readDemoLink, siteBase, type DemoLink } from "./demo-link.js";
 import { holdArrival, readAppTarget, takeArrival, type AppTarget } from "./app-link.js";
+import { holdRecordJoin, readRecordLink, takeRecordJoin, takeRecordShare, type RecordLinkPayload } from "./record-link.js";
 
 // `sandbox-quickjs` is the same, with shared apps in the QuickJS fallback (sandbox-runner.ts).
 const SANDBOX = import.meta.env.MODE === "sandbox" || import.meta.env.MODE === "sandbox-quickjs";
@@ -354,11 +355,13 @@ async function bootInviteIfPresent(root: HTMLElement): Promise<string | null | f
  * the app's own (`?user=<id>`, so a reload stays there and the fragment leaves the bar) and where the
  * link lands goes along to the app's first render. Nothing is run because of the link.
  */
-async function openLinkedApp(target: AppTarget): Promise<boolean> {
+async function openLinkedApp(target: AppTarget, record?: RecordLinkPayload | null): Promise<boolean> {
   const { findLinkedApp } = await import("./app-link-find.js");
   const here = await findLinkedApp(target.line);
   if (!here) return false;
   holdArrival(here.id, target);
+  // A record's link (docs/24 §12): joined where the app's store is open, as it opens.
+  if (record) holdRecordJoin(here.id, record);
   history.replaceState(null, "", `${siteBase(location.pathname)}?user=${encodeURIComponent(here.id)}`);
   return true;
 }
@@ -368,7 +371,7 @@ async function openLinkedApp(target: AppTarget): Promise<boolean> {
  * nothing installed and no question asked before it is on screen. Nothing here touches this device's
  * apps, identity or storage; "Keep this app" is the ordinary Add-an-app card.
  */
-async function bootDemo(root: HTMLElement, link: DemoLink, target?: AppTarget): Promise<void> {
+async function bootDemo(root: HTMLElement, link: DemoLink, target?: AppTarget, record?: RecordLinkPayload | null): Promise<void> {
   const caps = (await maybeCreateNativeCapabilities()) ?? createWebCapabilities();
   setShellCaps(caps);
   const [{ loadDemoPackage, openDemo, demoName, DemoScreen, DemoDeclined, leaveDemoPath, LinkGoneError, DemoRetryError }, { shareEvent }] = await Promise.all([
@@ -397,11 +400,11 @@ async function bootDemo(root: HTMLElement, link: DemoLink, target?: AppTarget): 
   try {
     // Its links (`ctx.ui.share({ app })`) are this demo's own link with where to land: a friend the
     // person invites from the demo gets the same demo, or their own copy.
-    const session = await openDemo(pkg, caps, { link: demoLinkText(link, location.origin, location.pathname) });
+    const session = await openDemo(pkg, caps, { link: demoLinkText(link, location.origin, location.pathname), ...(record ? { record } : {}) });
     shareEvent("demo-opened");
     // What a report names: the hosted link without its key (#11).
     const reportLink = link.kind === "hosted" ? demoLinkText(link, location.origin, location.pathname).split("#")[0] : undefined;
-    mount(root, <DemoScreen session={session} pkg={pkg} startRemix={link.remix} target={target} reportLink={reportLink} />);
+    mount(root, <DemoScreen session={session} pkg={pkg} startRemix={link.remix} target={target} reportLink={reportLink} record={record ?? undefined} />);
   } catch (e) {
     const why =
       e instanceof DemoDeclined
@@ -527,6 +530,48 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   }
   resumeTiles();
 
+  // A record shared by its link (docs/24 §12), held for this app by the link or the demo it was kept
+  // from. It needs the synced store: a copy that does not sync yet is asked, turned on, and reopened
+  // with the record still held; one that may not sync opens without it, and says so.
+  {
+    const join = takeRecordJoin(id);
+    if (join) {
+      if (syncAllowed && saved.sync) {
+        try {
+          const { joinRecordInto } = await import("./record-share.js");
+          await joinRecordInto(rawStore, join);
+        } catch (e) {
+          toaster.push(t`Could not open the shared record: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      } else {
+        const [{ canSync, cannotSyncMessage }, { askToSync }, { toggleAppSync }, { inspect }, { askNameIfUnnamed }] = await Promise.all([
+          import("./open-store.js"),
+          import("./sync-consent.js"),
+          import("./toggle-sync.js"),
+          import("./app-source.js"),
+          import("./identity-panel.js"),
+        ]);
+        const name = saved.name;
+        const allowed =
+          canSync() &&
+          (await askToSync(saved)) &&
+          (await shellDialogs.confirm(t`Someone shared a record of “${name}” with you. Opening it turns on sync for your copy of the app: your copy's data is kept on Potyro's relay, encrypted, so the record can reach you and stay up to date.`, {
+            ok: t({ message: "Open it", comment: "Button: turn sync on to open a shared record" }),
+            cancel: t`Not now`,
+          }));
+        if (!allowed) toaster.push(canSync() ? t`The shared record was not opened: it needs sync, which was not allowed.` : cannotSyncMessage());
+        else {
+          const shape = await inspect(saved.source);
+          await toggleAppSync(id, shape.entities.map((e) => e.key), true, new Date().toISOString(), saved.source);
+          await askNameIfUnnamed();
+          holdRecordJoin(id, join);
+          location.reload();
+          return null;
+        }
+      }
+    }
+  }
+
   // The files it shipped with (`levels.json`), before any of its code runs: one that is not here
   // would fail the app in its own words, which read like its bug. The screen says what is missing,
   // and puts it back from the link it came from when there is one.
@@ -639,6 +684,18 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       // Held for THIS app, and all let go when it is left (dispose, below).
       keepAwake: () => ({ release: screenAwake.hold(id) }),
       timers: timerHub.bridgeFor(id, saved.name),
+    },
+    // `ctx.ui.share({ record })`: one record's link (docs/24 §12), from the synced store — turned on
+    // first, with a reload, when this copy does not sync yet.
+    {
+      prepare: async (share) => {
+        const { prepareRecordShare } = await import("./record-share.js");
+        return prepareRecordShare(id, share);
+      },
+      make: async (share) => {
+        const { recordLinkFor } = await import("./record-share.js");
+        return recordLinkFor(id, store, share);
+      },
     },
   );
   const navHost = new NavHost();
@@ -800,6 +857,15 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     />,
   );
   setTimerFocus(id);
+  // The link the app asked for before sync was turned on (record-share.ts): offered now, on the synced copy.
+  {
+    const held = takeRecordShare(id);
+    if (held) {
+      void import("./record-share.js").then(({ recordLinkFor }) =>
+        shellDialogs.send({ ...(held.text ? { text: held.text } : {}), ...(held.title ? { title: held.title } : {}), makeLink: () => recordLinkFor(id, store, held) }),
+      );
+    }
+  }
   return opened;
 }
 
@@ -1064,10 +1130,12 @@ async function boot(): Promise<void> {
   // any copy of that app, whatever it is called here — and the demo it carries when they do not,
   // which lands on that page once kept. A remix link (`&remix=1`) asks for a copy of one's own: the demo.
   const target = readAppTarget(location.hash);
+  // A link to one record (docs/24 §12): the person's copy joins it; a stranger's demo opens on it, live.
+  const record = readRecordLink(location.hash);
   let demo = readDemoLink(location.pathname, location.hash);
-  if (target && !demo?.remix && (await openLinkedApp(target))) demo = null;
+  if (target && !demo?.remix && (await openLinkedApp(target, record))) demo = null;
   // A demo link opens its app and nothing else: no examples seeded, no account read, no launcher.
-  if (demo) return bootDemo(root, demo, target ?? undefined);
+  if (demo) return bootDemo(root, demo, target ?? undefined, record);
 
   // The examples are ordinary apps (#152): seeded into the registry once, then yours to edit,
   // share or delete. Under `dev:sandbox` they are seeded untrusted, which is what exercises the
@@ -1075,7 +1143,7 @@ async function boot(): Promise<void> {
   await seedExamples({ trusted: !SANDBOX, now: new Date().toISOString() });
   // A link to an app with no demo in it, for someone who did not have it: an example, seeded just now,
   // may be the app; if not, the screen says so, and nothing else happens.
-  if (target && readAppTarget(location.hash) && !(await openLinkedApp(target))) {
+  if (target && readAppTarget(location.hash) && !(await openLinkedApp(target, record))) {
     history.replaceState(null, "", siteBase(location.pathname));
     mount(
       root,

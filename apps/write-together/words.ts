@@ -15,6 +15,19 @@ export const W = {
   write: msg("Write"),
   preview: msg("Preview"),
   comments: msg("Comments"),
+  invite: msg("Invite"),
+
+  inviteWho: msg("Who can open this document?"),
+
+  inviteWrite: msg("Anyone with the link can write"),
+
+  inviteRead: msg("Anyone with the link can only read"),
+
+  inviteText: msg("Write with me in “{title}” on Potyro"),
+
+  inviteReadText: msg("Read “{title}” on Potyro"),
+
+  readOnly: msg("You can read this document, not change it."),
   comment: msg("Comment"),
   commentOn: msg("Comment on"),
   commentHere: msg("Comment here"),

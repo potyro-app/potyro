@@ -378,3 +378,55 @@ the share sheet), with the target on it. When no demo link can be made (no share
 be inline), the target-only form: it still opens the app for whoever has it. From inside a demo the
 link is that demo's own, so a person trying a game can invite a friend into it. A sealed app makes links
 the same way; the address reveals nothing but the params it chose.
+
+## 12. A link to one record
+
+Built 2026-11-06 (owner decision: "if I share a link I want just this document to be shared, not
+all my documents"). Builds on the space invite (§1), the demo link (§2) and the page link (§11).
+
+"Use it together" shares an app: everyone in its space has everything in it. That is the unit for a
+shopping list. It is not the unit for a document: a person shares one document, and Etherpad's link
+is a pad's. An entity declared **`share: "record"`** makes each of its records the unit:
+
+```ts
+entities: { doc: { share: "record", fields: { title: …, body: { type: "text", collaborative: true } } },
+            comment: { fields: { doc: { type: "relation", to: "doc" }, text: … } } }
+```
+
+- **A record of its own.** In the synced store, each such record lives in a cojson group of its
+  own, which `extend`s the app's space group (so the app's members are its members, with their
+  roles), and whoever its link lets in is a member of that group and nothing else of the app's. Its
+  collaborative texts live there too.
+- **What goes with it.** The records that point at it — a document's comments, through their
+  `relation` — are made in the record's group and listed on the record (`packages/store/src/
+  record-sharing.ts`), never in the space's index: a person who only has the document must see its
+  comments. Declare the shared entity before the ones that point at it; a child whose parent is not
+  reachable stays in the space.
+- **What this device may do:** `ctx.access(entity, id)` — `"reader"` look, `"writer"` change,
+  `"admin"` also invite (the record's maker, or an admin of the app). A reader's write is refused
+  in words. Only a shared entity's records answer for themselves; any other record answers with the
+  app's role.
+- **The link:** `ctx.ui.share({ text, record: { entity, id, role, page, param } })`. The shell makes
+  it — the app never sees a secret: the app's demo link (so a stranger gets the app), `&app=…&to=…
+  &p.<param>=<id>` (where to land, §11) and `&rec=<payload>`: the record's entity and id, its group
+  and CoValue, the invite secret, and the role the link grants. All in the fragment. An app that
+  does not sync yet is asked and switched on first (a copy and a reload, as sharing from the
+  launcher); the request is held across the reload and offered again on the synced copy.
+- **Opening one.** The person who has the app: their copy joins the record as it opens — turned on
+  for sync with their consent when it was not — and the record is listed among their own, live.
+  Anyone else: the viewer opens the app sealed, as a demo does, but on a synced store of its own
+  (this device's identity, Potyro's relay) that joins the record: they are in the document at once,
+  writing if the link said so. Nothing of theirs leaves the device, and nothing of the sharer's but
+  that record reaches it. **Keep this app** keeps the record too: the kept copy joins it as it
+  opens. The app's code never rides the viewer's synced store (#281): it stays in memory there.
+- **Roles.** `role: "writer"` (default) may change the record and add to it (a comment); `"reader"`
+  may look. Two links, then, as Etherpad and Google Docs offer.
+- **Not yet.** Taking a link back (revoking a group member); who wrote what, by name, for someone
+  who is in the record's group but not the app's space (they show as "Someone"); a record shared
+  on its own from a solo app without turning the whole app's sync on.
+
+Tested: `packages/store/test/jazz-sharing.test.ts` (a third node that joins one record sees it and
+its comments and nothing else; read-only; notifications; refusals), `packages/host/test/
+record-share-ctx.test.ts` (both sealed runners), `e2e/write-together-share-trusted.spec.ts` (three
+people through the real relay).
+

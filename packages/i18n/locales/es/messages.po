@@ -2526,6 +2526,11 @@ msgstr "No se pudo medir: {failed}"
 msgid "Could not move that"
 msgstr "No se pudo mover"
 
+#. placeholder {0}: e instanceof Error ? e.message : String(e)
+#: ../shell/src/main.tsx
+msgid "Could not open the shared record: {0}"
+msgstr "No se pudo abrir el registro compartido: {0}"
+
 #: ../views/src/checklist.tsx
 #: ../views/src/checklist.tsx
 msgid "Could not rename that"
@@ -4891,9 +4896,11 @@ msgstr "no se sabe hasta que se ejecuta"
 #: ../shell/src/app-sockets.ts
 #: ../shell/src/app-speech.ts
 #: ../shell/src/launcher.tsx
+#: ../shell/src/main.tsx
 #: ../shell/src/move-page.tsx
 #: ../shell/src/open-libraries.ts
 #: ../shell/src/platform-request-card.tsx
+#: ../shell/src/record-share.ts
 #: ../shell/src/restore-apps.tsx
 #: ../shell/src/studio-voice.ts
 #: ../shell/src/sync-consent.ts
@@ -5282,6 +5289,11 @@ msgstr "Abrir {site} para traer el archivo"
 #: ../shell/src/data-page.tsx
 msgid "Open app"
 msgstr "Abrir app"
+
+#. Button: turn sync on to open a shared record
+#: ../shell/src/main.tsx
+msgid "Open it"
+msgstr "Abrirlo"
 
 #: ../shell/src/main.tsx
 #: ../shell/src/move-page.tsx
@@ -6271,6 +6283,10 @@ msgstr "Compartir de todos modos"
 msgid "Share link"
 msgstr "Compartir enlace"
 
+#: ../shell/src/record-share.ts
+msgid "Share one of “{name}”'s records? This turns on sync for the app and copies its data into the synced store. Only the record you share leaves this device."
+msgstr "¿Compartir un registro de “{name}”? Esto activa la sincronización de la app y copia sus datos al almacenamiento sincronizado. Solo el registro que compartas sale de este dispositivo."
+
 #: ../shell/src/share-page.tsx
 msgid "Share text to Potyro from another app and it will wait here for you to pick where it goes."
 msgstr "Comparte texto con Potyro desde otra app y esperará aquí hasta que elijas adónde va."
@@ -6400,6 +6416,10 @@ msgstr "Alguien en “{appName}” apuntó a personas antes de que se unieran. E
 #: ../shell/src/add-app-dialog.tsx
 msgid "Someone sent you one, or you made it somewhere else."
 msgstr "Alguien te la envió, o la hiciste en otro sitio."
+
+#: ../shell/src/main.tsx
+msgid "Someone shared a record of “{name}” with you. Opening it turns on sync for your copy of the app: your copy's data is kept on Potyro's relay, encrypted, so the record can reach you and stay up to date."
+msgstr "Alguien compartió contigo un registro de “{name}”. Abrirlo activa la sincronización de tu copia de la app: los datos de tu copia se guardan en el relay de Potyro, cifrados, para que el registro te llegue y se mantenga al día."
 
 #: ../shell/src/people-panel.tsx
 msgid "someone who left"
@@ -6979,6 +6999,10 @@ msgstr "El enlace no se pudo descargar desde aquí"
 msgid "The link could not be made. The words can still be sent."
 msgstr "No se pudo crear el enlace. El texto se puede enviar igualmente."
 
+#: ../shell/src/record-share.ts
+msgid "The link needs the app to sync, and that was not allowed."
+msgstr "El enlace necesita que la app sincronice, y eso no se permitió."
+
 #. Start of the email that reports a demo link; the person writes their reasons under the second line
 #: ../shell/src/demo.tsx
 msgid ""
@@ -7085,6 +7109,10 @@ msgstr "El servidor respondió, pero no con una lista de modelos. Revisa la dire
 #: ../shell/src/endpoint-check.ts
 msgid "The server refused the key ({status}). Check the key."
 msgstr "El servidor rechazó la clave ({status}). Revisa la clave."
+
+#: ../shell/src/main.tsx
+msgid "The shared record was not opened: it needs sync, which was not allowed."
+msgstr "El registro compartido no se abrió: necesita sincronización, y no se permitió."
 
 #: ../shell/src/version-notes.ts
 msgid "the source before history was kept"
@@ -7220,6 +7248,10 @@ msgstr "Esta app no se pudo previsualizar aquí, así que aún no se muestra qu�
 msgid "This app could not be read: {unreadable}"
 msgstr "No se pudo leer esta app: {unreadable}"
 
+#: ../shell/src/record-share.ts
+msgid "This app does not sync yet, so a record of it cannot be shared on its own."
+msgstr "Esta app aún no sincroniza, así que un registro suyo no se puede compartir por separado."
+
 #: ../shell/src/app-source.ts
 msgid "this app doesn't call defineApp with a plain object"
 msgstr "esta app no llama a defineApp con un objeto simple"
@@ -7348,6 +7380,10 @@ msgstr "Esta conversación es demasiado larga para la creación gratuita de apps
 #: ../shell/src/free-ai.ts
 msgid "This conversation is too long for the free allowance. Start a new app, or add your own key."
 msgstr "Esta conversación es demasiado larga para la cuota gratuita. Empieza una app nueva, o añade tu propia clave."
+
+#: ../shell/src/record-share.ts
+msgid "This copy of the app does not sync, so a shared record cannot reach it."
+msgstr "Esta copia de la app no sincroniza, así que un registro compartido no puede llegarle."
 
 #: ../shell/src/remove-app.ts
 msgid "This deletes the app AND its data — every record you have added to it. It cannot be undone."
@@ -7692,6 +7728,11 @@ msgstr "Desactivar Ask en esta app"
 #: ../shell/src/launcher.tsx
 msgid "Turn off sync for “{name}”? Its data will be copied back to local-only storage."
 msgstr "¿Desactivar la sincronización de “{name}”? Sus datos se copiarán de vuelta al almacenamiento solo local."
+
+#. Button: turn sync on so a record can be shared
+#: ../shell/src/record-share.ts
+msgid "Turn on sync"
+msgstr "Activar sincronización"
 
 #: ../shell/src/launcher.tsx
 msgid "Turn on sync for “{name}”? Its data will be copied into the synced store. The old copy is kept, so you can turn this back off."

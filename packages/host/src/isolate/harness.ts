@@ -183,6 +183,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         var row = await bridge({op:"data.increment", entity:entity, id:id, field:field, delta:delta});
         return await evalComputed(app, entity, row, ctx);
       },
+      access: function(entity, id){ return bridge({op:"data.access", entity:entity, id:id}); },
       text: function(entity, id, field){
         return {
           edit: async function(edits, opts){

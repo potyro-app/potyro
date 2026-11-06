@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { MemoryStore, type Store } from "@potyro/store";
 import { readOnlyStore } from "../src/read-only-store.js";
 
@@ -14,6 +15,9 @@ class FullStore extends MemoryStore {
   textRuns = async () => [];
   textAnchor = async () => "end";
   textIndex = async () => 0;
+  recordAccess = async () => "admin" as const;
+  createRecordInvite = async () => ({ entity: "doc", id: "1", group: "g", map: "m", secret: "s" });
+  joinRecord = async () => null;
   subscribeBlob = () => () => {};
   blobHere = async () => true;
   spaceUsage = async () => ({ used: 0, budget: 1 });
@@ -27,21 +31,23 @@ class FullStore extends MemoryStore {
   putBlobWithKey = async (key: string) => ({ key, mime: "" });
 }
 
-/** Every method of `Store`. The type below fails to compile when the interface gains one this list lacks. */
-const METHODS = [
-  "open", "close", "describe", "all", "get", "byIndex", "insert", "update", "delete", "increment",
-  "editText", "textRuns", "textAnchor", "textIndex", "transaction", "subscribe", "putBlob", "putBlobWithKey",
-  "getBlob", "subscribeBlob", "blobHere", "spaceUsage", "deleteBlob", "listFiles", "getFile", "setFile",
-  "deleteFile", "subscribeFiles", "kvGet", "kvSet", "kvDelete", "kvKeys", "subscribeKv", "memberIds",
-  "storedSchemaVersion", "runMigrations", "editHistory", "messages", "subscribeMessages", "postMessage",
-] as const satisfies readonly (keyof Store)[];
-type Listed = (typeof METHODS)[number];
-type Unlisted = Exclude<keyof Store, Listed>;
-const everyMethodListed: Unlisted extends never ? true : Unlisted = true;
+/**
+ * Every method of `Store`, read off the interface's own source: a list kept by hand went stale the
+ * moment the interface grew (the record methods were forwarded nowhere, and the link could not be
+ * made), and a type-level check is never compiled, since the shell's tsconfig covers `src` alone.
+ */
+function storeMethods(): string[] {
+  const source = readFileSync(new URL("../../store/src/types.ts", import.meta.url), "utf8");
+  const body = source.slice(source.indexOf("export interface Store {"));
+  const end = body.indexOf("\n}\n");
+  return [...body.slice(0, end).matchAll(/^  (\w+)\??(?:<[^>]*>)?\(/gm)].map((m) => m[1]!);
+}
+const METHODS = storeMethods();
 
 describe("readOnlyStore", () => {
   it("forwards every method the Store interface has, optional ones included", () => {
-    expect(everyMethodListed).toBe(true);
+    expect(METHODS.length).toBeGreaterThan(30);
+    expect(METHODS).toContain("joinRecord");
     const full = new FullStore() as unknown as Record<string, unknown>;
     const wrapped = readOnlyStore(full as unknown as Store, "behind") as unknown as Record<string, unknown>;
     const missing = METHODS.filter((k) => typeof full[k] === "function" && typeof wrapped[k] !== "function");

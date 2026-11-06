@@ -941,6 +941,11 @@ runs on this device, so it is a prompt, and the new version lands in History whe
 back like any other edit. A guest's copy is still untrusted code. Being invited to someone's data
 says nothing about whether their code should run with ambient authority.
 
+A record of an entity declared `share: "record"` lives in a group of its own that extends the
+space's, and is shared by its own link, with the records that point at it (docs/24 §12): a document
+and its comments, to whoever opens the link, in their own copy of the app or in the sealed viewer,
+and nothing else of the app's.
+
 ### A link anyone can try
 
 Every shared link is a working demo (docs/24). The link carries a demo package: an ordinary

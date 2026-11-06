@@ -10,7 +10,10 @@
 // app is.
 //
 // Comments are records anchored to characters (`ctx.text(...).anchor`), so they follow their
-// words through everyone's edits. A writer's colour is a record too (`writer`), one per person.
+// words through everyone's edits. A writer's colour is a record too (`writer`), one per person and
+// document. Both point at the document, so they go wherever it goes: a document is shared on its
+// own (`share: "record"`, docs/24 §12) — its link, from Invite, brings one document and nothing else,
+// to write in or only to read.
 import { defineApp } from "potyro";
 import type { Ctx, Resolved } from "potyro";
 import { Editor } from "./editor.js";
@@ -45,6 +48,8 @@ export default defineApp({
       label: W.doc,
       icon: "file-text",
       displayField: "title",
+      // Each document is shared by its own link, with its comments and writers (docs/24 §12).
+      share: "record",
       fields: {
         title: { type: "text", required: true },
         // Several people type into it at once: edited with ctx.text, never saved whole.
@@ -71,6 +76,7 @@ export default defineApp({
       icon: "palette",
       displayField: "person",
       fields: {
+        doc: { type: "relation", to: "doc", required: true },
         person: { type: "member", required: true },
         color: { type: "number", integer: true, min: 0, max: 7, required: true },
       },
@@ -93,6 +99,7 @@ export default defineApp({
       },
     },
     // Writing takes the whole screen: the editor has its own top row and its way back.
-    { id: "doc", title: W.doc, hidden: true, fullscreen: true, view: { type: "custom", entity: "doc", param: "docId", render: (props) => <Editor {...props} /> } },
+    // A document's link lands here, on that document (docs/24 §12).
+    { id: "doc", title: W.doc, hidden: true, fullscreen: true, link: { params: ["docId"] }, view: { type: "custom", entity: "doc", param: "docId", render: (props) => <Editor {...props} /> } },
   ],
 });
