@@ -456,6 +456,12 @@ flowchart LR
   root --> chat["chat<br/>messages beside the data,<br/>never reachable from ctx"]
 ```
 
+A `text` field declared `collaborative: true` (docs/04 "Writing together") is the one value that
+does not sit in the record's CoMap: the record holds a reference to a text CoValue of its own,
+cojson's list CRDT of graphemes, so two people typing at the same moment both keep their words and
+every character remembers the account that typed it (`packages/store/src/text-field.ts`). Reading
+the record resolves the reference, so everything above the store still sees one string.
+
 Chat sits beside the entity tree. It is in the space, so it syncs and is encrypted to the members,
 but it is not app data: an app shared with you is someone else's code, and nothing in `ctx` reaches
 the conversation. Messages are ordered by a hybrid logical clock (`packages/store/src/hlc.ts`),

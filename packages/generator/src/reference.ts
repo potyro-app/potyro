@@ -197,6 +197,14 @@ export const CAPABILITIES: readonly Capability[] = [
     uses: /caps\.geo\b/,
   },
   {
+    key: "ctx.text",
+    summary: "a `text` field with `collaborative: true`, typed into by several people at once: `edit` what changed, `runs` who typed what, `anchor` a place",
+    declarations: ["CtxText", "TextEdit", "TextRun"],
+    members: [{ of: "Ctx", name: "text" }],
+    cues: /\bctx\.text\b|\bcollaborative\b|\b(together|at the same time|simultaneous\w*|co-?edit\w*|live(?:-| )?edit\w*|real-?time|etherpad|google docs|shared (?:doc\w*|note\w*|text|editor)|who (?:wrote|typed)|razem|jednocześnie|juntos|ao mesmo tempo|gemeinsam|gleichzeitig|a la vez)\b/i,
+    uses: /\bctx\.text\b|collaborative\s*:\s*true/,
+  },
+  {
     key: "ctx.caps.notifications",
     summary: "`schedule({ id, at, title, body? })` / `cancel(id)`: a notification at a time (a declarative entity `reminders` entry is usually enough)",
     declarations: ["NotificationCapability"],

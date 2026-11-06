@@ -5,7 +5,7 @@
 import type { AiImage, Ctx, CtxFiles, Field, FileRef, Id, Page, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, ShareAppLink, UiItem, Value, Words } from "potyro";
 import { checkFormFields, checkLinkRequest, localize, localizeFields, word } from "potyro";
 import { formatLocaleFor, makeFormat, translate, type WordsContext } from "./format.js";
-import { assertCountable, assertPatchFits, assertValuesFit, currentPeople, everyone } from "./values-gate.js";
+import { applyTextEdits, assertCollaborativeText, assertCountable, assertPatchFits, assertValuesFit, checkTextEdits, currentPeople, everyone } from "./values-gate.js";
 import { fileInfo, fileSpace, isReservedPath, mimeOf, type FileSpace, type FileTarget, type Store } from "@potyro/store";
 import type { Capabilities } from "@potyro/capabilities";
 import { mediateCaps } from "./mediate.js";
@@ -450,6 +450,49 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
       const row = await store.get(entity, id);
       if (!row) throw new Error(`increment: ${entity}/${id} not found`);
       return resolveRecord(deps, entity, row);
+    },
+
+    text(entity, id, field) {
+      assertCollaborativeText(deps.definition, entity, field);
+      const current = async (): Promise<string> => {
+        const row = await store.get(entity, id);
+        if (!row) throw new Error(`ctx.text: ${entity}/${id} not found`);
+        const v = (row as Record<string, unknown>)[field];
+        return typeof v === "string" ? v : "";
+      };
+      return {
+        async edit(edits) {
+          const checked = checkTextEdits(edits);
+          // Falls back rather than failing, as `increment` does: only a CRDT store can merge, and a
+          // local-only app is single-writer, where read-modify-write has nothing to race with.
+          if (store.editText) await store.editText(entity, id, field, checked);
+          else await store.update(entity, id, { [field]: applyTextEdits(await current(), checked) } as Partial<PotyroRecord>);
+          forget();
+          const row = await store.get(entity, id);
+          if (!row) throw new Error(`ctx.text: ${entity}/${id} not found`);
+          return resolveRecord(deps, entity, row);
+        },
+        async runs() {
+          if (store.textRuns) return store.textRuns(entity, id, field);
+          // No store keeps who typed what here: a solo app's words are the person's own.
+          const text = await current();
+          return text ? [{ text, by: me.id }] : [];
+        },
+        async anchor(at) {
+          const n = Math.max(0, Math.floor(Number(at)) || 0);
+          if (store.textAnchor) return store.textAnchor(entity, id, field, n);
+          const text = await current();
+          return n >= text.length ? "end" : `i:${n}`;
+        },
+        async index(anchor) {
+          const a = String(anchor);
+          if (store.textIndex) return store.textIndex(entity, id, field, a);
+          const text = await current();
+          if (a === "end") return text.length;
+          const n = a.startsWith("i:") ? Number(a.slice(2)) : NaN;
+          return Number.isInteger(n) && n >= 0 ? Math.min(n, text.length) : null;
+        },
+      };
     },
 
     async delete(entity, id) {

@@ -218,6 +218,8 @@ interface Ctx {
   get<E>(entity: string, id: string): Promise<Resolved<E> | null>;
   create<E>(entity: string, data: Partial<E>): Promise<Resolved<E>>;
   patch<E>(entity: string, id: string, data: Partial<E>): Promise<Resolved<E>>;
+  increment(entity: string, id: string, field: string, delta: number): Promise<Resolved<E>>;  // a count several people add to (KA-38)
+  text(entity: string, id: string, field: string): CtxText;   // a text several people type into: "Writing together" below
   delete(entity: string, id: string): Promise<void>;
   transaction<T>(fn: (tx: Ctx) => Promise<T>): Promise<T>;
   // Values are checked against their declared field (KA-21). create/patch REJECT a value that does
@@ -656,6 +658,42 @@ const everyone = ctx.people;                           // members and open guest
 New optional members; no record changes and no app's `schemaVersion` moves. Seeded sample data can
 name guests the same way (the shell's seeders write them through `writePeople`), so a demo group can
 be lively before anyone joins.
+### Writing together (`ctx.text`, a `text` field with `collaborative: true`)
+
+A text field is one value. `patch(id, { body })` from two people typing at the same moment keeps
+the newer save, and the other person's words are gone — the counter's mistake (`increment`) one
+shape up. A field declared **`collaborative: true`** merges instead, character by character, and
+remembers who typed what:
+
+```ts
+fields: { body: { type: "text", multiline: true, collaborative: true } }
+
+const body = ctx.text("doc", id, "body");          // the handle; nothing is read yet
+await body.edit([{ at: 12, insert: "milk, " }]);   // what CHANGED: insert at 12 …
+await body.edit([{ from: 0, to: 4 }]);             // … or take [0, 4) out; several in one call, in order
+const runs = await body.runs();                    // [{ text: "Buy ", by: "co_zAna" }, { text: "milk", by: "co_zBo" }]
+const at = await body.anchor(12);                  // follows that character through everyone's edits
+await ctx.create("comment", { doc: id, at, text: "do we need this?" });
+const where = await body.index(at);                // its position now, or null once deleted
+```
+
+- **The record still reads as one string.** `doc.body` in a view, a filter, an export or `ctx.get`
+  is the whole text; only writing changes shape. Positions count UTF-16 units, as a textarea's
+  selection and `String.slice` do; an insert inside an emoji family lands after it.
+- **`patch` still works** and replaces the whole text — as yours. A form that edits the field does
+  that; an editor that wants other people's words to survive sends edits.
+- **Who typed what** (`runs`) comes from the signing account, never from anything the app wrote,
+  so it cannot be claimed: `by` is a `Person.id` (`ctx.people` has the name). In a solo app every run
+  is the person's own, and a store that keeps no authorship says `by: null`.
+- **Anchors** are opaque strings to keep in a `text` field of another record (a comment, a
+  bookmark). `anchor(length)` anchors the end. One made before the app was shared still resolves, to
+  where it was.
+- **In a solo app** nothing merges because nothing races: `edit` is read-modify-write on the
+  device, and the words become a CRDT text the moment the app is shared, with no migration — a
+  text written with `patch` before is the starting point.
+- The same across the realm's port for a sealed app. A new optional member and a new optional field
+  flag: no app's `schemaVersion` changes.
+
 ### Voice input (`ctx.caps.speech`, docs/29)
 
 Live words as the person speaks, in their language:

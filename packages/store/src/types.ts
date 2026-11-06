@@ -3,7 +3,7 @@
 // with optional cheap narrowing, plus writes, reactivity, blobs, kv, and migrations. A CRDT
 // store later implements the same interface.
 
-import type { Field, FileInfo, Id, PotyroRecord, MediaRef, Migration, Value } from "potyro";
+import type { Field, FileInfo, Id, PotyroRecord, MediaRef, Migration, TextEdit, TextRun, Value } from "potyro";
 
 export type Unsubscribe = () => void;
 
@@ -115,6 +115,27 @@ export interface Store {
    * fall back to read-modify-write and accept the risk, rather than silently doing nothing.
    */
   increment?(entity: string, id: Id, field: string, delta: number): Promise<number>;
+  /**
+   * Change a text that several people type into at once (a `text` field with `collaborative: true`).
+   *
+   * `update(id, { body })` is the counter's mistake one shape up: the whole text is one value, so two
+   * people typing at the same moment keep only the last save, and one person's words are gone. Taking
+   * the EDITS instead — this went in here, that came out there — lets a CRDT store merge them
+   * character by character, the way `increment` adds deltas up. `edits` apply in order, each against
+   * the text as the one before left it; positions count UTF-16 units like `String.slice`. Resolves to
+   * the text after.
+   *
+   * Optional, with `textRuns`/`textAnchor`/`textIndex`: only a CRDT store can merge, remember who
+   * typed what, or keep a place through others' edits. The host falls back to read-modify-write and
+   * to "everything is mine" on a store without them — a local-only app is single-writer anyway.
+   */
+  editText?(entity: string, id: Id, field: string, edits: TextEdit[]): Promise<string>;
+  /** The text as runs, each with the account that typed it (`null` where no author is recorded). */
+  textRuns?(entity: string, id: Id, field: string): Promise<TextRun[]>;
+  /** An opaque anchor that follows the character at `at` (the length: the end) through everyone's edits. */
+  textAnchor?(entity: string, id: Id, field: string, at: number): Promise<string>;
+  /** Where an anchor's character is now, or `null` once it has been deleted. */
+  textIndex?(entity: string, id: Id, field: string, anchor: string): Promise<number | null>;
   transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T>;
 
   // reactivity — notify on entity change; runtime re-runs JS queries
