@@ -49,12 +49,11 @@ test("gallery:publish makes each link through the share flow, checks it opens fo
   const { dir, data } = scratchGallery(["groceries", "receipt-split", "markdown-notes"]);
   const lines: string[] = [];
   const first = await publish({ site: baseURL!, data, log: (l: string) => lines.push(l) });
-  expect(first.map((o: { id: string; outcome: string }) => [o.id, o.outcome])).toEqual([
-    ["groceries", "made"],
-    ["receipt-split", "made"],
-    ["markdown-notes", "made"],
-  ]);
   const g = JSON.parse(readFileSync(data, "utf8"));
+  // In the gallery's own order (gallery.json is the page's order, #501), each one made.
+  const ready = g.apps.filter((a: { status: string }) => a.status === "ready").map((a: { id: string }) => a.id);
+  expect(ready).toHaveLength(3);
+  expect(first.map((o: { id: string; outcome: string }) => [o.id, o.outcome])).toEqual(ready.map((id: string) => [id, "made"]));
   // Receipt Split is a package with a seed, Notes one with a seed AND the files it ships with: the
   // publisher packs all of it, so their demos open on a receipt and on four notes (#389).
   for (const id of ["groceries", "receipt-split", "markdown-notes"]) {
