@@ -212,7 +212,7 @@ export function makeRealmCtx(base: CtxBase, tx: Transport, opts: RealmCtxOptions
     text: (entity, rid, field) => {
       const target = [String(entity), String(rid), String(field)];
       return {
-        edit: (edits) => call("text.edit", ...target, edits),
+        edit: (edits, opts) => call("text.edit", ...target, edits, opts?.base === undefined ? null : { base: String(opts.base) }),
         runs: () => call("text.runs", ...target),
         anchor: (at) => call("text.anchor", ...target, Number(at)),
         index: (anchor) => call("text.index", ...target, String(anchor)),

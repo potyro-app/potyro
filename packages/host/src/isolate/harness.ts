@@ -185,8 +185,8 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       },
       text: function(entity, id, field){
         return {
-          edit: async function(edits){
-            var row = await bridge({op:"text.edit", entity:entity, id:id, field:field, edits:edits});
+          edit: async function(edits, opts){
+            var row = await bridge({op:"text.edit", entity:entity, id:id, field:field, edits:edits, opts: opts == null ? null : { base: opts.base }});
             return await evalComputed(app, entity, row, ctx);
           },
           runs: function(){ return bridge({op:"text.runs", entity:entity, id:id, field:field}); },

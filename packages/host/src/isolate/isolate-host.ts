@@ -10,7 +10,9 @@ import { hostPure, PURE_ERROR } from "../format.js";
 import type { Store } from "@potyro/store";
 import type { BindingRef, LoadedApp, Provenance } from "../types.js";
 import { prefetchRelated, resolveRecord, type ResolveDeps } from "../resolve.js";
-import { applyTextEdits, assertCollaborativeText, assertCountable, assertPatchFits, assertValuesFit, checkTextEdits, currentPeople, everyone } from "../values-gate.js";
+import { applyTextEdits, assertCollaborativeText, assertCountable, assertPatchFits, assertValuesFit, checkTextBase, checkTextEdits, currentPeople, everyone } from "../values-gate.js";
+import { afterEarlierEdits } from "../text-queue.js";
+import { mapEditsOnto } from "../text-transform.js";
 import { guestBookOf } from "../guests.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "../authorship.js";
 import { deserialize, serialize } from "./marshal.js";
@@ -225,8 +227,14 @@ class IsolateLoadedApp implements LoadedApp {
         };
         if (op.op === "text.edit") {
           const edits = checkTextEdits(op.edits);
-          if (this.store.editText) await this.store.editText(entity, id, field, edits);
-          else await this.store.update(entity, id, { [field]: applyTextEdits(await current(), edits) } as Partial<PotyroRecord>);
+          const base = checkTextBase(op.opts);
+          await afterEarlierEdits(this.store, entity, id, field, async () => {
+            const now = await current();
+            const mapped = base === undefined ? edits : mapEditsOnto(base, now, edits);
+            if (!mapped.length) return;
+            if (this.store.editText) await this.store.editText(entity, id, field, mapped);
+            else await this.store.update(entity, id, { [field]: applyTextEdits(now, mapped) } as Partial<PotyroRecord>);
+          });
           const row = await this.store.get(entity, id);
           if (!row) throw new Error(`ctx.text: ${entity}/${id} not found`);
           return serialize(await resolveRecord(this.resolveDeps, entity, row, false));

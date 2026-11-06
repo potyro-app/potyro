@@ -680,6 +680,13 @@ const where = await body.index(at);                // its position now, or null 
 - **The record still reads as one string.** `doc.body` in a view, a filter, an export or `ctx.get`
   is the whole text; only writing changes shape. Positions count UTF-16 units, as a textarea's
   selection and `String.slice` do; an insert inside an emoji family lands after it.
+- **Say what the positions count in.** An editor works out "insert at 12" against the text it shows,
+  and by the time the edit arrives someone else's keystrokes may have landed in front of 12. So it
+  passes that text: `edit(edits, { base: shown })`, and the host moves each position onto the text as
+  it is now — before their change it stays, after it shifts, inside it lands after. Edits to one
+  field go one after the other, in the order they were sent. `apps/write-together/loop.ts` is the
+  loop an editor runs: send the difference between the last confirmed text and the screen, merge
+  the answer with what was typed meanwhile, repeat.
 - **`patch` still works** and replaces the whole text — as yours. A form that edits the field does
   that; an editor that wants other people's words to survive sends edits.
 - **Who typed what** (`runs`) comes from the signing account, never from anything the app wrote,

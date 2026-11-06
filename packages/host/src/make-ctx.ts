@@ -2,10 +2,12 @@
 // real (namespaced to the app via its own Store); `caps` are trust-mediated. Time is fixed at
 // construction so computed values are deterministic within an evaluation pass.
 
-import type { AiImage, Ctx, CtxFiles, Field, FileRef, Id, Page, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, ShareAppLink, UiItem, Value, Words } from "potyro";
+import type { FileInfo, AiImage, Ctx, CtxFiles, Field, FileRef, Id, Page, PotyroRecord, MediaRef, Person, QuerySpec, Resolved, ShareAppLink, UiItem, Value, Words } from "potyro";
 import { checkFormFields, checkLinkRequest, localize, localizeFields, word } from "potyro";
 import { formatLocaleFor, makeFormat, translate, type WordsContext } from "./format.js";
-import { applyTextEdits, assertCollaborativeText, assertCountable, assertPatchFits, assertValuesFit, checkTextEdits, currentPeople, everyone } from "./values-gate.js";
+import { applyTextEdits, assertCollaborativeText, assertCountable, assertPatchFits, assertValuesFit, checkTextBase, checkTextEdits, currentPeople, everyone } from "./values-gate.js";
+import { afterEarlierEdits } from "./text-queue.js";
+import { mapEditsOnto } from "./text-transform.js";
 import { fileInfo, fileSpace, isReservedPath, mimeOf, type FileSpace, type FileTarget, type Store } from "@potyro/store";
 import type { Capabilities } from "@potyro/capabilities";
 import { mediateCaps } from "./mediate.js";
@@ -274,7 +276,7 @@ export function filesFor(store: Store, caps: Capabilities): CtxFiles {
       const pick = caps.filesystem.pickFiles;
       if (!pick) throw new Error("This device cannot open files from outside the app");
       const chosen = await pick({ accept: opts?.accept, multiple: opts?.multiple });
-      const landed = [];
+      const landed: FileInfo[] = [];
       for (const file of chosen) {
         landed.push(await space.write(joinPath(opts?.folder, file.name), file, { origin: "imported", mime: file.type || undefined }));
       }
@@ -461,12 +463,20 @@ export function buildCtx(app: LoadedApp, base: MakeCtxBase): Ctx {
         return typeof v === "string" ? v : "";
       };
       return {
-        async edit(edits) {
+        async edit(edits, opts) {
           const checked = checkTextEdits(edits);
+          const base = checkTextBase(opts);
           // Falls back rather than failing, as `increment` does: only a CRDT store can merge, and a
-          // local-only app is single-writer, where read-modify-write has nothing to race with.
-          if (store.editText) await store.editText(entity, id, field, checked);
-          else await store.update(entity, id, { [field]: applyTextEdits(await current(), checked) } as Partial<PotyroRecord>);
+          // local-only app is single-writer, where read-modify-write has nothing to race with —
+          // except its own next keystroke, so edits to one field go one after the other (text-queue.ts).
+          await afterEarlierEdits(store, entity, String(id), field, async () => {
+            const now = await current();
+            // Positions counted in the text the caller showed, moved onto the text as it is now.
+            const mapped = base === undefined ? checked : mapEditsOnto(base, now, checked);
+            if (!mapped.length) return;
+            if (store.editText) await store.editText(entity, id, field, mapped);
+            else await store.update(entity, id, { [field]: applyTextEdits(now, mapped) } as Partial<PotyroRecord>);
+          });
           forget();
           const row = await store.get(entity, id);
           if (!row) throw new Error(`ctx.text: ${entity}/${id} not found`);

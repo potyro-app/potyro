@@ -196,8 +196,14 @@ export interface TextRun {
 
 /** A `text` field with `collaborative: true`, edited as changes rather than as a whole (docs/04 "Writing together"). */
 export interface CtxText {
-  /** Apply `edits`, in order, each against the text as the ones before it left it. Resolves to the record after. */
-  edit(edits: TextEdit[]): Promise<Resolved>;
+  /**
+   * Apply `edits`, in order, each against the text as the ones before it left it. Resolves to the
+   * record after. `base` is the text the positions count in — what this caller showed when it
+   * worked them out; others' keystrokes may have landed since, and the host moves the positions
+   * onto the text as it is now (an editor passes it on every call). Without it, positions are taken
+   * as they are.
+   */
+  edit(edits: TextEdit[], opts?: { base?: string }): Promise<Resolved>;
   /** The whole text as runs, each with who typed it, in order. `[]` for an empty text. */
   runs(): Promise<TextRun[]>;
   /**

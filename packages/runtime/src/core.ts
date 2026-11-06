@@ -331,7 +331,7 @@ export class RuntimeCore {
           // `text()` hands back a handle; its `edit` is the write, tracked like the others.
           return (...args: unknown[]) => {
             const handle = (value as (...a: unknown[]) => CtxText).apply(target, args);
-            return { ...handle, edit: (edits: TextEdit[]) => this.track(handle.edit(edits)) };
+            return { ...handle, edit: (edits: TextEdit[], opts?: { base?: string }) => this.track(handle.edit(edits, opts)) };
           };
         }
         if (!WRITES.has(key) || typeof value !== "function") return value;
