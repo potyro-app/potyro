@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyEditsToRuns, diffEdits, freeColor, hashColor, initials, mapIndex, merge3, resolveColors, segments } from "../diff.js";
+import { applyEditsToRuns, diffEdits, fitRuns, freeColor, hashColor, initials, mapIndex, merge3, resolveColors, segments } from "../diff.js";
 
 describe("what changed between two texts", () => {
   it("finds a typed character, a deletion and a replacement", () => {
@@ -118,5 +118,21 @@ describe("writers' colours", () => {
       ["cy", 3],
       ["di", 2],
     ]);
+  });
+});
+
+describe("runs carried onto the text they are behind", () => {
+  const runs = [
+    { text: "Hello ", by: "ana" },
+    { text: "world", by: "bo" },
+  ];
+  it("leave runs that spell the text alone, and attribute a difference to the typist", () => {
+    expect(fitRuns(runs, "Hello world", "me")).toEqual(runs);
+    expect(fitRuns(runs, "Hello big world", "me")).toEqual([{ text: "Hello ", by: "ana" }, { text: "big ", by: "me" }, { text: "world", by: "bo" }]);
+    expect(fitRuns(runs, "Hello wor", "me")).toEqual([{ text: "Hello ", by: "ana" }, { text: "wor", by: "bo" }]);
+  });
+  it("leave someone else's new words uncoloured until their writer is known", () => {
+    expect(fitRuns(runs, "Hello world!", null)).toEqual([...runs, { text: "!", by: null }]);
+    expect(fitRuns([], "abc", null)).toEqual([{ text: "abc", by: null }]);
   });
 });

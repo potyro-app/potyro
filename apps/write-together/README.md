@@ -6,9 +6,9 @@ pinned to the words — an Etherpad for Potyro.
 Open a document and write. Everyone who has the app with you sees your words as you type, under
 your colour; theirs come in under theirs. **Preview** reads the document as a page. Select some
 words (or just put the caret somewhere) and tap **+ Comment**: the comment stays on those words
-through everyone's edits, and says so when they are deleted. **Invite** hands out the app's own
-"Use it together" link; alone, the app is simply a notebook, and the words become shared the moment
-the app is.
+through everyone's edits, and says so when they are deleted. Sharing is the app's own "Use it
+together" for now, which shares every document in it; sharing one document on its own, with its own
+link, is a platform feature in the making. Alone, the app is simply a notebook.
 
 ## How it works
 

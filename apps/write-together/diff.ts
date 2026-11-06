@@ -43,7 +43,7 @@ export function mapIndex(before: string, after: string, index: number): number {
 }
 
 /** The runs after `edits` by `me`, so the backdrop keeps up with the keys without waiting for the store. */
-export function applyEditsToRuns(runs: readonly TextRun[], edits: readonly TextEdit[], me: string): TextRun[] {
+export function applyEditsToRuns(runs: readonly TextRun[], edits: readonly TextEdit[], me: string | null): TextRun[] {
   let out = runs.map((r) => ({ ...r }));
   for (const e of edits) {
     if ("insert" in e) out = insertRun(out, e.at, e.insert, me);
@@ -52,7 +52,7 @@ export function applyEditsToRuns(runs: readonly TextRun[], edits: readonly TextE
   return merge(out);
 }
 
-function insertRun(runs: TextRun[], at: number, text: string, by: string): TextRun[] {
+function insertRun(runs: TextRun[], at: number, text: string, by: string | null): TextRun[] {
   if (!text) return runs;
   const out: TextRun[] = [];
   let pos = 0;
@@ -222,4 +222,17 @@ export function resolveColors(writers: ReadonlyArray<{ person: string; color: nu
     taken.add(color);
   }
   return out;
+}
+
+/**
+ * `runs` carried onto `text` when they no longer spell it: the difference is attributed to `by` —
+ * this person's own keys since the host last answered, or `null` (no colour yet) for words that
+ * arrived from someone else and whose writer the next answer will name. Runs that already spell the
+ * text come back as they are. This is what keeps the colours on while people type: a run list a few
+ * keystrokes behind the screen used to mean no colours at all until the next answer.
+ */
+export function fitRuns(runs: readonly TextRun[], text: string, by: string | null): TextRun[] {
+  const joined = runs.map((r) => r.text).join("");
+  if (joined === text) return [...runs];
+  return applyEditsToRuns(runs, diffEdits(joined, text), by);
 }
