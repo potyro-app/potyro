@@ -12,6 +12,7 @@ import "./styles.css";
 import type { PotyroRecord } from "potyro";
 import { copyStoreData, createMemorySqliteStore, declareApp, isReservedPath, isStorageElsewhere, packBundle, unpackBundle, type Store } from "@potyro/store";
 import { watchStorageOwner } from "./storage-elsewhere.js";
+import { appClosed, appOpened, settleOwed } from "./erase-app-data.js";
 import { appCode, modulesOf } from "./app-modules.js";
 import { openStore } from "./open-store.js";
 import { setShellCaps } from "./shell-caps.js";
@@ -528,6 +529,8 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     mount(root, <Splash id={id} name={saved.name} source={saved.source} failed={e instanceof Error ? e.message : String(e)} action={retry} />);
     return null;
   }
+  // Open: deleting it from inside (the Studio) leaves its file until this closes (erase-app-data.ts).
+  appOpened(id);
   resumeTiles();
 
   // A record shared by its link (docs/24 §12), held for this app by the link or the demo it was kept
@@ -712,6 +715,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     const promote = !saved.trusted && promotionFixes(e) ? saved : undefined;
     mount(root, <Splash id={id} name={saved.name} source={saved.source} failed={e instanceof Error ? e.message : String(e)} promote={promote} />);
     await rawStore.close();
+    void appClosed(id);
     return null;
   };
   // Its libraries and its own modules (#266, #258), this device's copy, checked against its lock. One
@@ -810,6 +814,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       composed!.runtime.close();
       composed!.loaded.dispose();
       await rawStore.close();
+      void appClosed(id);
     },
   };
   // Superseded while it was opening (another tap, Back): put it away without showing it.
@@ -1174,6 +1179,8 @@ async function boot(): Promise<void> {
   // Every other boot does NOT wait. Asking the account means asking the relay, and that answer is
   // allowed to take seconds; awaited on every boot it sat between opening Potyro and seeing anything
   // at all, for anyone who syncs even one app.
+  // A database owed its removal by a tab that went before its app closed (erase-app-data.ts).
+  void settleOwed();
   if (!joined) {
     // "Linked, and not asked yet." Not "has no apps": every device is seeded with the examples, so
     // an empty list never happens. Not "linked" alone either, or the wait would come back on every
