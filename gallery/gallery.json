@@ -133,7 +133,10 @@
         "es": "Un documento en el que todos escriben a la vez, cada uno con su color, con comentarios sobre las palabras.",
         "pl": "Dokument, w którym wszyscy piszą naraz, każdy w swoim kolorze, z komentarzami do słów.",
         "it": "Un documento in cui tutti scrivono insieme, ognuno con il suo colore, con commenti sulle parole."
-      }
+      },
+      "link": "https://potyro.app/s/1-XwqbVXRSs5C-pF-Y0jYQ#k=m0053WTRzAM_9Q_qPnvTDQ",
+      "screenshot": "shots/write-together.jpg",
+      "publishedAt": "2026-11-06T21:21:06.442Z"
     },
     {
       "id": "draw-guess",
