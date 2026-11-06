@@ -687,9 +687,15 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     },
     // `ctx.ui.share({ record })`: one record's link (docs/24 §12), from the synced store — turned on
     // first, with a reload, when this copy does not sync yet.
-    async (share) => {
-      const { recordLinkFor } = await import("./record-share.js");
-      return recordLinkFor(id, store, share);
+    {
+      prepare: async (share) => {
+        const { prepareRecordShare } = await import("./record-share.js");
+        return prepareRecordShare(id, share);
+      },
+      make: async (share) => {
+        const { recordLinkFor } = await import("./record-share.js");
+        return recordLinkFor(id, store, share);
+      },
     },
   );
   const navHost = new NavHost();
