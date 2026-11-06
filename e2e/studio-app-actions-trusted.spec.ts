@@ -86,6 +86,38 @@ test("deleting an app from the Studio asks first, and says the data goes too", a
   expect(await saved(page)).not.toContain("Notes");
 });
 
+test("deleting an app deletes its data too: the same app added again starts empty", async ({ page }) => {
+  // "looks like the app deletion didn't remove all the data": the launcher forgot the app and left
+  // its database where it was, so the same app added back opened on the old records.
+  await seedApp(page);
+  await page.goto("/?user=notes");
+  await expect(page.locator("h1").first()).toHaveText("Notes", { timeout: 30_000 });
+  await page.getByRole("button", { name: "Add: Note" }).click();
+  await page.getByLabel("Title").fill("Milk");
+  await page.getByRole("button", { name: "Create" }).click();
+  await expect(page.locator(".k-list")).toContainText("Milk", { timeout: 30_000 });
+  // Written to the database, not only to the screen: a reload reads it back.
+  await page.goto("/?user=notes");
+  await expect(page.locator(".k-list")).toContainText("Milk", { timeout: 30_000 });
+
+  await page.getByRole("button", { name: "Studio", exact: true }).click();
+  await expect(studio(page)).toBeVisible();
+  await menuItem(page, "Delete Notes");
+  await page.locator(".k-dialog").getByRole("button", { name: "Delete" }).click();
+  await expect(page.locator(".k-launcher")).toBeVisible({ timeout: 30_000 });
+
+  // The same app, added again (the init script only seeds once, so this is a second seeding).
+  await page.evaluate((source) => {
+    localStorage.setItem("potyro:user-apps", JSON.stringify([{ id: "notes", name: "Notes", source, trusted: true, updatedAt: new Date().toISOString() }]));
+  }, APP);
+  await page.goto("/?user=notes");
+  await expect(page.locator("h1").first()).toHaveText("Notes", { timeout: 30_000 });
+  // Empty: the page offers to add the first note, and nothing it shows is the old one.
+  await expect(page.getByRole("button", { name: "Add: Note" })).toBeVisible();
+  await expect(page.locator(".k-list")).toHaveCount(0);
+  await expect(page.getByText("Milk")).toHaveCount(0);
+});
+
 test("an app can be renamed and duplicated from the Studio", async ({ page }) => {
   await seedApp(page);
   await openStudio(page);

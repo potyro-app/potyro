@@ -40,7 +40,9 @@ export type WorkerRequest =
   | { id: number; op: "run"; db: string; sql: string; params?: unknown[] }
   | { id: number; op: "query"; db: string; sql: string; params?: unknown[] }
   | { id: number; op: "get"; db: string; sql: string; params?: unknown[] }
-  | { id: number; op: "close"; db: string };
+  | { id: number; op: "close"; db: string }
+  /** Close the database if it is open, and remove its file. Nothing to remove is not an error. */
+  | { id: number; op: "delete"; db: string };
 
 export type WorkerReply =
   | { id: number; ok: true; rows?: Record<string, unknown>[] }
@@ -60,6 +62,8 @@ export type WorkerEvent = { event: "lost" };
 interface Pool {
   OpfsSAHPoolDb: new (f: string) => Sqlite3Db;
   getFileNames(): string[];
+  /** Remove a file from the pool. Answers whether there was one. */
+  unlink(filename: string): boolean;
   /** Let go of every access handle, keeping the files. Throws while a database is open. */
   pauseVfs(): unknown;
   /** How many files the pool may hold, and how many it does. */
@@ -217,6 +221,23 @@ function onLost(): void {
 }
 
 async function open(name: string, takeover: boolean): Promise<void> {
+  await install(takeover);
+  if (!pool) throw new Error("the storage pool did not install");
+  if (dbs.has(name)) return;
+  const file = `/${name}.sqlite3`;
+  const home = legacyPool?.getFileNames().includes(file) ? legacyPool : pool;
+  await makeRoom(home);
+  const db = new home.OpfsSAHPoolDb(file);
+  dbs.set(name, db);
+  // One sync of the journal and one of the database per commit, not three. Firefox's `flush` is a
+  // real fsync of some 10 ms; at FULL a one-row commit there was four of them. NORMAL still keeps
+  // the database whole through a crash of the tab or the browser; what it gives up is the last
+  // commit on a power cut at the wrong instant, which on a phone's own data is the trade to make.
+  db.exec("PRAGMA synchronous=NORMAL");
+}
+
+/** The pools, installed once however many databases are asked for — and before a removal. */
+async function install(takeover: boolean): Promise<void> {
   // Installed once, however many databases are asked for. `installing` is awaited rather than
   // re-entered: two apps opening at the same moment must not install two pools over one directory.
   installing ??= (async () => {
@@ -258,18 +279,6 @@ async function open(name: string, takeover: boolean): Promise<void> {
     throw err;
   });
   await installing;
-  if (!pool) throw new Error("the storage pool did not install");
-  if (dbs.has(name)) return;
-  const file = `/${name}.sqlite3`;
-  const home = legacyPool?.getFileNames().includes(file) ? legacyPool : pool;
-  await makeRoom(home);
-  const db = new home.OpfsSAHPoolDb(file);
-  dbs.set(name, db);
-  // One sync of the journal and one of the database per commit, not three. Firefox's `flush` is a
-  // real fsync of some 10 ms; at FULL a one-row commit there was four of them. NORMAL still keeps
-  // the database whole through a crash of the tab or the browser; what it gives up is the last
-  // commit on a power cut at the wrong instant, which on a phone's own data is the trade to make.
-  db.exec("PRAGMA synchronous=NORMAL");
 }
 
 /**
@@ -288,6 +297,26 @@ async function makeRoom(p: Pool): Promise<void> {
 async function trim(p: Pool): Promise<void> {
   const spare = p.getCapacity() - Math.max(POOL_START, p.getFileCount() + POOL_ROOM);
   if (spare > 0) await p.reduceCapacity(spare);
+}
+
+/**
+ * An app deleted on this device takes its database with it.
+ *
+ * Deleting an app used to remove it from the launcher and leave its file in the pool: the next app
+ * saved under the same name — or the same app added again — opened on the dead one's records, which
+ * is the opposite of what the question ("This deletes the app AND its data") had promised. The file
+ * goes from whichever pool holds it, after closing it if this worker has it open; a file that is
+ * not there is not an error, because the app may never have been opened on this device.
+ */
+async function remove(name: string): Promise<void> {
+  await install(false);
+  const db = dbs.get(name);
+  if (db) {
+    db.close();
+    dbs.delete(name);
+  }
+  const file = `/${name}.sqlite3`;
+  for (const p of [pool, legacyPool]) if (p?.getFileNames().includes(file)) p.unlink(file);
 }
 
 function handle(msg: WorkerRequest): Record<string, unknown>[] | undefined {
@@ -322,6 +351,11 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     }
     if (msg.op === "open") {
       await open(msg.db, msg.takeover === true);
+      reply({ id: msg.id, ok: true });
+      return;
+    }
+    if (msg.op === "delete") {
+      await remove(msg.db);
       reply({ id: msg.id, ok: true });
       return;
     }
