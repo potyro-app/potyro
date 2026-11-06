@@ -574,7 +574,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       const { inspect } = await import("./app-source.js");
       const shape = await inspect(a.source);
       const entities = shape.entities.map((e) => e.key);
-      const { copied, warnings } = await toggleAppSync(a.id, entities, on, new Date().toISOString());
+      const { copied, warnings } = await toggleAppSync(a.id, entities, on, new Date().toISOString(), a.source);
       const records = copied.records;
       const moved = plural(records, { one: "Moved # record.", other: "Moved # records." });
       // A partial migration must be surfaced. Silently losing photos is the failure this whole
@@ -614,7 +614,7 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
         setBusy(a.id);
         const { inspect } = await import("./app-source.js");
         const shape = await inspect(a.source);
-        await toggleAppSync(a.id, shape.entities.map((e) => e.key), true, new Date().toISOString());
+        await toggleAppSync(a.id, shape.entities.map((e) => e.key), true, new Date().toISOString(), a.source);
         setBusy(null);
       }
       // The moment concurrency stops being hypothetical. Everything up to here, the app has had one

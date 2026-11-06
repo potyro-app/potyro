@@ -11,6 +11,7 @@
 import { FieldValueError, fieldValueProblem, humanizeKey, plainWords, recordValueProblem, sanitiseListRows, type AppDefinition, type Field, type TextEdit } from "potyro";
 import { isGuestId, type Store } from "@potyro/store";
 import type { GuestBook } from "./guests.js";
+import { applyEdit } from "./text-transform.js";
 
 /** How a field is named in a message: its label — already in the person's language when the
  *  definition is the localized one the ctx passes (#302). */
@@ -109,17 +110,15 @@ export function checkTextEdits(edits: unknown): TextEdit[] {
 
 /** Every `TextEdit` applied to a plain string, in order: the fallback where no store can merge. */
 export function applyTextEdits(text: string, edits: TextEdit[]): string {
-  let out = text;
-  for (const e of edits) {
-    if ("insert" in e) {
-      const at = Math.min(e.at, out.length);
-      out = out.slice(0, at) + e.insert + out.slice(at);
-    } else {
-      const from = Math.min(e.from, out.length);
-      out = out.slice(0, from) + out.slice(Math.min(Math.max(e.to, from), out.length));
-    }
-  }
-  return out;
+  return edits.reduce(applyEdit, text);
+}
+
+/** The `base` an edit may name: a string, or nothing. */
+export function checkTextBase(opts: unknown): string | undefined {
+  const base = (opts as { base?: unknown } | null | undefined)?.base;
+  if (base === undefined || base === null) return undefined;
+  if (typeof base !== "string") throw new TypeError("ctx.text: edit's base must be a string");
+  return base;
 }
 
 export function assertCountable(definition: AppDefinition, entity: string, field: string): void {

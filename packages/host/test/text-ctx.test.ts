@@ -162,3 +162,15 @@ describe.each(RUNNERS)("ctx.text across the sealed runner: $name", (runner) => {
     loaded.dispose();
   });
 });
+
+describe("edits to one field go one after the other", () => {
+  it("keeps every keystroke on a store that cannot merge, however fast they come", async () => {
+    const { ctx } = await direct();
+    const doc = await ctx.create("doc", { title: "Plan", body: "" });
+    const text = ctx.text("doc", doc.id, "body");
+    const word = "Hello from Ana.";
+    // Each keystroke sent without waiting for the one before, as a textarea does.
+    await Promise.all([...word].map((ch, i) => text.edit([{ at: i, insert: ch }])));
+    expect((await ctx.get("doc", doc.id))?.body).toBe(word);
+  });
+});

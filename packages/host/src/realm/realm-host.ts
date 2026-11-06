@@ -508,7 +508,7 @@ export class RealmLoadedApp implements LoadedApp {
       case "increment":
         return ctx.increment(s(0), s(1), s(2), Number(a[3]));
       case "text.edit":
-        return ctx.text(s(0), s(1), s(2)).edit(x(3));
+        return ctx.text(s(0), s(1), s(2)).edit(x(3), a[4] == null ? undefined : { base: String((a[4] as { base?: unknown }).base ?? "") });
       case "text.runs":
         return ctx.text(s(0), s(1), s(2)).runs();
       case "text.anchor":
