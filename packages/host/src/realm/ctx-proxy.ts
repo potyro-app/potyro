@@ -209,6 +209,7 @@ export function makeRealmCtx(base: CtxBase, tx: Transport, opts: RealmCtxOptions
     create: (entity, data) => call("create", String(entity), data),
     patch: (entity, rid, data) => call("patch", String(entity), String(rid), data),
     increment: (entity, rid, field, delta) => call("increment", String(entity), String(rid), String(field), Number(delta)),
+    access: (entity, rid) => call("access", String(entity), String(rid)),
     text: (entity, rid, field) => {
       const target = [String(entity), String(rid), String(field)];
       return {

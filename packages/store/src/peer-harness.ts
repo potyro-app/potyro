@@ -29,6 +29,11 @@ export interface PeerPair {
   close(): Promise<void>;
   /** Through a relay only: cut A off from it, as a device that went offline (#255). */
   disconnectA?(): void;
+  /**
+   * A third device, in a space of its OWN, connected to A: someone who is not a member of the
+   * pair's space at all — what a link to one record lets in (record-sharing.ts).
+   */
+  another?(name?: string): Promise<Store>;
 }
 
 /**
@@ -66,6 +71,7 @@ export async function createPeerPair(appId = "pair"): Promise<PeerPair> {
   const b = new JazzStore({ node: two.node as never, group: groupForTwo as never, rootId: a.rootId });
   await b.open(appId);
 
+  const others: Store[] = [];
   return {
     a,
     b,
@@ -73,6 +79,17 @@ export async function createPeerPair(appId = "pair"): Promise<PeerPair> {
     close: async () => {
       await a.close?.();
       await b.close?.();
+      for (const o of others) await o.close?.();
+    },
+    another: async (name = "Peer C") => {
+      const three = await LocalNode.withNewlyCreatedAccount({ creationProps: { name }, crypto });
+      const [forThree, forOne] = cojsonInternals.connectedPeers(`one-${others.length}`, `three-${others.length}`, { peer1role: "server", peer2role: "server" });
+      three.node.syncManager.addPeer(forOne);
+      one.node.syncManager.addPeer(forThree);
+      const store = new JazzStore({ node: three.node as never, group: three.node.createGroup() as never });
+      await store.open(appId);
+      others.push(store);
+      return store;
     },
   };
 }

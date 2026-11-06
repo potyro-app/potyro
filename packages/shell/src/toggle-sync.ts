@@ -84,7 +84,10 @@ async function describeTo(to: Store, appId: string, source: string): Promise<voi
     const creatorOnly = Object.entries(entities)
       .filter(([, e]) => e?.editableBy === "creator")
       .map(([entity]) => entity);
-    to.describe(schema, { creatorOnly });
+    const sharedRecords = Object.entries(entities)
+      .filter(([, e]) => e?.share === "record")
+      .map(([entity]) => entity);
+    to.describe(schema, { creatorOnly, sharedRecords });
   } catch (e) {
     console.warn("[potyro] the synced store was not told the app's fields before the copy:", e);
   }

@@ -205,6 +205,14 @@ export const CAPABILITIES: readonly Capability[] = [
     uses: /\bctx\.text\b|collaborative\s*:\s*true/,
   },
   {
+    key: "ctx.access",
+    summary: "`ctx.access(entity, id)` → reader|writer|admin",
+    declarations: ["Access"],
+    members: [{ of: "Ctx", name: "access" }],
+    cues: /\bctx\.access\b|\b(read-?only|who may (?:edit|change)|can(?:not)? edit)\b/i,
+    uses: /\bctx\.access\b/,
+  },
+  {
     key: "ctx.caps.notifications",
     summary: "`schedule({ id, at, title, body? })` / `cancel(id)`: a notification at a time (a declarative entity `reminders` entry is usually enough)",
     declarations: ["NotificationCapability"],
@@ -300,8 +308,8 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     key: "ctx.ui.share",
-    summary: "`await ctx.ui.share({ text, url | app })`: share sheet / Copy; `app`: link to a page",
-    declarations: ["ShareAppLink", "PageLink", "ShareFile"],
+    summary: "`await ctx.ui.share({ text, url | app | record })`: share sheet / Copy; `app`: link to a page; `record`: link to ONE record (`share: \"record\"`)",
+    declarations: ["ShareAppLink", "PageLink", "ShareFile", "RecordLink"],
     members: [{ of: "CtxUi", name: "share" }],
     notes: [
       "A link to one of the app's pages: the page declares what a link may hand it, `link: { params: [\"code\"] }`, and",

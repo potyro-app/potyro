@@ -84,6 +84,8 @@ export interface EntityDef {
   /** Who may change or delete a record (KA-21). `"creator"`: only the person who added it — anyone
    *  else's edit does not take; `"app"`: only app code (docs/03). Default `"anyone"`. */
   editableBy?: "anyone" | "creator" | "app";
+  /** `"record"`: each record shared by its own link (docs/24 §12). */
+  share?: "record";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

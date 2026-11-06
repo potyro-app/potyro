@@ -43,7 +43,7 @@
 //   `structuredClone` and preserves `Date`). Matching the *durable* store is the right precedent.
 
 import type { Id, PotyroRecord, MediaRef, TextEdit, TextRun, Value } from "potyro";
-import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, Store, StoreRules, StoreSchema, StoredFile, Unsubscribe } from "./types.js";
+import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, RecordInvite, Store, StoreRules, StoreSchema, StoredFile, Unsubscribe } from "./types.js";
 import { recordThread } from "./types.js";
 import { foldSet, foldSetFields, isScalarSet, parseSetKey, setFieldsOf, setKey, setWrites } from "./set-field.js";
 import { applyMigrationStep } from "./migrate.js";
@@ -51,6 +51,7 @@ import { ulid } from "./ulid.js";
 import { HybridClock, formatHlc, parseHlc } from "./hlc.js";
 import { isReservedPath } from "./app-lock.js";
 import { END_ANCHOR, anchorOp, anchorPosition, graphemeAt, graphemeFrom, opAnchor, textFieldsOf, textRef, textRefOf, utf16Starts } from "./text-field.js";
+import { KIDS, childrenOf, kidId, kidKey, roleToAccess } from "./record-sharing.js";
 
 /** Fields this store maintains itself. Their edits are not activity anyone wants reported. */
 const BOOKKEEPING = new Set(["id", "createdAt", "createdBy", "updatedAt"]);
@@ -75,9 +76,18 @@ interface RawMapLike {
   editsAt?(key: string): Iterable<{ by: string; at: Date; value: unknown }>;
   /** Every key ever written, deleted ones included (cojson's per-key op log). */
   ops?: Record<string, unknown>;
+  /** The group this CoValue belongs to: the space's, or a shared record's own (record-sharing.ts). */
+  group?: RawGroupLike;
 }
 interface RawGroupLike {
+  id?: string;
   createMap<T = RawMapLike>(init?: Record<string, unknown>): T;
+  /** Members of `parent` are members here too, with their roles ("inherit") — a shared record's group. */
+  extend?(parent: RawGroupLike, role?: "reader" | "writer" | "manager" | "admin" | "inherit"): void;
+  /** An invite secret for this group, to carry in a link's fragment. Admins only. */
+  createInvite?(role: "writer" | "reader"): string;
+  /** This account's role here, inherited ones included; undefined when it is not a member. */
+  myRole?(): string | undefined;
   /** A binary CoValue: bytes sync on their own, not as transactions in the app's document (KA-20). */
   createBinaryStream?<T = RawBinaryLike>(): T;
   /** A text CoValue: a list CRDT of graphemes, for a collaborative text field (text-field.ts). */
@@ -123,6 +133,10 @@ interface NodeLike {
   currentSessionID?: string;
   /** The account signing this node's writes. */
   getCurrentAccountOrAgentID?(): string;
+  /** A new group, for a record shared on its own (record-sharing.ts). */
+  createGroup?(): RawGroupLike;
+  /** Join a group with the secret from its invite (a shared record's link). */
+  acceptInvite?(groupId: string, secret: string): Promise<void>;
 }
 
 export interface JazzStoreDeps {
@@ -280,6 +294,10 @@ export class JazzStore implements Store {
   private setFields = new Map<string, Set<string>>();
   /** entity -> collaborative text field keys, from `describe` (text-field.ts). */
   private textFields = new Map<string, Set<string>>();
+  /** Entities whose records are shared one by one (`share: "record"`, record-sharing.ts). */
+  private sharedEntities = new Set<string>();
+  /** child entity -> the shared entity its records belong to, and the relation field naming it. */
+  private childOf = new Map<string, { parent: string; field: string }>();
   /** Text CoValues this store has loaded, by id: resolved on every read, so kept at hand. */
   private readonly texts = new Map<string, RawTextLike>();
 
@@ -293,6 +311,8 @@ export class JazzStore implements Store {
     this.setFields = setFieldsOf(schema);
     this.textFields = textFieldsOf(schema);
     this.creatorOnly = new Set(rules?.creatorOnly ?? []);
+    this.sharedEntities = new Set(rules?.sharedRecords ?? []);
+    this.childOf = childrenOf(schema, this.sharedEntities);
   }
 
   /** Entities whose records only their creator may change (`editableBy: "creator"`, KA-21). */
@@ -312,9 +332,13 @@ export class JazzStore implements Store {
    * — cannot, since it only reaches the log through this store.
    */
   private async scoped(entity: string, id: Id): Promise<{ m: RawMapLike; creator: string } | null> {
-    const index = await this.entityIndexIfPresent(entity);
-    if (!index) return null;
-    const edits = [...(index.editsAt?.(id) ?? [])];
+    const at = await this.locate(entity, id);
+    return at ? this.scopedIn(at.index, at.key) : null;
+  }
+
+  /** `scoped`, in the index that holds the record: the space's, or a shared record's own (record-sharing.ts). */
+  private async scopedIn(index: RawMapLike, key: string): Promise<{ m: RawMapLike; creator: string } | null> {
+    const edits = [...(index.editsAt?.(key) ?? [])];
     const first = edits[0];
     if (!first) return null;
     const creator = String(first.by);
@@ -438,9 +462,131 @@ export class JazzStore implements Store {
 
   private async recordMap(entity: string, id: Id): Promise<RawMapLike | null> {
     if (this.creatorOnly.has(entity)) return (await this.scoped(entity, id))?.m ?? null;
-    const index = await this.entityIndexIfPresent(entity);
-    const refId = index?.get(id);
+    const at = await this.locate(entity, id);
+    const refId = at?.index.get(at.key);
     return typeof refId === "string" ? this.loadMap(refId) : null;
+  }
+
+  // ---- records shared one by one (record-sharing.ts) ------------------------------------------
+
+  /**
+   * The index that lists a record, and its key there: the space's index for the entity, or — for a
+   * record that points at a shared one — that record's own list of the records that point at it.
+   */
+  private async locate(entity: string, id: Id): Promise<{ index: RawMapLike; key: string } | null> {
+    const listed = (index: RawMapLike, key: string): boolean => typeof index.get(key) === "string" || (this.creatorOnly.has(entity) && index.ops?.[key] !== undefined);
+    const index = await this.entityIndexIfPresent(entity);
+    if (index && listed(index, id)) return { index, key: id };
+    const home = this.childOf.get(entity);
+    if (!home) return null;
+    const key = kidKey(entity, id);
+    for (const kids of await this.kidsMaps(home.parent)) if (listed(kids, key)) return { index: kids, key };
+    return null;
+  }
+
+  /** The record maps of `entity` in the space's index, as this device sees them (no scoping). */
+  private async indexedMaps(entity: string): Promise<RawMapLike[]> {
+    const index = await this.entityIndexIfPresent(entity);
+    if (!index) return [];
+    const out: RawMapLike[] = [];
+    for (const key of index.keys()) {
+      const ref = index.get(key);
+      if (typeof ref !== "string") continue;
+      try {
+        out.push(await this.loadMap(ref));
+      } catch {
+        // Pointed at, not here yet (a record shared with this device whose group is still arriving).
+      }
+    }
+    return out;
+  }
+
+  /** Every shared record of `parent` this device can see, with its own list of the records that point at it. */
+  private async kidsMaps(parent: string): Promise<RawMapLike[]> {
+    const out: RawMapLike[] = [];
+    for (const m of await this.indexedMaps(parent)) {
+      const kids = await this.kidsOf(m);
+      if (kids) out.push(kids);
+    }
+    return out;
+  }
+
+  /** A shared record's list of the records that point at it, when it has one (made with the record). */
+  private async kidsOf(m: RawMapLike): Promise<RawMapLike | null> {
+    const ref = m.get(KIDS);
+    if (typeof ref !== "string") return null;
+    try {
+      return await this.loadMap(ref);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Where a new record goes: a record of a shared entity gets a group of its own, whose members are
+   * the app's (inherited) plus whoever its link lets in; a record that points at a shared one goes
+   * into that record's group and list; anything else into the space, as ever.
+   */
+  private async homeFor(entity: string, record: Record<string, unknown>): Promise<{ group: RawGroupLike; index: RawMapLike; key: string; kids?: RawMapLike }> {
+    const id = String(record.id);
+    if (this.sharedEntities.has(entity) && this.node.createGroup && this.group.id !== undefined) {
+      const group = this.node.createGroup();
+      group.extend?.(this.group, "inherit");
+      const kids = group.createMap<RawMapLike>({});
+      return { group, index: await this.entityIndex(entity), key: id, kids };
+    }
+    const home = this.childOf.get(entity);
+    const named = home ? record[home.field] : undefined;
+    const parentId = typeof named === "string" ? named : (named as { id?: unknown } | null)?.id;
+    if (home && typeof parentId === "string") {
+      const parent = await this.recordMap(home.parent, parentId);
+      if (parent?.group) {
+        this.assertMayWrite(parent);
+        let kids = await this.kidsOf(parent);
+        if (!kids) {
+          // A parent made before the app said it was shared: given its list now, by whoever writes first.
+          kids = parent.group.createMap<RawMapLike>({});
+          parent.set(KIDS, kids.id);
+        }
+        return { group: parent.group, index: kids, key: kidKey(entity, id) };
+      }
+    }
+    return { group: this.group, index: await this.entityIndex(entity), key: id };
+  }
+
+  /**
+   * Refuse a write to a record this device may only look at, in words. cojson takes a reader's
+   * write locally and drops it as invalid, so without this the write would seem to land and then
+   * quietly not be there — the opposite of what a person at a read-only link should see.
+   */
+  private assertMayWrite(m: RawMapLike | null): void {
+    const group = m?.group;
+    if (group?.myRole && roleToAccess(group.myRole()) === "reader") throw new Error("You can only view this: the link you came in by lets you look, not change it.");
+  }
+
+  async recordAccess(entity: string, id: Id): Promise<"reader" | "writer" | "admin"> {
+    const m = await this.recordMap(entity, id);
+    const group = m?.group ?? this.group;
+    return roleToAccess(group.myRole?.());
+  }
+
+  async createRecordInvite(entity: string, id: Id, role: "writer" | "reader"): Promise<RecordInvite> {
+    const m = await this.recordMap(entity, id);
+    if (!m) throw new Error(`createRecordInvite: ${entity}/${id} not found`);
+    const group = m.group;
+    if (!group?.createInvite || !group.id || !this.sharedEntities.has(entity)) throw new Error("This record is not one that can be shared on its own.");
+    if (group.myRole?.() !== "admin") throw new Error("Only the person who made this can invite others to it.");
+    return { entity, id, group: group.id, map: m.id, secret: group.createInvite(role) };
+  }
+
+  async joinRecord(invite: RecordInvite): Promise<PotyroRecord | null> {
+    if (!this.node.acceptInvite) throw new Error("This store cannot join a record.");
+    await this.node.acceptInvite(invite.group, invite.secret);
+    const index = await this.entityIndex(invite.entity);
+    if (index.get(invite.id) !== invite.map) this.local(() => index.set(invite.id, invite.map));
+    this.emit(invite.entity);
+    await this.whenDurable?.();
+    return this.get(invite.entity, invite.id);
   }
 
   /**
@@ -449,27 +595,41 @@ export class JazzStore implements Store {
    * so two devices list the same rows in the same order.
    */
   private async readEntity(entity: string): Promise<PotyroRecord[]> {
+    const rows: PotyroRecord[] = [];
     const index = await this.entityIndexIfPresent(entity);
-    if (!index) return [];
+    if (index) rows.push(...(await this.rowsIn(entity, index, (key) => key)));
+    // The records that point at a shared record are listed on it, not in the space (record-sharing.ts).
+    const home = this.childOf.get(entity);
+    if (home) for (const kids of await this.kidsMaps(home.parent)) rows.push(...(await this.rowsIn(entity, kids, (key) => kidId(entity, key))));
+    const seen = new Set<string>();
+    return rows
+      .filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)))
+      .sort((a, b) => (a.createdAt === b.createdAt ? (a.id < b.id ? -1 : 1) : a.createdAt < b.createdAt ? -1 : 1));
+  }
+
+  /** The rows one index lists for `entity`; `idOf` reads a record id off a key, or null for a key of another entity. */
+  private async rowsIn(entity: string, index: RawMapLike, idOf: (key: string) => string | null): Promise<PotyroRecord[]> {
     const rows: PotyroRecord[] = [];
     if (this.creatorOnly.has(entity)) {
       // Every id ever indexed: a record someone else "deleted" is still there, as its creator left it.
-      for (const recordId of Object.keys(index.ops ?? {}).concat(index.ops ? [] : index.keys())) {
-        const found = await this.scoped(entity, recordId);
+      for (const key of Object.keys(index.ops ?? {}).concat(index.ops ? [] : index.keys())) {
+        if (idOf(key) === null) continue;
+        const found = await this.scopedIn(index, key);
         if (found) rows.push(await this.record(found.m));
       }
-      return rows.sort((a, b) =>
-        a.createdAt === b.createdAt ? (a.id < b.id ? -1 : 1) : a.createdAt < b.createdAt ? -1 : 1,
-      );
+      return rows;
     }
-    for (const recordId of index.keys()) {
-      const refId = index.get(recordId);
+    for (const key of index.keys()) {
+      if (idOf(key) === null) continue;
+      const refId = index.get(key);
       if (typeof refId !== "string") continue; // deleted: tombstoned to undefined
-      rows.push(await this.record(await this.loadMap(refId)));
+      try {
+        rows.push(await this.record(await this.loadMap(refId)));
+      } catch {
+        // Pointed at, not here yet: a record shared with this device whose group is still arriving.
+      }
     }
-    return rows.sort((a, b) =>
-      a.createdAt === b.createdAt ? (a.id < b.id ? -1 : 1) : a.createdAt < b.createdAt ? -1 : 1,
-    );
+    return rows;
   }
 
   /** Local listeners fire synchronously on write, matching every other Store impl. */
@@ -507,6 +667,32 @@ export class JazzStore implements Store {
    */
   private async watchEntity(entity: string): Promise<void> {
     if (this.watched.has(entity)) return;
+    const unsubs: Array<() => void> = [];
+    this.watched.set(entity, () => {
+      for (const un of unsubs) un();
+    });
+    unsubs.push(await this.watchOwnIndex(entity));
+    // The records that point at a shared record are listed on it (record-sharing.ts): watch each
+    // such list beside the space's index, and pick up new parents as they appear.
+    const home = this.childOf.get(entity);
+    if (home) {
+      const perKids = new Map<string, () => void>();
+      const sync = async (): Promise<void> => {
+        for (const kids of await this.kidsMaps(home.parent)) {
+          if (perKids.has(kids.id)) continue;
+          perKids.set(kids.id, this.watchIndex(entity, kids, (key) => kidId(entity, key) !== null));
+        }
+      };
+      unsubs.push(this.subscribe(home.parent, () => void sync().then(() => this.emit(entity))));
+      unsubs.push(() => {
+        for (const un of perKids.values()) un();
+      });
+      await sync();
+    }
+  }
+
+  /** Watch the space's index for `entity` — or the place it will appear — and its records. */
+  private async watchOwnIndex(entity: string): Promise<() => void> {
     const index = await this.entityIndexIfPresent(entity);
     if (!index) {
       // Not here yet: an entity nothing has written, or a guest whose space is still replicating.
@@ -538,22 +724,36 @@ export class JazzStore implements Store {
         if (typeof entities.get(entity) !== "string") return;
         cancelled = true;
         for (const un of unsubs) un();
-        this.watched.delete(entity);
         this.pending.delete(entity);
         // Watch it for real, then tell anyone listening — their first read found nothing.
-        void this.watchEntity(entity).then(() => this.emit(entity));
+        void this.entityIndexIfPresent(entity).then((found) => {
+          if (!found || stopped) return;
+          inner = this.watchIndex(entity, found, () => true);
+          this.emit(entity);
+        });
       };
+      let stopped = false;
+      let inner: (() => void) | null = null;
       unsubs.push(this.root.subscribe(attach));
       if (entities) unsubs.push(entities.subscribe(attach));
       this.pending.add(entity);
-      this.watched.set(entity, () => {
+      attach();
+      return () => {
         cancelled = true;
+        stopped = true;
         this.pending.delete(entity);
         for (const un of unsubs) un();
-      });
-      attach();
-      return;
+        inner?.();
+      };
     }
+    return this.watchIndex(entity, index, () => true);
+  }
+
+  /**
+   * Watch one index — the space's for an entity, or a shared record's list — and every record it
+   * lists for `entity` (`mine` picks the keys), with their texts; notify `entity`'s subscribers.
+   */
+  private watchIndex(entity: string, index: RawMapLike, mine: (key: string) => boolean): () => void {
     const perRecord = new Map<string, () => void>();
 
     // Which record CoValues to watch. For a creator-only entity that includes records someone else
@@ -561,13 +761,13 @@ export class JazzStore implements Store {
     // arrive live.
     const refsToWatch = (): string[] => {
       if (!this.creatorOnly.has(entity)) {
-        return index.keys().flatMap((recordId) => {
-          const refId = index.get(recordId);
+        return index.keys().flatMap((key) => {
+          const refId = mine(key) ? index.get(key) : undefined;
           return typeof refId === "string" ? [refId] : [];
         });
       }
-      return Object.keys(index.ops ?? {}).flatMap((recordId) =>
-        [...(index.editsAt?.(recordId) ?? [])].flatMap((e) => (typeof e.value === "string" ? [e.value] : [])),
+      return Object.keys(index.ops ?? {}).flatMap((key) =>
+        mine(key) ? [...(index.editsAt?.(key) ?? [])].flatMap((e) => (typeof e.value === "string" ? [e.value] : [])) : [],
       );
     };
 
@@ -622,11 +822,11 @@ export class JazzStore implements Store {
     });
     syncRecordWatchers();
 
-    this.watched.set(entity, () => {
+    return () => {
       unsubIndex();
       for (const un of perRecord.values()) un();
       for (const un of perText.values()) un();
-    });
+    };
   }
 
   // ---- lifecycle --------------------------------------------------------------------------
@@ -941,8 +1141,9 @@ export class JazzStore implements Store {
       createdAt: (data.createdAt as string) ?? ts,
       updatedAt: ts,
     } as PotyroRecord;
-    // One CoMap per record — this is what makes concurrent edits to different fields merge.
-    const index = await this.entityIndex(entity);
+    // One CoMap per record — this is what makes concurrent edits to different fields merge. Where it
+    // goes — the space, a group of its own, a shared record's — is `homeFor`'s (record-sharing.ts).
+    const home = await this.homeFor(entity, record as unknown as Record<string, unknown>);
     // This write may be what creates the index. A watcher parked on the container would notice and
     // announce it — a second notification for a write that announces itself below. Upgrade it here,
     // quietly, so the placeholder only ever speaks for a container that arrived from a PEER.
@@ -955,11 +1156,12 @@ export class JazzStore implements Store {
       // A collaborative text field gets a text CoValue of its own from the start (text-field.ts).
       const stored = { ...(record as unknown as Record<string, unknown>) };
       for (const field of this.textFields.get(entity) ?? []) {
-        const text = this.newText(stored[field]);
+        const text = this.newText(stored[field], home.group);
         if (text) stored[field] = textRef(text.id);
       }
-      const created = this.group.createMap<RawMapLike>(stored);
-      index.set(id, created.id);
+      if (home.kids) stored[KIDS] = home.kids.id;
+      const created = home.group.createMap<RawMapLike>(stored);
+      home.index.set(home.key, created.id);
     });
     this.emit(entity);
     await this.whenDurable?.();
@@ -973,6 +1175,7 @@ export class JazzStore implements Store {
     }
     const m = await this.recordMap(entity, id);
     if (!m) throw new Error(`update: ${entity}/${id} not found`);
+    this.assertMayWrite(m);
     // Set only the changed keys. Writing the whole record back would make every field a write and
     // clobber a concurrent peer's edit to a field this caller never touched — throwing away the
     // per-key merge that is the entire reason for this store.
@@ -998,7 +1201,7 @@ export class JazzStore implements Store {
             JazzStore.replaceText(existing, v);
             continue;
           }
-          const made = typeof v === "string" ? this.newText(v) : null;
+          const made = typeof v === "string" ? this.newText(v, m.group) : null;
           m.set(k, made ? textRef(made.id) : v);
           continue;
         }
@@ -1056,6 +1259,7 @@ export class JazzStore implements Store {
     }
     const m = await this.recordMap(entity, id);
     if (!m) throw new Error(`increment: ${entity}/${id} not found`);
+    this.assertMayWrite(m);
     const session = this.node.currentSessionID ?? "local";
     const key = JazzStore.counterKey(field, session);
     const mine = Number(m.get(key) ?? 0);
@@ -1086,11 +1290,12 @@ export class JazzStore implements Store {
     }
     const m = await this.recordMap(entity, id);
     if (!m) throw new Error(`editText: ${entity}/${id} not found`);
+    this.assertMayWrite(m);
     let text = await this.textOf(m.get(field));
     this.local(() => {
       if (!text) {
         const current = m.get(field);
-        text = this.newText(typeof current === "string" ? current : "");
+        text = this.newText(typeof current === "string" ? current : "", m.group);
         if (!text) throw new Error("This store cannot hold a text several people write at once.");
         m.set(field, textRef(text.id));
       }
@@ -1174,9 +1379,9 @@ export class JazzStore implements Store {
   }
 
   /** A new text CoValue holding `init`, or `null` where the group cannot make one (an older fake). */
-  private newText(init: unknown): RawTextLike | null {
-    if (!this.group.createPlainText) return null;
-    const text = this.group.createPlainText<RawTextLike>(typeof init === "string" ? init : "");
+  private newText(init: unknown, group: RawGroupLike = this.group): RawTextLike | null {
+    if (!group.createPlainText) return null;
+    const text = group.createPlainText<RawTextLike>(typeof init === "string" ? init : "");
     this.texts.set(text.id, text);
     return text;
   }
@@ -1259,6 +1464,7 @@ export class JazzStore implements Store {
   /** Counter subtotals folded back into plain fields, with the per-session keys hidden. */
   private static withCounters(m: RawMapLike): Record<string, unknown> {
     const raw = m.toJSON() as Record<string, unknown>;
+    delete raw[KIDS]; // a shared record's own list of the records that point at it: bookkeeping
     const fields = new Set<string>();
     for (const k of Object.keys(raw)) {
       const at = k.indexOf("\u0001");
@@ -1272,16 +1478,18 @@ export class JazzStore implements Store {
   }
 
   async delete(entity: string, id: Id): Promise<void> {
-    const index = await this.entityIndexIfPresent(entity);
-    if (!index) return;
+    const at = await this.locate(entity, id);
+    if (!at) return;
+    const { index, key } = at;
     if (this.creatorOnly.has(entity)) {
-      const found = await this.scoped(entity, id);
+      const found = await this.scopedIn(index, key);
       if (!found) return;
       this.assertCreator(found.creator, "delete");
-    } else if (typeof index.get(id) !== "string") return;
+    } else if (typeof index.get(key) !== "string") return;
+    this.assertMayWrite(index);
     // Tombstone by dropping the index entry. The record CoMap itself is left addressable so a
     // concurrent peer editing it does not resurrect a half-record through the index.
-    this.local(() => index.delete(id));
+    this.local(() => index.delete(key));
     // A record's conversation dies with it (KA-35). Left behind, the messages would be unreachable
     // — nothing lists a thread whose record is gone — and would come back attached to the wrong
     // thing if that id were ever reused. The transactions stay in the log, which nothing compacts

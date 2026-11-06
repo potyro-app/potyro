@@ -210,6 +210,8 @@ class IsolateLoadedApp implements LoadedApp {
         if (!row) throw new Error(`increment: ${entity}/${id} not found`);
         return serialize(await resolveRecord(this.resolveDeps, entity, row, false));
       }
+      case "data.access":
+        return serialize(this.store.recordAccess ? await this.store.recordAccess(op.entity as string, op.id as string) : "admin");
       case "text.edit":
       case "text.runs":
       case "text.anchor":

@@ -101,6 +101,10 @@ export function createRuntime(deps: RuntimeDeps): PotyroRuntime {
       creatorOnly: Object.entries(core.definition.entities)
         .filter(([, def]) => def.editableBy === "creator")
         .map(([entity]) => entity),
+      // Records shared one by one (docs/24 §12): each in a group of its own, with those that point at it.
+      sharedRecords: Object.entries(core.definition.entities)
+        .filter(([, def]) => def.share === "record")
+        .map(([entity]) => entity),
     },
   );
 
