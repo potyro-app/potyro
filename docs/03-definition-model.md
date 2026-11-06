@@ -146,7 +146,10 @@ entities: {
 member · relation · list`. (No `computed` field *type* — computed is a function block. This cleanly
 separates shape from logic.) Options per type are unchanged from the prior schema draft
 (min/max/unit, enum options, relation `to`/`many`, list `of`/`ordered`, media `accept`/
-`multiple`, etc.). `default` may be a value or a function `(ctx) => value`.
+`multiple`, etc.). `default` may be a value or a function `(ctx) => value`. A `text` field with
+`collaborative: true` is one several people type into at once — edited with `ctx.text` (docs/04
+"Writing together"), merged character by character in a shared app, each stretch remembering who
+typed it.
 
 **Money is `money`, never a `number` with a "€" unit** (KA-26). Its value is WHOLE MINOR UNITS — an
 integer of cents, `4200` for €42.00 — because `0.1 + 0.2` is not `0.3`, and in a shared ledger that

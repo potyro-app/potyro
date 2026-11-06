@@ -67,7 +67,7 @@ export async function enrolEveryApp(onProgress?: (p: EnrolProgress) => void): Pr
         result.moved += 1;
         continue;
       }
-      const { copied, warnings } = await toggleAppSync(app.id, entities, true, new Date().toISOString());
+      const { copied, warnings } = await toggleAppSync(app.id, entities, true, new Date().toISOString(), app.source);
       result.moved += 1;
       result.records += copied.records;
       result.warnings.push(...warnings.map((w) => `${app.name}: ${w}`));

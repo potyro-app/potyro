@@ -80,6 +80,13 @@ export function guardedStore(store: Store, refusal: () => string | null): Store 
     increment: store.increment
       ? write((entity: string, id: string, field: string, delta: number) => store.increment!(entity, id, field, delta))
       : undefined,
+    // A collaborative text's edits are writes; where its characters are and who typed them are reads.
+    // Left off this list, the store looks like one that cannot merge, and the host falls back to
+    // writing the whole text — which, from two devices at once, doubles it.
+    editText: store.editText ? write((entity: string, id: string, field: string, edits: Parameters<NonNullable<Store["editText"]>>[3]) => store.editText!(entity, id, field, edits)) : undefined,
+    textRuns: store.textRuns ? (entity, id, field) => store.textRuns!(entity, id, field) : undefined,
+    textAnchor: store.textAnchor ? (entity, id, field, at) => store.textAnchor!(entity, id, field, at) : undefined,
+    textIndex: store.textIndex ? (entity, id, field, anchor) => store.textIndex!(entity, id, field, anchor) : undefined,
     putBlob: write((b: Blob) => store.putBlob(b)),
     putBlobWithKey: store.putBlobWithKey ? write((key: string, b: Blob) => store.putBlobWithKey!(key, b)) : undefined,
     kvSet: write((k: string, v: string) => store.kvSet(k, v)),

@@ -1,0 +1,23 @@
+{
+  "name": "@potyro/app-write-together",
+  "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
+  "private": true,
+  "type": "module",
+  "description": "Write Together: a markdown document several people type into at once, each in their own colour, with comments on the words (docs/04 \"Writing together\")",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "mkdir -p dist && node ../../scripts/pack-app.mjs write-together.app.tsx -o dist/write-together.potyro-app.zip",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "potyro": "workspace:*",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
