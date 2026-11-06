@@ -42,7 +42,7 @@
 //   `SqliteStore` (which `JSON.stringify`s its `doc`) rather than `MemoryStore` (which uses
 //   `structuredClone` and preserves `Date`). Matching the *durable* store is the right precedent.
 
-import type { Id, PotyroRecord, MediaRef, Value } from "potyro";
+import type { Id, PotyroRecord, MediaRef, TextEdit, TextRun, Value } from "potyro";
 import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, Store, StoreRules, StoreSchema, StoredFile, Unsubscribe } from "./types.js";
 import { recordThread } from "./types.js";
 import { foldSet, foldSetFields, isScalarSet, parseSetKey, setFieldsOf, setKey, setWrites } from "./set-field.js";
@@ -50,6 +50,7 @@ import { applyMigrationStep } from "./migrate.js";
 import { ulid } from "./ulid.js";
 import { HybridClock, formatHlc, parseHlc } from "./hlc.js";
 import { isReservedPath } from "./app-lock.js";
+import { END_ANCHOR, anchorOp, anchorPosition, graphemeAt, graphemeFrom, opAnchor, textFieldsOf, textRef, textRefOf, utf16Starts } from "./text-field.js";
 
 /** Fields this store maintains itself. Their edits are not activity anyone wants reported. */
 const BOOKKEEPING = new Set(["id", "createdAt", "createdBy", "updatedAt"]);
@@ -79,7 +80,28 @@ interface RawGroupLike {
   createMap<T = RawMapLike>(init?: Record<string, unknown>): T;
   /** A binary CoValue: bytes sync on their own, not as transactions in the app's document (KA-20). */
   createBinaryStream?<T = RawBinaryLike>(): T;
+  /** A text CoValue: a list CRDT of graphemes, for a collaborative text field (text-field.ts). */
+  createPlainText?<T = RawTextLike>(init?: string): T;
 }
+
+/** cojson's `RawCoPlainText`, narrowed to what this store uses. Indexes are GRAPHEMES. */
+interface RawTextLike {
+  id: string;
+  toString(): string;
+  /** The graphemes, in order. */
+  asArray(): string[];
+  /** Each grapheme with the op that inserted it; `${sessionID}:${txIndex}:${changeIdx}` names an op. */
+  entries(): { value: string; opID: { sessionID: string; txIndex: number; changeIdx: number } }[];
+  /** Where a live op's grapheme is now, by its stringified op id. */
+  readonly mapping: { idxBeforeOpID: Record<string, number | undefined> };
+  insertBefore(idx: number, text: string, privacy?: "private" | "trusting"): void;
+  deleteRange(range: { from: number; to: number }, privacy?: "private" | "trusting"): void;
+  /** Who inserted the grapheme at `idx`, from the signing session: not a claim. */
+  editAt(idx: number): { by: string } | undefined;
+  subscribe(listener: (t: RawTextLike) => void): () => void;
+}
+
+const opIdOf = (op: { sessionID: string; txIndex: number; changeIdx: number }): string => `${op.sessionID}:${op.txIndex}:${op.changeIdx}`;
 
 /** cojson's `RawBinaryCoStream`, narrowed to what this store uses. */
 interface RawBinaryLike {
@@ -256,6 +278,10 @@ export class JazzStore implements Store {
   private localDepth = 0;
   /** entity -> set-valued field keys, from `describe`. Empty until the app says otherwise. */
   private setFields = new Map<string, Set<string>>();
+  /** entity -> collaborative text field keys, from `describe` (text-field.ts). */
+  private textFields = new Map<string, Set<string>>();
+  /** Text CoValues this store has loaded, by id: resolved on every read, so kept at hand. */
+  private readonly texts = new Map<string, RawTextLike>();
 
   /**
    * Learn which fields are sets, so writing one merges element by element (KA-38).
@@ -265,6 +291,7 @@ export class JazzStore implements Store {
    */
   describe(schema: StoreSchema, rules?: StoreRules): void {
     this.setFields = setFieldsOf(schema);
+    this.textFields = textFieldsOf(schema);
     this.creatorOnly = new Set(rules?.creatorOnly ?? []);
   }
 
@@ -429,7 +456,7 @@ export class JazzStore implements Store {
       // Every id ever indexed: a record someone else "deleted" is still there, as its creator left it.
       for (const recordId of Object.keys(index.ops ?? {}).concat(index.ops ? [] : index.keys())) {
         const found = await this.scoped(entity, recordId);
-        if (found) rows.push(JazzStore.materialise(found.m) as unknown as PotyroRecord);
+        if (found) rows.push(await this.record(found.m));
       }
       return rows.sort((a, b) =>
         a.createdAt === b.createdAt ? (a.id < b.id ? -1 : 1) : a.createdAt < b.createdAt ? -1 : 1,
@@ -438,7 +465,7 @@ export class JazzStore implements Store {
     for (const recordId of index.keys()) {
       const refId = index.get(recordId);
       if (typeof refId !== "string") continue; // deleted: tombstoned to undefined
-      rows.push(JazzStore.materialise(await this.loadMap(refId)) as unknown as PotyroRecord);
+      rows.push(await this.record(await this.loadMap(refId)));
     }
     return rows.sort((a, b) =>
       a.createdAt === b.createdAt ? (a.id < b.id ? -1 : 1) : a.createdAt < b.createdAt ? -1 : 1,
@@ -544,6 +571,28 @@ export class JazzStore implements Store {
       );
     };
 
+    // The text CoValues a record points at (text-field.ts): a peer's typing changes one of THEM,
+    // never the record's own map, so each is watched beside its record.
+    const perText = new Map<string, () => void>();
+    const watchTexts = (m: RawMapLike): void => {
+      for (const v of Object.values(m.toJSON())) {
+        const ref = textRefOf(v);
+        if (!ref || perText.has(ref)) continue;
+        perText.set(ref, () => {}); // held while it loads, so one notification does not attach twice
+        void this.loadText(ref).then((t) => {
+          if (!t) {
+            perText.delete(ref); // not here yet: the next notification tries again
+            return;
+          }
+          perText.set(
+            ref,
+            t.subscribe(() => {
+              if (this.localDepth === 0) this.emit(entity);
+            }),
+          );
+        });
+      }
+    };
     const syncRecordWatchers = (): void => {
       for (const refId of refsToWatch()) {
         if (perRecord.has(refId)) continue;
@@ -553,9 +602,11 @@ export class JazzStore implements Store {
               perRecord.set(
                 refId,
                 m.subscribe(() => {
+                  watchTexts(m);
                   if (this.localDepth === 0) this.emit(entity);
                 }),
               );
+              watchTexts(m);
             }
           })
           // A record that cannot be loaded yet is not fatal: it will arrive with a later index
@@ -574,6 +625,7 @@ export class JazzStore implements Store {
     this.watched.set(entity, () => {
       unsubIndex();
       for (const un of perRecord.values()) un();
+      for (const un of perText.values()) un();
     });
   }
 
@@ -628,7 +680,7 @@ export class JazzStore implements Store {
 
   async get(entity: string, id: Id): Promise<PotyroRecord | null> {
     const m = await this.recordMap(entity, id);
-    return m ? (JazzStore.materialise(m) as unknown as PotyroRecord) : null;
+    return m ? this.record(m) : null;
   }
 
   /**
@@ -839,6 +891,8 @@ export class JazzStore implements Store {
       // A plain field. Its own key may ALSO be the base of a derived one, so it is grouped rather
       // than emitted whenever element or subtotal keys exist beside it.
       for (const edit of m.editsAt(key) ?? []) {
+        // A collaborative text's words live in their own CoValue; the record only ever pointed at it.
+        if (textRefOf(edit.value)) continue;
         out.push({ field: key, value: edit.value, by: String(edit.by), at: asDate(edit.at) });
       }
     }
@@ -898,7 +952,13 @@ export class JazzStore implements Store {
       await this.watchEntity(entity);
     }
     this.local(() => {
-      const created = this.group.createMap<RawMapLike>(record as unknown as Record<string, unknown>);
+      // A collaborative text field gets a text CoValue of its own from the start (text-field.ts).
+      const stored = { ...(record as unknown as Record<string, unknown>) };
+      for (const field of this.textFields.get(entity) ?? []) {
+        const text = this.newText(stored[field]);
+        if (text) stored[field] = textRef(text.id);
+      }
+      const created = this.group.createMap<RawMapLike>(stored);
       index.set(id, created.id);
     });
     this.emit(entity);
@@ -924,9 +984,24 @@ export class JazzStore implements Store {
     // what is actually there and only the elements that CHANGED are written, each under its own key.
     const sets = this.setFields.get(entity);
     const current = sets?.size ? (JazzStore.materialise(m) as Record<string, unknown>) : null;
+    // A collaborative text written WHOLE (`patch`, a form): the text CoValue is replaced in place, so
+    // it keeps its id and the record keeps pointing at it. Loaded before the write, which is sync.
+    const texts = this.textFields.get(entity);
+    const held = new Map<string, RawTextLike | null>();
+    for (const k of texts ?? []) if (k in patch) held.set(k, await this.textOf(m.get(k)));
     this.local(() => {
       for (const [k, v] of Object.entries(toJsonValue(patch))) {
         if (k === "id" || k === "createdAt") continue; // immutable
+        if (texts?.has(k)) {
+          const existing = held.get(k);
+          if (typeof v === "string" && existing) {
+            JazzStore.replaceText(existing, v);
+            continue;
+          }
+          const made = typeof v === "string" ? this.newText(v) : null;
+          m.set(k, made ? textRef(made.id) : v);
+          continue;
+        }
         // `isScalarSet` is the honest guard, not a formality: element-wise merge needs elements that
         // can be keys. Anything else (a list of rows, a null, a media ref) is written whole, which is
         // what this store did for everything until now.
@@ -949,7 +1024,7 @@ export class JazzStore implements Store {
     });
     this.emit(entity);
     await this.whenDurable?.();
-    return JazzStore.materialise(m) as unknown as PotyroRecord;
+    return this.record(m);
   }
 
   /**
@@ -991,6 +1066,154 @@ export class JazzStore implements Store {
     this.emit(entity);
     await this.whenDurable?.();
     return JazzStore.counterTotal(m, field);
+  }
+
+  // ---- collaborative text (text-field.ts) ------------------------------------------------------
+
+  /**
+   * Apply edits to a text several people type into at once.
+   *
+   * The field's words live in a text CoValue of their own — a list CRDT of graphemes — so an insert
+   * is "after this grapheme" and a delete is "those graphemes", and two people's edits merge the way
+   * a list merges rather than the way a value does (the newest save, the other's words gone). A
+   * field still holding a plain string (written before the app said `collaborative`, or by a copy
+   * that did not know) gets its CoValue here, on the first edit: nothing to migrate.
+   */
+  async editText(entity: string, id: Id, field: string, edits: TextEdit[]): Promise<string> {
+    if (this.creatorOnly.has(entity)) {
+      const found = await this.scoped(entity, id);
+      if (found) this.assertCreator(found.creator, "change");
+    }
+    const m = await this.recordMap(entity, id);
+    if (!m) throw new Error(`editText: ${entity}/${id} not found`);
+    let text = await this.textOf(m.get(field));
+    this.local(() => {
+      if (!text) {
+        const current = m.get(field);
+        text = this.newText(typeof current === "string" ? current : "");
+        if (!text) throw new Error("This store cannot hold a text several people write at once.");
+        m.set(field, textRef(text.id));
+      }
+      for (const edit of edits) JazzStore.applyEdit(text, edit);
+      m.set("updatedAt", nowIso());
+    });
+    this.emit(entity);
+    await this.whenDurable?.();
+    return text!.toString();
+  }
+
+  /** One edit, in UTF-16 units, onto the graphemes as they are NOW (the edits before it have landed). */
+  private static applyEdit(t: RawTextLike, edit: TextEdit): void {
+    const starts = utf16Starts(t.asArray());
+    if ("insert" in edit) {
+      if (!edit.insert) return;
+      // `insertBefore(n)` for n = the count appends: cojson inserts after grapheme n - 1.
+      t.insertBefore(graphemeFrom(starts, edit.at), edit.insert);
+      return;
+    }
+    const from = graphemeAt(starts, Math.max(0, edit.from));
+    const to = graphemeFrom(starts, Math.max(edit.from, edit.to));
+    if (to > from) t.deleteRange({ from, to });
+  }
+
+  /** The whole text, written over: what `update` does for a collaborative field handed a string. */
+  private static replaceText(t: RawTextLike, next: string): void {
+    const n = t.asArray().length;
+    if (n) t.deleteRange({ from: 0, to: n });
+    if (next) t.insertBefore(0, next);
+  }
+
+  /** The text as runs, each the stretch one account typed, from the signing sessions (not a claim). */
+  async textRuns(entity: string, id: Id, field: string): Promise<TextRun[]> {
+    const m = await this.recordMap(entity, id);
+    if (!m) throw new Error(`textRuns: ${entity}/${id} not found`);
+    const value = m.get(field);
+    const text = await this.textOf(value);
+    if (!text) return typeof value === "string" && value ? [{ text: value, by: null }] : [];
+    const out: TextRun[] = [];
+    const entries = text.entries();
+    for (let i = 0; i < entries.length; i++) {
+      const by = text.editAt(i)?.by ?? null;
+      const last = out[out.length - 1];
+      if (last && last.by === by) last.text += entries[i]!.value;
+      else out.push({ text: entries[i]!.value, by: by === null ? null : String(by) });
+    }
+    return out;
+  }
+
+  /** The op that inserted the grapheme at `at` (UTF-16), or the end: an anchor that follows it. */
+  async textAnchor(entity: string, id: Id, field: string, at: number): Promise<string> {
+    const m = await this.recordMap(entity, id);
+    if (!m) throw new Error(`textAnchor: ${entity}/${id} not found`);
+    const text = await this.textOf(m.get(field));
+    if (!text) {
+      const plain = m.get(field);
+      return at >= (typeof plain === "string" ? plain.length : 0) ? END_ANCHOR : `i:${Math.max(0, at)}`;
+    }
+    const entries = text.entries();
+    const starts = utf16Starts(entries.map((e) => e.value));
+    const g = graphemeAt(starts, at);
+    return g >= entries.length ? END_ANCHOR : opAnchor(opIdOf(entries[g]!.opID));
+  }
+
+  /** Where an anchor's grapheme is now (UTF-16), or `null` once it has been deleted. */
+  async textIndex(entity: string, id: Id, field: string, anchor: string): Promise<number | null> {
+    const m = await this.recordMap(entity, id);
+    if (!m) throw new Error(`textIndex: ${entity}/${id} not found`);
+    const value = m.get(field);
+    const text = await this.textOf(value);
+    const length = text ? text.toString().length : typeof value === "string" ? value.length : 0;
+    if (anchor === END_ANCHOR) return length;
+    const position = anchorPosition(anchor);
+    if (position !== null) return Math.min(position, length);
+    const op = anchorOp(anchor);
+    if (op === null || !text) return null;
+    const g = text.mapping.idxBeforeOpID[op];
+    if (g === undefined) return null;
+    return utf16Starts(text.asArray())[g] ?? null;
+  }
+
+  /** A new text CoValue holding `init`, or `null` where the group cannot make one (an older fake). */
+  private newText(init: unknown): RawTextLike | null {
+    if (!this.group.createPlainText) return null;
+    const text = this.group.createPlainText<RawTextLike>(typeof init === "string" ? init : "");
+    this.texts.set(text.id, text);
+    return text;
+  }
+
+  /** The text CoValue a stored value points at, loaded — or `null` for a plain value or one not here yet. */
+  private async textOf(value: unknown): Promise<RawTextLike | null> {
+    const ref = textRefOf(value);
+    return ref ? this.loadText(ref) : null;
+  }
+
+  private async loadText(id: string): Promise<RawTextLike | null> {
+    const cached = this.texts.get(id);
+    if (cached) return cached;
+    try {
+      const v = await this.node.load(id);
+      if (v === "unavailable" || v == null) return null;
+      this.texts.set(id, v as RawTextLike);
+      return v as RawTextLike;
+    } catch {
+      return null; // pointer known, text not synced yet
+    }
+  }
+
+  /**
+   * A record as the app reads it: `materialise` for the per-key shapes, then every text reference
+   * resolved to its words. A text that has not reached this device yet reads as "" until it does,
+   * and the watcher says when (`watchEntity`).
+   */
+  private async record(m: RawMapLike): Promise<PotyroRecord> {
+    const raw = JazzStore.materialise(m);
+    for (const [k, v] of Object.entries(raw)) {
+      const ref = textRefOf(v);
+      if (!ref) continue;
+      const text = await this.loadText(ref);
+      raw[k] = text ? text.toString() : "";
+    }
+    return raw as unknown as PotyroRecord;
   }
 
   /** `\u0001` cannot appear in a field name, so a counter key can never collide with a real field. */
@@ -1095,7 +1318,9 @@ export class JazzStore implements Store {
             for (const key of m.keys()) {
               if (parseSetKey(key) ?? JazzStore.parseCounterKey(key)) m.delete(key);
             }
-            for (const [k, v] of Object.entries(row)) m.set(k, v as unknown);
+            // A collaborative text is not rolled back (its edits are its own CoValue's); the record
+            // keeps pointing at it rather than being handed a plain copy.
+            for (const [k, v] of Object.entries(row)) if (!textRefOf(m.get(k))) m.set(k, v as unknown);
           } else {
             const created = this.group.createMap<RawMapLike>(row as unknown as Record<string, unknown>);
             index.set(row.id, created.id);

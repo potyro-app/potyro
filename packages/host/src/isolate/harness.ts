@@ -183,6 +183,17 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         var row = await bridge({op:"data.increment", entity:entity, id:id, field:field, delta:delta});
         return await evalComputed(app, entity, row, ctx);
       },
+      text: function(entity, id, field){
+        return {
+          edit: async function(edits){
+            var row = await bridge({op:"text.edit", entity:entity, id:id, field:field, edits:edits});
+            return await evalComputed(app, entity, row, ctx);
+          },
+          runs: function(){ return bridge({op:"text.runs", entity:entity, id:id, field:field}); },
+          anchor: function(at){ return bridge({op:"text.anchor", entity:entity, id:id, field:field, at:at}); },
+          index: function(anchor){ return bridge({op:"text.index", entity:entity, id:id, field:field, anchor:anchor}); }
+        };
+      },
       delete: async function(entity, id){ await bridge({op:"data.delete", entity:entity, id:id}); },
       transaction: async function(fn){ return fn(ctx); },
       storage: {

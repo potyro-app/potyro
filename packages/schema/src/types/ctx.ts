@@ -178,6 +178,38 @@ export interface CtxGuests {
   remove(id: Id): Promise<void>;
 }
 
+/**
+ * One change to a collaborative text (`ctx.text`): put `insert` in at `at`, or take out `[from, to)`.
+ * Positions count UTF-16 units of the text as this caller last read it, like `String.slice`.
+ */
+export type TextEdit = { at: number; insert: string } | { from: number; to: number };
+
+/**
+ * A stretch of a collaborative text typed by one person. `by` is their account id (a `Person.id`,
+ * so `ctx.people` names them), or `null` where nobody is recorded — text written before the app was
+ * shared, in a store that keeps no authorship.
+ */
+export interface TextRun {
+  text: string;
+  by: string | null;
+}
+
+/** A `text` field with `collaborative: true`, edited as changes rather than as a whole (docs/04 "Writing together"). */
+export interface CtxText {
+  /** Apply `edits`, in order, each against the text as the ones before it left it. Resolves to the record after. */
+  edit(edits: TextEdit[]): Promise<Resolved>;
+  /** The whole text as runs, each with who typed it, in order. `[]` for an empty text. */
+  runs(): Promise<TextRun[]>;
+  /**
+   * An opaque anchor that follows the character at `at` through everyone's later edits — the start
+   * of a comment's range, a bookmark. `at` equal to the length anchors the end of the text. Keep it
+   * in a text field of a record.
+   */
+  anchor(at: number): Promise<string>;
+  /** Where an anchor's character is now, or `null` once that character has been deleted. */
+  index(anchor: string): Promise<number | null>;
+}
+
 /** App-scoped key/value storage, separate from entity records. */
 export interface CtxStorage {
   get<T = unknown>(k: string): Promise<T | null>;
@@ -436,15 +468,15 @@ export interface Ctx {
   /**
    * Add to a number — use this instead of `patch` for anything people count.
    *
-   * `patch(id, { n: record.n + 1 })` reads on one device and writes on another: two people pressing
-   * at the same moment both read 0, both write 1, and one press is gone with nothing to show for it.
-   * Stating the CHANGE rather than the result lets the store add them up, because it is the only
-   * party that can see both devices.
-   *
-   * Nothing else about the field changes — `record.n` is still one number, and a field written with
-   * `patch` before is the starting point rather than something to migrate.
+   * `patch(id, { n: record.n + 1 })` from two people at once loses a press: both read 0, both write
+   * 1. Stating the CHANGE lets the store add them up. `record.n` is still one number.
    */
   increment(entity: string, id: Id, field: string, delta: number): Promise<Resolved>;
+  /**
+   * A text several people type into at once (a `text` field with `collaborative: true`): `edit` what
+   * changed, so everyone's keystrokes merge; `runs` who typed what; an `anchor` that follows a character.
+   */
+  text(entity: string, id: Id, field: string): CtxText;
   delete(entity: string, id: Id): Promise<void>;
   transaction<T>(fn: (tx: Ctx) => Promise<T>): Promise<T>;
 
