@@ -17,7 +17,7 @@
 // through everyone's edits, and read as "the words are gone" once those are deleted.
 import type { Resolved, TextRun, ViewProps } from "potyro";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { applyEditsToRuns, diffEdits, freeColor, hashColor, initials, mapIndex, merge3, resolveColors, segments, strokeOf, tintOf, type Placed } from "./diff.js";
+import { applyEditsToRuns, diffEdits, fitRuns, freeColor, hashColor, initials, mapIndex, merge3, resolveColors, segments, strokeOf, tintOf, type Placed } from "./diff.js";
 import { renderMarkdown } from "./markdown.js";
 import { applyMark, markForKey, TOOLS, type Mark } from "./marks.js";
 import { SyncLoop } from "./loop.js";
@@ -49,6 +49,9 @@ function useSharedText(props: ViewProps, docId: string, body: string, ready: boo
     const end = focused ? mapIndex(textRef.current, next, el.selectionEnd) : null;
     textRef.current = next;
     setText(next);
+    // Words that arrived from someone else are drawn at once, uncoloured until the next answer names
+    // their writer; everything already coloured stays coloured.
+    setRuns((r) => fitRuns(r, next, null));
     if (el && focused && start !== null && end !== null) requestAnimationFrame(() => el.setSelectionRange(start, end));
   };
 
@@ -59,7 +62,8 @@ function useSharedText(props: ViewProps, docId: string, body: string, ready: boo
       .runs()
       .then(
         (r) => {
-          if (n === runsAsked.current) setRuns(r);
+          // The answer spells the text as the host had it; the screen may be keystrokes ahead by now.
+          if (n === runsAsked.current) setRuns(fitRuns(r, textRef.current, me));
         },
         () => undefined,
       );
