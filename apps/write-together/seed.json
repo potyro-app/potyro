@@ -1,0 +1,48 @@
+{
+  "doc": [
+    {
+      "id": "doc-lisbon",
+      "title": "Trip to Lisbon",
+      "body": "# Trip to Lisbon\n\nWe land on Friday at 14:10. Ana books the flat, Bo finds a place for dinner, Cy brings the good camera.\n\n## Before we go\n\n- [x] Train tickets\n- [ ] Flat near Alfama\n- [ ] Dinner on Friday — somewhere with fado?\n- [ ] Tell the neighbours about the cat\n\n## Saturday\n\nMorning at the Feira da Ladra, then the tram up to the castle. *Lunch is whoever finds a table first.*\n\n> Bring the good camera."
+    },
+    {
+      "id": "doc-weekly",
+      "title": "Team weekly",
+      "body": "# Team weekly\n\n**Monday.** The release went out. Two reports came in over the weekend, both about the login page on older phones.\n\n**What we decided**\n\n1. Fix the login page first, before anything new.\n2. Dana writes the release notes; everyone adds a line about their part.\n3. No meeting on Friday.\n\n**Open**\n\n- Who takes the support rota next month?\n- The office plant is dying again."
+    },
+    {
+      "id": "doc-reading",
+      "title": "Reading notes: The Left Hand of Darkness",
+      "body": "# The Left Hand of Darkness\n\nHalf way through. Genly keeps reading everyone through his own habits, and the book keeps letting him be wrong about it.\n\nLines to keep:\n\n- \"The only thing that makes life possible is permanent, intolerable uncertainty.\"\n- The chapter told as a myth, about the two brothers.\n\nQuestion for the group: does the ice crossing work because it is slow?"
+    }
+  ],
+  "comment": [
+    {
+      "id": "c-fado",
+      "doc": "doc-lisbon",
+      "from": "i:208",
+      "to": "i:227",
+      "quote": "somewhere with fado",
+      "text": "There is a place in Alfama my cousin swears by. I will ask.",
+      "done": false
+    },
+    {
+      "id": "c-camera",
+      "doc": "doc-lisbon",
+      "from": "i:389",
+      "to": "i:410",
+      "quote": "Bring the good camera",
+      "text": "And the spare battery this time.",
+      "done": false
+    },
+    {
+      "id": "c-rota",
+      "doc": "doc-weekly",
+      "from": "i:313",
+      "to": "i:351",
+      "quote": "Who takes the support rota next month?",
+      "text": "I can, if someone covers the first week.",
+      "done": false
+    }
+  ]
+}

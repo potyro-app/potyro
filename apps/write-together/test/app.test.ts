@@ -24,9 +24,11 @@ describe("Write Together", () => {
   });
 
   it("lists a document by its first line that says more than the title", () => {
-    expect(firstLine("# Plan\n\n- buy milk")).toBe("Plan");
-    expect(firstLine("# Plan\n\n- buy milk", "Plan")).toBe("buy milk");
+    expect(firstLine("# Plan\n\n- buy milk")).toBe("buy milk");
+    expect(firstLine("# Plan\n\n- [ ] buy milk", "Plan")).toBe("buy milk");
     expect(firstLine("\n\n- buy milk\nmore")).toBe("buy milk");
+    expect(firstLine("# Weekly\n\n**Monday.** The release went out, see [notes](https://x.y).", "Weekly")).toBe("Monday. The release went out, see notes.");
+    expect(firstLine("# Only a heading")).toBe("");
     expect(firstLine("")).toBe("");
     expect(firstLine(null)).toBe("");
   });

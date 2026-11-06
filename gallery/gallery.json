@@ -108,35 +108,35 @@
   },
   "apps": [
     {
-      "id": "mood-sleep",
+      "id": "write-together",
       "status": "ready",
       "from": {
         "package": [
-          "apps/mood-sleep/mood-sleep.app.ts"
+          "apps/write-together/write-together.app.tsx"
         ],
-        "seed": "apps/mood-sleep/seed.json"
+        "seed": "apps/write-together/seed.json"
       },
-      "category": "wellbeing",
-      "icon": "🌙",
+      "category": "notes",
+      "icon": "✍️",
       "name": {
-        "en": "Sleep & Mood",
-        "pt-BR": "Sono e humor",
-        "de": "Schlaf & Stimmung",
-        "es": "Sueño y ánimo",
-        "pl": "Sen i nastrój",
-        "it": "Sonno e umore"
+        "en": "Write Together",
+        "pt-BR": "Escrever juntos",
+        "de": "Zusammen schreiben",
+        "es": "Escribir juntos",
+        "pl": "Piszmy razem",
+        "it": "Scrivere insieme"
       },
       "line": {
-        "en": "How you slept and how you felt, and what the mornings add up to.",
-        "pt-BR": "Como você dormiu e como se sentiu, e o que as manhãs mostram juntas.",
-        "de": "Wie du geschlafen und dich gefühlt hast, und was die Morgen zusammen ergeben.",
-        "es": "Cómo dormiste y cómo te sentiste, y lo que suman las mañanas.",
-        "pl": "Jak spałeś i jak się czułeś, i co z tych poranków wynika.",
-        "it": "Come hai dormito e come ti sei sentito, e cosa dicono le mattine messe insieme."
+        "en": "A document everyone types into at once, each in their own colour, with comments on the words.",
+        "pt-BR": "Um documento em que todos escrevem ao mesmo tempo, cada um na sua cor, com comentários nas palavras.",
+        "de": "Ein Dokument, in das alle gleichzeitig schreiben, jeder in seiner Farbe, mit Kommentaren an den Wörtern.",
+        "es": "Un documento en el que todos escriben a la vez, cada uno con su color, con comentarios sobre las palabras.",
+        "pl": "Dokument, w którym wszyscy piszą naraz, każdy w swoim kolorze, z komentarzami do słów.",
+        "it": "Un documento in cui tutti scrivono insieme, ognuno con il suo colore, con commenti sulle parole."
       },
-      "link": "https://potyro.app/s/5OUPR2Z0zj9wCPwmGaQMkw#k=JOY96iHbUY5Lv2LmZ7zWGg",
-      "screenshot": "shots/mood-sleep.jpg",
-      "publishedAt": "2026-10-17T22:00:08.519Z"
+      "link": "https://potyro.app/s/1-XwqbVXRSs5C-pF-Y0jYQ#k=m0053WTRzAM_9Q_qPnvTDQ",
+      "screenshot": "shots/write-together.jpg",
+      "publishedAt": "2026-11-06T21:21:06.442Z"
     },
     {
       "id": "draw-guess",
@@ -169,34 +169,35 @@
       "publishedAt": "2026-10-17T21:45:11.184Z"
     },
     {
-      "id": "mirror-monsters",
+      "id": "piano",
       "status": "ready",
       "from": {
         "package": [
-          "apps/mirror-monsters/mirror-monsters.app.ts"
+          "apps/piano/piano.app.tsx",
+          "apps/piano/plan.json"
         ]
       },
-      "category": "play",
-      "icon": "👹",
+      "category": "music",
+      "icon": "🎹",
       "name": {
-        "en": "Mirror Monsters",
-        "pt-BR": "Monstros no Espelho",
-        "de": "Spiegelmonster",
-        "es": "Monstruos del Espejo",
-        "pl": "Lustrzane Potwory",
-        "it": "Mostri allo Specchio"
+        "en": "Piano",
+        "pt-BR": "Piano",
+        "de": "Klavier",
+        "es": "Piano",
+        "pl": "Pianino",
+        "it": "Pianoforte"
       },
       "line": {
-        "en": "Your selfie camera with a monster in it: googly eyes and fangs that follow your face.",
-        "pt-BR": "A câmera frontal com um monstro dentro: olhos esbugalhados e presas que seguem o seu rosto.",
-        "de": "Deine Selfie-Kamera mit einem Monster darin: Kulleraugen und Reißzähne, die deinem Gesicht folgen.",
-        "es": "Tu cámara frontal con un monstruo dentro: ojos saltones y colmillos que siguen tu cara.",
-        "pl": "Przedni aparat z potworem w środku: wyłupiaste oczy i kły, które podążają za twoją twarzą.",
-        "it": "La fotocamera frontale con un mostro dentro: occhi strabuzzati e zanne che seguono il tuo viso."
+        "en": "A practice plan for the piano, a little every day, week by week.",
+        "pt-BR": "Um plano de estudo de piano, um pouco por dia, semana a semana.",
+        "de": "Ein Übungsplan fürs Klavier, jeden Tag ein bisschen, Woche für Woche.",
+        "es": "Un plan de práctica de piano, un poco cada día, semana a semana.",
+        "pl": "Plan ćwiczeń na pianinie, codziennie trochę, tydzień po tygodniu.",
+        "it": "Un piano di studio per il pianoforte, un po’ ogni giorno, settimana dopo settimana."
       },
-      "link": "https://potyro.app/s/qJ8U18gISNgWsTOb0ZQg6Q#k=SjznyZtrH9tCLA4UJgyGBQ",
-      "screenshot": "shots/mirror-monsters.jpg",
-      "publishedAt": "2026-10-17T21:45:22.139Z"
+      "link": "https://potyro.app/s/j6NC9OtGW_db-mVSHIn7yA#k=sjkf5csDOsiF18prwy5skA",
+      "screenshot": "shots/piano.jpg",
+      "publishedAt": "2026-10-17T21:53:37.760Z"
     },
     {
       "id": "photo-garden",
@@ -227,6 +228,36 @@
       "link": "https://potyro.app/s/-vAS-ODd5cNeUSm6jHSelg#k=xOVvUDvo9A_f-rWIcJxm2g",
       "screenshot": "shots/photo-garden.jpg",
       "publishedAt": "2026-10-20T16:49:24.777Z"
+    },
+    {
+      "id": "mirror-monsters",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/mirror-monsters/mirror-monsters.app.ts"
+        ]
+      },
+      "category": "play",
+      "icon": "👹",
+      "name": {
+        "en": "Mirror Monsters",
+        "pt-BR": "Monstros no Espelho",
+        "de": "Spiegelmonster",
+        "es": "Monstruos del Espejo",
+        "pl": "Lustrzane Potwory",
+        "it": "Mostri allo Specchio"
+      },
+      "line": {
+        "en": "Your selfie camera with a monster in it: googly eyes and fangs that follow your face.",
+        "pt-BR": "A câmera frontal com um monstro dentro: olhos esbugalhados e presas que seguem o seu rosto.",
+        "de": "Deine Selfie-Kamera mit einem Monster darin: Kulleraugen und Reißzähne, die deinem Gesicht folgen.",
+        "es": "Tu cámara frontal con un monstruo dentro: ojos saltones y colmillos que siguen tu cara.",
+        "pl": "Przedni aparat z potworem w środku: wyłupiaste oczy i kły, które podążają za twoją twarzą.",
+        "it": "La fotocamera frontale con un mostro dentro: occhi strabuzzati e zanne che seguono il tuo viso."
+      },
+      "link": "https://potyro.app/s/qJ8U18gISNgWsTOb0ZQg6Q#k=SjznyZtrH9tCLA4UJgyGBQ",
+      "screenshot": "shots/mirror-monsters.jpg",
+      "publishedAt": "2026-10-17T21:45:22.139Z"
     },
     {
       "id": "daily-puzzle",
@@ -319,35 +350,278 @@
       "publishedAt": "2026-10-20T18:13:47.950Z"
     },
     {
-      "id": "piano",
+      "id": "mood-sleep",
       "status": "ready",
       "from": {
         "package": [
-          "apps/piano/piano.app.tsx",
-          "apps/piano/plan.json"
-        ]
+          "apps/mood-sleep/mood-sleep.app.ts"
+        ],
+        "seed": "apps/mood-sleep/seed.json"
       },
-      "category": "music",
-      "icon": "🎹",
+      "category": "wellbeing",
+      "icon": "🌙",
       "name": {
-        "en": "Piano",
-        "pt-BR": "Piano",
-        "de": "Klavier",
-        "es": "Piano",
-        "pl": "Pianino",
-        "it": "Pianoforte"
+        "en": "Sleep & Mood",
+        "pt-BR": "Sono e humor",
+        "de": "Schlaf & Stimmung",
+        "es": "Sueño y ánimo",
+        "pl": "Sen i nastrój",
+        "it": "Sonno e umore"
       },
       "line": {
-        "en": "A practice plan for the piano, a little every day, week by week.",
-        "pt-BR": "Um plano de estudo de piano, um pouco por dia, semana a semana.",
-        "de": "Ein Übungsplan fürs Klavier, jeden Tag ein bisschen, Woche für Woche.",
-        "es": "Un plan de práctica de piano, un poco cada día, semana a semana.",
-        "pl": "Plan ćwiczeń na pianinie, codziennie trochę, tydzień po tygodniu.",
-        "it": "Un piano di studio per il pianoforte, un po’ ogni giorno, settimana dopo settimana."
+        "en": "How you slept and how you felt, and what the mornings add up to.",
+        "pt-BR": "Como você dormiu e como se sentiu, e o que as manhãs mostram juntas.",
+        "de": "Wie du geschlafen und dich gefühlt hast, und was die Morgen zusammen ergeben.",
+        "es": "Cómo dormiste y cómo te sentiste, y lo que suman las mañanas.",
+        "pl": "Jak spałeś i jak się czułeś, i co z tych poranków wynika.",
+        "it": "Come hai dormito e come ti sei sentito, e cosa dicono le mattine messe insieme."
       },
-      "link": "https://potyro.app/s/j6NC9OtGW_db-mVSHIn7yA#k=sjkf5csDOsiF18prwy5skA",
-      "screenshot": "shots/piano.jpg",
-      "publishedAt": "2026-10-17T21:53:37.760Z"
+      "link": "https://potyro.app/s/5OUPR2Z0zj9wCPwmGaQMkw#k=JOY96iHbUY5Lv2LmZ7zWGg",
+      "screenshot": "shots/mood-sleep.jpg",
+      "publishedAt": "2026-10-17T22:00:08.519Z"
+    },
+    {
+      "id": "earthquakes",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/earthquakes/earthquakes.app.ts"
+        ]
+      },
+      "category": "world",
+      "icon": "🌋",
+      "name": {
+        "en": "Earthquakes",
+        "pt-BR": "Terremotos",
+        "de": "Erdbeben",
+        "es": "Terremotos",
+        "pl": "Trzęsienia ziemi",
+        "it": "Terremoti"
+      },
+      "line": {
+        "en": "Earthquakes around the world, on a map, as they happen.",
+        "pt-BR": "Terremotos pelo mundo, num mapa, enquanto acontecem.",
+        "de": "Erdbeben auf der ganzen Welt, auf einer Karte, während sie passieren.",
+        "es": "Terremotos de todo el mundo, en un mapa, mientras ocurren.",
+        "pl": "Trzęsienia ziemi na całym świecie, na mapie, na bieżąco.",
+        "it": "Terremoti in tutto il mondo, su una mappa, mentre accadono."
+      },
+      "link": "https://potyro.app/s/9Rek4XrHKksDhqwh05upog#k=fdks2UUbOE8n9c8CA1KFGg",
+      "screenshot": "shots/earthquakes.jpg",
+      "publishedAt": "2026-10-20T16:51:30.747Z"
+    },
+    {
+      "id": "word-watch",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/word-watch/word-watch.app.ts"
+        ]
+      },
+      "category": "world",
+      "icon": "💬",
+      "name": {
+        "en": "Word Watch",
+        "pt-BR": "De olho na palavra",
+        "de": "Wortwache",
+        "es": "Vigía de palabras",
+        "pl": "Na tropie słowa",
+        "it": "Occhio alla parola"
+      },
+      "line": {
+        "en": "Pick a word and watch it go by on Bluesky, live.",
+        "pt-BR": "Escolha uma palavra e veja ela passar no Bluesky, ao vivo.",
+        "de": "Wähle ein Wort und sieh live zu, wie es auf Bluesky vorbeizieht.",
+        "es": "Elige una palabra y mírala pasar en Bluesky, en vivo.",
+        "pl": "Wybierz słowo i patrz, jak pojawia się na Bluesky, na żywo.",
+        "it": "Scegli una parola e guardala passare su Bluesky, in tempo reale."
+      },
+      "link": "https://potyro.app/s/-l7rsQ0GxMxdYNX-h3rOuw#k=hz15XGPJR4UVEtmIob_gvw",
+      "screenshot": "shots/word-watch.jpg",
+      "publishedAt": "2026-10-20T17:02:02.524Z"
+    },
+    {
+      "id": "ticker",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/ticker/ticker.app.ts"
+        ]
+      },
+      "category": "world",
+      "icon": "📈",
+      "name": {
+        "en": "Ticker",
+        "pt-BR": "Cotações",
+        "de": "Kurse",
+        "es": "Cotizaciones",
+        "pl": "Notowania",
+        "it": "Quotazioni"
+      },
+      "line": {
+        "en": "Live prices of a few cryptocurrencies, beside the day’s euro rates.",
+        "pt-BR": "Preços ao vivo de algumas criptomoedas, ao lado das cotações do euro do dia.",
+        "de": "Live-Kurse einiger Kryptowährungen, neben den Euro-Kursen des Tages.",
+        "es": "Precios en vivo de algunas criptomonedas, junto al cambio del euro del día.",
+        "pl": "Ceny kilku kryptowalut na żywo, obok dzisiejszych kursów euro.",
+        "it": "Prezzi in tempo reale di alcune criptovalute, accanto ai cambi dell’euro del giorno."
+      },
+      "link": "https://potyro.app/s/V_riOwnsoOLsxbcq7h2Cjg#k=D-TtPn2HTYPJ3Jyte__cGg",
+      "screenshot": "shots/ticker.jpg",
+      "publishedAt": "2026-10-20T16:51:57.116Z"
+    },
+    {
+      "id": "plant-doctor",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/plant-doctor/plant-doctor.app.ts"
+        ]
+      },
+      "category": "garden",
+      "icon": "🩺",
+      "name": {
+        "en": "Plant Doctor",
+        "pt-BR": "Médico de plantas",
+        "de": "Pflanzendoktor",
+        "es": "Doctor de plantas",
+        "pl": "Doktor roślin",
+        "it": "Dottore delle piante"
+      },
+      "line": {
+        "en": "Photograph a plant and hear what might be wrong with it, in plain words.",
+        "pt-BR": "Fotografe uma planta e saiba o que pode estar errado, em palavras simples.",
+        "de": "Fotografiere eine Pflanze und erfahre in einfachen Worten, was ihr fehlen könnte.",
+        "es": "Fotografía una planta y entérate de qué le puede pasar, con palabras sencillas.",
+        "pl": "Zrób zdjęcie rośliny i dowiedz się prostymi słowami, co może jej dolegać.",
+        "it": "Fotografa una pianta e scopri cosa potrebbe avere, in parole semplici."
+      },
+      "link": "https://potyro.app/s/T01q4lxKVOfNIi_xW8B_7g#k=GZr6gfclFm4OSzYK48Ezyw",
+      "screenshot": "shots/plant-doctor.jpg",
+      "publishedAt": "2026-10-20T17:01:35.327Z"
+    },
+    {
+      "id": "poster-event",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/poster-event/poster-event.app.ts"
+        ]
+      },
+      "category": "plans",
+      "icon": "🗓️",
+      "name": {
+        "en": "Poster to Calendar",
+        "pt-BR": "Do cartaz à agenda",
+        "de": "Vom Plakat in den Kalender",
+        "es": "Del cartel al calendario",
+        "pl": "Z plakatu do kalendarza",
+        "it": "Dal poster al calendario"
+      },
+      "line": {
+        "en": "Photograph a poster or a ticket, and it becomes an event in your calendar.",
+        "pt-BR": "Fotografe um cartaz ou um ingresso, e ele vira um evento na sua agenda.",
+        "de": "Fotografiere ein Plakat oder ein Ticket, und es wird ein Termin in deinem Kalender.",
+        "es": "Fotografía un cartel o una entrada, y se convierte en un evento en tu calendario.",
+        "pl": "Zrób zdjęcie plakatu albo biletu, a stanie się wydarzeniem w twoim kalendarzu.",
+        "it": "Fotografa un poster o un biglietto, e diventa un evento nel tuo calendario."
+      },
+      "link": "https://potyro.app/s/yqY8C15mYncj7J6r0EKZ7g#k=TEzV4_MvfaNZA2sCTLdHIw",
+      "screenshot": "shots/poster-event.jpg",
+      "publishedAt": "2026-10-20T17:01:48.981Z"
+    },
+    {
+      "id": "receipt-split",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/receipt-split/receipt-split.app.ts"
+        ],
+        "seed": "apps/receipt-split/seed.json"
+      },
+      "category": "money",
+      "icon": "🧾",
+      "name": {
+        "en": "Receipt Split",
+        "pt-BR": "Dividir a conta",
+        "de": "Kassenbon teilen",
+        "es": "Dividir el tique",
+        "pl": "Podział paragonu",
+        "it": "Dividi lo scontrino"
+      },
+      "line": {
+        "en": "Photograph a receipt and its lines become items you can share out.",
+        "pt-BR": "Fotografe uma nota fiscal e cada linha vira um item para dividir.",
+        "de": "Fotografiere einen Kassenbon, und seine Zeilen werden zu Posten, die ihr aufteilt.",
+        "es": "Fotografía un tique y sus líneas se convierten en cosas que repartir.",
+        "pl": "Zrób zdjęcie paragonu, a jego pozycje staną się rzeczami do podziału.",
+        "it": "Fotografa uno scontrino e le sue righe diventano voci da dividere."
+      },
+      "link": "https://potyro.app/s/4PkIRDNSF9bT3JsCDMoG9g#k=GSXgwj-QYx4WyryGx3wHfw",
+      "screenshot": "shots/receipt-split.jpg",
+      "publishedAt": "2026-10-17T21:53:50.207Z"
+    },
+    {
+      "id": "markdown-notes",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/markdown-notes/notes.app.tsx"
+        ],
+        "files": "apps/markdown-notes/files",
+        "seed": "apps/markdown-notes/seed.json"
+      },
+      "category": "notes",
+      "icon": "📝",
+      "name": {
+        "en": "Notes",
+        "pt-BR": "Notas",
+        "de": "Notizen",
+        "es": "Notas",
+        "pl": "Notatki",
+        "it": "Note"
+      },
+      "line": {
+        "en": "Notes written in Markdown, kept as files you can take anywhere.",
+        "pt-BR": "Notas escritas em Markdown, guardadas como arquivos que você leva para qualquer lugar.",
+        "de": "Notizen in Markdown, als Dateien gespeichert, die du überallhin mitnehmen kannst.",
+        "es": "Notas escritas en Markdown, guardadas como archivos que te llevas a cualquier parte.",
+        "pl": "Notatki w Markdownie, zapisane jako pliki, które zabierzesz wszędzie.",
+        "it": "Note scritte in Markdown, salvate come file che puoi portare ovunque."
+      },
+      "link": "https://potyro.app/s/Tp2DCiaB0bW6c4l7rPOPYQ#k=ZNiX9SfBRRdkSY1tIH6BxA",
+      "screenshot": "shots/markdown-notes.jpg",
+      "publishedAt": "2026-10-21T07:56:40.558Z"
+    },
+    {
+      "id": "pantry",
+      "status": "ready",
+      "from": {
+        "package": [
+          "apps/pantry/pantry.app.ts"
+        ]
+      },
+      "category": "food",
+      "icon": "🥫",
+      "name": {
+        "en": "Pantry",
+        "pt-BR": "Despensa",
+        "de": "Vorrat",
+        "es": "Despensa",
+        "pl": "Spiżarnia",
+        "it": "Dispensa"
+      },
+      "line": {
+        "en": "Photograph a shelf or a receipt: what is in your kitchen, by what goes off first.",
+        "pt-BR": "Fotografe uma prateleira ou uma nota: o que tem na sua cozinha, pelo que vence primeiro.",
+        "de": "Fotografiere ein Regal oder einen Bon: was in deiner Küche ist, nach dem, was zuerst verdirbt.",
+        "es": "Fotografía un estante o un tique: lo que hay en tu cocina, por lo que caduca antes.",
+        "pl": "Zrób zdjęcie półki albo paragonu: co masz w kuchni, od tego, co psuje się najpierw.",
+        "it": "Fotografa uno scaffale o uno scontrino: cosa c’è in cucina, da ciò che scade prima."
+      },
+      "link": "https://potyro.app/s/nW3GB1qdtmfJoRBuInZTRA#k=vOKNu6QusOGrVve3i0aA8Q",
+      "screenshot": "shots/pantry.jpg",
+      "publishedAt": "2026-10-20T17:01:21.701Z"
     },
     {
       "id": "recipes",
@@ -516,249 +790,6 @@
       "link": "https://potyro.app/s/znKbERdPxDkUhmMOFkc_7Q#k=q2Qt_WmmiyIyvKdB3EsvJw",
       "screenshot": "shots/workout.jpg",
       "publishedAt": "2026-10-17T21:47:35.425Z"
-    },
-    {
-      "id": "receipt-split",
-      "status": "ready",
-      "from": {
-        "package": [
-          "apps/receipt-split/receipt-split.app.ts"
-        ],
-        "seed": "apps/receipt-split/seed.json"
-      },
-      "category": "money",
-      "icon": "🧾",
-      "name": {
-        "en": "Receipt Split",
-        "pt-BR": "Dividir a conta",
-        "de": "Kassenbon teilen",
-        "es": "Dividir el tique",
-        "pl": "Podział paragonu",
-        "it": "Dividi lo scontrino"
-      },
-      "line": {
-        "en": "Photograph a receipt and its lines become items you can share out.",
-        "pt-BR": "Fotografe uma nota fiscal e cada linha vira um item para dividir.",
-        "de": "Fotografiere einen Kassenbon, und seine Zeilen werden zu Posten, die ihr aufteilt.",
-        "es": "Fotografía un tique y sus líneas se convierten en cosas que repartir.",
-        "pl": "Zrób zdjęcie paragonu, a jego pozycje staną się rzeczami do podziału.",
-        "it": "Fotografa uno scontrino e le sue righe diventano voci da dividere."
-      },
-      "link": "https://potyro.app/s/4PkIRDNSF9bT3JsCDMoG9g#k=GSXgwj-QYx4WyryGx3wHfw",
-      "screenshot": "shots/receipt-split.jpg",
-      "publishedAt": "2026-10-17T21:53:50.207Z"
-    },
-    {
-      "id": "pantry",
-      "status": "ready",
-      "from": {
-        "package": [
-          "apps/pantry/pantry.app.ts"
-        ]
-      },
-      "category": "food",
-      "icon": "🥫",
-      "name": {
-        "en": "Pantry",
-        "pt-BR": "Despensa",
-        "de": "Vorrat",
-        "es": "Despensa",
-        "pl": "Spiżarnia",
-        "it": "Dispensa"
-      },
-      "line": {
-        "en": "Photograph a shelf or a receipt: what is in your kitchen, by what goes off first.",
-        "pt-BR": "Fotografe uma prateleira ou uma nota: o que tem na sua cozinha, pelo que vence primeiro.",
-        "de": "Fotografiere ein Regal oder einen Bon: was in deiner Küche ist, nach dem, was zuerst verdirbt.",
-        "es": "Fotografía un estante o un tique: lo que hay en tu cocina, por lo que caduca antes.",
-        "pl": "Zrób zdjęcie półki albo paragonu: co masz w kuchni, od tego, co psuje się najpierw.",
-        "it": "Fotografa uno scaffale o uno scontrino: cosa c’è in cucina, da ciò che scade prima."
-      },
-      "link": "https://potyro.app/s/nW3GB1qdtmfJoRBuInZTRA#k=vOKNu6QusOGrVve3i0aA8Q",
-      "screenshot": "shots/pantry.jpg",
-      "publishedAt": "2026-10-20T17:01:21.701Z"
-    },
-    {
-      "id": "plant-doctor",
-      "status": "ready",
-      "from": {
-        "package": [
-          "apps/plant-doctor/plant-doctor.app.ts"
-        ]
-      },
-      "category": "garden",
-      "icon": "🩺",
-      "name": {
-        "en": "Plant Doctor",
-        "pt-BR": "Médico de plantas",
-        "de": "Pflanzendoktor",
-        "es": "Doctor de plantas",
-        "pl": "Doktor roślin",
-        "it": "Dottore delle piante"
-      },
-      "line": {
-        "en": "Photograph a plant and hear what might be wrong with it, in plain words.",
-        "pt-BR": "Fotografe uma planta e saiba o que pode estar errado, em palavras simples.",
-        "de": "Fotografiere eine Pflanze und erfahre in einfachen Worten, was ihr fehlen könnte.",
-        "es": "Fotografía una planta y entérate de qué le puede pasar, con palabras sencillas.",
-        "pl": "Zrób zdjęcie rośliny i dowiedz się prostymi słowami, co może jej dolegać.",
-        "it": "Fotografa una pianta e scopri cosa potrebbe avere, in parole semplici."
-      },
-      "link": "https://potyro.app/s/T01q4lxKVOfNIi_xW8B_7g#k=GZr6gfclFm4OSzYK48Ezyw",
-      "screenshot": "shots/plant-doctor.jpg",
-      "publishedAt": "2026-10-20T17:01:35.327Z"
-    },
-    {
-      "id": "poster-event",
-      "status": "ready",
-      "from": {
-        "package": [
-          "apps/poster-event/poster-event.app.ts"
-        ]
-      },
-      "category": "plans",
-      "icon": "🗓️",
-      "name": {
-        "en": "Poster to Calendar",
-        "pt-BR": "Do cartaz à agenda",
-        "de": "Vom Plakat in den Kalender",
-        "es": "Del cartel al calendario",
-        "pl": "Z plakatu do kalendarza",
-        "it": "Dal poster al calendario"
-      },
-      "line": {
-        "en": "Photograph a poster or a ticket, and it becomes an event in your calendar.",
-        "pt-BR": "Fotografe um cartaz ou um ingresso, e ele vira um evento na sua agenda.",
-        "de": "Fotografiere ein Plakat oder ein Ticket, und es wird ein Termin in deinem Kalender.",
-        "es": "Fotografía un cartel o una entrada, y se convierte en un evento en tu calendario.",
-        "pl": "Zrób zdjęcie plakatu albo biletu, a stanie się wydarzeniem w twoim kalendarzu.",
-        "it": "Fotografa un poster o un biglietto, e diventa un evento nel tuo calendario."
-      },
-      "link": "https://potyro.app/s/yqY8C15mYncj7J6r0EKZ7g#k=TEzV4_MvfaNZA2sCTLdHIw",
-      "screenshot": "shots/poster-event.jpg",
-      "publishedAt": "2026-10-20T17:01:48.981Z"
-    },
-    {
-      "id": "earthquakes",
-      "status": "ready",
-      "from": {
-        "package": [
-          "apps/earthquakes/earthquakes.app.ts"
-        ]
-      },
-      "category": "world",
-      "icon": "🌋",
-      "name": {
-        "en": "Earthquakes",
-        "pt-BR": "Terremotos",
-        "de": "Erdbeben",
-        "es": "Terremotos",
-        "pl": "Trzęsienia ziemi",
-        "it": "Terremoti"
-      },
-      "line": {
-        "en": "Earthquakes around the world, on a map, as they happen.",
-        "pt-BR": "Terremotos pelo mundo, num mapa, enquanto acontecem.",
-        "de": "Erdbeben auf der ganzen Welt, auf einer Karte, während sie passieren.",
-        "es": "Terremotos de todo el mundo, en un mapa, mientras ocurren.",
-        "pl": "Trzęsienia ziemi na całym świecie, na mapie, na bieżąco.",
-        "it": "Terremoti in tutto il mondo, su una mappa, mentre accadono."
-      },
-      "link": "https://potyro.app/s/9Rek4XrHKksDhqwh05upog#k=fdks2UUbOE8n9c8CA1KFGg",
-      "screenshot": "shots/earthquakes.jpg",
-      "publishedAt": "2026-10-20T16:51:30.747Z"
-    },
-    {
-      "id": "word-watch",
-      "status": "ready",
-      "from": {
-        "package": [
-          "apps/word-watch/word-watch.app.ts"
-        ]
-      },
-      "category": "world",
-      "icon": "💬",
-      "name": {
-        "en": "Word Watch",
-        "pt-BR": "De olho na palavra",
-        "de": "Wortwache",
-        "es": "Vigía de palabras",
-        "pl": "Na tropie słowa",
-        "it": "Occhio alla parola"
-      },
-      "line": {
-        "en": "Pick a word and watch it go by on Bluesky, live.",
-        "pt-BR": "Escolha uma palavra e veja ela passar no Bluesky, ao vivo.",
-        "de": "Wähle ein Wort und sieh live zu, wie es auf Bluesky vorbeizieht.",
-        "es": "Elige una palabra y mírala pasar en Bluesky, en vivo.",
-        "pl": "Wybierz słowo i patrz, jak pojawia się na Bluesky, na żywo.",
-        "it": "Scegli una parola e guardala passare su Bluesky, in tempo reale."
-      },
-      "link": "https://potyro.app/s/-l7rsQ0GxMxdYNX-h3rOuw#k=hz15XGPJR4UVEtmIob_gvw",
-      "screenshot": "shots/word-watch.jpg",
-      "publishedAt": "2026-10-20T17:02:02.524Z"
-    },
-    {
-      "id": "ticker",
-      "status": "ready",
-      "from": {
-        "package": [
-          "apps/ticker/ticker.app.ts"
-        ]
-      },
-      "category": "world",
-      "icon": "📈",
-      "name": {
-        "en": "Ticker",
-        "pt-BR": "Cotações",
-        "de": "Kurse",
-        "es": "Cotizaciones",
-        "pl": "Notowania",
-        "it": "Quotazioni"
-      },
-      "line": {
-        "en": "Live prices of a few cryptocurrencies, beside the day’s euro rates.",
-        "pt-BR": "Preços ao vivo de algumas criptomoedas, ao lado das cotações do euro do dia.",
-        "de": "Live-Kurse einiger Kryptowährungen, neben den Euro-Kursen des Tages.",
-        "es": "Precios en vivo de algunas criptomonedas, junto al cambio del euro del día.",
-        "pl": "Ceny kilku kryptowalut na żywo, obok dzisiejszych kursów euro.",
-        "it": "Prezzi in tempo reale di alcune criptovalute, accanto ai cambi dell’euro del giorno."
-      },
-      "link": "https://potyro.app/s/V_riOwnsoOLsxbcq7h2Cjg#k=D-TtPn2HTYPJ3Jyte__cGg",
-      "screenshot": "shots/ticker.jpg",
-      "publishedAt": "2026-10-20T16:51:57.116Z"
-    },
-    {
-      "id": "markdown-notes",
-      "status": "ready",
-      "from": {
-        "package": [
-          "apps/markdown-notes/notes.app.tsx"
-        ],
-        "files": "apps/markdown-notes/files",
-        "seed": "apps/markdown-notes/seed.json"
-      },
-      "category": "notes",
-      "icon": "📝",
-      "name": {
-        "en": "Notes",
-        "pt-BR": "Notas",
-        "de": "Notizen",
-        "es": "Notas",
-        "pl": "Notatki",
-        "it": "Note"
-      },
-      "line": {
-        "en": "Notes written in Markdown, kept as files you can take anywhere.",
-        "pt-BR": "Notas escritas em Markdown, guardadas como arquivos que você leva para qualquer lugar.",
-        "de": "Notizen in Markdown, als Dateien gespeichert, die du überallhin mitnehmen kannst.",
-        "es": "Notas escritas en Markdown, guardadas como archivos que te llevas a cualquier parte.",
-        "pl": "Notatki w Markdownie, zapisane jako pliki, które zabierzesz wszędzie.",
-        "it": "Note scritte in Markdown, salvate come file che puoi portare ovunque."
-      },
-      "link": "https://potyro.app/s/Tp2DCiaB0bW6c4l7rPOPYQ#k=ZNiX9SfBRRdkSY1tIH6BxA",
-      "screenshot": "shots/markdown-notes.jpg",
-      "publishedAt": "2026-10-21T07:56:40.558Z"
     },
     {
       "id": "countdowns",
