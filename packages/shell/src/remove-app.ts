@@ -8,6 +8,7 @@
 import { t } from "@lingui/core/macro";
 import { shellDialogs } from "./dialog.js";
 import { removeUserApp, type UserApp } from "./user-apps.js";
+import { eraseAppData } from "./erase-app-data.js";
 import { recordLeft } from "./account-offer.js";
 import { setAiStanding } from "./ai-setting.js";
 import { forgetSocketStanding } from "./app-sockets.js";
@@ -38,6 +39,9 @@ export async function confirmAndRemoveApp(app: Pick<UserApp, "id" | "name" | "sy
   // app gone from the launcher must not be offered back by a boot that happens in between.
   forgetOnAccount(app.id);
   await removeUserApp(app.id);
+  // Then the data itself: the database, and the ids of the space it synced through, so the same
+  // app added again starts empty rather than on the records this just promised to delete.
+  await eraseAppData(app.id);
   // The person allowed THIS app's AI (docs/23): another app arriving later under the same id asks again.
   setAiStanding(app.id, undefined);
   // And the hosts it was let connect to (docs/28), for the same reason.

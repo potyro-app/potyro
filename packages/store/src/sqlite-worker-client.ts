@@ -300,8 +300,26 @@ async function spawn(name: string, factory?: WorkerFactory): Promise<WorkerSqlit
  * The name is used as a file name in OPFS, and app namespaces contain characters ("user:groceries")
  * that have no business in one.
  */
+export const workerDbName = (name: string): string => name.replace(/[^A-Za-z0-9._-]+/g, "-");
+
+/**
+ * Remove a database's file from this device, closing it first if it is open here.
+ *
+ * What deleting an app promises ("the app AND its data"): the file goes, so the same name opened
+ * again starts empty. Whoever still holds the connection in this tab is holding a closed one, which
+ * is right — the app is gone. A name that was never opened on this device has nothing to remove and
+ * is not an error. Refused, like an open, while another tab has the storage: that tab's copy of the
+ * app would go on writing into a file this one had just removed.
+ */
+export async function deleteWorkerSqlite(name: string, factory?: WorkerFactory): Promise<void> {
+  if (elsewhere && !factory) throw new StorageElsewhereError();
+  const db = workerDbName(name);
+  openings.delete(db);
+  const { send } = connect(factory);
+  await send({ op: "delete", db });
+}
 export async function openWorkerSqliteHandle(name: string): Promise<SqliteDbHandle> {
-  const { driver } = await openWorkerSqlite(name.replace(/[^A-Za-z0-9._-]+/g, "-"));
+  const { driver } = await openWorkerSqlite(workerDbName(name));
   return {
     exec: (sqlOrOpts) =>
       typeof sqlOrOpts === "string"
