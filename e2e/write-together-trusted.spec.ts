@@ -103,6 +103,51 @@ test("two people write one document at once, each in their colour, and a comment
   await expect(a.locator(".wt-swatch")).toHaveCount(2);
   await expect(b.locator(".wt-swatch")).toHaveCount(2);
 
+  // ---- Ana types fast: nobody's colours blink off meanwhile, on either screen ----
+  // The runs the host answers with trail the keys; carried onto the screen they keep the colours
+  // on. A flash lasts one frame, so it is counted by an observer on every render of the backdrop,
+  // not by looking now and then.
+  const observe = (page: Page, text: string): Promise<void> =>
+    page.evaluate((needle) => {
+      const w = window as unknown as { __blinks: number; __renders: number };
+      w.__blinks = 0;
+      w.__renders = 0;
+      const check = (): void => {
+        const spans = [...document.querySelectorAll<HTMLElement>(".wt-backdrop span")];
+        if (!spans.length) return;
+        w.__renders++;
+        const named = spans.find((el) => el.hasAttribute("data-by") && (el.textContent ?? "").includes(needle));
+        if (!named) w.__blinks++;
+      };
+      new MutationObserver(check).observe(document.querySelector(".wt-backdrop")!, { subtree: true, childList: true, attributes: true, characterData: true });
+    }, text);
+  const blinks = (page: Page): Promise<{ blinks: number; renders: number }> => page.evaluate(() => ({ blinks: (window as unknown as { __blinks: number }).__blinks, renders: (window as unknown as { __renders: number }).__renders }));
+  await observe(a, "And Bo.");
+  await observe(b, "Hello from Ana.");
+  const burst = " Ana adds a long sentence here, typed quickly, to see the colours hold.";
+  await editor(a).evaluate((el, pos) => {
+    const t = el as HTMLTextAreaElement;
+    t.focus();
+    t.setSelectionRange(pos, pos);
+  }, whole.length);
+  await a.keyboard.type(burst, { delay: 25 }); // a fast typist, for a couple of seconds
+  await expect(editor(b)).toHaveValue(whole + burst, { timeout: 60_000 });
+  await a.waitForTimeout(500);
+  const onA = await blinks(a);
+  const onB = await blinks(b);
+  expect(onA.renders).toBeGreaterThan(10); // the observer saw the typing
+  expect(onB.renders).toBeGreaterThan(10);
+  expect({ a: onA.blinks, b: onB.blinks }).toEqual({ a: 0, b: 0 });
+  // Take the sentence out again so the rest of the spec reads as before.
+  await editor(a).evaluate((el, len) => {
+    const t = el as HTMLTextAreaElement;
+    t.focus();
+    t.setSelectionRange(len, t.value.length);
+  }, whole.length);
+  await a.keyboard.press("Delete");
+  await expect(editor(a)).toHaveValue(whole);
+  await expect(editor(b)).toHaveValue(whole, { timeout: 60_000 });
+
   // ---- Bo comments on "Hello" ----
   await editor(b).evaluate((el, [from, to]) => {
     const t = el as HTMLTextAreaElement;
