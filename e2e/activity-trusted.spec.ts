@@ -66,7 +66,7 @@ const openChanges = async (page: Page): Promise<void> => {
   await page.getByRole("menuitem", { name: /^Changes/ }).click();
 };
 
-test("a peer's change is reported by name, with what it changed from", async ({ browser }) => {
+test("a peer's change is reported by name, as one event, and marks the row", async ({ browser }) => {
   test.slow();
 
   // ---- Ana owns the app and shares it ----
@@ -119,10 +119,13 @@ test("a peer's change is reported by name, with what it changed from", async ({ 
   // "Save changes" on an edit, "Create" on a new record — an anchored /^Save$/ matches neither.
   await bruno.getByRole("button", { name: "Save changes" }).first().click();
 
-  // ---- THE POINT: Ana is told what changed, by whom, and what from ----
+  // ---- THE POINT: Ana is told what happened, by whom, where it happened ----
   // The tool says how many, beside its own name, and arrives there without a reload.
   const count = ana.getByRole("button", { name: /^Changes/ }).locator(".k-tool-hint");
   await expect(count).toHaveText(/1 new/, { timeout: 60_000 });
+  // The row Bruno touched carries the mark, in the list Ana was looking at anyway.
+  const anaRow = ana.locator(".k-list-row", { hasText: "Milk" }).first();
+  await expect(anaRow).toHaveAttribute("data-news", "true", { timeout: 60_000 });
 
   await openChanges(ana);
   const panel = ana.locator(".k-activity");
@@ -131,20 +134,20 @@ test("a peer's change is reported by name, with what it changed from", async ({ 
   const text = await panel.innerText();
   // Attribution: the OTHER person, not "You". This is what one device cannot test.
   expect(text).toContain("Bruno");
-  expect(text).not.toContain("You changed Quantity");
-  // The label the app declared, not the field key.
-  expect(text).toContain("Quantity");
-  // And the from -> to, which is only possible because the previous value is read even though it
-  // predates the watermark.
-  expect(text).toMatch(/from\s+2\s+to\s+5/);
-  expect(text).toContain("Milk");
+  expect(text).not.toContain("You changed");
+  // One event about the RECORD — never a line per field, never a value ("from 2 to 5").
+  expect(text).toMatch(/Bruno changed Milk/);
+  expect(text).not.toMatch(/Quantity|from\s+2/);
+  expect(await panel.locator(".k-activity-item").count()).toBe(1);
 
-  // Closing marks it seen; the badge clears and stays cleared across a reload.
+  // Closing marks it seen; the badge and the row's mark clear, and stay cleared across a reload.
   await panel.getByRole("button", { name: "Close" }).click();
   await expect(count).toHaveCount(0);
+  await expect(anaRow).not.toHaveAttribute("data-news", "true");
   await ana.goto("/?user=shoplist");
   await expect(ana.getByRole("button", { name: /^Changes/ })).toBeVisible({ timeout: 30_000 });
   await expect(ana.getByRole("button", { name: /^Changes/ }).locator(".k-tool-hint")).toHaveCount(0);
+  await expect(ana.locator(".k-list-row", { hasText: "Milk" }).first()).not.toHaveAttribute("data-news", "true");
 
   await ctxA.close();
   await ctxB.close();

@@ -27,7 +27,7 @@ export {
 } from "./app-lock.js";
 export { carryCode, readCarriedCode, carriedModuleFiles, sameCode, type CarriedCode } from "./carried-code.js";
 export { fileSpace, fileInfo, digest, FileSpaceError, SpaceFullError, normalisePath, mimeOf, KEEP_EARLIER, EARLIER_FOR_MS, type FileSpace, type FileTarget } from "./file-space.js";
-export type { Store, StoreSchema, StoreRules, Unsubscribe, Narrow, MigrationPlan, FieldEdit, ChatMessage, RecordInvite } from "./types.js";
+export type { Store, StoreSchema, StoreRules, Unsubscribe, Narrow, MigrationPlan, FieldEdit, Removal, ChatMessage, RecordInvite } from "./types.js";
 export { isSetField, setFieldsOf, foldSet, foldSetFields, setWrites } from "./set-field.js";
 export { ROOM_THREAD, recordThread } from "./types.js";
 export { MemoryStore } from "./memory-store.js";

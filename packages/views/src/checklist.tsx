@@ -30,6 +30,7 @@
 // guessing, or making the person open a form to answer a question one tap can.
 
 import { useReportCount } from "./page-count.js";
+import { useNews } from "./news.js";
 import { fmt } from "@potyro/i18n";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -657,6 +658,7 @@ export function ChecklistView(props: BuiltinViewProps) {
 
   const textOf = (row: Resolved): RowText => texts[rows.indexOf(row)] ?? { text: str(row[textField] ?? row.id), detail: "", icon: "" };
 
+  const news = useNews(runtime);
   const renderRow = (r: Resolved) => {
     const rt = textOf(r);
     const name = rt.text;
@@ -675,6 +677,7 @@ export function ChecklistView(props: BuiltinViewProps) {
           if (!(e.target as Element).closest("button, a, input, textarea, select")) void toggle(r);
         }}
         data-done={ticked || undefined}
+        data-news={news(r) || undefined}
         data-held={held.has(id) || undefined}
         data-landed={landed.has(id) || undefined}
         {...drag}

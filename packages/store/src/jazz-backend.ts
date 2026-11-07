@@ -30,6 +30,7 @@
 
 import { LocalNode, getSqliteStorageAsync, logger as cojsonLogger } from "cojson";
 import { JazzStore } from "./jazz-store.js";
+import { accountName } from "./account-name.js";
 import { createJazzSqliteDriver, type SqliteDriverAsync } from "./jazz-sqlite-driver.js";
 import type { SqliteDbHandle } from "./sqlite-store.js";
 import { isStorageElsewhere } from "./storage-owner.js";
@@ -1092,22 +1093,7 @@ export async function spaceMembers(
     const role = group.roleOf(key);
     if (role !== "admin" && role !== "writer" && role !== "reader") continue;
 
-    let name: string | undefined;
-    try {
-      const account = (await node.load(key)) as { get?(k: string): unknown } | "unavailable";
-      if (account && account !== "unavailable") {
-        const profileId = account.get?.("profile");
-        if (typeof profileId === "string") {
-          const profile = (await node.load(profileId)) as { get?(k: string): unknown } | "unavailable";
-          if (profile && profile !== "unavailable") {
-            const n = profile.get?.("name");
-            if (typeof n === "string" && n) name = n;
-          }
-        }
-      }
-    } catch {
-      // A profile that will not load is not a reason to fail; the id still identifies the person.
-    }
+    const name = await accountName(node, key);
     out.push(name ? { id: key, name, role } : { id: key, role });
   }
   return out;

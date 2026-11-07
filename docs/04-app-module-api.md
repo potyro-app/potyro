@@ -702,6 +702,18 @@ const where = await body.index(at);                // its position now, or null 
 - The same across the realm's port for a sealed app. A new optional member and a new optional field
   flag: no app's `schemaVersion` changes.
 
+### An entity that is the app's own bookkeeping (`hidden: true`)
+
+Some records are not things a person made: who writes in which colour, where a cursor was. An
+entity declared `hidden: true` is the app's own — Potyro never names its records to people, and
+the Changes feed says nothing about them (KA-36). A `hidden` *field* does the same for one field of
+an entity people do see. Both are structure, so a shared app needs no trust for the feed to filter
+by them.
+
+```ts
+entities: { writer: { hidden: true, fields: { doc: { type: "relation", to: "doc", required: true }, person: { type: "member" }, color: { type: "number" } } } }
+```
+
 ### A record shared on its own (`share: "record"`, `ctx.access`, `ctx.ui.share({ record })`, docs/24 §12)
 
 "Use it together" shares the whole app. An entity declared `share: "record"` shares each record by

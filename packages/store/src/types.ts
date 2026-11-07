@@ -255,6 +255,23 @@ export interface Store {
    * folding an app's whole history to render a feed gets slower for as long as the app is used.
    */
   editHistory?(entity: string, id: Id, opts?: { since?: Date }): Promise<FieldEdit[]>;
+  /**
+   * The records of an entity that were deleted, and by whom (KA-36, the event a record's own log
+   * cannot hold: a deletion is an edit to the INDEX, not to the record).
+   *
+   * Optional for the same reason as `editHistory`. The record itself is still readable after its
+   * index entry is tombstoned (see `delete`), so each removal carries the record as it was, for a
+   * feed to name it — `null` only when its map never reached this device.
+   */
+  removals?(entity: string, opts?: { since?: Date }): Promise<Removal[]>;
+  /**
+   * The people who can reach one record: the space's members, or — for a record shared by its own
+   * link (record-sharing.ts) — whoever that link let in, who is a member of nothing else here.
+   *
+   * Optional: only a synced store has groups. A feed names a document-link participant from this,
+   * since `memberIds` and the space's member list cannot know them.
+   */
+  recordMembers?(entity: string, id: Id): Promise<Array<{ id: string; name?: string }>>;
 
   // ---- messages between the people sharing this app (KA-35) ----
   //
@@ -303,6 +320,16 @@ export interface ChatMessage {
  */
 export const ROOM_THREAD = "room";
 export const recordThread = (entity: string, id: Id): string => `record:${entity}:${id}`;
+
+/** One record deleted, attributed and timed (`Store.removals`). */
+export interface Removal {
+  id: Id;
+  /** The record as it was when deleted; `null` when its map is not on this device. */
+  record: PotyroRecord | null;
+  /** The account that deleted it, from the signing session (KA-18). */
+  by: string;
+  at: Date;
+}
 
 /** One field of one record changing, attributed and timed. */
 export interface FieldEdit {

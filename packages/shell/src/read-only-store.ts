@@ -68,6 +68,8 @@ export function guardedStore(store: Store, refusal: () => string | null): Store 
     // Reads of the space's own log. Dropping them made a locked app lose its Changes and Chat
     // buttons, which is the opposite of what someone asking "why can't I edit?" needs.
     editHistory: store.editHistory ? (entity, id, opts) => store.editHistory!(entity, id, opts) : undefined,
+    removals: store.removals ? (entity, opts) => store.removals!(entity, opts) : undefined,
+    recordMembers: store.recordMembers ? (entity, id) => store.recordMembers!(entity, id) : undefined,
     messages: store.messages ? (thread, opts) => store.messages!(thread, opts) : undefined,
     subscribeMessages: store.subscribeMessages ? (thread, cb) => store.subscribeMessages!(thread, cb) : undefined,
     // A message is not app data: it lives outside the entity tree in no schema's shape, so an old

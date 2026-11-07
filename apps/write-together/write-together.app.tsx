@@ -89,6 +89,8 @@ export default defineApp({
       label: W.writer,
       icon: "palette",
       displayField: "person",
+      // Who writes in which colour: the app's own bookkeeping, never a change anyone is told about.
+      hidden: true,
       fields: {
         doc: { type: "relation", to: "doc", required: true },
         person: { type: "member", required: true },

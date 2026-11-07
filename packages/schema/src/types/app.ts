@@ -86,6 +86,8 @@ export interface EntityDef {
   editableBy?: "anyone" | "creator" | "app";
   /** `"record"`: each record shared by its own link (docs/24 §12). */
   share?: "record";
+  /** The app's own bookkeeping (who is which colour): never shown to people, nor in Changes. */
+  hidden?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -6,9 +6,9 @@ import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { DatabaseIcon } from "./data-icon.js";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { personHue, replayCase, type ActivityItem, type Case, type PotyroRuntime, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
+import { personHue, replayCase, type ActivityEvent, type Case, type PotyroRuntime, type ReplayReport, type ReplayTarget } from "@potyro/runtime";
 import type { Provenance } from "@potyro/host";
-import { Glyph, LayoutHost, PageCountContext, RecordForm, TRUST_REQUEST, ViewHost, backdropKind, backdropOf, byPeople, createDefaults, glyphOf, usePageTitles } from "@potyro/views";
+import { Glyph, LayoutHost, NewsContext, PageCountContext, RecordForm, TRUST_REQUEST, ViewHost, backdropKind, backdropOf, byPeople, createDefaults, glyphOf, usePageTitles } from "@potyro/views";
 import { isLucideName } from "@potyro/design";
 import { PageHeader, type PageCta } from "./page-header.js";
 import { PrimaryBar } from "./page-primary.js";
@@ -28,7 +28,7 @@ import { Launcher, openInstalledApp } from "./launcher.js";
 import { AppChrome, type ChromePage, type ChromeQuick, type ChromeTool } from "./chrome.js";
 import { SyncStatus } from "./sync-status.js";
 import { History } from "./history.js";
-import { ActivityPanel, loadActivity, markSeen } from "./activity-panel.js";
+import { ActivityPanel, lastSeen, loadActivity, markSeen } from "./activity-panel.js";
 import { ChatPanel, ChatPeek, RecordThread, chatSupported, unreadCount, useThread } from "./chat-panel.js";
 import { ROOM_THREAD } from "@potyro/store";
 import { getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
@@ -685,11 +685,18 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
   };
 
   // Recomputed when the store changes, so a peer's write raises the count without a reload.
+  //
+  // The watermark is read ONCE, on entering the app, and held for the visit: the rows marked as
+  // news (`NewsContext`) and the count beside Changes answer the same question from the same
+  // moment, and a row does not lose its dot while you are looking at it. Leaving the app is having
+  // looked, so the mark moves on the way out; closing the panel moves it too (ActivityPanel).
   useEffect(() => {
     if (!appId) return;
     let alive = true;
+    const since = lastSeen(appId);
+    setSeenAt(since);
     const refresh = (): void => {
-      void loadActivity(runtime, appId).then((items) => {
+      void loadActivity(runtime, appId, since).then((items) => {
         if (alive) setActivity(items);
       });
     };
@@ -700,6 +707,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
     return () => {
       alive = false;
       for (const stop of stops) stop();
+      markSeen(appId);
     };
   }, [runtime, appId]);
 
@@ -772,8 +780,11 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
   // What changed while you were away (KA-36). `null` means this store keeps no history — a local-only
   // app — and the control is hidden rather than showing an empty panel that would claim nothing
   // happened.
-  const [activity, setActivity] = useState<ActivityItem[] | null>(null);
+  const [activity, setActivity] = useState<ActivityEvent[] | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
+  // When this device last looked at this app (the watermark the rows' news marks are judged by).
+  const [seenAt, setSeenAt] = useState<Date | undefined>(undefined);
+  const news = useMemo(() => (activity ? { since: seenAt?.getTime() ?? 0 } : null), [activity, seenAt]);
   // Ask (#213): a model adds records in this app's own shape. Offered until the person turns it off
   // for this app, and never in a read-only one — everything it does is a write.
   // Text shared into Potyro and handed to this app (#213) opens Ask with it filled in.
@@ -1287,6 +1298,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
           <FilterChrome runtime={runtime} pageId={pageId} params={params} setParam={setParam} />
           {showHero ? null : <SummaryStrip runtime={runtime} pageId={pageId} params={params} />}
           <main className="k-main">
+            <NewsContext.Provider value={news}>
             <PageCountContext.Provider value={setPageCount}>
             {noScopeYet ? (
               <ScopeEmpty runtime={runtime} onNew={newScope} />
@@ -1314,6 +1326,7 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
               />
             )}
             </PageCountContext.Provider>
+            </NewsContext.Provider>
             {/* The record's own conversation, under the record — the half of KA-35 nothing else can
                 do. Rendered by the SHELL and not by the detail view, because `views` is reachable
                 from a page an app declares and messages must stay out of app code's reach entirely
@@ -1442,8 +1455,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
           items={activity}
           onClose={() => {
             setActivityOpen(false);
-            // Seen: clear the count without another round-trip to the log.
+            // Seen: clear the count and the rows' marks without another round-trip to the log.
             setActivity([]);
+            setSeenAt(new Date());
           }}
         />
       ) : null}

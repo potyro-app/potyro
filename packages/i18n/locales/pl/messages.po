@@ -938,20 +938,44 @@ msgstr ""
 "Raz, teraz, i zostaje z aplikacją: potem działa bez internetu."
 
 #: ../shell/src/activity-panel.tsx
-msgid "{who} changed {field} from {from} to {to}"
-msgstr "{who} zmienia {field} z {from} na {to}"
+msgid "{who} added {what}"
+msgstr "{who} dodał(a) {what}"
 
 #: ../shell/src/activity-panel.tsx
-msgid "{who} changed {field} from {from} to {to} on {record}"
-msgstr "{who} zmienia {field} z {from} na {to} w: {record}"
+msgid "{who} added {what} to {where}"
+msgstr "{who} dodał(a) {what} do {where}"
 
 #: ../shell/src/activity-panel.tsx
-msgid "{who} set {field} to {to}"
-msgstr "{who} ustawia {field} na {to}"
+msgid "{who} changed {what}"
+msgstr "{who} zmienił(a) {what}"
 
 #: ../shell/src/activity-panel.tsx
-msgid "{who} set {field} to {to} on {record}"
-msgstr "{who} ustawia {field} na {to} w: {record}"
+msgid "{who} changed {what} in {where}"
+msgstr "{who} zmienił(a) {what} w {where}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "{who} removed {what}"
+msgstr "{who} usunął(-ęła) {what}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "{who} removed {what} from {where}"
+msgstr "{who} usunął(-ęła) {what} z {where}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "{who} ticked {box} on {what}"
+msgstr "{who} zaznaczył(a) {box} przy {what}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "{who} ticked {box} on {what} in {where}"
+msgstr "{who} zaznaczył(a) {box} przy {what} w {where}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "{who} unticked {box} on {what}"
+msgstr "{who} odznaczył(a) {box} przy {what}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "{who} unticked {box} on {what} in {where}"
+msgstr "{who} odznaczył(a) {box} przy {what} w {where}"
 
 #: ../shell/src/ask-panel.tsx
 msgid "{why} What was already done is in the app; asking again will mark what is already there."
@@ -4707,11 +4731,6 @@ msgstr "Następny miesiąc"
 msgid "Next week"
 msgstr "Następny tydzień"
 
-#. Activity feed: an unticked box
-#: ../shell/src/activity-panel.tsx
-msgid "no"
-msgstr "nie"
-
 #. An unticked yes/no field
 #: ../shell/src/ask-review-parts.tsx
 #: ../views/src/field-value.tsx
@@ -4942,13 +4961,6 @@ msgstr "nieużyteczne — {detail}"
 #: ../shell/src/launcher-groups.ts
 msgid "Notes"
 msgstr "Notatki"
-
-#. Activity feed: a field that has no value
-#. Activity feed: a field that has no value
-#: ../shell/src/activity-panel.tsx
-#: ../shell/src/activity-panel.tsx
-msgid "nothing"
-msgstr "nic"
 
 #: ../shell/src/chat-panel.tsx
 msgid "Nothing about {label} yet."
@@ -6424,11 +6436,6 @@ msgstr "Ktoś udostępnił ci wpis z „{name}”. Otwarcie go włączy synchron
 #: ../shell/src/people-panel.tsx
 msgid "someone who left"
 msgstr "ktoś, kto odszedł"
-
-#. Activity feed: a value that cannot be shown in words
-#: ../shell/src/activity-panel.tsx
-msgid "something"
-msgstr "coś"
 
 #. Link under the language picker: report a bad translation of Potyro's own words
 #: ../shell/src/suggest-wording.tsx
@@ -8231,11 +8238,6 @@ msgstr "Spisuję, co powiedziałeś"
 msgid "Yellow"
 msgstr "Żółty"
 
-#. Activity feed: a ticked box
-#: ../shell/src/activity-panel.tsx
-msgid "yes"
-msgstr "tak"
-
 #. A ticked yes/no field
 #: ../shell/src/ask-review-parts.tsx
 #: ../views/src/field-value.tsx
@@ -8273,6 +8275,14 @@ msgstr "ty"
 msgid "You"
 msgstr "Ty"
 
+#: ../shell/src/activity-panel.tsx
+msgid "You added {what}"
+msgstr "Dodano przez Ciebie: {what}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "You added {what} to {where}"
+msgstr "Dodano przez Ciebie {what} do {where}"
+
 #: ../shell/src/identity-panel.tsx
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
@@ -8294,12 +8304,12 @@ msgid "You can go back to the version before from History."
 msgstr "Do poprzedniej wersji możesz wrócić z historii."
 
 #: ../shell/src/activity-panel.tsx
-msgid "You changed {field} from {from} to {to}"
-msgstr "Zmieniasz {field} z {from} na {to}"
+msgid "You changed {what}"
+msgstr "Zmieniono przez Ciebie: {what}"
 
 #: ../shell/src/activity-panel.tsx
-msgid "You changed {field} from {from} to {to} on {record}"
-msgstr "Zmieniasz {field} z {from} na {to} w: {record}"
+msgid "You changed {what} in {where}"
+msgstr "Zmieniono przez Ciebie {what} w {where}"
 
 #: ../shell/src/move-page.tsx
 msgid "You come too, with the same recovery words, so what you made is still yours."
@@ -8322,16 +8332,32 @@ msgid "You get your own copy to change, beside anything you already have. Then t
 msgstr "Dostajesz własną kopię do zmieniania, obok tego, co już masz. Potem otwiera się na niej Studio i pyta, co chcesz zmienić."
 
 #: ../shell/src/activity-panel.tsx
-msgid "You set {field} to {to}"
-msgstr "Ustawiasz {field} na {to}"
+msgid "You removed {what}"
+msgstr "Usunięto przez Ciebie: {what}"
 
 #: ../shell/src/activity-panel.tsx
-msgid "You set {field} to {to} on {record}"
-msgstr "Ustawiasz {field} na {to} w: {record}"
+msgid "You removed {what} from {where}"
+msgstr "Usunięto przez Ciebie {what} z {where}"
 
 #: ../shell/src/ask-panel.tsx
 msgid "You stopped it before it finished."
 msgstr "Zatrzymano to przed końcem."
+
+#: ../shell/src/activity-panel.tsx
+msgid "You ticked {box} on {what}"
+msgstr "Zaznaczono przez Ciebie {box} przy {what}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "You ticked {box} on {what} in {where}"
+msgstr "Zaznaczono przez Ciebie {box} przy {what} w {where}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "You unticked {box} on {what}"
+msgstr "Odznaczono przez Ciebie {box} przy {what}"
+
+#: ../shell/src/activity-panel.tsx
+msgid "You unticked {box} on {what} in {where}"
+msgstr "Odznaczono przez Ciebie {box} przy {what} w {where}"
 
 #: ../shell/src/guests-panel.tsx
 #: ../shell/src/guests-panel.tsx
