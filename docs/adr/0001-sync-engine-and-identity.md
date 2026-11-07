@@ -88,7 +88,8 @@ mode hard rule 3 exists to prevent.
 **Decided 2026-08-07 by the project owner, after all three candidates were measured to the same
 standard.** Final standing: **Jazz > Yjs > Evolu**. The evidence is in
 `docs/spikes/jazz-merge-granularity.mjs`, `docs/spikes/jazz-selfhost-e2e.mjs`, and
-`docs/spikes/evolu-merge-granularity.mjs`; the reasoning is in the Jazz section under Alternatives.
+`docs/spikes/evolu-merge-granularity.mjs` (the spikes were removed from the tree on 2026-11-07 and
+are in the repository's history); the reasoning is in the Jazz section under Alternatives.
 
 Summary of what decided it:
 
