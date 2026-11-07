@@ -3,6 +3,12 @@
    tokens.css and hours.css (the colour clock) come first, then chrome.css (shared base, logo, buttons,
    header, footer), then this file; the build joins chrome.css and this file into one site.css. */
 
+/* the logo files, inlined: the letters follow the ink, the "y"'s stroke is the hour (rosa here) */
+.brand .wordmark { display: block; height: 28px; width: auto; }
+.mark .ink { fill: var(--ink-soft); }
+.mark .ink-strong { fill: var(--ink); }
+.mark .stroke { fill: var(--traco); }
+
 main { max-width: none; padding: 0; }
 .wrap { max-width: var(--wide); margin: 0 auto; padding: 0 var(--gutter); }
 
