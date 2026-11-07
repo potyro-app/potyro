@@ -80,23 +80,29 @@ potyro.app {
 	}
 }
 
-# potyro.com: the gallery (docs/24 §10, docs/16), a static page with nothing from anyone else.
+# potyro.com: the site (#8, docs/16) — the home at /, the gallery at /apps/, the legal pages — a static
+# folder with nothing from anyone else: its own fonts, pictures and recordings (media-src).
 potyro.com, www.potyro.com {
 	root * /srv/potyro.com
 	encode zstd gzip
 	file_server
 
+	# The gallery used to say it works under /gallery/; the site's apps page is /apps/.
+	redir /gallery/* /apps/ 301
+	redir /index.html / 301
+
 	header {
-		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action https://potyro.app; frame-ancestors 'none'"
+		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; media-src 'self'; base-uri 'none'; form-action https://potyro.app; frame-ancestors 'none'"
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "no-referrer"
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		-Server
 	}
-	@page path / /index.html
+	@page path / /index.html /apps /apps/ /apps/index.html
 	header @page Cache-Control "no-cache"
-	@assets path /gallery.css /gallery.js /tokens.css /hours.css /fonts/* /logo/* /shots/* /favicon.svg
+	# Stylesheets and scripts carry ?v=<hash> in the pages, so a day's cache never serves a stale one.
+	@assets path /gallery.css /gallery.js /site.css /site.js /tokens.css /hours.css /fonts/* /logo/* /shots/* /screens/* /media/* /favicon.svg
 	header @assets Cache-Control "public, max-age=86400"
 
 	# No access log: a gallery that keeps no record of you, on the server too.

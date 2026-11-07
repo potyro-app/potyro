@@ -3,4 +3,5 @@ packages:
   - "examples"
   - "apps/*"
   - "gallery"
+  - "site"
   - "docs/tutorials/code"

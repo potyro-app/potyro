@@ -147,12 +147,14 @@ const ICON = {
  * The page, as HTML. Pure: everything it says comes from its arguments.
  * @param {import("./data.mjs").Gallery} gallery
  * @param {Record<string, Record<string, string>>} strings
- * @param {{ css: string; js: string; shots: Record<string, { width: number; height: number }>; logos?: Record<string, string>; legal?: boolean }} assets
- *   `legal`: the folder has /privacy and /terms, so the footer links them.
+ * @param {{ css: string; js: string; shots: Record<string, { width: number; height: number }>; logos?: Record<string, string>; legal?: boolean; base?: string }} assets
+ *   `legal`: the folder has /privacy and /terms, so the footer links them. `base`: what comes before every
+ *   file's path — nothing when the page is the folder's own index, `/` when it is served at /apps/ on the site.
  */
 export function renderPage(gallery, strings, assets) {
   const s = strings[SOURCE_LANGUAGE];
   const e = escapeHtml;
+  const b = assets.base ?? "";
   const { published, soon } = shownApps(gallery);
   const used = [...new Set(published.map((a) => a.category))];
   const word = (/** @type {Record<string,string>} */ w) => w[SOURCE_LANGUAGE];
@@ -160,8 +162,8 @@ export function renderPage(gallery, strings, assets) {
   const hour = (/** @type {string} */ category) => hourOf(category, gallery.categories);
 
   // The logo: the original files, one per ground; the stylesheet shows the theme's (§4.1).
-  const wordmark = `<span class="wordmark" role="img" aria-label="Potyro"><img class="wordmark-light" src="logo/wordmark-rosa.svg" alt="" width="133" height="50" /><img class="wordmark-dark" src="logo/wordmark-rosa-on-dark.svg" alt="" width="133" height="50" /></span>`;
-  const symbol = `<span class="wordmark symbol" aria-hidden="true"><img class="wordmark-light" src="logo/symbol-rosa.svg" alt="" width="33" height="31" /><img class="wordmark-dark" src="logo/symbol-rosa-on-dark.svg" alt="" width="33" height="31" /></span>`;
+  const wordmark = `<span class="wordmark" role="img" aria-label="Potyro"><img class="wordmark-light" src="${b}logo/wordmark-rosa.svg" alt="" width="133" height="50" /><img class="wordmark-dark" src="${b}logo/wordmark-rosa-on-dark.svg" alt="" width="133" height="50" /></span>`;
+  const symbol = `<span class="wordmark symbol" aria-hidden="true"><img class="wordmark-light" src="${b}logo/symbol-rosa.svg" alt="" width="33" height="31" /><img class="wordmark-dark" src="${b}logo/symbol-rosa-on-dark.svg" alt="" width="33" height="31" /></span>`;
   const newAppHref = (/** @type {string} */ text) => `${APP_SITE}?new=${encodeURIComponent(text)}`;
 
   const card = (/** @type {import("./data.mjs").GalleryApp} */ app, /** @type {number} */ i) => {
@@ -170,7 +172,7 @@ export function renderPage(gallery, strings, assets) {
     return `
       <li class="card" data-category="${e(app.category)}" data-id="${e(app.id)}" data-traco="${e(hour(app.category))}">
         <a class="card-block" href="${e(app.link ?? "")}" tabindex="-1" aria-hidden="true">
-          <img src="${e(app.screenshot ?? "")}" width="${shot.width}" height="${shot.height}" alt="" data-t-alt="shotAlt" data-name-of="${e(app.id)}" ${i < 2 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async" />
+          <img src="${b}${e(app.screenshot ?? "")}" width="${shot.width}" height="${shot.height}" alt="" data-t-alt="shotAlt" data-name-of="${e(app.id)}" ${i < 2 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async" />
         </a>
         <div class="card-body">
           <p class="card-meta"><span class="cat" data-cat-name="${e(app.category)}">${e(word(gallery.categories[app.category]))}</span></p>
@@ -235,10 +237,10 @@ export function renderPage(gallery, strings, assets) {
   <meta property="og:title" content="${e(s.title)}" />
   <meta property="og:description" content="${e(s.description)}" />
   <meta property="og:type" content="website" />
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="tokens.css?v=${assets.css}" />
-  <link rel="stylesheet" href="hours.css?v=${assets.css}" />
-  <link rel="stylesheet" href="gallery.css?v=${assets.css}" />
+  <link rel="icon" href="${b}favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="${b}tokens.css?v=${assets.css}" />
+  <link rel="stylesheet" href="${b}hours.css?v=${assets.css}" />
+  <link rel="stylesheet" href="${b}gallery.css?v=${assets.css}" />
 </head>
 <body>
   <a class="skip" href="#apps" data-t="skip">${e(s.skip)}</a>
@@ -308,8 +310,8 @@ export function renderPage(gallery, strings, assets) {
       <a href="${e(mail)}" data-mail="${e(CONTACT)}" data-t="report">${e(s.report)}</a>${
         assets.legal
           ? `
-      <a href="privacy/" data-t="legalPrivacy">${e(s.legalPrivacy)}</a>
-      <a href="terms/" data-t="legalTerms">${e(s.legalTerms)}</a>`
+      <a href="${b}privacy/" data-t="legalPrivacy">${e(s.legalPrivacy)}</a>
+      <a href="${b}terms/" data-t="legalTerms">${e(s.legalTerms)}</a>`
           : ""
       }
     </nav>
@@ -317,7 +319,7 @@ export function renderPage(gallery, strings, assets) {
   </footer>
 
   <script type="application/json" id="gallery-data">${json}</script>
-  <script src="gallery.js?v=${assets.js}"></script>
+  <script src="${b}gallery.js?v=${assets.js}"></script>
 </body>
 </html>
 `;
@@ -352,7 +354,7 @@ export function buildGallery(opts = {}) {
   const out = resolve(opts.out ?? join(ROOT, "dist", "gallery"));
   const gallery = readGallery(readJson(dataPath), { allowLocal: opts.allowLocal });
   const strings = readStrings(readJson(join(GALLERY_DIR, "strings.json")));
-  const css = readFileSync(join(here, "page", "gallery.css"));
+  const css = Buffer.concat([readFileSync(join(here, "page", "chrome.css")), Buffer.from("\n"), readFileSync(join(here, "page", "gallery.css"))]);
   const js = readFileSync(join(here, "page", "gallery.js"));
   const tokens = readFileSync(join(DESIGN, "tokens.css"));
   const hours = hoursCss();
