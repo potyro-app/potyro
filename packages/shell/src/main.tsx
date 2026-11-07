@@ -1135,6 +1135,12 @@ async function boot(): Promise<void> {
   // any copy of that app, whatever it is called here — and the demo it carries when they do not,
   // which lands on that page once kept. A remix link (`&remix=1`) asks for a copy of one's own: the demo.
   const target = readAppTarget(location.hash);
+  // A link to an app's page pasted over this page's address changes only its fragment, and a browser
+  // treats that as the same page: boot reads links, so the page starts over. For the shared-link
+  // viewer too: a second document's link over the first one's showed the first (write-together-share).
+  globalThis.addEventListener("hashchange", () => {
+    if (readAppTarget(location.hash)) location.reload();
+  });
   // A link to one record (docs/24 §12): the person's copy joins it; a stranger's demo opens on it, live.
   const record = readRecordLink(location.hash);
   let demo = readDemoLink(location.pathname, location.hash);
@@ -1209,10 +1215,6 @@ async function boot(): Promise<void> {
     if (!canSwitchInPlace(next)) return false;
     void show(next, root, caps);
     return true;
-  });
-  // A link to an app's page pasted over this page's address changes only its fragment: boot reads links.
-  globalThis.addEventListener("hashchange", () => {
-    if (readAppTarget(location.hash)) location.reload();
   });
   globalThis.addEventListener("popstate", () => {
     const next = route();
