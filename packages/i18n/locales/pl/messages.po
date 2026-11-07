@@ -8277,11 +8277,11 @@ msgstr "Ty"
 
 #: ../shell/src/activity-panel.tsx
 msgid "You added {what}"
-msgstr "Dodano przez Ciebie: {what}"
+msgstr "Dodałeś(-aś) {what}"
 
 #: ../shell/src/activity-panel.tsx
 msgid "You added {what} to {where}"
-msgstr "Dodano przez Ciebie {what} do {where}"
+msgstr "Dodałeś(-aś) {what} do {where}"
 
 #: ../shell/src/identity-panel.tsx
 #: ../shell/src/launcher-metro.tsx
@@ -8305,11 +8305,11 @@ msgstr "Do poprzedniej wersji możesz wrócić z historii."
 
 #: ../shell/src/activity-panel.tsx
 msgid "You changed {what}"
-msgstr "Zmieniono przez Ciebie: {what}"
+msgstr "Zmieniłeś(-aś) {what}"
 
 #: ../shell/src/activity-panel.tsx
 msgid "You changed {what} in {where}"
-msgstr "Zmieniono przez Ciebie {what} w {where}"
+msgstr "Zmieniłeś(-aś) {what} w {where}"
 
 #: ../shell/src/move-page.tsx
 msgid "You come too, with the same recovery words, so what you made is still yours."
@@ -8333,11 +8333,11 @@ msgstr "Dostajesz własną kopię do zmieniania, obok tego, co już masz. Potem 
 
 #: ../shell/src/activity-panel.tsx
 msgid "You removed {what}"
-msgstr "Usunięto przez Ciebie: {what}"
+msgstr "Usunąłeś(-ęłaś) {what}"
 
 #: ../shell/src/activity-panel.tsx
 msgid "You removed {what} from {where}"
-msgstr "Usunięto przez Ciebie {what} z {where}"
+msgstr "Usunąłeś(-ęłaś) {what} z {where}"
 
 #: ../shell/src/ask-panel.tsx
 msgid "You stopped it before it finished."
@@ -8345,19 +8345,19 @@ msgstr "Zatrzymano to przed końcem."
 
 #: ../shell/src/activity-panel.tsx
 msgid "You ticked {box} on {what}"
-msgstr "Zaznaczono przez Ciebie {box} przy {what}"
+msgstr "Zaznaczyłeś(-aś) {box} przy {what}"
 
 #: ../shell/src/activity-panel.tsx
 msgid "You ticked {box} on {what} in {where}"
-msgstr "Zaznaczono przez Ciebie {box} przy {what} w {where}"
+msgstr "Zaznaczyłeś(-aś) {box} przy {what} w {where}"
 
 #: ../shell/src/activity-panel.tsx
 msgid "You unticked {box} on {what}"
-msgstr "Odznaczono przez Ciebie {box} przy {what}"
+msgstr "Odznaczyłeś(-aś) {box} przy {what}"
 
 #: ../shell/src/activity-panel.tsx
 msgid "You unticked {box} on {what} in {where}"
-msgstr "Odznaczono przez Ciebie {box} przy {what} w {where}"
+msgstr "Odznaczyłeś(-aś) {box} przy {what} w {where}"
 
 #: ../shell/src/guests-panel.tsx
 #: ../shell/src/guests-panel.tsx
