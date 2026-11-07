@@ -58,7 +58,7 @@ through the same `ctx` over MessagePorts. Two build targets (PWA, Capacitor) sha
 | AI in apps, Ask, the Studio | docs/23; docs/00 §The Studio and the generator |
 | Translations of an app's words | docs/30 |
 | Android, iOS | docs/13; docs/27 |
-| Tests, the gate, shipping, deploying | skill `ship-pr`; `CONTRIBUTING.md`; docs/16 §8 |
+| Tests, the gate, shipping, deploying | skill `ship-pr`; `CONTRIBUTING.md` §The gate; docs/16 to self-host |
 
 ## The packages
 
@@ -125,7 +125,8 @@ pnpm lint:boundaries && pnpm lint:i18n && pnpm lint:docs
 
 There is no CI on GitHub (off since 2026-10-25; never turn a workflow on without the owner). Ship =
 rebase on main, the gate green on that head, merge with a merge commit; the watcher on vazio tests
-main and deploys potyro.app. Details and the watcher: docs/16 §8 and skill `ship-pr`.
+main and deploys potyro.app. The order of work: skill `ship-pr` (the owner's own operations notes
+are private, not in docs/).
 **Never start a paid eval run** (`eval:modify`, `eval:ask`) without being asked: real money per call.
 On Windows call `pnpm.cmd`; never change the execution policy.
 

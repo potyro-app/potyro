@@ -250,7 +250,7 @@ Design: docs/00 §The Studio and the generator; docs/23 (AI in apps).
 
 ## Tests, CI, shipping
 
-Design: docs/09; docs/16 §8; `CONTRIBUTING.md`; skill `ship-pr`.
+Design: docs/09; `CONTRIBUTING.md` §The gate; skill `ship-pr`. (The owner's operations notes are private.)
 
 - `scripts/ci-local.mjs` — the gate: `STEPS` install, build, unit, typecheck, lint (boundaries,
   tokens, i18n, docs), `e2e:1..N` (Chromium shards of the trusted and sandbox projects); `ff:*` is
