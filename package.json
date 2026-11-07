@@ -12,7 +12,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck && pnpm typecheck:spikes",
+    "typecheck": "pnpm -r typecheck",
     "lint:boundaries": "node scripts/check-boundaries.mjs",
     "lint:tokens": "node scripts/check-tokens.mjs",
     "lint:i18n": "node scripts/check-i18n.mjs",
@@ -30,7 +30,6 @@
     "conformance": "pnpm --filter @potyro/capabilities exec vitest run test/conformance-web.test.ts && pnpm --filter @potyro/native exec vitest run test/conformance-capacitor.test.ts",
     "relay": "jazz-run sync --port 4201 --in-memory",
     "dev:shell-only": "pnpm --filter @potyro/shell dev",
-    "typecheck:spikes": "tsc -p docs/spikes/tsconfig.json && tsc -p docs/spikes/browser-realm/tsconfig.json",
     "test:e2e:prod": "POTYRO_PROD=1 playwright test --project=prod",
     "test:e2e:firefox": "POTYRO_FIREFOX=1 playwright test --project=trusted-firefox --project=sandbox-firefox",
     "pack:app": "node scripts/pack-app.mjs",

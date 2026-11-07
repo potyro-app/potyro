@@ -35,10 +35,6 @@ Start with [How Potyro works](00-how-potyro-works.md). The rest goes deeper, one
 Kept as records of a decision or a point in time. Each says at the top which current page replaces it.
 
 - [Architecture (retired)](02-architecture.md) — The pre-realm design; replaced by How Potyro works.
-- [Roadmap & Work Packages](08-roadmap-and-workpackages.md) — The original milestone and work-package plan; kept as a record.
-- [Backlog](10-backlog.md) — Trackable issues for missing features, as they were filed; the record of open work over time.
 - [Concurrency hazards](17-concurrency-hazards.md) — What breaks when an app is shared: the two bugs found in the first public test and the classes behind them.
-- [Harness research](19-harness-research.md) — What other agent harnesses and the literature know, applied to the Studio loop.
 - [Multi-language apps (inline maps)](20-multi-language-apps.md) — The first design for an app's translations, as inline maps; replaced by docs/30.
 - [ADR 0001: Sync engine and identity](adr/0001-sync-engine-and-identity.md) — Why Jazz (cojson), the identity model, spaces, the relay, and the alternatives measured.
-- [Handoff: sync track](handoff-sync.md) — The resume point for the sync and sharing track, August 2026; kept as a record.

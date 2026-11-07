@@ -423,8 +423,8 @@ that can read none of it.
 ### Why Jazz
 
 The engine evaluation (`docs/adr/0001-sync-engine-and-identity.md`) measured three local-first sync
-engines, [Jazz](https://jazz.tools), Yjs and Evolu, to the same standard; the Jazz and Evolu spikes
-are kept in `docs/spikes/`. Jazz's CRDT library, cojson, won on four points:
+engines, [Jazz](https://jazz.tools), Yjs and Evolu, to the same standard (the Jazz and Evolu spikes
+are in the repository's history). Jazz's CRDT library, cojson, won on four points:
 
 - **Per-key merge on a document model.** Two people editing different fields of one record both
   survive. Evolu's per-column model needed a storage rewrite to get the same property.
@@ -1098,7 +1098,7 @@ and never a reason to refuse the change. A model that repeats itself has stopped
 repeated turns are rolled back and one note says what was tried and the ways out; a second repeat
 ends the loop with the best candidate so far. A chain with two candidates turned back starts again
 from the request with one line per attempt, because the research says a fresh start beats a long
-repair chain at equal cost (docs/19).
+repair chain at equal cost (the harness research behind the loops, in the owner's notes).
 
 **Create** (`packages/generator/src/agent/create-loop.ts`) is the same loop for "make me an app",
 with two differences from measurement. A first draft is one call with the tools off, because models
@@ -1216,7 +1216,7 @@ The evals cost real money per call and are never started without being asked.
 - `packages/shell/src/point-mode.tsx`, `packages/shell/src/point-target.ts`, `packages/shell/src/inline-edit.tsx`, `packages/shell/src/inline-targets.ts`, `packages/shell/src/studio-voice.ts` — pointing, edit mode, voice
 - `packages/generator/src/agent/ask.ts`, `packages/generator/src/agent/evidence.ts`, `packages/generator/src/agent/verify-claims.ts` — Ask
 - `packages/generator/scripts` — the evals
-- Deep docs: docs/19 (the research behind the loops), docs/23, docs/29
+- Deep docs: docs/23, docs/29
 
 </details>
 

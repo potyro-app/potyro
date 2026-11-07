@@ -36,6 +36,9 @@ for (const file of FILES) {
     missing.push(file);
     continue;
   }
+  // The owner's and the agents' working notes (`audience: owner`) stay in the private repository —
+  // the public one is made without them (#115) — so the index the public reads does not name them.
+  if (fm.audience === "owner") continue;
   docs.push({ file, ...fm, order: fm.order === undefined ? Infinity : Number(fm.order) });
 }
 if (missing.length) {

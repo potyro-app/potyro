@@ -5,8 +5,9 @@
 // It builds the same kind of frame a sealed view gets (sandbox="allow-scripts", srcdoc, the realm
 // CSP, a blob: Worker inside), runs three busy loops — the shell itself as calibration, the Worker,
 // and the frame's own main thread (the view case) — and measures how late the shell's own timer runs
-// during each. The same measurement as docs/spikes/browser-realm/android/probe.js, which stays as the
-// DevTools path; this one shows the verdict on the phone's screen and copies the numbers.
+// during each. The same measurement as the standalone probe.js of the browser-realm spike (docs/22,
+// in the repository's history since 2026-11-07); this one shows the verdict on the phone's screen
+// and copies the numbers.
 
 import { REALM_CSP } from "@potyro/host/realm";
 
