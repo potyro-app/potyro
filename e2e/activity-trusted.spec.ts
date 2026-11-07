@@ -126,6 +126,14 @@ test("a peer's change is reported by name, as one event, and marks the row", asy
   // The row Bruno touched carries the mark, in the list Ana was looking at anyway.
   const anaRow = ana.locator(".k-list-row", { hasText: "Milk" }).first();
   await expect(anaRow).toHaveAttribute("data-news", "true", { timeout: 60_000 });
+  // And the mark is DRAWN, not just declared: the row's ::after is a dot with a size and a colour.
+  const dot = await anaRow.evaluate((el) => {
+    const cs = getComputedStyle(el, "::after");
+    return { width: cs.width, radius: cs.borderRadius, background: cs.backgroundColor };
+  });
+  expect(dot.width).toBe("8px");
+  expect(dot.radius).toBe("50%");
+  expect(dot.background).not.toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
 
   await openChanges(ana);
   const panel = ana.locator(".k-activity");
