@@ -206,10 +206,28 @@ export function renderHome({ gallery, words: w, lucide, code, logos, v, sizes, l
   <meta name="theme-color" content="#1c1b1c" media="(prefers-color-scheme: dark)" />
   <meta name="referrer" content="no-referrer" />
   <link rel="canonical" href="https://potyro.com/" />
+  <meta property="og:site_name" content="Potyro" />
   <meta property="og:title" content="${e(w.title)}" />
   <meta property="og:description" content="${e(w.description)}" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://potyro.com/" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:image" content="https://potyro.com/media/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="${e(w.ogAlt)}" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${e(w.title)}" />
+  <meta name="twitter:description" content="${e(w.description)}" />
+  <meta name="twitter:image" content="https://potyro.com/media/og.png" />
+  <meta name="twitter:image:alt" content="${e(w.ogAlt)}" />
+  <script type="application/ld+json">${JSON.stringify({
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "WebSite", "@id": "https://potyro.com/#site", url: "https://potyro.com/", name: "Potyro", description: w.description, inLanguage: "en" },
+      { "@type": "SoftwareApplication", "@id": "https://potyro.app/#app", name: "Potyro", url: "https://potyro.app/", description: w.description, applicationCategory: "DeveloperApplication", operatingSystem: "Web, Android", offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" }, image: "https://potyro.com/media/og.png", sameAs: [REPO_URL] },
+    ],
+  }).replace(/</g, "\\u003c")}</script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="preload" href="/fonts/quicksand-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin />

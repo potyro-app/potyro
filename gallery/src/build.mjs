@@ -234,9 +234,17 @@ export function renderPage(gallery, strings, assets) {
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#1c1b1c" media="(prefers-color-scheme: dark)" />
   <meta name="referrer" content="no-referrer" />
+  <meta property="og:site_name" content="Potyro" />
   <meta property="og:title" content="${e(s.title)}" />
   <meta property="og:description" content="${e(s.description)}" />
   <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://potyro.com/media/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${e(s.title)}" />
+  <meta name="twitter:description" content="${e(s.description)}" />
+  <meta name="twitter:image" content="https://potyro.com/media/og.png" />
   <link rel="icon" href="${b}favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="${b}tokens.css?v=${assets.css}" />
   <link rel="stylesheet" href="${b}hours.css?v=${assets.css}" />

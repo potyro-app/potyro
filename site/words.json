@@ -54,6 +54,7 @@
     "clipTogetherB": "Tom's phone: the same list, joined by the link",
     "clipAi": "Plant Doctor: a photo of a monstera goes in, the finding comes out",
     "stillPermissionAi": "Plant Doctor asks before sending a photo to an AI service: Not now, or Allow",
-    "stillPermissionCamera": "Plant Doctor asks before using the camera: Cancel, or Confirm"
+    "stillPermissionCamera": "Plant Doctor asks before using the camera: Cancel, or Confirm",
+    "ogAlt": "Potyro. The app you need, made by you. Describe it in a sentence, or write the code yourself. potyro.com"
   }
 }

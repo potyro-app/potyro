@@ -52,7 +52,8 @@ describe("the home", () => {
   it("carries no inline style or script, and loads nothing from anyone else", () => {
     expect(home).not.toMatch(/ style="/);
     expect(home).not.toMatch(/<style[\s>]/);
-    expect(home).not.toMatch(/<script(?![^>]*\bsrc=)/);
+    // The structured data is a data block, not a script the policy would run.
+    expect(home.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, "")).not.toMatch(/<script(?![^>]*\bsrc=)/);
     for (const m of home.matchAll(/\b(?:href|src|poster)="(https?:\/\/[^"/]+)/g)) {
       expect(["https://potyro.app", "https://potyro.com", "https://github.com"], m[1]).toContain(m[1]);
     }
@@ -80,6 +81,20 @@ describe("the home", () => {
     }
     expect(home.match(/type="video\/mp4"/g)!.length).toBe(clips.length);
     expect(home.match(/type="video\/webm"/g)!.length).toBe(clips.length);
+  });
+});
+
+describe("the share card", () => {
+  it("names a 1200×630 image that exists, for Open Graph and Twitter, and describes Potyro as structured data", () => {
+    expect(home).toContain('<meta property="og:image" content="https://potyro.com/media/og.png" />');
+    expect(home).toContain('<meta name="twitter:card" content="summary_large_image" />');
+    expect(existsSync(join(out, "media", "og.png"))).toBe(true);
+    const png = readFileSync(join(out, "media", "og.png"));
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1200, 630]);
+    const ld = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(home)?.[1] ?? "";
+    const data = JSON.parse(ld);
+    expect(data["@graph"].map((n: { "@type": string }) => n["@type"])).toEqual(["WebSite", "SoftwareApplication"]);
+    expect(apps).toContain('<meta property="og:image" content="https://potyro.com/media/og.png" />');
   });
 });
 
