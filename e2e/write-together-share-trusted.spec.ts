@@ -28,18 +28,18 @@ const editor = (where: Screen) => where.getByRole("textbox", { name: "Write" });
 /** A stranger's viewer runs the app sealed, its screens each in a frame of their own (#267). */
 const sealed = (page: Page): FrameLocator => page.frameLocator(".k-sealed-view iframe");
 
-/** Start a document named `title` and type `body` into it; back on the list afterwards. */
-async function write(page: Page, title: string, body: string): Promise<void> {
+/** Start a document named `title` and type `body` into it; back on the list afterwards. `screen` is where the editor is: the page, or a stranger's sealed frame. */
+async function write(page: Page, title: string, body: string, screen: Screen = page): Promise<void> {
   await page.getByRole("button", { name: "New document" }).click();
   const prompt = page.locator(".k-dialog");
   await prompt.locator("input").fill(title);
   await prompt.getByRole("button", { name: "OK" }).click();
-  await expect(editor(page)).toBeVisible({ timeout: 30_000 });
-  await editor(page).click();
+  await expect(editor(screen)).toBeVisible({ timeout: 30_000 });
+  await editor(screen).click();
   await page.keyboard.type(body);
-  await expect(editor(page)).toHaveValue(body);
-  await page.getByRole("button", { name: "Documents" }).click();
-  await expect(page.locator(".k-list-row", { hasText: title })).toBeVisible();
+  await expect(editor(screen)).toHaveValue(body);
+  await screen.getByRole("button", { name: "Documents" }).click({ noWaitAfter: true });
+  await expect(page.locator(".k-list-row", { hasText: title })).toBeVisible({ timeout: 30_000 });
 }
 
 /** Invite from the open document: the role, the sync question the first time, then the link. */
@@ -62,7 +62,7 @@ async function invite(page: Page, role: "write" | "read", firstTime: boolean): P
 
 test("a document's link brings one document, live, to someone without the app â€” and nothing else", async ({ browser }) => {
   // Three devices and a relay between them: every step waits on sync.
-  test.setTimeout(480_000);
+  test.setTimeout(600_000);
 
   // ---- Ana: two documents; one of them shared ----
   const { context: ctxA, page: a } = await device(browser, { width: 1280, height: 800 });
@@ -83,6 +83,10 @@ test("a document's link brings one document, live, to someone without the app â€
   await bPage.goto(link);
   const b = sealed(bPage);
   await expect(editor(b)).toHaveValue("Hello from Ana.", { timeout: 90_000 });
+  // Not a demo: the bar says what this is, and Keep is there from the start (not after minutes, as
+  // for a link to a page) â€” the way to Bo's own Potyro, with the document in it.
+  await expect(bPage.locator(".k-demo-bar")).toContainText("Shared with you: what you write here is kept");
+  await expect(bPage.locator(".k-demo-bar").getByRole("button", { name: "Keep this app" })).toBeVisible();
   await editor(b).evaluate((el) => {
     const t = el as HTMLTextAreaElement;
     t.focus();
@@ -144,6 +148,26 @@ test("a document's link brings one document, live, to someone without the app â€
   });
   await a.keyboard.type(" Bye.");
   await expect(editor(c)).toHaveValue("Note: Hello from Ana. And Bo. Bye.", { timeout: 60_000 });
+
+  await test.step("Cy reads live", async () => {});
+  // ---- Bo, still in the viewer, starts a document of his own and invites Cy to it ----
+  // The viewer's Invite used to hand over the words with no link in them (owner, 2026-11-07).
+  await b.getByRole("button", { name: "Documents" }).click({ noWaitAfter: true });
+  await expect(bPage.locator(".k-list-row", { hasText: "Plan" })).toBeVisible({ timeout: 30_000 });
+  await write(bPage, "Bo's own", "Only Bo wrote this.", b);
+  await bPage.locator(".k-list-row", { hasText: "Bo's own" }).click();
+  await expect(editor(b)).toHaveValue("Only Bo wrote this.", { timeout: 30_000 });
+  await b.getByRole("button", { name: "Invite" }).click();
+  await b.getByRole("menu", { name: "Who can open this document?" }).getByRole("menuitem", { name: "Anyone with the link can write" }).click();
+  const sentByBo = bPage.locator(".k-dialog").getByRole("textbox", { name: "What will be sent" });
+  await expect(sentByBo).toHaveValue(/rec=/, { timeout: 60_000 });
+  // The link alone, for an address bar: Copy link beside Copy.
+  await expect(bPage.locator(".k-dialog").getByRole("button", { name: "Copy link" })).toBeVisible();
+  const bosLink = (await sentByBo.inputValue()).split("\n").pop()!;
+  await bPage.locator(".k-dialog").getByRole("button", { name: "Done" }).click();
+  await cPage.goto(bosLink);
+  await expect(editor(sealed(cPage))).toHaveValue("Only Bo wrote this.", { timeout: 90_000 });
+  await expect(cPage.locator(".k-list-row", { hasText: "Plan" })).toHaveCount(0);
 
   await ctxA.close();
   await ctxB.close();

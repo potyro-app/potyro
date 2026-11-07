@@ -417,8 +417,12 @@ entities: { doc: { share: "record", fields: { title: …, body: { type: "text", 
   Anyone else: the viewer opens the app sealed, as a demo does, but on a synced store of its own
   (this device's identity, Potyro's relay) that joins the record: they are in the document at once,
   writing if the link said so. Nothing of theirs leaves the device, and nothing of the sharer's but
-  that record reaches it. **Keep this app** keeps the record too: the kept copy joins it as it
-  opens. The app's code never rides the viewer's synced store (#281): it stays in memory there.
+  that record reaches it. Its bar is not a demo's: it says what they write is kept and reaches
+  whoever shared it, and offers **Keep this app** from the start (a page's link waits a few minutes,
+  §11) — keeping is the way to their own Potyro, and the kept copy joins the record as it opens.
+  A record they make in the viewer can be shared on in turn: the link is the one they arrived by,
+  with their record on it. A demo on records in memory cannot invite anyone, and says so (keep the
+  app first). The app's code never rides the viewer's synced store (#281): it stays in memory there.
 - **Roles.** `role: "writer"` (default) may change the record and add to it (a comment); `"reader"`
   may look. Two links, then, as Etherpad and Google Docs offer.
 - **Not yet.** Taking a link back (revoking a group member); who wrote what, by name, for someone
@@ -428,5 +432,5 @@ entities: { doc: { share: "record", fields: { title: …, body: { type: "text", 
 Tested: `packages/store/test/jazz-sharing.test.ts` (a third node that joins one record sees it and
 its comments and nothing else; read-only; notifications; refusals), `packages/host/test/
 record-share-ctx.test.ts` (both sealed runners), `e2e/write-together-share-trusted.spec.ts` (three
-people through the real relay).
+people through the real relay; the stranger's viewer invites to a record of its own).
 

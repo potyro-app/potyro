@@ -69,6 +69,24 @@ describe("share dialog", () => {
     await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/Couldn't copy/));
   });
 
+  it("with an app's words and a link, Copy takes both and Copy link the link alone", async () => {
+    // Pasting into an address bar wants the link by itself (owner, 2026-11-07).
+    const writeText = vi.fn(async () => {});
+    clipboard(writeText);
+    const host = new DialogHost();
+    render(<Dialogs host={host} />);
+    act(() => {
+      void host.send({ title: "Write with me", text: "Write with me in “Plan” on Potyro", url: LINK });
+    });
+    expect((screen.getByRole("textbox", { name: "What will be sent" }) as HTMLTextAreaElement).value).toBe(`Write with me in “Plan” on Potyro\n${LINK}`);
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
+    expect(writeText).toHaveBeenLastCalledWith(LINK);
+    fireEvent.click(screen.getByRole("button", { name: "Copy", exact: true }));
+    expect(writeText).toHaveBeenLastCalledWith(`Write with me in “Plan” on Potyro\n${LINK}`);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/^Copied/));
+  });
+
   it("offers the device's own share sheet only where there is one", async () => {
     mount();
     expect(screen.queryByRole("button", { name: /^Share/ })).toBeNull();
