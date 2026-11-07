@@ -1,8 +1,9 @@
 # docs/legal
 
 The privacy page and the terms of use for the free service at potyro.app, run by one person in
-Italy. Issue #117. **Drafts**: nothing here is in force until the owner fills in the placeholders
-and counsel has read them.
+Italy. Issue #117. **In force since 2026-11-07** (the `Effective:` line of each text). The owner
+filled in the last details that day and chose to publish without a review by counsel; a review can
+still happen, and any change it brings goes through `facts.md` first, as below.
 
 | File | What |
 |---|---|
@@ -16,10 +17,9 @@ review are HTML comments (`<!-- -->`), so they do not show when the page is serv
 
 ## Placeholders
 
-Still open: `<DATE>` (the day each text takes effect, on its `Effective:` line, written
-`YYYY-MM-DD`), `<RETENTION, to decide>` (how long emails are kept) and `<HOSTING LOCATION>` (where
-Hetzner hosts potyro.app; facts.md F-58: the address looks like Hetzner's Helsinki cloud, to confirm
-in the Hetzner console).
+None left. Filled in on 2026-11-07: the effective date (2026-11-07, both texts), how long emails are
+kept (12 months after the matter is closed) and where Hetzner hosts potyro.app (Finland, EU; the
+owner confirmed it, facts.md F-58).
 
 Filled in on 2026-11-01: the person responsible (`Edgar Zanella Alvarenga`), the contact address
 (contact@potyro.com) and the report address (abuse@potyro.com; facts.md F-61). The report address

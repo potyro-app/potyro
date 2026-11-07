@@ -1,10 +1,6 @@
 # Privacy
 
-> **Draft.** Not in force yet. It waits for the owner's details and a review by counsel
-> (see [README.md](README.md)). Every statement here is listed in [facts.md](facts.md) with the code
-> or document that proves it. Notes in `<!-- -->` comments are for the review and are not shown.
-
-Effective: <DATE>
+Effective: 2026-11-07
 
 ## The short version
 
@@ -191,7 +187,7 @@ We do not use your data for ads, profiles or anything you did not ask for.
 
 | Who | What for | Where |
 |---|---|---|
-| Hetzner Online GmbH | Hosts potyro.app: the site, the sync relay, links, rooms, the AI and request relays | <HOSTING LOCATION> |
+| Hetzner Online GmbH | Hosts potyro.app: the site, the sync relay, links, rooms, the AI and request relays | Finland (EU) |
 | OpenRouter | Passes free allowance and Firefox voice requests to the model's provider | |
 | Google | Runs the model behind the free allowance (Gemini 2.5 Flash Lite), through OpenRouter | |
 | GitHub | Holds requests and wording suggestions, as public issues | |
@@ -213,7 +209,7 @@ Some of these companies may handle data outside the EU, including in the United 
 | Daily counts per device id or per IP address | AI, link and request relays, memory | A day, or until the relay restarts |
 | Rooms: ids, names, counts | Rooms relay, memory | While the room is live |
 | Requests and wording suggestions | GitHub, public | Until deleted |
-| Emails you send us | Our mailbox | <RETENTION, to decide> |
+| Emails you send us | Our mailbox | 12 months after the matter is closed |
 | Everything else | Your device | Until you delete it |
 
 ## Your rights
