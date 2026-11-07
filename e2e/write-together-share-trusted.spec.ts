@@ -158,13 +158,15 @@ test("a document's link brings one document, live, to someone without the app â€
   await bPage.locator(".k-list-row", { hasText: "Bo's own" }).click();
   await expect(editor(b)).toHaveValue("Only Bo wrote this.", { timeout: 30_000 });
   await b.getByRole("button", { name: "Invite" }).click();
-  await b.getByRole("menu", { name: "Who can open this document?" }).getByRole("menuitem", { name: "Anyone with the link can write" }).click();
+  // A sealed screen's sheet is the shell's, drawn on the page, not in the frame (ctx-ui-sandbox.spec.ts).
+  await bPage.getByRole("menu", { name: "Who can open this document?" }).getByRole("menuitem", { name: "Anyone with the link can write" }).click();
   const sentByBo = bPage.locator(".k-dialog").getByRole("textbox", { name: "What will be sent" });
   await expect(sentByBo).toHaveValue(/rec=/, { timeout: 60_000 });
   // The link alone, for an address bar: Copy link beside Copy.
   await expect(bPage.locator(".k-dialog").getByRole("button", { name: "Copy link" })).toBeVisible();
   const bosLink = (await sentByBo.inputValue()).split("\n").pop()!;
   await bPage.locator(".k-dialog").getByRole("button", { name: "Done" }).click();
+  // Over the page Cy already has open: the link differs only in its fragment, and the viewer starts over on it.
   await cPage.goto(bosLink);
   await expect(editor(sealed(cPage))).toHaveValue("Only Bo wrote this.", { timeout: 90_000 });
   await expect(cPage.locator(".k-list-row", { hasText: "Plan" })).toHaveCount(0);
