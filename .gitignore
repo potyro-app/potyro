@@ -12,7 +12,9 @@ playwright-report/
 /playwright/.cache/
 
 # Local agent config (do not publish)
-.claude/
+# Claude Code: the checked-in skills travel with the repo; everything else there is a device's own
+.claude/*
+!.claude/skills/
 
 # Capacitor generated native projects (regenerate with: pnpm --filter @potyro/native cap:add:android)
 packages/native/android/
