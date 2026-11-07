@@ -152,20 +152,20 @@ export function renderHome({ gallery, words: w, lucide, code, logos, v, sizes, l
   const heroShot = "/screens/split.jpg";
 
   const steps = [
-    { id: "data", hour: "azul", pic: SCREENS.data.map((x) => phone(`/screens/${x}.jpg`)).join(""), note: "" },
-    { id: "database", hour: "anil", pic: clip("data", w.clipData), note: w.databaseNote },
-    { id: "make", hour: "amarelo", pic: clip("studio", w.clipStudio), note: w.makeNote, extra: code },
-    { id: "together", hour: "verde", pic: clip("together-a", w.clipTogetherA, "pair") + clip("together-b", w.clipTogetherB, "pair"), note: w.togetherNote },
-    { id: "ai", hour: "roxo", pic: clip("plant-doctor", w.clipAi), note: w.aiNote },
-    { id: "share", hour: "laranja", pic: SCREENS.share.map((x) => phone(`/screens/${x}.jpg`)).join(""), note: "", extra: `<p class="link-pill"><span>${e(w.shareLink)}</span><button type="button" class="btn" data-copy="https://potyro.com/">${e(w.copyLink)}</button></p>` },
-    { id: "safe", hour: "menta", pic: phone("/media/permission-ai.png", w.stillPermissionAi, "boxed") + phone("/media/permission-camera.png", w.stillPermissionCamera), note: "" },
+    { id: "data", hour: "azul", pic: SCREENS.data.map((x) => phone(`/screens/${x}.jpg`)).join("") },
+    { id: "database", hour: "anil", pic: clip("data", w.clipData) },
+    { id: "make", hour: "amarelo", pic: clip("studio", w.clipStudio), extra: code },
+    { id: "together", hour: "verde", pic: clip("together-a", w.clipTogetherA, "pair") + clip("together-b", w.clipTogetherB, "pair") },
+    { id: "ai", hour: "roxo", pic: clip("plant-doctor", w.clipAi) },
+    { id: "share", hour: "laranja", pic: SCREENS.share.map((x) => phone(`/screens/${x}.jpg`)).join(""), extra: `<p class="link-pill"><span>${e(w.shareLink)}</span><button type="button" class="btn" data-copy="https://potyro.com/">${e(w.copyLink)}</button></p>` },
+    { id: "safe", hour: "menta", pic: phone("/media/permission-ai.png", w.stillPermissionAi, "boxed") + phone("/media/permission-camera.png", w.stillPermissionCamera) },
   ];
   const blocks = steps
     .map(
       (s, i) => `
 <div class="block-row" id="${s.id}"><div class="wrap">
   <section class="block reveal ${i % 2 ? "flip" : ""}" data-traco="${s.hour}" aria-labelledby="${s.id}-h">
-    <div class="block-words"><h2 id="${s.id}-h">${e(w[s.id])}</h2><p class="say">${e(w[`${s.id}Text`])}</p>${s.note ? `<p class="rec-note">${e(s.note)}</p>` : ""}${s.extra ?? ""}</div>
+    <div class="block-words"><h2 id="${s.id}-h">${e(w[s.id])}</h2><p class="say">${e(w[`${s.id}Text`])}</p>${s.extra ?? ""}</div>
     <div class="block-pic">${s.pic}</div>
   </section>
 </div></div>`,

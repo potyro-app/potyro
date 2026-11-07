@@ -83,7 +83,6 @@ main { max-width: none; padding: 0; }
 .boxed { outline: var(--stroke) dashed #231f20; outline-offset: 14px; border-radius: 40px; }
 
 /* the things beside the words, on the block's own white */
-.rec-note { margin-top: var(--space-4); font-size: var(--text-small); color: #231f20; opacity: 0.72; }
 .link-pill { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin-top: var(--space-5); padding: 6px 6px 6px 16px; border-radius: 24px; background: rgba(255, 255, 255, 0.86); color: #231f20; font-family: var(--font-mono); font-size: var(--text-small); max-width: 100%; }
 .link-pill span { min-width: 0; overflow-wrap: anywhere; }
 .link-pill .btn { border-color: #231f20; color: #231f20; }
