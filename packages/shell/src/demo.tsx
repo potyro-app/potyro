@@ -27,7 +27,7 @@ import { memoryModules } from "./package-modules.js";
 import { NavHost } from "./nav-host.js";
 import { PickerHost } from "./picker.js";
 import { UiHost } from "./ui-host.js";
-import { createNavBridge, createUiBridge } from "./ui-bridge.js";
+import { createNavBridge, createUiBridge, type RecordLinkMaker } from "./ui-bridge.js";
 import { screenAwake } from "./keep-awake.js";
 import { timerHub } from "./timer-hub.js";
 import { shellDialogs } from "./dialog.js";
@@ -161,6 +161,31 @@ export async function openDemo(pkg: AppPackage, caps: Capabilities, opts: { link
         return withAppTarget(link, { line, page: to.page, params: to.params });
       }
     : undefined;
+  // Inviting others to a record from here (`ctx.ui.share({ record })`, docs/24 §12). A viewer opened
+  // from a record's link is on a synced store of its own, so a record IT made can be shared on: the
+  // link is the one it arrived by, with the new record on it. A demo on records in memory cannot —
+  // nothing of it syncs — and says what to do instead, rather than handing over words with no link.
+  const makeRecordLink: RecordLinkMaker = live
+    ? {
+        prepare: async () => true,
+        make: async (share) => {
+          const line = lineFor({ line: pkg.line }, declaredId);
+          if (!line || !link) throw new Error("This app has no id to make a link to it with");
+          const { recordLinkOn } = await import("./record-share.js");
+          return recordLinkOn(link, { line, name, ...(declaredId ? { declaredId } : {}) }, store, share.record);
+        },
+      }
+    : {
+        prepare: async () => {
+          await shellDialogs.confirm(t`This is a demo: nothing in it syncs, so nobody can be invited to it yet. Keep the app first, then invite from your own copy.`, {
+            ok: t({ message: "OK", comment: "Button: close the note that a demo cannot invite anyone" }),
+          });
+          return false;
+        },
+        make: async () => {
+          throw new Error("a demo cannot invite anyone");
+        },
+      };
   const composed = await compose({
     provenance: "untrusted",
     bundleCode,
@@ -172,10 +197,18 @@ export async function openDemo(pkg: AppPackage, caps: Capabilities, opts: { link
     caps: capsForApp(caps, `demo:${pkg.declared?.id ?? "app"}`),
     // A demo's timers and screen are the shell's, as an installed app's (docs/04); leaving a demo is a
     // page load, which lets go of the screen by itself.
-    ui: createUiBridge(toaster.push, picker, shellDialogs, questions, makeLink, {
-      keepAwake: () => ({ release: screenAwake.hold(`demo:${pkg.declared?.id ?? "app"}`) }),
-      timers: timerHub.bridgeFor(`demo:${pkg.declared?.id ?? "app"}`, name),
-    }),
+    ui: createUiBridge(
+      toaster.push,
+      picker,
+      shellDialogs,
+      questions,
+      makeLink,
+      {
+        keepAwake: () => ({ release: screenAwake.hold(`demo:${pkg.declared?.id ?? "app"}`) }),
+        timers: timerHub.bridgeFor(`demo:${pkg.declared?.id ?? "app"}`, name),
+      },
+      makeRecordLink,
+    ),
     nav: createNavBridge((pageId, param) => navHost.navigate(pageId, param)),
     me,
     // Its custom views draw in their own sealed frames, as any shared app's do (#267).
@@ -231,7 +264,10 @@ export function DemoScreen({ session, pkg, startRemix, target, reportLink, recor
   // A link to one of its pages is an invitation to DO something there — join a game, look at a list —
   // not to adopt an app (owner, 2026-10-19: "for the first user going to the link this makes no sense").
   // So it opens on that page with nothing to decide; Keep and Make it mine come once they have used it.
-  const [offering, setOffering] = useState(!target);
+  // A record's link is different again: what they write here is kept and reaches the others, and
+  // they will want to come back to it — so Keep is offered from the start, with that said (owner,
+  // 2026-11-07: "the user doesn't have access to potyro.app, there is no menu for the apps or home").
+  const [offering, setOffering] = useState(!target || Boolean(record));
   useEffect(() => {
     if (offering) return;
     const later = setTimeout(() => setOffering(true), INVITE_OFFER_AFTER_MS);
@@ -248,7 +284,11 @@ export function DemoScreen({ session, pkg, startRemix, target, reportLink, recor
         </a>
         <p className="k-demo-note">
           {credit ? <span className="k-demo-credit">{credit}</span> : null}
-          {offering ? (
+          {record ? (
+            <span>
+              <Trans comment="Demo bar above a record shared by its link: what is written is kept and reaches the sharer; Keep adds the app">Shared with you: what you write here is kept, and reaches whoever shared it. Keep the app to find it again.</Trans>
+            </span>
+          ) : offering ? (
             <span>
               <Trans comment="Demo bar: nothing done in the demo is kept">A demo: nothing you do here is kept</Trans>
             </span>

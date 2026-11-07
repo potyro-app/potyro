@@ -2456,7 +2456,9 @@ msgstr "Copiada en “{copyName}”. Empieza vacía: la app, no los datos."
 msgid "Copy"
 msgstr "Copiar"
 
+#. Share dialog: copy only the link, not the app's words
 #. Studio: copy the app's published link
+#: ../shell/src/share-body.tsx
 #: ../shell/src/share-body.tsx
 #: ../shell/src/studio.tsx
 msgid "Copy link"
@@ -5124,7 +5126,9 @@ msgstr "Sin conexión"
 msgid "Offline · changes saved here"
 msgstr "Sin conexión · cambios guardados aquí"
 
+#. Button: close the note that a demo cannot invite anyone
 #. Prompt button: accept what was typed
+#: ../shell/src/demo.tsx
 #: ../shell/src/dialog.tsx
 #: ../views/src/record-form.tsx
 msgid "OK"
@@ -6333,6 +6337,11 @@ msgstr "Compartido con Potyro"
 msgid "shared with you"
 msgstr "compartida contigo"
 
+#. Demo bar above a record shared by its link: what is written is kept and reaches the sharer; Keep adds the app
+#: ../shell/src/demo.tsx
+msgid "Shared with you: what you write here is kept, and reaches whoever shared it. Keep the app to find it again."
+msgstr "Compartido contigo: lo que escribas aquí se guarda y llega a quien lo compartió. Guarda la app para volver a encontrarlo."
+
 #. What an app asks this device for, lower case
 #: ../shell/src/capability-words.ts
 msgid "sharing"
@@ -7432,6 +7441,10 @@ msgstr "Este archivo no dice de qué Potyro viene."
 #: ../shell/src/share-sync.ts
 msgid "This invite has no app in it yet. Ask the sender to open the app once, then share a fresh link."
 msgstr "Esta invitación aún no tiene ninguna app. Pide a quien la envió que abra la app una vez y comparta un enlace nuevo."
+
+#: ../shell/src/demo.tsx
+msgid "This is a demo: nothing in it syncs, so nobody can be invited to it yet. Keep the app first, then invite from your own copy."
+msgstr "Esto es una demo: nada en ella se sincroniza, así que todavía no se puede invitar a nadie. Guarda primero la app y luego invita desde tu propia copia."
 
 #: ../shell/src/remove-app.ts
 msgid "This is a shared app. Everyone else keeps it and everything in it — but this device leaves, and getting back in needs a new invite from them."

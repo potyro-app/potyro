@@ -2456,7 +2456,9 @@ msgstr "Copiata in “{copyName}”. Parte vuota: l’app, non i dati."
 msgid "Copy"
 msgstr "Copia"
 
+#. Share dialog: copy only the link, not the app's words
 #. Studio: copy the app's published link
+#: ../shell/src/share-body.tsx
 #: ../shell/src/share-body.tsx
 #: ../shell/src/studio.tsx
 msgid "Copy link"
@@ -5124,7 +5126,9 @@ msgstr "Offline"
 msgid "Offline · changes saved here"
 msgstr "Offline · modifiche salvate qui"
 
+#. Button: close the note that a demo cannot invite anyone
 #. Prompt button: accept what was typed
+#: ../shell/src/demo.tsx
 #: ../shell/src/dialog.tsx
 #: ../views/src/record-form.tsx
 msgid "OK"
@@ -6333,6 +6337,11 @@ msgstr "Condiviso con Potyro"
 msgid "shared with you"
 msgstr "condivisa con te"
 
+#. Demo bar above a record shared by its link: what is written is kept and reaches the sharer; Keep adds the app
+#: ../shell/src/demo.tsx
+msgid "Shared with you: what you write here is kept, and reaches whoever shared it. Keep the app to find it again."
+msgstr "Condiviso con te: quello che scrivi qui resta e arriva a chi l'ha condiviso. Tieni l'app per ritrovarlo."
+
 #. What an app asks this device for, lower case
 #: ../shell/src/capability-words.ts
 msgid "sharing"
@@ -7432,6 +7441,10 @@ msgstr "Questo file non dice da quale Potyro arriva."
 #: ../shell/src/share-sync.ts
 msgid "This invite has no app in it yet. Ask the sender to open the app once, then share a fresh link."
 msgstr "Questo invito non contiene ancora nessuna app. Chiedi a chi l’ha mandato di aprire l’app una volta e poi condividere un link nuovo."
+
+#: ../shell/src/demo.tsx
+msgid "This is a demo: nothing in it syncs, so nobody can be invited to it yet. Keep the app first, then invite from your own copy."
+msgstr "Questa è una demo: niente qui si sincronizza, quindi non si può ancora invitare nessuno. Prima tieni l'app, poi invita dalla tua copia."
 
 #: ../shell/src/remove-app.ts
 msgid "This is a shared app. Everyone else keeps it and everything in it — but this device leaves, and getting back in needs a new invite from them."

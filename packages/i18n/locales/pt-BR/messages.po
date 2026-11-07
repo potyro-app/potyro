@@ -2456,7 +2456,9 @@ msgstr "A gente copiou pra “{copyName}”. Ele começa vazio: vai o app, não 
 msgid "Copy"
 msgstr "Copiar"
 
+#. Share dialog: copy only the link, not the app's words
 #. Studio: copy the app's published link
+#: ../shell/src/share-body.tsx
 #: ../shell/src/share-body.tsx
 #: ../shell/src/studio.tsx
 msgid "Copy link"
@@ -5124,7 +5126,9 @@ msgstr "Sem internet"
 msgid "Offline · changes saved here"
 msgstr "Offline · mudanças salvas aqui"
 
+#. Button: close the note that a demo cannot invite anyone
 #. Prompt button: accept what was typed
+#: ../shell/src/demo.tsx
 #: ../shell/src/dialog.tsx
 #: ../views/src/record-form.tsx
 msgid "OK"
@@ -6333,6 +6337,11 @@ msgstr "Compartilhado com o Potyro"
 msgid "shared with you"
 msgstr "compartilhado com você"
 
+#. Demo bar above a record shared by its link: what is written is kept and reaches the sharer; Keep adds the app
+#: ../shell/src/demo.tsx
+msgid "Shared with you: what you write here is kept, and reaches whoever shared it. Keep the app to find it again."
+msgstr "Compartilhado com você: o que você escrever aqui fica salvo e chega a quem compartilhou. Guarde o app para encontrá-lo de novo."
+
 #. What an app asks this device for, lower case
 #: ../shell/src/capability-words.ts
 msgid "sharing"
@@ -7432,6 +7441,10 @@ msgstr "Este arquivo não diz de qual Potyro veio."
 #: ../shell/src/share-sync.ts
 msgid "This invite has no app in it yet. Ask the sender to open the app once, then share a fresh link."
 msgstr "Este convite ainda não tem app. Pede pra quem mandou abrir o app uma vez e mandar um link novo."
+
+#: ../shell/src/demo.tsx
+msgid "This is a demo: nothing in it syncs, so nobody can be invited to it yet. Keep the app first, then invite from your own copy."
+msgstr "Isto é uma demo: nada nela sincroniza, então ainda não dá para convidar ninguém. Guarde o app primeiro e depois convide da sua própria cópia."
 
 #: ../shell/src/remove-app.ts
 msgid "This is a shared app. Everyone else keeps it and everything in it — but this device leaves, and getting back in needs a new invite from them."
