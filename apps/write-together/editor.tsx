@@ -16,7 +16,7 @@
 // Comments are records anchored to characters (`anchor`/`index`), so they stay on their words
 // through everyone's edits, and read as "the words are gone" once those are deleted.
 import type { Resolved, TextRun, ViewProps } from "potyro";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { applyEditsToRuns, diffEdits, fitRuns, freeColor, hashColor, initials, mapIndex, merge3, resolveColors, segments, strokeOf, tintOf, type Placed } from "./diff.js";
 import { renderMarkdown } from "./markdown.js";
 import { applyMark, markForKey, TOOLS, type Mark } from "./marks.js";
@@ -39,6 +39,15 @@ function useSharedText(props: ViewProps, docId: string, body: string, ready: boo
   const area = useRef<HTMLTextAreaElement>(null);
   const textRef = useRef(body);
   const runsAsked = useRef(0);
+  /** Where the caret goes once the next text is on screen — set by `reconcile`, applied on commit. */
+  const restore = useRef<[number, number] | null>(null);
+  useLayoutEffect(() => {
+    const at = restore.current;
+    const el = area.current;
+    if (!at || !el) return;
+    restore.current = null;
+    el.setSelectionRange(at[0], at[1]);
+  });
 
   /** Put `next` on screen, keeping the caret on the same words. */
   const reconcile = (next: string): void => {
@@ -48,11 +57,15 @@ function useSharedText(props: ViewProps, docId: string, body: string, ready: boo
     const start = focused ? mapIndex(textRef.current, next, el.selectionStart) : null;
     const end = focused ? mapIndex(textRef.current, next, el.selectionEnd) : null;
     textRef.current = next;
+    // The caret is put back in the same commit that puts the text on screen (the layout effect
+    // above), never a frame later: a `requestAnimationFrame` here fired AFTER a selection the person
+    // had made in the meantime and collapsed it to the old caret — a comment on "Hello" became a
+    // comment "here" (write-together-trusted.spec.ts, under load).
+    if (focused && start !== null && end !== null) restore.current = [start, end];
     setText(next);
     // Words that arrived from someone else are drawn at once, uncoloured until the next answer names
     // their writer; everything already coloured stays coloured.
     setRuns((r) => fitRuns(r, next, null));
-    if (el && focused && start !== null && end !== null) requestAnimationFrame(() => el.setSelectionRange(start, end));
   };
 
   const askRuns = (): void => {
