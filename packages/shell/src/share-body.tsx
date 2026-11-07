@@ -88,10 +88,10 @@ export function ShareBody({ link: given, pendingLink, text, files, onHanded, onD
     field?.select();
   };
 
-  const copy = async (): Promise<void> => {
+  const copy = async (what: string = whole): Promise<void> => {
     try {
       if (!navigator.clipboard) throw new Error("No clipboard in this context");
-      await navigator.clipboard.writeText(whole);
+      await navigator.clipboard.writeText(what);
       setState("copied");
       onHanded("copy");
     } catch {
@@ -181,6 +181,12 @@ export function ShareBody({ link: given, pendingLink, text, files, onHanded, onD
         {canShare ? (
           <button ref={primary === "share" ? primaryRef : undefined} type="button" className={`k-add${primary === "share" ? " k-primary-action" : ""}`} data-share="native" disabled={making} onClick={() => void shareNative()}>
             <Trans comment="Opens the device's own share sheet">Share</Trans>
+          </button>
+        ) : null}
+        {/* Words with a link: the link alone too, for pasting into an address bar (owner, 2026-11-07). */}
+        {words && (link || making) ? (
+          <button type="button" className="k-add" data-share="copy-link" disabled={making} onClick={() => void copy(link)}>
+            <Trans comment="Share dialog: copy only the link, not the app's words">Copy link</Trans>
           </button>
         ) : null}
         {canCopy ? (
