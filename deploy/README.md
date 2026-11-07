@@ -6,7 +6,7 @@ rebuilt from the repository plus the owner's secrets. The whole deployment is de
 
 | File | Where it goes |
 |---|---|
-| `potyro.app.Caddyfile` | `/etc/caddy/Caddyfile` on `65.109.228.5`: potyro.app, potyro.com, and the names that forward to potyro.app |
+| `potyro.app.Caddyfile` | `/etc/caddy/Caddyfile` on the server: potyro.app, potyro.com, and the names that forward to potyro.app |
 | `containers.sh` | run on that server, as root, from a checkout: copies each service's package into `/opt/potyro-*` and (re)creates its container |
 | `env.example/*.env.example` | one template per env file in `/etc/potyro/` (`requests.env`, `ai.env`, `share-links.env`): the variable names, never the values |
 

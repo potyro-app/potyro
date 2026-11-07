@@ -18,8 +18,9 @@ phase 1 after this prototype (#272): logic in the realm, the shell's `frame-src 
 removal; custom views stay as they are; the view phase waits for the Android probe (§5). What
 shipped, how it differs from the prototype, how to fall back to QuickJS and what changed for the
 #14 audit are in **§10**. CLAUDE.md rule 3, docs/04, docs/05 and docs/07 are updated. The prototype
-itself stays in `docs/spikes/browser-realm/` (typechecked by `pnpm typecheck:spikes`): it is the
-measurement record, the view half (`mount`) and the Android probe.
+itself (the measurement record, the view half, the standalone Android probe) lived in
+`docs/spikes/browser-realm/` until 2026-11-07 and is in the repository's history; what shipped is
+`packages/host/src/realm/`, and the probe is in the app itself (`#probe=realm`, §5).
 
 ## 0. The answer on one page
 
@@ -207,6 +208,10 @@ is torn down, and the thread goes with it.
   frames exits; the single-realm case showed exactly that.
 
 ## 5. Android WebView: test page and steps (not run here)
+
+> The standalone probe and its runner named below were part of the spike, removed from the tree on
+> 2026-11-07 (in the repository's history). The same measurement is in the app: open it with
+> `#probe=realm` on the address (packages/shell/src/realm-probe.ts).
 
 **From the APK, without USB (#267):** open Potyro with `#probe=realm` on its address, or open **You**
 and tap its heading **seven times**. The "Sealed screens on this device" screen runs the same three
@@ -407,6 +412,9 @@ code with ambient authority, and never in the shell's own realm." The mental-mod
 - **QuickJS-specific items drop out of scope:** the marshal and the asyncify bridge.
 
 ## 9. Reproduce
+
+> As it was reproduced in October 2026. The spike these commands run was removed from the tree on
+> 2026-11-07; check out a commit before that (`git log -- docs/spikes/browser-realm`) to run them.
 
 ```sh
 export PATH=/home/aivuk/.nvm/versions/node/v22.13.1/bin:$PATH
