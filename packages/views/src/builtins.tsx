@@ -6,6 +6,7 @@ import { useLingui } from "@lingui/react/macro";
 import type { CSSProperties, ReactNode } from "react";
 import { actionInfo, basePageId, type Resolved } from "potyro";
 import { PartProblem } from "./part-failure.js";
+import { useNews } from "./news.js";
 import type { BuiltinViewProps, DisplayCell } from "./types.js";
 import { displayFieldFor, fieldLabel, formatValue, getView, humanizeKey, shownValue } from "./format.js";
 import { useDisplayCells } from "./cells.js";
@@ -274,6 +275,7 @@ export function ListView(props: BuiltinViewProps) {
   // screen of nothing.
   // Only on a page that IS this list: a layout's "Overdue" is a selection, not a place to add to.
   const offerAdd = onCreate && byPeople(runtime, view.entity) && !pageId.includes("#") && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
+  const news = useNews(runtime);
   const renderRows = (list: Resolved[]) => (
     <ul className="k-list" data-lead={lead}>
       {list.map((row) => {
@@ -283,6 +285,7 @@ export function ListView(props: BuiltinViewProps) {
           <li
             key={row.id}
             className="k-list-row"
+            data-news={news(row) || undefined}
             data-clickable={Boolean(openRow)}
             data-active={selectedKey !== undefined && params[selectedKey] === row.id ? "true" : undefined}
             onClick={openRow ? () => openRow(row) : undefined}
@@ -403,6 +406,7 @@ export function GalleryView(props: BuiltinViewProps) {
   const lead = view.display?.lead ?? autoLead(rows.map((r, i) => cells[i]?.primary ?? String(r[displayFieldFor(runtime, view.entity)] ?? "")), entityDef?.icon);
   // Only on a page that IS this list: a layout's "Overdue" is a selection, not a place to add to.
   const offerAdd = onCreate && byPeople(runtime, view.entity) && !pageId.includes("#") && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
+  const news = useNews(runtime);
   const renderCards = (list: Resolved[]) => (
     <div className="k-gallery" data-aspect={view.aspect ?? "landscape"} data-caption={view.caption ?? "below"}>
       {list.map((row) => {
@@ -413,6 +417,7 @@ export function GalleryView(props: BuiltinViewProps) {
             key={row.id}
             type="button"
             className="k-card"
+            data-news={news(row) || undefined}
             data-photo={cell.mediaUrl ? "true" : undefined}
             onClick={openCard ? () => openCard(row) : undefined}
           >

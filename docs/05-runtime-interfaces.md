@@ -73,6 +73,9 @@ export interface Store {
   blobHere?(r: MediaRef): Promise<boolean>;  // #255: bytes on this device? asks no one (getBlob fetches); absent = always
   spaceUsage?(): Promise<{ used: number; budget: number }>;  // #255: a shared space's bytes on the relay vs its budget; a file write past it throws SpaceFullError
   memberIds?(): readonly string[];  // synced stores: every account ever in the space, removed ones too (KA-19)
+  editHistory?(entity: string, id: Id, opts?: { since?: Date }): Promise<FieldEdit[]>;  // KA-36: who wrote which field when, off the CRDT log; absent where there is no log
+  removals?(entity: string, opts?: { since?: Date }): Promise<Removal[]>;  // KA-36: deletions, off the INDEX's log, each with the record as it was
+  recordMembers?(entity: string, id: Id): Promise<{ id: string; name?: string }[]>;  // the people who can reach one record: the space's, or a shared record's own group
   deleteBlob(key: string): Promise<void>;  // a replaced or removed file's old bytes
   // the app's own folder (#252): an INDEX of files by id; bytes are blobs under `entry.blob`.
   // Paths, types, hashing and "one file per path" live once in `file-space.ts` (`fileSpace(store)`),
