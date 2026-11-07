@@ -28,6 +28,7 @@ Start with [How Potyro works](00-how-potyro-works.md). The rest goes deeper, one
 - [Voice input](29-voice.md) — The Studio's microphone and ctx.caps.speech.
 - [App translations](30-app-translations.md) — One language in the source, catalogs beside it: how an app carries its words in other languages.
 - [Security model](31-security-model.md) — What keeps a shared app in its box, what the servers can see, what is not protected, and how to report a hole.
+- [Code map](32-code-map.md) — Where each concern lives in the code — the files and entry points for sync, sharing, storage, the sealed realm, ctx, views, the shell, links, design, i18n, the generator, apps, CI — and a section index of the six biggest files.
 
 ## Historical
 

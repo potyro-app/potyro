@@ -16,7 +16,7 @@
     "lint:boundaries": "node scripts/check-boundaries.mjs",
     "lint:tokens": "node scripts/check-tokens.mjs",
     "lint:i18n": "node scripts/check-i18n.mjs",
-    "lint:docs": "node scripts/check-doc-paths.mjs && node scripts/docs-index.mjs --check",
+    "lint:docs": "node scripts/check-doc-paths.mjs && node scripts/docs-index.mjs --check && node scripts/check-agent-map.mjs",
     "docs:index": "node scripts/docs-index.mjs",
     "i18n:extract": "pnpm --filter @potyro/i18n exec lingui extract --clean",
     "ci:local": "node scripts/ci-local.mjs",

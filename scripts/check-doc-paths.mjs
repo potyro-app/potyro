@@ -2,7 +2,7 @@
 // Every repository path a doc names must exist. A doc that points a reader at a file that is not
 // there is worse than one that names no file, and nothing else notices the moment a file moves.
 //
-//   node scripts/check-doc-paths.mjs [file …]      default: README.md docs/00-how-potyro-works.md docs/README.md
+//   node scripts/check-doc-paths.mjs [file …]      default: README.md, CLAUDE.md, docs/00, docs/32 (the code map), docs/README.md, the skills
 //
 // A "path" is a token starting with one of ROOTS and continuing with path characters, read from
 // anywhere in the text (prose, backticks, code blocks). Trailing punctuation and a `:line` suffix
@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ROOTS = ["packages", "apps", "examples", "docs", "scripts", "gallery", "e2e"];
-const DEFAULT = ["README.md", "docs/00-how-potyro-works.md", "docs/README.md"];
+const DEFAULT = ["README.md", "CLAUDE.md", "docs/00-how-potyro-works.md", "docs/32-code-map.md", "docs/README.md", ".claude/skills/new-app/SKILL.md", ".claude/skills/ctx-member/SKILL.md", ".claude/skills/ship-pr/SKILL.md"];
 const TOKEN = new RegExp(`(?<![\\w/.-])(?:${ROOTS.join("|")})/[\\w./\\-*<>…]+`, "g");
 const DOC_NAMES = readdirSync(join(ROOT, "docs"));
 
