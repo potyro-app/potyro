@@ -254,6 +254,8 @@ export function ListView(props: BuiltinViewProps) {
   const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", t`Nothing here yet.`);
   const groups = useRowGroups(runtime, pageId, rows, view);
   useReportCount(loading || error ? undefined : rows.length);
+  // A hook, so before the early returns below: called after them, it changed the hook order once rows came.
+  const news = useNews(runtime);
   const entityDef = runtime.definition.entities[view.entity];
 
   // Tapping a row opens its detail if the app wired one, else opens the editor — so a record is
@@ -397,6 +399,8 @@ export function GalleryView(props: BuiltinViewProps) {
   const emptyText = useDynamicText(runtime, pageId, "emptyText", "view", t`Nothing here yet.`);
   const groups = useRowGroups(runtime, pageId, rows, view);
   useReportCount(loading || error ? undefined : rows.length);
+  // A hook, so before the early returns below: called after them, it changed the hook order once rows came.
+  const news = useNews(runtime);
   const entityDef = runtime.definition.entities[view.entity];
 
   const openCard = rowOpener(runtime, pageId, view.onOpen, navigate) ?? (onEdit ? (row: Resolved) => onEdit(view.entity, String(row.id)) : undefined);

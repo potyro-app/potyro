@@ -152,7 +152,7 @@ test("a document's link brings one document, live, to someone without the app â€
   await test.step("Cy reads live", async () => {});
   // ---- Bo, still in the viewer, starts a document of his own and invites Cy to it ----
   // The viewer's Invite used to hand over the words with no link in them (owner, 2026-11-07).
-  await b.getByRole("button", { name: "Documents" }).click({ noWaitAfter: true });
+  // Bo is on his Documents list since "Bo sees one document"; the editor's frame is gone with the page.
   await expect(bPage.locator(".k-list-row", { hasText: "Plan" })).toBeVisible({ timeout: 30_000 });
   await write(bPage, "Bo's own", "Only Bo wrote this.", b);
   await bPage.locator(".k-list-row", { hasText: "Bo's own" }).click();
