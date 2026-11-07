@@ -163,9 +163,9 @@ content="frame-src 'none'">` stops that frame navigating anywhere. QuickJS-WASM 
   under memory pressure; Capacitor then reloads the page (`webViewWebContentProcessDidTerminate`).
   The app comes back; whatever the sealed app was doing does not.
 - **Fallback**: `localStorage["potyro:sandbox"] = "quickjs"` on the device (Web Inspector console),
-  or `VITE_POTYRO_SANDBOX=quickjs` for the build. The realm probe from docs/22 §5
-  (`docs/spikes/browser-realm/android/probe.js`) runs as-is: paste it into Web Inspector's console,
-  then `await __realmProbe()`.
+  or `VITE_POTYRO_SANDBOX=quickjs` for the build. The realm probe from docs/22 §5 is in the app:
+  open it with `#probe=realm` on the address (You → the probe's screen does the same) and read the
+  verdict on the phone.
 
 ### 3.3 Capabilities
 
@@ -265,7 +265,7 @@ iOS version and the model with every result.
 | 3 | Add a record in two different apps. **Swipe the app away** (kill it), reopen | Both records there. Web Inspector: `await navigator.storage.persisted()` → `true` | Data gone → critical, stop and report |
 | 4 | With a record just added, press Home, wait **10+ minutes** (lock the phone), come back, add another record, kill, reopen | Both there; no error in the console | `InvalidStateError` / "access handle" errors on resume → risk R2 |
 | 5 | Open a **sealed** app (add one from a link or file without ticking "I wrote this") | It runs; its permission prompts appear | Console; try `localStorage["potyro:sandbox"]="quickjs"`, reload, compare |
-| 6 | Realm probe: paste `docs/spikes/browser-realm/android/probe.js` into Web Inspector, `await __realmProbe()`; in a sealed app's frame, try `navigator.mediaDevices.getUserMedia({video:true})` | `hello.worker: true`, `origin: "null"`; getUserMedia from the sealed frame is **refused** | Not refused → security issue, report privately (§8) |
+| 6 | Realm probe: open the app with `#probe=realm` on the address and run it; in a sealed app's frame, try `navigator.mediaDevices.getUserMedia({video:true})` | `hello.worker: true`, `origin: "null"`; getUserMedia from the sealed frame is **refused** | Not refused → security issue, report privately (§8) |
 | 7 | An app with a photo field → Take a photo; then Choose one | Camera prompt once; the photo arrives; the library opens with no prompt | — |
 | 8 | **Mirror Monsters** (`pnpm pack:app apps/mirror-monsters/mirror-monsters.app.ts -o mm.zip`, AirDrop it, Open with Potyro, tick "I wrote this") | Live front camera; googly eyes follow your eyes and blink; 🔄 switches camera; Snap saves to the Gallery; the green camera dot goes out on Home | Faces fail → the console says why (GPU vs CPU) |
 | 9 | Plants → a plant's **Schedule** (or any reminder 2 minutes ahead). **Close the app normally** (swipe up, not from Xcode), lock the phone | The notification arrives on time with its title and body | Settings → Notifications → Potyro allowed? Run from Xcode detached |

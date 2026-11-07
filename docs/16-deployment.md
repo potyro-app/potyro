@@ -33,17 +33,14 @@ health checks under each service were run on 2026-10-30.
 | Rooms relay | `potyro-rooms` | 4205 | `/opt/potyro-rooms` ← `packages/rooms` | — (memory) | — (`-e` on the run line) | `handle /rooms/*` |
 | The gallery | — (static files) | — | `/srv/potyro.com` ← `dist/gallery` | — | — | the `potyro.com, www.potyro.com` site |
 
-Around it:
+Around it (the server itself, its DNS and the CI machine are the owner's notes, not part of this guide):
 
 | | |
 |---|---|
-| Server | `65.109.228.5`, hostname `potyro`, Hetzner Cloud (RIPE netname `CLOUD-HEL1`, Finland). Admin over ssh as `aivuk`, with sudo. |
 | Web server | Caddy 2.11.7, `/etc/caddy/Caddyfile` = [`deploy/potyro.app.Caddyfile`](../deploy/potyro.app.Caddyfile). It gets and renews every name's certificate itself (Let's Encrypt, account `ops@potyro.com`). No access log on potyro.app (Caddy keeps none unless told) and none on potyro.com (`output discard`). |
 | Containers | All `node:22-bookworm`, `--restart unless-stopped`, published on `127.0.0.1` only, made by [`deploy/containers.sh`](../deploy/containers.sh). The code dirs under `/opt` are rsynced copies of the packages. |
 | Secrets | `/etc/potyro/*.env`, root, mode 600. Their variables, never their values, are in [`deploy/env.example/`](../deploy/env.example/). |
 | Deploy user | `deploy` (uid 1001) owns `/srv/potyro/site`. Each key in its `authorized_keys` is `restrict,command="/usr/bin/rrsync /srv/potyro/site"`: it can rsync into the site root and do nothing else. |
-| DNS | `potyro.app` and `potyro.com` A → `65.109.228.5`. `www.potyro.app`, `potyro.org` and `www.potyro.org` redirect to `https://potyro.app` (302). Mail (MX) is Gandi's. |
-| CI machine | `vazio`, a home server: it runs the gate and the watcher that deploys `main` ([§8](#8-shipping-the-gate-and-the-watcher-on-vazio)). |
 
 Being applied now (in `deploy/`, so in force once the owner reloads Caddy): the `/ai/*` route
 streams with `flush_interval -1` and 310 s timeouts ([AI for apps](#ai-for-apps-docs23-deployed)),
@@ -90,7 +87,7 @@ Build-time knobs, all optional:
 | `VITE_POTYRO_GENERATOR` | unset | Only once a deployment can actually reach a model — see [The agent](#the-agent). |
 | `VITE_POTYRO_SITE` | the page's own origin | **Native builds only** (Android, iOS): the site the app belongs to, e.g. `https://potyro.app`. The relay, `/ai`, `/requests`, `/share-api` and the links people send are derived from it (`shell/src/site.ts`, docs/27 §2.1); the per-service variables still win. |
 
-potyro.app's build sets none of them: it is the watcher's plain `vite build` (§8).
+potyro.app's build sets none of them: it is the watcher's plain `vite build` (CONTRIBUTING.md, The gate).
 
 ## 2. Upload it
 
@@ -98,7 +95,7 @@ potyro.app's build sets none of them: it is the watcher's plain `vite build` (§
 rsync -az --delete packages/shell/dist/ potyro-deploy:
 ```
 
-`potyro-deploy` is an ssh alias for `deploy@65.109.228.5` (§8), whose key `rrsync` locks to
+`potyro-deploy` is an ssh alias for the deploy user on the server, whose key `rrsync` locks to
 `/srv/potyro/site`, so the target is relative to that root. `--delete` matters: without it, old
 hashed assets accumulate forever. On your own server, any web root and any account that can write it.
 
@@ -195,7 +192,7 @@ inside other people's spaces are never touched — they are part of those spaces
 
 ```bash
 # 0. Once: the script is one file with no dependencies.
-rsync -az packages/store/scripts/erase-space.mjs aivuk@65.109.228.5:/opt/potyro-tools/
+rsync -az packages/store/scripts/erase-space.mjs <admin>@<server>:/opt/potyro-tools/
 # 1. Ask first: the person removes the app from every device (for a shared space: every member does).
 # 2. Stop the relay: the script refuses while it has the file open (it takes an exclusive lock).
 docker stop potyro-relay
@@ -354,7 +351,7 @@ relay and the request relay keep nothing on disk.
 
 ## 7. Redeploying
 
-- **The shell**: the watcher on vazio deploys every green `main` within minutes (§8). No restart, no
+- **The shell**: the watcher on the CI machine deploys every green `main` within minutes (CONTRIBUTING.md, The gate). No restart, no
   reload.
 - **A service**: from a checkout on the server, `sudo deploy/containers.sh <name>` (or none for all).
   It copies the package again and restarts the container only if its code changed; a service's
@@ -362,125 +359,6 @@ relay and the request relay keep nothing on disk.
   an env file is read when a container is created.
 - **The relay** needs touching only when `cojson` changes version: bump `jazz-run` in the root
   `package.json` with it, and `sudo deploy/containers.sh relay` installs the new pin and restarts it.
-
-## 8. Shipping: the gate and the watcher on vazio
-
-Every GitHub Actions workflow is off. The owner disabled them by hand on 2026-10-25 (`ci.yml`,
-`ship.yml`, `bench.yml`, `baselines.yml`), because the runners cost too much. A push runs nothing,
-and `pnpm ship` fails: GitHub refuses to dispatch a disabled workflow. Do not turn one back on
-without the owner. The gate is `pnpm ci:local all`, run on the CI machine, `vazio`, and vazio's cron
-watcher deploys `main` when it is green.
-
-A pull request ships in four steps:
-
-1. **Rebase** the branch on `origin/main`, so the gate judges what main will be.
-2. **Run the gate** on that head: `pnpm ci:local all --post`. Every step, the whole browser suite
-   as parallel shards ([below](#the-browser-suite-runs-as-parallel-shards)); `--post` puts a
-   `local-ci` status on the commit, so the PR shows the result. Run it on vazio (its gate worktree,
-   below). A laptop takes ~45 minutes, and under that load some shards fail on timeouts: re-run a
-   failed spec alone (`pnpm exec playwright test <file> --workers=1`) before calling it real.
-3. **Merge** the PR on GitHub with a merge commit (`gh pr merge <pr> --merge`).
-4. **Deploy** main. The watcher does it: every five minutes it fetches `main` into its own checkout,
-   runs `pnpm ci:local all` on the merge commit, and deploys it only if that commit is still
-   `origin/main` when the gate is green. Follow it with `ssh vazio tail -f ci-watch.log`. A red main
-   leaves the site on the last green commit. **While vazio sleeps, nothing deploys**; it catches up
-   when it wakes.
-
-`pnpm ci:local deploy` is the deploy step itself (`deploy()` in `scripts/ci-local.mjs`). It refuses a
-commit that is not `origin/main`, has tracked changes, or has not passed every step in that same
-checkout. It builds the shell, writes `dist/version.json` (`{commit, deployedAt}`), rsyncs `dist/` to
-`POTYRO_DEPLOY_TARGET` (default `potyro-deploy:`) with `--delete`, and reads the target's
-`version.json` back to check it names the commit. A target already serving the commit is left alone.
-
-**By hand**, when the watcher cannot (vazio is off): from a clean checkout of `origin/main` on a
-machine that has the deploy key,
-
-```bash
-git fetch -q origin && git checkout -q --detach origin/main     # a clean checkout, not your work
-pnpm install --frozen-lockfile
-pnpm ci:local all && pnpm ci:local deploy                       # the gate, then the deploy
-```
-
-or, when the commit has passed the gate elsewhere, the same steps `deploy` takes:
-
-```bash
-pnpm --filter @potyro/shell exec vite build
-echo "{\"commit\":\"$(git rev-parse HEAD)\",\"deployedAt\":\"$(date -u +%FT%TZ)\"}" \
-  > packages/shell/dist/version.json
-rsync -az --delete packages/shell/dist/ potyro-deploy:
-curl -s https://potyro.app/version.json                          # names the commit
-```
-
-`node scripts/ci-select.mjs` still says which browser specs a change touches. The gate runs them all.
-
-### The pieces on vazio
-
-| | |
-|---|---|
-| Reached by | `ssh vazio` (on the LAN, or through the owner's jump host). |
-| Watcher checkout | `~/appinator-deploy`, the watcher's own. It is checked out detached at whatever is being judged, so nothing is ever edited there. |
-| Gate worktree | `~/potyro-gate`, with `~/gate-queue.sh`, where PR heads are gated (step 2). Both live only on vazio. |
-| Lock | `~/.karta-ci.lock`, so the watcher judges one commit at a time. (The name is from before the rename; changing it means changing the crontab line.) Ports need no lock: every shard claims its own block, below. |
-| Key | `~/.ssh/potyro_deploy_actions`, authorized for `deploy@65.109.228.5` as `restrict,command="/usr/bin/rrsync /srv/potyro/site"`: it can rsync into the web root and nothing else — no shell, no other path. |
-| ssh alias | `Host potyro-deploy` in `~/.ssh/config` → `deploy@65.109.228.5` with that key. `POTYRO_DEPLOY_TARGET=potyro-deploy:` is relative to the web root, because `rrsync` anchors every path there. |
-| cron (the line as of 2026-10-30) | `*/5 * * * * cd ~/appinator-deploy && PATH=$HOME/.npm-global/bin:/usr/bin:/bin POTYRO_DEPLOY_TARGET="potyro-deploy:" flock -n ~/.karta-ci.lock node scripts/ci-watch.mjs >> ~/ci-watch.log 2>&1` |
-
-### The browser suite runs as parallel shards
-
-The browser suite is ~93% of a run. `ci:local all` (and `ci:local e2e` on its own) runs its shards
-**at once** — `CI_LOCAL_SHARDS`, default 8 — each still one Playwright worker, each recorded as its
-own step (`e2e-<n>.ok` / `.fail` / `.log` under `.ci-local/<sha>/`), so resuming, `status --post` and
-the watcher work as before. `CI_LOCAL_E2E=sequential` runs them one after another, the old way.
-
-The same specs run in **Firefox** with `ci:local e2e:firefox`, as shards of their own (`ff:<n>`,
-`CI_LOCAL_FF_SHARDS`, default 8): the `trusted-firefox` and `sandbox-firefox` projects
-(`POTYRO_FIREFOX=1`), console guard on, with their own plan (`ff-plan.json`) and their own timings
-(keyed `ff:e2e/…`). Each suite names its Playwright projects, so nothing in the caller's environment
-adds an engine to a shard. What differs between the engines is in `e2e/engines.ts` (docs/12).
-
-**Firefox is not part of the gate.** Measured on vazio (2026-10-17): Chromium's eight shards alone
-take ~6 min (the whole `all` ~8) and Firefox's eight alone ~5; all sixteen at once took 11.5 min,
-and the CPU they fought over made Chromium's shards fail on timeouts. One after the other the run
-is ~13 min. So `all`,
-`status --post` and the watcher judge Chromium; `status` also prints Firefox's result for the commit
-when it has run. Run it before merging anything a person sees, and nightly — a crontab line on vazio,
-in a checkout of its own (not `~/appinator-deploy`, which the watcher moves):
-
-```
-30 3 * * * cd ~/appinator-firefox && git fetch -q && git checkout -q --detach origin/main && export PATH=$HOME/.npm-global/bin:/usr/bin:/bin && pnpm install --frozen-lockfile -s && node scripts/ci-local.mjs e2e:firefox >> ~/ci-firefox.log 2>&1
-```
-
-What makes that safe is that the shards share **nothing**:
-
-- **Ports.** Every port the suite must know in advance is in `e2e/ports.ts`: the trusted, sandbox,
-  prod and QuickJS dev servers, the sync relay, relay-reconnect's own relay and the port nothing
-  listens on. Unset, `POTYRO_E2E_PORT_BASE` leaves them where they always were (4188, 4189, 4190,
-  4191, 4201, 4321, 4299) — `pnpm e2e` and `pnpm dev` are unchanged. Set, the suite takes ten
-  consecutive ports from that base, and the dev servers default their relay to the block's
-  (`VITE_POTYRO_DEV_RELAY`, read in development only). Ports a spec needs only for itself — echo
-  servers, the rooms relay, the realm's probe — come from the OS (`freePort()`).
-- **Browser storage.** A port is part of an origin, so each block has its own OPFS, localStorage
-  and IndexedDB. Within one origin the specs DO share state — the reason for one worker per shard,
-  which `playwright.config.ts` explains.
-- **Claims.** Each shard claims a block in 20000–32000 (below Linux's ephemeral range, where
-  `freePort()` lands) with a lockfile in `/tmp/potyro-e2e-ports/<base>.lock` naming its process,
-  bind-tests all ten ports, and releases it when it ends. A claim whose process is dead is taken
-  over. Two whole runs on one machine — the gate and somebody's `ci:local` in another checkout —
-  therefore take different blocks, and neither touches the default ports a developer's `pnpm dev`
-  or `pnpm e2e` holds.
-- **Files.** Each shard has its own Playwright output (`test-results/shard-<n>`, Firefox's
-  `test-results/ff-shard-<n>`), its own Vite dependency cache (`node_modules/.vite-e2e/shard-<n>`,
-  `ff-shard-<n>`), and its own build of the rooms relay on a
-  Node without type stripping.
-
-Files are dealt to shards by their **measured duration**, longest first into the lightest shard,
-so the shards end together. Every shard's Playwright JSON report updates
-`.ci-local/e2e-timings.json` (per checkout, kept across commits), read over the committed seed
-`e2e/timings.json` (measured on vazio; refresh it by copying a checkout's file over it when the
-suite has changed a lot). A file never timed counts as the median, and with no timings at all the
-files are dealt by index. The deal is written to
-`.ci-local/<sha>/e2e-plan.json` the first time and reused, so a resumed or re-run shard runs exactly
-the files it ran before.
 
 ## The agent
 
@@ -1049,65 +927,6 @@ instead means the shell's route answered first; a `403` means the `Origin` is no
 member with 1001 ("relay restarting"); apps reconnect, and since nothing was kept, nothing is lost
 but the current member ids.
 
-## Moving to a new home: apps.vaz.io → potyro.app
-
-Browser storage belongs to one origin. Everything a person made on `apps.vaz.io` — apps, records,
-photos and files, Studio conversations, who they are — lives in that site's storage in their browser,
-and `potyro.app` cannot read a byte of it. So the old site carries it across, once, when the person
-asks, and **no server sees any of it**.
-
-**What the person sees.** On the old site's home, a banner: *Potyro has a new home — bring your apps
-over to potyro.app*. "Bring my apps over" opens potyro.app in a new window, which shows exactly what
-will come in — every app, its records and files, which ones arrive sealed, and that they come too —
-and waits. Nothing is written until they press **Bring them in**. Then the old banner says *Done — your
-apps are on potyro.app*. Nothing on the old site is deleted. "Save them as a file instead" is the
-fallback where a window cannot be opened: a `potyro-move-<date>.zip` to choose on `potyro.app/?move`.
-
-**How it travels** (`packages/shell/src/move-*.ts`):
-
-| Step | |
-|---|---|
-| Pack (`move-gather.ts`) | Each app the way Export packs one: records, photos, files, `ctx.storage` and its own code, copied with their ids into an in-memory SQLite. A synced app is packed from its *space* (that is where its records are), with the files it kept on the device. Studio conversations, version history, cases and diagnoses come as rows; the person's look, language and per-app choices as preferences. |
-| Hand over (`move-protocol.ts`) | The old site opens `potyro.app/?move=<channel>` — a fresh 128-bit id, the only thing in the URL. The new window says a content-free *hello* to its opener; the old site answers with an **offer** (the manifest and the archive's SHA-256), addressed to the new home's exact origin. |
-| Confirm | The new site shows the offer. Only after **Bring them in** does it ask for the archive, and it takes it only from the origin that offered, only from its opener, only on its channel, and only if its digest is the one offered. Anything else — another site, a frame, a message out of turn — is ignored without a word. |
-| Bring in (`move-bring-in.ts`) | Through the existing paths: `copyStoreData` (an upsert by id, so a merge), `saveUserApp` (so it is in History), `adoptPortableIdentity` (which checks the seed gives the secret and the secret the id before writing anything). |
-
-**Which sites count.** `move-origins.ts`, and nowhere else: `https://potyro.app` and
-`https://apps.vaz.io` exactly, plus `VITE_POTYRO_MOVE_ORIGINS` (comma-separated) for a self-hosted
-Potyro that moves too, plus `localhost` on any port on a dev server. The old → new pair is
-`NEW_HOMES` (or `VITE_POTYRO_NEW_HOME` for a build); a dev server takes
-`localStorage["potyro:dev:new-home"] = "http://localhost:<port>"`, which is how two `pnpm dev`
-servers on two ports play both parts (`e2e/move-home-trusted.spec.ts`).
-
-**Merge, never duplicate** (`move-plan.ts`). An app not on the new site comes as it was. One with the
-same code joins the one there (its records merged by id). An untouched example joins the newer copy;
-an untouched example there is replaced by the person's edited one. Changed on both sides, it comes in
-beside the one there, as "Notes (from apps.vaz.io)". Where each app went is remembered
-(`potyro:move:received`), so moving again — after a closed window, or after more work on the old
-site — lands in the same place and doubles nothing.
-
-**Trust.** An app runs directly on the new site only if it did on the old one *and* it was the
-person's own; one that came from someone else (a link, a maker's credit, someone's space) stays
-sealed. A saved file brings **every** app sealed, because a file can be from anyone.
-
-**Who you are moves too — over the window, never in a file.** The identity is a seed (`@potyro/identity`):
-carrying it is what entering the recovery words on a second device does, done for the person between
-two windows they have open. So their records' `createdBy` still names them, their words still work,
-and the new site is the same account. It replaces an identity the new site minted by itself and
-never shared under; one that is in use there is kept, and the person is told to enter their words if
-they want to be the old one. A file never carries it: whoever finds a file in Downloads holding the
-secret could sign as them. After a file move, the words under **You** do it.
-
-**Shared apps come as the person's own copy.** A site's relay is its own `/sync`, so the spaces on
-apps.vaz.io's relay are not where potyro.app looks. A synced or shared app arrives with everything in it, local to the
-new site; the people it was shared with keep the space on the old site, and sharing again from
-potyro.app makes a new one. (If the relay's data is ever moved to potyro.app's relay, nothing here
-needs to change: the account is the same.)
-
-**For the deployment.** Neither site may send `Cross-Origin-Opener-Policy` (other than
-`unsafe-none`): it cuts `window.opener` across origins, and only the file path would work. The shell's
-`frame-src 'none'` is unaffected — nothing here is a frame.
-
 ## The gallery on potyro.com (docs/24 §10): deployed 2026-10-16
 
 The gallery is a static folder: `index.html`, `gallery.css`, `gallery.js`, its own fonts, logo and
@@ -1135,7 +954,7 @@ passed, and no records but the apps' own samples (docs/24 §3). The share servic
 
 ```bash
 pnpm gallery:build                    # → dist/gallery/ (refuses data with a problem, or a missing screenshot)
-rsync -av --delete dist/gallery/ aivuk@65.109.228.5:/srv/potyro.com/
+rsync -av --delete dist/gallery/ <admin>@<server>:/srv/potyro.com/
 ```
 
 By hand, with an account that can write `/srv/potyro.com`: the deploy key cannot, since `rrsync`
@@ -1234,35 +1053,3 @@ a deployed build can be wrong about: that there is a relay URL, that it can be c
 devtools, that no agent surface is offered, and that a built-in app runs with no server behind it.
 The dev server hides every one of those by construction — which is why KA-28 existed at all.
 
-## How it was
-
-History, kept short; the files are in the repository's history.
-
-**apps.vaz.io, the first site (2026-08-10 to 2026-10-17).** A private test on the owner's existing
-Debian server, beside ~28 other Apache vhosts: the shell in `/var/www/karta`, the relay in the same
-container shape as today's, the vaz.io wildcard certificate, and HTTP basic auth over everything
-(the browser replays the credentials on a same-origin websocket upgrade, so one gate covered `/sync`
-too). Its vhost was `deploy/apps.vaz.io.conf` until #286. What it taught:
-
-- In `<VirtualHost>` context mod_rewrite runs before the URL is mapped to a path, so an SPA rule
-  written against `%{REQUEST_FILENAME}` answered every real file with `index.html` (icons and the
-  manifest came back `text/html`); the condition had to be `%{DOCUMENT_ROOT}%{REQUEST_URI}`.
-- A gate is in the way of everything that comes without credentials: chat apps fetching a link's
-  preview, the native apps (other origins, which send none), and anyone opening a demo link. Routes
-  had to be exempted one by one, and each exemption was a piece of the site made public.
-
-It has not been deployed since 2026-10-17, when potyro.app became the only target. People's apps
-move from it with the [move](#moving-to-a-new-home-appsvazio--potyroapp).
-
-**The push gate on vazio (until 2026-10-19).** `pnpm ship` pushed the merge commit to a bare repo on
-vazio, whose `pre-receive` hook refused anything not built on GitHub's main and whose `post-receive`
-ran `node scripts/ci-watch.mjs gate <sha>`: green → pushed to GitHub's main and deployed, red →
-nothing moved. The hooks were `deploy/vazio-hooks/` until #286; `ci-watch.mjs` still has the `gate`
-mode.
-
-**The ship gate on GitHub Actions (2026-10-19 to 2026-10-25).** On Blacksmith's runners: every push
-ran `ci.yml` (the checks and a ten-file browser smoke, ~4 min); `pnpm ship <pr>` dispatched
-`ship.yml` on the PR's head, ran the specs `scripts/ci-select.mjs` picked (all of them, as sixteen
-shards, when the change touched what every spec boots), and merged when green; main then ran
-everything and rsynced the shell with the `POTYRO_DEPLOY_KEY` secret. It cost too much and was
-switched off; the workflows and `scripts/bench-ci.sh` are still in the repository.

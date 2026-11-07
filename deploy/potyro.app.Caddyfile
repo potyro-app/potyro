@@ -1,7 +1,7 @@
 # Potyro — potyro.app (the app) and the names that forward to it. docs/16.
 # Caddy gets and renews every name's certificate by itself (Let's Encrypt).
 #
-# This is /etc/caddy/Caddyfile on 65.109.228.5 (Caddy 2) as it ran on 2026-11-01, with the changes
+# This is /etc/caddy/Caddyfile on the server (Caddy 2) as it ran on 2026-11-01, with the changes
 # the server is being given now: the `/ai/*` route streams and waits 310 s (docs/16 "AI for apps"),
 # and the shell's block serves `/privacy` and `/terms` as their pages, not cached (#117).
 # After an edit: `caddy validate --config /etc/caddy/Caddyfile`, then `sudo systemctl reload caddy`.

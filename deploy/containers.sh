@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# The services behind potyro.app, as they run on 65.109.228.5 (observed 2026-11-01; docs/16).
+# The services behind potyro.app, as they run on the server (observed 2026-11-01; docs/16).
 #
 # Run it ON the server, as root, from a checkout of the commit being deployed (normally origin/main):
 #
-#   ssh aivuk@65.109.228.5
+#   ssh <admin>@<server>
 #   git -C ~/potyro-src fetch -q origin && git -C ~/potyro-src checkout -q --detach origin/main
 #   sudo ~/potyro-src/deploy/containers.sh                 # every service
 #   sudo ~/potyro-src/deploy/containers.sh ai rooms        # only these
