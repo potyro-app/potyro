@@ -7094,6 +7094,11 @@ msgstr "La versione precedente resta nella cronologia. I file che hai modificato
 msgid "the only version kept — nothing to compare against"
 msgstr "l’unica versione conservata: niente con cui confrontare"
 
+#. Link: the paid plan this person once asked for now exists; the link opens its page
+#: ../shell/src/free-panel.tsx
+msgid "The plan you asked for exists now."
+msgstr "Il piano che avevi chiesto ora esiste."
+
 #: ../shell/src/platform-requests.ts
 msgid "The Potyro team's inbox didn't accept “{title}”."
 msgstr "La casella del team di Potyro non ha accettato “{title}”."

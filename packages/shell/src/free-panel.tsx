@@ -14,7 +14,7 @@ import { useState, type MouseEvent } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { galleryUrl, openGallery } from "./gallery-link.js";
 import { freeUnreachable, refusalText, type FreeAi, stoppedNow } from "./free-ai.js";
-import { countOnce, countedThisMonth } from "./demand-counts.js";
+import { countOnce, countedThisMonth, wantedPlan } from "./demand-counts.js";
 
 /**
  * Where each service hands out keys, for the engines Model settings has by name. Names are the
@@ -125,7 +125,12 @@ export function FreePanel({ free, onAddKey, ownKey, onLeave, request }: Props) {
         </a>
       </div>
       <p className="k-free-panel-plan">
-        {plan ? (
+        {free.health?.plan && wantedPlan() ? (
+          // "Tell me when the plan exists" (#118): told here, where it was asked, never by mail — no address was taken.
+          <a className="k-free-panel-plan-link" href={free.health.plan} target="_blank" rel="noreferrer noopener">
+            <Trans comment="Link: the paid plan this person once asked for now exists; the link opens its page">The plan you asked for exists now.</Trans>
+          </a>
+        ) : plan ? (
           <span className="k-muted" role="status">
             {plan}
           </span>

@@ -61,6 +61,11 @@ export interface ServerOptions {
   chatOff?: () => boolean;
   /** The model the chat route sends (the first allowed): `/health` names it, so the shell sends one the relay takes. */
   chatModel?: string;
+  /**
+   * Where the plan is offered, once there is one (#118, #120): `/health` carries it as `plan`, and a
+   * device that pressed "I'd pay for a plan" is told. Absent while no plan exists — the usual case.
+   */
+  planUrl?: string;
   counts?: (req: CountRequest) => CountReply;
   port: number;
   host: string;
@@ -167,7 +172,7 @@ export function startServer(opts: ServerOptions): Promise<Server> {
         // `/health` also says whether the chat route serves now (#121): on, and its switch not thrown.
         if (path === "/health" && r.status === 200) {
           const chat = Boolean(opts.chat) && !(opts.chatOff?.() ?? false);
-          return reply(r.status, { ...r.body, chat, ...(chat && opts.chatModel ? { model: opts.chatModel } : {}) });
+          return reply(r.status, { ...r.body, chat, ...(chat && opts.chatModel ? { model: opts.chatModel } : {}), ...(opts.planUrl ? { plan: opts.planUrl } : {}) });
         }
         return reply(r.status, r.body);
       }, fail);
@@ -274,7 +279,9 @@ async function main(): Promise<void> {
   const port = Number(process.env.PORT ?? 4204);
   const host = process.env.HOST ?? "127.0.0.1";
   const corsOrigins = list(process.env.AI_CORS_ORIGINS) ?? DEFAULT_CORS_ORIGINS;
-  await startServer({ handle: relay.handle, chat: chat.handle, chatOff: isOff, chatModel: models[0], counts: counts.handle, port, host, trustProxy, corsOrigins });
+  // A plan's page, when one exists (#120): told to the devices that asked for one, through `/health`.
+  const planUrl = process.env.AI_PLAN_URL?.trim() || undefined;
+  await startServer({ handle: relay.handle, chat: chat.handle, chatOff: isOff, chatModel: models[0], counts: counts.handle, port, host, trustProxy, corsOrigins, ...(planUrl ? { planUrl } : {}) });
   console.log(`[ai-relay] ${model}; chat ${models.join(", ")}; cap $${budget.monthlyUsd} a month, $${budget.dayUsd} a day; proxy ${trustProxy}; listening on ${host}:${port}`);
 }
 

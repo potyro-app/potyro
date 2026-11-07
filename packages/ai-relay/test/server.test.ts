@@ -154,6 +154,14 @@ describe("/health and the chat route (#121)", () => {
     expect(await health()).toEqual({ ok: true, chat: false });
   });
 
+  it("names the plan's page once there is one (#118), and nothing about a plan while there is none", async () => {
+    server = await startServer({ handle: relay().handle, port: 0, host: "127.0.0.1", planUrl: "https://potyro.com/plan" });
+    expect(await health()).toEqual({ ok: true, chat: false, plan: "https://potyro.com/plan" });
+    server.close();
+    server = await startServer({ handle: relay().handle, port: 0, host: "127.0.0.1" });
+    expect(await health()).not.toHaveProperty("plan");
+  });
+
   it("lets a native WebView send the headers the Studio's client sends", async () => {
     const chat = createChatProxy({ upstream: async () => new Response("{}"), now: Date.now });
     server = await startServer({ handle: relay().handle, chat: chat.handle, port: 0, host: "127.0.0.1" });

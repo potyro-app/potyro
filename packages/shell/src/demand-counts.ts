@@ -20,6 +20,8 @@ import { aiRelayEndpoint, relayHealth } from "./app-ai.js";
 export type ShellCount = "own-key" | "want-plan";
 
 const OFF = "potyro:counts-off";
+/** This device pressed "I'd pay for a plan", whenever: the one count that is also a wish to be told (#118). */
+const WANTED_PLAN = "potyro:wanted-plan";
 const SENT = (event: ShellCount, month: string): string => `potyro:counted:${event}:${month}`;
 const monthOf = (ms: number): string => new Date(ms).toISOString().slice(0, 7);
 
@@ -45,6 +47,15 @@ export function setCountsOn(on: boolean): void {
 export function countedThisMonth(event: ShellCount, now: number = Date.now()): boolean {
   try {
     return globalThis.localStorage?.getItem(SENT(event, monthOf(now))) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Did this device ever ask for a plan? Read when `/health` says one exists, to tell it here (no email). */
+export function wantedPlan(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(WANTED_PLAN) === "1";
   } catch {
     return false;
   }
@@ -93,6 +104,7 @@ export async function countOnce(event: ShellCount, deps: CountDeps = {}): Promis
     // Any answer is the relay's: a repeat or a busy address is not worth sending again this month.
     try {
       globalThis.localStorage?.setItem(flag, "1");
+      if (event === "want-plan") globalThis.localStorage?.setItem(WANTED_PLAN, "1");
     } catch {
       // not kept: it may go once more, and the relay's per-address check sets it aside
     }

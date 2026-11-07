@@ -549,6 +549,7 @@ Every variable, with its default, is at the top of `packages/ai-relay/src/server
 | Variable | Default | |
 |---|---|---|
 | `AI_CHAT_MODELS` | `deepseek/deepseek-v4-flash-0731` | Comma-separated; the only models the chat route sends. |
+| `AI_PLAN_URL` | — | The plan's page, once there is one (#120). `/health` carries it as `plan`; a device that pressed "I'd pay for a plan" is told there, in the app (#118). Empty: no plan. |
 | `AI_DEVICE_MONTH_USD` | `0.5` | One device's chat allowance a month. |
 | `AI_DAY_USD` | `AI_MONTHLY_CAP_USD` / 8 | The whole service's spend a calendar day (UTC), both routes. |
 | `AI_MODEL_PRICES` | — | JSON, `{"<model>": {"input": 0.14, "output": 0.28}}` in US dollars a million tokens, over the table in `src/prices.ts`. Use the dearest provider's price on OpenRouter. |
