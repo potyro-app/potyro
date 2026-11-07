@@ -7,7 +7,8 @@ description: Take a change from a branch to potyro.app — the checks to run whe
 
 There is no CI on GitHub (every workflow is off; never turn one on without the owner). The gate is
 `pnpm ci:local all`, run by hand on the CI machine, and a cron watcher on that machine tests `main`
-and deploys potyro.app when it is green. docs/16 §8 is the reference; this is the order of work.
+and deploys potyro.app when it is green. `CONTRIBUTING.md` §The gate is the public reference; the
+owner's operations notes (servers, keys, the watcher's host) are private. This is the order of work.
 
 ## 1. Before the PR, on your machine (Node 22)
 

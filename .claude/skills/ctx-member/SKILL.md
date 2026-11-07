@@ -37,8 +37,9 @@ fallback. Worked examples to copy from: `ctx.text` (collaborative text, 2026-11-
    naming the new member, so it leaves the core and is read on demand; then
    `pnpm --filter @potyro/generator gen:reference` and `gen:corpus`. `test/reference.test.ts`
    fails when the core exceeds its budget: trim comments, never raise the budget.
-10. **Spike stand-ins** — `docs/spikes/browser-realm/src/ctx-proxy.ts` has a ctx stand-in that
-    must still type-check: add a stub.
+10. **Spike stand-ins** — the browser-realm spike (under docs, private: not in the public repo)
+    has a ctx stand-in that must still type-check when the folder is in your checkout: add a stub
+    and run `pnpm typecheck:spikes`.
 
 ## Tests
 
