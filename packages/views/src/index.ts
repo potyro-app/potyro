@@ -11,6 +11,7 @@ export { Mascot, Waiting, type MascotMode, type MascotProps } from "./mascot.js"
 export { Glyph, glyphOf, glyphElement, glyphDrawable, useLucide, useIconUrl, type GlyphProps, type GlyphSize } from "./glyph.js";
 export { cleanSvg, imageIconSrc } from "./icon-image.js";
 export { PageCountContext, useReportCount, type PageCountListener } from "./page-count.js";
+export { NewsContext, isNews, useNews, type News } from "./news.js";
 export { backdropOf, backdropImage, backdropKind, pageOf, DEFAULT_BACKDROP } from "./backdrop.js";
 export { pictureOf, pictureUrl, usePictureUrl } from "./picture.js";
 export { StepsView } from "./steps.js";

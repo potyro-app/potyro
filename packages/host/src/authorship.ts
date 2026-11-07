@@ -7,7 +7,7 @@
 
 /** A create's data with the app's `createdBy` dropped and this device's identity stamped. */
 export function stampAuthor(data: unknown, me: string): Record<string, unknown> {
-  const { createdBy: _ignored, ...clean } = (data ?? {}) as Record<string, unknown>;
+  const { createdBy: _ignored, updatedBy: _stamped, ...clean } = (data ?? {}) as Record<string, unknown>;
   return { ...clean, createdBy: me };
 }
 
@@ -16,11 +16,12 @@ export function stampAuthor(data: unknown, me: string): Record<string, unknown> 
  * resolved record back would otherwise fail for doing nothing wrong. Not even the author may change it.
  */
 export function stripAuthor(data: unknown): Record<string, unknown> {
-  const { createdBy: _ignored, ...clean } = (data ?? {}) as Record<string, unknown>;
+  // `updatedBy` is the store's own stamp (read off the log), so an echoed one is dropped the same way.
+  const { createdBy: _ignored, updatedBy: _stamped, ...clean } = (data ?? {}) as Record<string, unknown>;
   return clean;
 }
 
 /** `increment` names one field: counting on `createdBy` is an attempt to change it, and refused. */
 export function assertNotAuthor(field: string): void {
-  if (field === "createdBy") throw new Error("ctx.increment: createdBy is stamped by the host and cannot be changed");
+  if (field === "createdBy" || field === "updatedBy") throw new Error("ctx.increment: createdBy is stamped by the host and cannot be changed");
 }

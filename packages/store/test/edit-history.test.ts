@@ -14,7 +14,7 @@
 
 import { beforeAll, describe, expect, it } from "vitest";
 import { WasmCrypto } from "cojson/crypto/WasmCrypto";
-import { createJazzStore, initSqlite, MemoryStore, type JazzKeyStore, type Store } from "../src/index.js";
+import { createJazzStore, initSqlite, MemoryStore, publishName, type JazzKeyStore, type Store } from "../src/index.js";
 
 let crypto: Awaited<ReturnType<typeof WasmCrypto.create>>;
 beforeAll(async () => {
@@ -112,5 +112,61 @@ describe("stores that cannot answer say so", () => {
     const s: Store = new MemoryStore();
     await s.open("activity");
     expect(s.editHistory).toBeUndefined();
+  });
+});
+
+describe("who last changed a record (`updatedBy`)", () => {
+  it("is stamped off the log, like createdBy, and never from a field", async () => {
+    const { store: s, accountID } = await store();
+    const row = await s.insert("item", { name: "Milk" });
+    expect(row.updatedBy).toBe(accountID);
+    // An app's own claim does not take: the stamp is who signed the last write.
+    await s.update("item", row.id, { updatedBy: "co_zSomeoneElse", name: "Oat milk" });
+    const read = await s.get("item", row.id);
+    expect(read?.updatedBy).toBe(accountID);
+  });
+});
+
+describe("removals — the event a record's own log cannot hold", () => {
+  it("names who deleted a record and when, with the record as it was", async () => {
+    const { store: s, accountID } = await store();
+    const row = await s.insert("item", { name: "Milk", qty: 1 });
+    const before = new Date();
+    await s.delete("item", row.id);
+
+    const gone = await s.removals!("item");
+    expect(gone).toHaveLength(1);
+    expect(gone[0]!.id).toBe(row.id);
+    expect(gone[0]!.by).toBe(accountID);
+    expect(gone[0]!.at.getTime()).toBeGreaterThanOrEqual(before.getTime() - 1000);
+    expect(gone[0]!.record?.name).toBe("Milk");
+    // Still listed records are not removals.
+    const kept = await s.insert("item", { name: "Eggs" });
+    expect((await s.removals!("item")).map((r) => r.id)).not.toContain(kept.id);
+  });
+
+  it("windows by `since`", async () => {
+    const { store: s } = await store();
+    const row = await s.insert("item", { name: "Milk" });
+    await s.delete("item", row.id);
+    expect(await s.removals!("item", { since: new Date(Date.now() + 60_000) })).toEqual([]);
+  });
+
+  it("MemoryStore has no removals at all", async () => {
+    const s: Store = new MemoryStore();
+    await s.open("activity");
+    expect(s.removals).toBeUndefined();
+  });
+});
+
+describe("recordMembers — the people who can reach one record", () => {
+  it("lists the space's members for an ordinary record, by name once one is published", async () => {
+    const handle = await store();
+    const { store: s, accountID } = handle;
+    const row = await s.insert("item", { name: "Milk" });
+    await publishName(handle, "Ana");
+    const people = await s.recordMembers!("item", row.id);
+    expect(people.map((p) => p.id)).toContain(accountID);
+    expect(people.find((p) => p.id === accountID)?.name).toBe("Ana");
   });
 });
