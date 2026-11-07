@@ -23,7 +23,7 @@
 
 import { useEffect, useState } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
-import { activitySince, activitySupported, type ActivityItem } from "@potyro/runtime";
+import { activitySince, activitySupported, type ActivityEvent } from "@potyro/runtime";
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { fmt } from "@potyro/i18n";
@@ -48,7 +48,7 @@ export function markSeen(appId: string, at: Date = new Date()): void {
  * Returns `null` when the store cannot answer, which the caller must treat differently from an empty
  * list: one means "nothing happened", the other means "this app does not keep that".
  */
-export async function loadActivity(runtime: PotyroRuntime, appId: string): Promise<ActivityItem[] | null> {
+export async function loadActivity(runtime: PotyroRuntime, appId: string, since: Date | undefined = lastSeen(appId)): Promise<ActivityEvent[] | null> {
   const store = runtime.core.store;
   if (!activitySupported(store)) return null;
   const ctx = runtime.ctx;
@@ -68,44 +68,41 @@ export async function loadActivity(runtime: PotyroRuntime, appId: string): Promi
       definition: runtime.definition,
       me: ctx.me,
       members: space?.members ?? ctx.space?.members,
+      people: ctx.people,
     },
-    lastSeen(appId),
+    since,
     { limit: 100 },
   );
 }
 
-/** A value, short: the runtime's rules (activity.ts `show`), said in the person's language. */
-function shown(v: unknown): string {
-  if (v == null || v === "") return t({ message: "nothing", comment: "Activity feed: a field that has no value" });
-  if (v instanceof Date) return fmt.date(v);
-  if (typeof v === "boolean") return v ? t({ message: "yes", comment: "Activity feed: a ticked box" }) : t({ message: "no", comment: "Activity feed: an unticked box" });
-  if (typeof v === "number") return fmt.number(v);
-  if (Array.isArray(v)) return v.length ? v.map(shown).join(", ") : t({ message: "nothing", comment: "Activity feed: a field that has no value" });
-  if (typeof v === "object") {
-    const o = v as Record<string, unknown>;
-    for (const k of ["name", "title", "label"]) if (typeof o[k] === "string") return o[k] as string;
-    return t({ message: "something", comment: "Activity feed: a value that cannot be shown in words" });
-  }
-  return String(v);
-}
-
 /**
- * The line for one change. The runtime assembles an English one (`item.text`, kept for its tests and
+ * The line for one event. The runtime assembles an English one (`item.text`, kept for its tests and
  * its other readers); the feed says it in the person's language from the same parts. Yourself and
- * someone else are separate sentences, because many languages conjugate them differently.
+ * someone else are separate sentences, because many languages conjugate them differently; so are a
+ * record with and without a parent, because the preposition changes with the verb.
  */
-function sentence(item: ActivityItem, me: boolean): string {
-  const who = item.byName;
-  const field = item.fieldLabel;
-  const to = shown(item.to);
-  const record = item.recordLabel;
-  if (item.from === undefined) {
-    if (me) return record ? t`You set ${field} to ${to} on ${record}` : t`You set ${field} to ${to}`;
-    return record ? t`${who} set ${field} to ${to} on ${record}` : t`${who} set ${field} to ${to}`;
+function sentence(e: ActivityEvent, me: boolean): string {
+  const who = e.byName;
+  const what = e.label;
+  const where = e.parent;
+  const box = e.field ?? "";
+  switch (e.kind) {
+    case "added":
+      if (me) return where ? t`You added ${what} to ${where}` : t`You added ${what}`;
+      return where ? t`${who} added ${what} to ${where}` : t`${who} added ${what}`;
+    case "removed":
+      if (me) return where ? t`You removed ${what} from ${where}` : t`You removed ${what}`;
+      return where ? t`${who} removed ${what} from ${where}` : t`${who} removed ${what}`;
+    case "ticked":
+      if (me) return where ? t`You ticked ${box} on ${what} in ${where}` : t`You ticked ${box} on ${what}`;
+      return where ? t`${who} ticked ${box} on ${what} in ${where}` : t`${who} ticked ${box} on ${what}`;
+    case "unticked":
+      if (me) return where ? t`You unticked ${box} on ${what} in ${where}` : t`You unticked ${box} on ${what}`;
+      return where ? t`${who} unticked ${box} on ${what} in ${where}` : t`${who} unticked ${box} on ${what}`;
+    default:
+      if (me) return where ? t`You changed ${what} in ${where}` : t`You changed ${what}`;
+      return where ? t`${who} changed ${what} in ${where}` : t`${who} changed ${what}`;
   }
-  const from = shown(item.from);
-  if (me) return record ? t`You changed ${field} from ${from} to ${to} on ${record}` : t`You changed ${field} from ${from} to ${to}`;
-  return record ? t`${who} changed ${field} from ${from} to ${to} on ${record}` : t`${who} changed ${field} from ${from} to ${to}`;
 }
 
 /** "2 minutes ago" — precise enough for a feed, and it never says "in -3 seconds". */
@@ -125,7 +122,7 @@ export function ActivityPanel({
 }: {
   runtime: PotyroRuntime;
   appId: string;
-  items: ActivityItem[];
+  items: ActivityEvent[];
   onClose: () => void;
 }) {
   const { t } = useLingui();
@@ -173,7 +170,7 @@ export function ActivityPanel({
         ) : (
           <ul className="k-activity-list">
             {items.map((item) => (
-              <li key={`${item.recordId}:${item.field}:${item.at.getTime()}`} className="k-activity-item">
+              <li key={`${item.entity}:${item.recordId}:${item.kind}:${item.at.getTime()}`} className="k-activity-item" data-kind={item.kind}>
                 <span className="k-activity-text">{sentence(item, item.by === me)}</span>
                 <time className="k-activity-when" dateTime={item.at.toISOString()}>
                   {ago(item.at, now)}

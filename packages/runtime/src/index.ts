@@ -8,7 +8,7 @@ export { watchEntityQuery, watchPageQuery, watchRecord } from "./watch.js";
 export type { Unsubscribe } from "./watch.js";
 
 // Activity — what changed, by whom, since you last looked (KA-36).
-export { activitySince, activitySupported, type ActivityItem, type ActivityDeps } from "./activity.js";
+export { activitySince, activitySupported, foldEdits, FOLD_WINDOW_MS, type ActivityEvent, type ActivityKind, type ActivityDeps } from "./activity.js";
 export { memberName, personHue, personInitials } from "./people.js";
 
 export { newCase, addStep, annotate, observe, type Case, type CaseStep, type ScreenState } from "./case.js";

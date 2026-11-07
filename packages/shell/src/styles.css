@@ -11690,6 +11690,24 @@ body:has(.k-tabbar) .k-toasts {
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
+/* Changed by someone else since you last looked (KA-36): a dot in the row's corner, the accent's. */
+.k-list-row[data-news]::after,
+.k-check-row[data-news]::after,
+.k-card[data-news]::after {
+  content: "";
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface, #fff);
+  pointer-events: none;
+}
+.k-check-row[data-news],
+.k-card[data-news] { position: relative; }
+
 .k-activity { max-width: 34rem; }
 .k-activity-head {
   display: flex;

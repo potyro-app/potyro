@@ -30,18 +30,13 @@ export interface PotyroRecord {
   createdAt: string;
   updatedAt: string;
   /**
-   * Who entered this record — the account id of whoever inserted it (KA-18).
-   *
-   * **Stamped by the host and never app-settable.** In a shared ledger, code that could write its
-   * own `createdBy` could rewrite authorship, and untrusted code is exactly the code that would
-   * want to. An app that wants an editable "who did this" uses an ordinary `member` field: who
-   * *entered* an expense is genuinely not who *paid* for it (spike F5), and conflating the two
-   * makes the unforgeable one useless.
-   *
-   * Optional because records written before this existed do not have it, and because a `Store` is
-   * free of identity — the runtime stamps it.
+   * Who entered this record: the account id (KA-18). Stamped by the host, never app-settable — in a
+   * shared ledger, code that could write it could rewrite authorship. An editable "who" is a `member`
+   * field: who *entered* an expense is not who *paid*. Absent on records written before it existed.
    */
   createdBy?: Id;
+  /** Who last changed it, stamped the same way; absent where the store keeps no log. */
+  updatedBy?: Id;
   [field: string]: unknown;
 }
 

@@ -43,7 +43,7 @@
 //   `structuredClone` and preserves `Date`). Matching the *durable* store is the right precedent.
 
 import type { Id, PotyroRecord, MediaRef, TextEdit, TextRun, Value } from "potyro";
-import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, RecordInvite, Store, StoreRules, StoreSchema, StoredFile, Unsubscribe } from "./types.js";
+import type { ChatMessage, FieldEdit, MigrationPlan, Narrow, RecordInvite, Removal, Store, StoreRules, StoreSchema, StoredFile, Unsubscribe } from "./types.js";
 import { recordThread } from "./types.js";
 import { foldSet, foldSetFields, isScalarSet, parseSetKey, setFieldsOf, setKey, setWrites } from "./set-field.js";
 import { applyMigrationStep } from "./migrate.js";
@@ -52,6 +52,7 @@ import { HybridClock, formatHlc, parseHlc } from "./hlc.js";
 import { isReservedPath } from "./app-lock.js";
 import { END_ANCHOR, anchorOp, anchorPosition, graphemeAt, graphemeFrom, opAnchor, textFieldsOf, textRef, textRefOf, utf16Starts } from "./text-field.js";
 import { KIDS, childrenOf, kidId, kidKey, roleToAccess } from "./record-sharing.js";
+import { accountName } from "./account-name.js";
 
 /** Fields this store maintains itself. Their edits are not activity anyone wants reported. */
 const BOOKKEEPING = new Set(["id", "createdAt", "createdBy", "updatedAt"]);
@@ -1135,8 +1136,9 @@ export class JazzStore implements Store {
   async insert(entity: string, data: Partial<PotyroRecord>): Promise<PotyroRecord> {
     const id = (data.id as Id) ?? ulid();
     const ts = nowIso();
+    const { updatedBy: _stamp, ...given } = data;
     const record = {
-      ...toJsonValue(data),
+      ...toJsonValue(given),
       id,
       createdAt: (data.createdAt as string) ?? ts,
       updatedAt: ts,
@@ -1165,10 +1167,14 @@ export class JazzStore implements Store {
     });
     this.emit(entity);
     await this.whenDurable?.();
-    return record;
+    // What `get` would read back: the signing account is who wrote last (see `record`).
+    const me = this.node.getCurrentAccountOrAgentID?.();
+    return me ? ({ ...record, updatedBy: String(me) } as PotyroRecord) : record;
   }
 
-  async update(entity: string, id: Id, patch: Partial<PotyroRecord>): Promise<PotyroRecord> {
+  async update(entity: string, id: Id, given: Partial<PotyroRecord>): Promise<PotyroRecord> {
+    // `updatedBy` is read off the log (see `record`): an echoed one is not a field to store.
+    const { updatedBy: _stamp, ...patch } = given;
     if (this.creatorOnly.has(entity)) {
       const found = await this.scoped(entity, id);
       if (found) this.assertCreator(found.creator, "change");
@@ -1418,7 +1424,73 @@ export class JazzStore implements Store {
       const text = await this.loadText(ref);
       raw[k] = text ? text.toString() : "";
     }
+    // Who last changed it, off the log rather than a field: every write of this store's own stamps
+    // `updatedAt`, so that key's last edit is signed by whoever wrote last (KA-18, as `createdBy`).
+    const stamps = m.editsAt ? [...(m.editsAt("updatedAt") ?? [])] : [];
+    const last = stamps[stamps.length - 1];
+    if (last) raw.updatedBy = String(last.by);
     return raw as unknown as PotyroRecord;
+  }
+
+  /**
+   * Records deleted from an entity, read off the INDEX's log (KA-36).
+   *
+   * A deletion tombstones the index entry (`delete` above) and leaves the record's map in place, so
+   * the last edit of the index key says who deleted it and when, and the ref written before it
+   * still opens the record as it was.
+   */
+  async removals(entity: string, opts?: { since?: Date }): Promise<Removal[]> {
+    const since = opts?.since?.getTime() ?? 0;
+    const indexes: Array<{ index: RawMapLike; idOf: (key: string) => string | null }> = [];
+    const index = await this.entityIndexIfPresent(entity);
+    if (index) indexes.push({ index, idOf: (key) => key });
+    const home = this.childOf.get(entity);
+    if (home) for (const kids of await this.kidsMaps(home.parent)) indexes.push({ index: kids, idOf: (key) => kidId(entity, key) });
+
+    const out: Removal[] = [];
+    for (const { index: map, idOf } of indexes) {
+      if (!map.editsAt) continue;
+      for (const key of Object.keys(map.ops ?? {})) {
+        const id = idOf(key);
+        if (id === null) continue;
+        const edits = [...(map.editsAt(key) ?? [])];
+        const last = edits[edits.length - 1];
+        // Still listed: not a removal. (A re-insert after a delete is listed again.)
+        if (!last || typeof last.value === "string") continue;
+        const at = asDate(last.at);
+        if (at.getTime() <= since) continue;
+        const ref = [...edits].reverse().find((e) => typeof e.value === "string")?.value;
+        let record: PotyroRecord | null = null;
+        if (typeof ref === "string") {
+          try {
+            record = await this.record(await this.loadMap(ref));
+          } catch {
+            record = null;
+          }
+        }
+        out.push({ id, record, by: String(last.by), at });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Who can reach one record: the members of its group — the space's, or its own when it is shared
+   * by its link (record-sharing.ts), which is the one place a link's participant is listed at all.
+   */
+  async recordMembers(entity: string, id: Id): Promise<Array<{ id: string; name?: string }>> {
+    const m = await this.recordMap(entity, id);
+    const group = (m?.group ?? this.group) as { getMemberKeys?(): string[]; roleOf?(id: string): string | undefined } | null;
+    const out: Array<{ id: string; name?: string }> = [];
+    for (const key of group?.getMemberKeys?.() ?? []) {
+      // Non-account agents (invites, the relay's server agent) are not people.
+      if (!key.startsWith("co_")) continue;
+      const role = group?.roleOf?.(key);
+      if (role !== "admin" && role !== "writer" && role !== "reader") continue;
+      const name = await accountName(this.node, key);
+      out.push(name ? { id: key, name } : { id: key });
+    }
+    return out;
   }
 
   /** `\u0001` cannot appear in a field name, so a counter key can never collide with a real field. */

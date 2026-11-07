@@ -23,6 +23,8 @@ class FullStore extends MemoryStore {
   spaceUsage = async () => ({ used: 0, budget: 1 });
   memberIds = () => [];
   editHistory = async () => [];
+  removals = async () => [];
+  recordMembers = async () => [];
   messages = async () => [];
   subscribeMessages = () => () => {};
   postMessage = async () => ({ id: "m", thread: "t", text: "", by: "me", at: new Date() });
