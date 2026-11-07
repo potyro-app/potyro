@@ -234,6 +234,8 @@ const SHORT_LIST = 4;
 export function ListView(props: BuiltinViewProps) {
   const { t } = useLingui();
   const { runtime, pageId, params, navigate, onEdit, onCreate } = props;
+  // A hook, so it sits with the others, above every early return (the Rules of Hooks).
+  const news = useNews(runtime);
   const { rows, loading, error } = runtime.usePageQuery(pageId, params);
   const cells = useDisplayCells(runtime, pageId, rows);
   const view = getView(runtime, pageId) as {
@@ -275,7 +277,6 @@ export function ListView(props: BuiltinViewProps) {
   // screen of nothing.
   // Only on a page that IS this list: a layout's "Overdue" is a selection, not a place to add to.
   const offerAdd = onCreate && byPeople(runtime, view.entity) && !pageId.includes("#") && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
-  const news = useNews(runtime);
   const renderRows = (list: Resolved[]) => (
     <ul className="k-list" data-lead={lead}>
       {list.map((row) => {
@@ -380,6 +381,8 @@ function Grouped({
 export function GalleryView(props: BuiltinViewProps) {
   const { t } = useLingui();
   const { runtime, pageId, params, navigate, onEdit, onCreate } = props;
+  // A hook, so it sits with the others, above every early return (the Rules of Hooks).
+  const news = useNews(runtime);
   const { rows, loading, error } = runtime.usePageQuery(pageId, params);
   const cells = useDisplayCells(runtime, pageId, rows);
   const view = getView(runtime, pageId) as {
@@ -406,7 +409,6 @@ export function GalleryView(props: BuiltinViewProps) {
   const lead = view.display?.lead ?? autoLead(rows.map((r, i) => cells[i]?.primary ?? String(r[displayFieldFor(runtime, view.entity)] ?? "")), entityDef?.icon);
   // Only on a page that IS this list: a layout's "Overdue" is a selection, not a place to add to.
   const offerAdd = onCreate && byPeople(runtime, view.entity) && !pageId.includes("#") && rows.length < SHORT_LIST && groups.length === 1 ? () => onCreate(view.entity, {}) : undefined;
-  const news = useNews(runtime);
   const renderCards = (list: Resolved[]) => (
     <div className="k-gallery" data-aspect={view.aspect ?? "landscape"} data-caption={view.caption ?? "below"}>
       {list.map((row) => {

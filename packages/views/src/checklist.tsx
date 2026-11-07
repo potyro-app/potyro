@@ -196,6 +196,8 @@ function InlineText({ value, label, onSave, onCancel }: { value: string; label: 
 export function ChecklistView(props: BuiltinViewProps) {
   const { t } = useLingui();
   const { runtime, pageId, params, navigate } = props;
+  // A hook, so it sits with the others, above every early return (the Rules of Hooks).
+  const news = useNews(runtime);
   const view = getView(runtime, pageId) as unknown as ChecklistDef;
   const { rows, loading } = runtime.usePageQuery(pageId, params);
   useReportCount(loading ? undefined : rows.length);
@@ -658,7 +660,6 @@ export function ChecklistView(props: BuiltinViewProps) {
 
   const textOf = (row: Resolved): RowText => texts[rows.indexOf(row)] ?? { text: str(row[textField] ?? row.id), detail: "", icon: "" };
 
-  const news = useNews(runtime);
   const renderRow = (r: Resolved) => {
     const rt = textOf(r);
     const name = rt.text;
