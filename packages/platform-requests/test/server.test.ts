@@ -37,14 +37,14 @@ describe("the GitHub client", () => {
       const body = url.includes("/comments") ? {} : url.includes("?") ? [{ number: 1, title: "t", html_url: "u" }, { number: 2, title: "pr", html_url: "v", pull_request: {} }] : { number: 3, title: "new", html_url: "w" };
       return new Response(JSON.stringify(body), { status: 200 });
     }) as unknown as typeof fetch;
-    const gh = githubIssues({ token: "tok", repo: "fuzue/potyro", fetch: fake });
+    const gh = githubIssues({ token: "tok", repo: "potyro-app/potyro", fetch: fake });
     expect(await gh.listOpen("platform-request")).toEqual([{ number: 1, title: "t", url: "u" }]);
     expect(await gh.create({ title: "new", body: "b", labels: ["platform-request"] })).toEqual({ number: 3, title: "new", url: "w" });
     await gh.comment(1, "again");
     expect(calls.map((c) => c.url)).toEqual([
-      "https://api.github.com/repos/fuzue/potyro/issues?state=open&labels=platform-request&per_page=100",
-      "https://api.github.com/repos/fuzue/potyro/issues",
-      "https://api.github.com/repos/fuzue/potyro/issues/1/comments",
+      "https://api.github.com/repos/potyro-app/potyro/issues?state=open&labels=platform-request&per_page=100",
+      "https://api.github.com/repos/potyro-app/potyro/issues",
+      "https://api.github.com/repos/potyro-app/potyro/issues/1/comments",
     ]);
     expect((calls[0]!.init.headers as Record<string, string>).authorization).toBe("Bearer tok");
   });
