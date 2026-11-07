@@ -47,8 +47,8 @@ describe("what is sent", () => {
 describe("sending", () => {
   it("sent: the relay filed it", async () => {
     const p = await buildRequest(ask, { source: SOURCE, language: "en" });
-    const r = await sendPlatformRequest(p, "plants", { fetch: answer(201, { ok: true, issue: 12, url: "https://github.com/fuzue/potyro/issues/12" }) });
-    expect(r).toEqual({ state: "sent", url: "https://github.com/fuzue/potyro/issues/12" });
+    const r = await sendPlatformRequest(p, "plants", { fetch: answer(201, { ok: true, issue: 12, url: "https://github.com/potyro-app/potyro/issues/12" }) });
+    expect(r).toEqual({ state: "sent", url: "https://github.com/potyro-app/potyro/issues/12" });
     expect(savedRequests()).toEqual([]);
   });
 

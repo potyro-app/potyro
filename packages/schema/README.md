@@ -40,7 +40,7 @@ records; `locales/*.po` beside the source always ship.
 
 ## Learn
 
-- [Your first Potyro app](https://github.com/fuzue/potyro/blob/main/docs/tutorials/01-your-first-app.md):
+- [Your first Potyro app](https://github.com/potyro-app/potyro/blob/main/docs/tutorials/01-your-first-app.md):
   a tutorial, fifteen minutes
-- [App Module API](https://github.com/fuzue/potyro/blob/main/docs/04-app-module-api.md): every field,
+- [App Module API](https://github.com/potyro-app/potyro/blob/main/docs/04-app-module-api.md): every field,
   view, and everything on `ctx`

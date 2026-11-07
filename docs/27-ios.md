@@ -57,7 +57,7 @@ No CocoaPods: the generated project uses Swift Package Manager, and every plugin
 ## 2. Build and run
 
 ```bash
-git clone https://github.com/fuzue/potyro && cd potyro
+git clone https://github.com/potyro-app/potyro && cd potyro
 pnpm i
 
 # 1. The web build the app wraps. The native app is not served from the site, so tell it which site
@@ -331,7 +331,7 @@ and model:
 
 ## 8. Reporting findings
 
-Open a GitHub issue on **fuzue/potyro** with the label **`platform:ios`** (plus `area:native`), one
+Open a GitHub issue on **potyro-app/potyro** with the label **`platform:ios`** (plus `area:native`), one
 issue per finding: iOS version, iPhone model, checklist number, what happened, the Web Inspector
 console. A sealed app escaping its sandbox (checklist #6) is a security issue: tell the owner
 directly instead of filing it publicly. A fix to the generated project goes into

@@ -27,7 +27,7 @@ function tracker(open: Array<Issue & { labels: string[] }> = []) {
     create: async (issue) => {
       created.push(issue);
       const number = 200 + created.length;
-      const made = { number, title: issue.title, url: `https://github.com/fuzue/potyro/issues/${number}` };
+      const made = { number, title: issue.title, url: `https://github.com/potyro-app/potyro/issues/${number}` };
       issues.push({ ...made, labels: issue.labels });
       return made;
     },

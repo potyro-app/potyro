@@ -49,7 +49,7 @@ test("a better wording for words on the screen is kept, then sent once the team 
   const filed: string[] = [];
   await page.route("**/requests/platform-requests", async (route) => {
     filed.push(route.request().postData() ?? "");
-    await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ ok: true, grouped: false, issue: 1, url: "https://github.com/fuzue/potyro/issues/1" }) });
+    await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ ok: true, grouped: false, issue: 1, url: "https://github.com/potyro-app/potyro/issues/1" }) });
   });
   await page.reload();
   await page.locator(".k-launch-you").first().click();

@@ -1,7 +1,7 @@
 // The relay as a process: `node --experimental-strip-types src/server.ts` on Node 22 (docs/16).
 //
 //   GITHUB_TOKEN           required — fine-grained, Issues read/write on the one repository
-//   POTYRO_REQUESTS_REPO   default fuzue/potyro
+//   POTYRO_REQUESTS_REPO   default potyro-app/potyro
 //   PORT                   default 4202
 //   HOST                   default 127.0.0.1 — reachable only through the proxy in front of it
 //
@@ -55,7 +55,7 @@ async function main(): Promise<void> {
     console.error("GITHUB_TOKEN is not set: the relay files issues with it, and will not start without it.");
     process.exit(1);
   }
-  const repo = process.env.POTYRO_REQUESTS_REPO ?? "fuzue/potyro";
+  const repo = process.env.POTYRO_REQUESTS_REPO ?? "potyro-app/potyro";
   const port = Number(process.env.PORT ?? 4202);
   const host = process.env.HOST ?? "127.0.0.1";
   const relay = createRelay({ issues: githubIssues({ token, repo }), now: Date.now, onError: (e) => console.error("[platform-requests]", e) });
