@@ -70,3 +70,36 @@ describe("suggestions while the box is hidden", () => {
     expect(screen.getByText("This is your own copy. What would you like to change?")).toBeTruthy();
   });
 });
+
+describe("the plan notice (#118)", () => {
+  const withPlan: FreeAi = { health: { ok: true, chat: true, plan: "https://potyro.com/plan" }, left: "plenty", stopped: null } as FreeAi;
+
+  it("tells a device that asked for a plan that one exists now, with its page", () => {
+    localStorage.setItem("potyro:wanted-plan", "1");
+    try {
+      const { container } = render(<FreePanel free={withPlan} onAddKey={noop} />);
+      const link = container.querySelector<HTMLAnchorElement>(".k-free-panel-plan-link")!;
+      expect(link.textContent).toBe("The plan you asked for exists now.");
+      expect(link.href).toBe("https://potyro.com/plan");
+      expect(container.querySelector(".k-free-panel-plan-btn")).toBeNull();
+    } finally {
+      localStorage.removeItem("potyro:wanted-plan");
+    }
+  });
+
+  it("says nothing to a device that never asked, and offers the button as before", () => {
+    const { container } = render(<FreePanel free={withPlan} onAddKey={noop} />);
+    expect(container.querySelector(".k-free-panel-plan-link")).toBeNull();
+    expect(container.querySelector(".k-free-panel-plan-btn")).not.toBeNull();
+  });
+
+  it("says nothing while no plan exists, whatever the device asked", () => {
+    localStorage.setItem("potyro:wanted-plan", "1");
+    try {
+      const { container } = render(<FreePanel free={NO_FREE} onAddKey={noop} />);
+      expect(container.querySelector(".k-free-panel-plan-link")).toBeNull();
+    } finally {
+      localStorage.removeItem("potyro:wanted-plan");
+    }
+  });
+});

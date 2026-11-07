@@ -7094,6 +7094,11 @@ msgstr "A versão antiga fica no Histórico. Os arquivos que você mudou ficam."
 msgid "the only version kept — nothing to compare against"
 msgstr "a única versão guardada, sem nada pra comparar"
 
+#. Link: the paid plan this person once asked for now exists; the link opens its page
+#: ../shell/src/free-panel.tsx
+msgid "The plan you asked for exists now."
+msgstr "O plano que você pediu já existe."
+
 #: ../shell/src/platform-requests.ts
 msgid "The Potyro team's inbox didn't accept “{title}”."
 msgstr "A caixa da equipe do Potyro não aceitou “{title}”."
