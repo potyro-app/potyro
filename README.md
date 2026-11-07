@@ -86,6 +86,8 @@ README.md                       ← you are here
 docs/00-how-potyro-works.md     ← START HERE: the architecture, layer by layer
 docs/README.md                  ← every doc, with its status
 CLAUDE.md                       ← the working agreement for agents and people working here
+docs/32-code-map.md             ← where each concern lives: the files and entry points
+.claude/skills/                 ← recipes for the recurring tasks (a new app, a ctx member, shipping)
 packages/                       ← the workspace: schema, store, host, runtime, views, shell, …
 apps/                           ← the real apps, each an installable package
 examples/                       ← the living fixtures the tests are written against
