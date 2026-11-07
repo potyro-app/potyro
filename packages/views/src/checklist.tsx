@@ -638,6 +638,8 @@ export function ChecklistView(props: BuiltinViewProps) {
 
   // The usuals show while the box is in use and empty: planning at home, not ticking in the shop.
   const [boxFocused, setBoxFocused] = useState(false);
+  // Before the early return below (a hook): called after it, it changed the hook order once rows came.
+  const news = useNews(runtime);
   const usuals = useUsuals(
     runtime,
     pageId,
@@ -658,7 +660,6 @@ export function ChecklistView(props: BuiltinViewProps) {
 
   const textOf = (row: Resolved): RowText => texts[rows.indexOf(row)] ?? { text: str(row[textField] ?? row.id), detail: "", icon: "" };
 
-  const news = useNews(runtime);
   const renderRow = (r: Resolved) => {
     const rt = textOf(r);
     const name = rt.text;
