@@ -32,7 +32,7 @@ test("a request to the Potyro team: shown in plain words, reviewed, kept while t
   await page.route("**/requests/platform-requests", async (route) => {
     relay.push(route.request().postDataJSON());
     if (!relayUp) return route.fulfill({ status: 404, contentType: "text/html", body: "<!doctype html><title>Not found</title>" });
-    return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ ok: true, issue: 7, url: "https://github.com/fuzue/potyro/issues/7" }) });
+    return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ ok: true, issue: 7, url: "https://github.com/potyro-app/potyro/issues/7" }) });
   });
 
   const studio = await openNewStudio(page);
@@ -77,7 +77,7 @@ test("a request to the Potyro team: shown in plain words, reviewed, kept while t
   await card.getByRole("button", { name: "Try sending again" }).click();
   await card.getByRole("group", { name: "What will be sent" }).getByRole("button", { name: "Send" }).click();
   await expect(card.getByRole("status")).toContainText("Sent to the Potyro team");
-  await expect(card.getByRole("link", { name: "See the request" })).toHaveAttribute("href", "https://github.com/fuzue/potyro/issues/7");
+  await expect(card.getByRole("link", { name: "See the request" })).toHaveAttribute("href", "https://github.com/potyro-app/potyro/issues/7");
   await expect(studio.locator(".k-thread-event").last()).toContainText("Sent to the Potyro team: “Scan barcodes”");
   expect(JSON.parse((await page.evaluate(() => localStorage.getItem("potyro:platform-requests:outbox"))) ?? "[]")).toHaveLength(0);
   // The same request both times: the relay files a retry once.

@@ -506,7 +506,7 @@ which the shell does not call yet.
 
 When the Studio's agent finds that what someone asked for needs something Potyro itself lacks, it
 writes a request in their words and the Studio offers to send it. People have no GitHub account, so
-a small relay files it as an issue in `fuzue/potyro`, labelled `platform-request`
+a small relay files it as an issue in `potyro-app/potyro`, labelled `platform-request`
 (`packages/platform-requests`). **When the relay is not reachable, nothing is lost:** the Studio
 says "couldn't send, saved to send later", keeps the request on the device, and sends it the next
 time the Studio opens and `/requests/` answers.
@@ -534,13 +534,13 @@ The issues are public. The review card in the Studio says so before anyone sends
 ### 1. A token that can do one thing
 
 A **fine-grained** personal access token (GitHub → Settings → Developer settings → Fine-grained
-tokens): resource owner `fuzue`, **only** the repository `fuzue/potyro`, repository permission
+tokens): resource owner `potyro-app`, **only** the repository `potyro-app/potyro`, repository permission
 **Issues: Read and write**, nothing else; an expiry you will notice. Then, once, the label:
 
 ```bash
-gh label create platform-request -R fuzue/potyro --color 5319e7 \
+gh label create platform-request -R potyro-app/potyro --color 5319e7 \
   --description "Asked for from the Studio: something Potyro itself does not offer yet (#263, #288)"
-gh label create translation -R fuzue/potyro --color 0e8a16 \
+gh label create translation -R potyro-app/potyro --color 0e8a16 \
   --description "A better wording for Potyro's own words, suggested from You → Language (#300)"
 ```
 
@@ -550,7 +550,7 @@ On the server, out of the repository and readable by root only:
 sudo mkdir -p /etc/potyro && sudo install -m 600 /dev/null /etc/potyro/requests.env
 sudoedit /etc/potyro/requests.env     # the names in deploy/env.example/requests.env.example
 #   GITHUB_TOKEN           the token above
-#   POTYRO_REQUESTS_REPO   fuzue/potyro
+#   POTYRO_REQUESTS_REPO   potyro-app/potyro
 #   HOST                   0.0.0.0, inside the container; published to loopback only, below
 #   PORT                   4202
 ```
@@ -568,7 +568,7 @@ docker run -d --name potyro-requests --restart unless-stopped \
   -v /opt/potyro-requests:/app:ro -w /app \
   node:22-bookworm \
   node --experimental-strip-types src/server.ts
-docker logs potyro-requests     # "[platform-requests] filing into fuzue/potyro, listening on 0.0.0.0:4202"
+docker logs potyro-requests     # "[platform-requests] filing into potyro-app/potyro, listening on 0.0.0.0:4202"
 ```
 
 Without `GITHUB_TOKEN` it refuses to start. `-p 127.0.0.1:…` keeps it reachable only through Caddy,

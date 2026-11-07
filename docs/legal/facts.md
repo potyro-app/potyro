@@ -142,7 +142,7 @@ that names and who shares with whom can be seen on the relay.
 |---|---|---|---|
 | F-29 | A demo link can be deleted by id. | see above | code |
 | F-52 | A space's data can be removed from the relay, by hand, with the relay stopped; a device that still holds the space puts it back when it next syncs, and backups keep it until they age out. | `store/scripts/erase-space.mjs`, tested on a database made by cojson in `store/test/erase-space.test.ts` (including the copy coming back); docs/16 "Erasing a space or an account from the relay" | code; never run on potyro.app yet. The public text says "we will try, by hand" |
-| F-66 | GitHub issues can be deleted by a repository admin. | GitHub feature, not Potyro code | to verify on `fuzue/potyro` once public |
+| F-66 | GitHub issues can be deleted by a repository admin. | GitHub feature, not Potyro code | to verify on `potyro-app/potyro` once public |
 | F-67 | The identity id is shown under You, Advanced. | `shell/src/identity-panel.tsx` ("Identity `{me.id}`") | code |
 | F-68 | Export saves an app with its records as a file. | `shell/src/App.tsx` app menu `Export`; docs/16 (the person's export of a shared app, `missingFiles`) | code |
 

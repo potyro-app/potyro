@@ -179,7 +179,7 @@ export function startServer(opts: ServerOptions): Promise<Server> {
 const HEADERS = (key: string): Record<string, string> => ({
   Authorization: `Bearer ${key}`,
   "Content-Type": "application/json",
-  "HTTP-Referer": "https://github.com/fuzue/potyro",
+  "HTTP-Referer": "https://github.com/potyro-app/potyro",
   "X-Title": "Potyro (free AI)",
 });
 

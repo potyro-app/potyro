@@ -294,7 +294,7 @@ export function createAppAi(deps: AppAiDeps): AiCap {
       ({ status, text } = await withTimeout(timeoutMs, async (signal) => {
         const res = await doFetch(OPENROUTER_URL, {
           method: "POST",
-          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "HTTP-Referer": "https://github.com/fuzue/potyro", "X-Title": "Potyro" },
+          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "HTTP-Referer": "https://github.com/potyro-app/potyro", "X-Title": "Potyro" },
           body: JSON.stringify(openRouterBody(payload)),
           signal,
         });

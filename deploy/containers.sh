@@ -8,7 +8,7 @@
 #   sudo ~/potyro-src/deploy/containers.sh                 # every service
 #   sudo ~/potyro-src/deploy/containers.sh ai rooms        # only these
 #
-# (~/potyro-src is a plain clone of https://github.com/fuzue/appinator; any clone will do.)
+# (~/potyro-src is a plain clone of https://github.com/potyro-app/potyro; any clone will do.)
 #
 # What it does, for each service named (relay, requests, share-links, ai, rooms; none = all):
 #   1. copies the package's code from the checkout into /opt/<container>/ (rsync --delete, never

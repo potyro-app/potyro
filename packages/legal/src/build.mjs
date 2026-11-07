@@ -34,7 +34,7 @@ export const LEGAL_DIR = join(ROOT, "docs", "legal");
 export const PAGES = /** @type {const} */ (["privacy", "terms"]);
 
 /** Where the texts' other links go: the repository, for the notes the drafts point at (README.md, facts.md). */
-export const REPOSITORY = "https://github.com/fuzue/appinator/blob/main/docs/legal/";
+export const REPOSITORY = "https://github.com/potyro-app/potyro/blob/main/docs/legal/";
 
 /** The logo files a page shows, light and dark grounds (packages/design/logo). */
 const LOGOS = /** @type {const} */ (["wordmark-rosa.svg", "wordmark-rosa-on-dark.svg"]);

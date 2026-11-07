@@ -279,7 +279,7 @@ export function createOpenRouterEngine(opts: OpenRouterOptions = {}): ChatEngine
       // A local server (Ollama, LM Studio) takes no key: then no header at all, rather than an empty one.
       ...(apiKey || !plain ? { Authorization: `Bearer ${apiKey}` } : {}),
       "Content-Type": "application/json",
-      ...(plain ? {} : { "HTTP-Referer": opts.referer ?? "https://github.com/fuzue/potyro", "X-Title": opts.appTitle ?? "Potyro" }),
+      ...(plain ? {} : { "HTTP-Referer": opts.referer ?? "https://github.com/potyro-app/potyro", "X-Title": opts.appTitle ?? "Potyro" }),
     };
     const post = async (reasoning: ReasoningOptions | undefined, temperature = true): Promise<{ res: Response; text: string }> => {
       const controller = typeof AbortController !== "undefined" ? new AbortController() : undefined;

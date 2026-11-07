@@ -14,7 +14,7 @@ const payload = (over: Partial<PlatformRequestPayload> = {}): PlatformRequestPay
 });
 
 function tracker(open: Array<{ number: number; title: string }> = []) {
-  const issues = open.map((i) => ({ ...i, url: `https://github.com/fuzue/potyro/issues/${i.number}` }));
+  const issues = open.map((i) => ({ ...i, url: `https://github.com/potyro-app/potyro/issues/${i.number}` }));
   const created: Array<{ title: string; body: string; labels: string[] }> = [];
   const comments: Array<{ number: number; body: string }> = [];
   let lists = 0;
@@ -23,7 +23,7 @@ function tracker(open: Array<{ number: number; title: string }> = []) {
     create: async (issue) => {
       created.push(issue);
       const number = 100 + created.length;
-      const made = { number, title: issue.title, url: `https://github.com/fuzue/potyro/issues/${number}` };
+      const made = { number, title: issue.title, url: `https://github.com/potyro-app/potyro/issues/${number}` };
       issues.push(made);
       return made;
     },
