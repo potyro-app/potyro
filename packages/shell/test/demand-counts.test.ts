@@ -4,7 +4,7 @@
 // the person turned counts off, and nothing in the request that could tell one device from another.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { countOnce, countsOn, setCountsOn } from "../src/demand-counts.js";
+import { countOnce, countedThisMonth, countsOn, setCountsOn, wantedPlan } from "../src/demand-counts.js";
 import { deviceId } from "../src/device-id.js";
 
 type Sent = { url: string; init: RequestInit };
@@ -35,6 +35,17 @@ describe("counts", () => {
     expect(await countOnce("want-plan", { fetch, now: () => NOV, relayThere: there })).toBe("sent");
     expect(sent.map((s) => s.init.body)).toEqual(['{"event":"want-plan"}', '{"event":"own-key"}', '{"event":"want-plan"}']);
     expect(sent.every((s) => s.url.endsWith("/ai/count"))).toBe(true);
+  });
+
+  it("remember that this device asked for a plan, across months — so it can be told when one exists (#118)", async () => {
+    const { fetch } = wire();
+    expect(wantedPlan()).toBe(false);
+    await countOnce("own-key", { fetch, now: () => OCT, relayThere: there });
+    expect(wantedPlan()).toBe(false);
+    await countOnce("want-plan", { fetch, now: () => OCT, relayThere: there });
+    expect(wantedPlan()).toBe(true);
+    expect(countedThisMonth("want-plan", NOV)).toBe(false); // the month's count moves on; the wish stays
+    expect(wantedPlan()).toBe(true);
   });
 
   it("carry the event and nothing else: no device id, no cookies, no referrer, one plain header", async () => {

@@ -177,6 +177,8 @@ export interface RelayHealth {
   ok: boolean;
   chat: boolean;
   model?: string;
+  /** Where the plan is offered, once there is one (#118, #120): a page's address. Absent while there is none. */
+  plan?: string;
   /**
    * No answer at all: offline, unreachable or too slow. Says nothing about the relay, so nothing is
    * decided on it (the Studio keeps a chosen Potyro engine), and it is believed for a minute only.
@@ -221,9 +223,11 @@ export async function relayHealth(opts: { url?: string; fetch?: typeof fetch; no
   try {
     health = await withTimeout(HEALTH_MS, async (signal) => {
       const res = await doFetch(url, { method: "GET", signal });
-      const body = (await res.json().catch(() => null)) as { ok?: unknown; chat?: unknown; model?: unknown } | null;
+      const body = (await res.json().catch(() => null)) as { ok?: unknown; chat?: unknown; model?: unknown; plan?: unknown } | null;
       if (!res.ok || body?.ok !== true) return NOT_THERE;
-      return { ok: true, chat: body.chat === true, ...(typeof body.model === "string" && body.model ? { model: body.model } : {}) };
+      // Only a web address is ever shown as a link; anything else the relay says here is ignored.
+      const plan = typeof body.plan === "string" && /^https:\/\/\S+$/.test(body.plan) ? body.plan : undefined;
+      return { ok: true, chat: body.chat === true, ...(typeof body.model === "string" && body.model ? { model: body.model } : {}), ...(plan ? { plan } : {}) };
     });
   } catch {
     // unreachable or too slow: no answer, which is not "not there"
