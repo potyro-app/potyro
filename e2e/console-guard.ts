@@ -216,9 +216,16 @@ export const test = base.extend<GuardFixtures & GuardOptions, GuardWorkerFixture
       // Contexts the test makes for itself are the test's pages too. Wrapped for this test only, on
       // top of the worker's wrap, and put back after it.
       const newContext = browser.newContext;
+      // And they die with the test (`madeHere`, below): a context a test leaves open keeps its pages,
+      // and those pages keep talking — to a rooms relay the spec's `afterAll` has since stopped, say
+      // — so their errors landed on whatever test ran next in the worker (ask-review was failed by
+      // Draw & Guess's sockets, 2026-11-07). A context a spec opens in `beforeAll` is not made during
+      // a test, so it is not touched here.
+      const madeHere = new Set<BrowserContext>();
       browser.newContext = async (...args: Parameters<typeof browser.newContext>) => {
         const ctx = await newContext.call(browser, ...args);
         contexts.add(ctx);
+        madeHere.add(ctx);
         adoptContext(ctx);
         return ctx;
       };
@@ -235,9 +242,18 @@ export const test = base.extend<GuardFixtures & GuardOptions, GuardWorkerFixture
 
       browser.newContext = newContext;
       contexts.forEach((ctx) => ctx.off("page", adopt));
+      const judge = guardConsole
+        ? async () => {
+            await Promise.all([...mine.keys()].flatMap((page) => logs.get(page)?.pending ?? []));
+            return since();
+          }
+        : null;
+      const seen = judge ? await judge() : [];
+      // Judged first, so a last word a page says as it closes is not counted — then the test's own
+      // contexts are closed, so nothing of this test speaks into the next one.
+      const open = new Set(browser.contexts());
+      await Promise.all([...madeHere].filter((ctx) => open.has(ctx)).map((ctx) => ctx.close().catch(() => undefined)));
       if (!guardConsole) return;
-      await Promise.all([...mine.keys()].flatMap((page) => logs.get(page)?.pending ?? []));
-      const seen = since();
       // Answered for: the next test on a shared page starts after these.
       for (const page of mine.keys()) {
         const log = logs.get(page);
