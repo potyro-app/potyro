@@ -57,14 +57,24 @@ export async function syncForRecordShare(app: UserApp, share: HeldShare): Promis
  * app), where to land, and the record's invite. The store must be the synced one, open.
  */
 export async function makeRecordLink(app: UserApp, declaredId: string | undefined, store: Store, record: NonNullable<ShownShare["record"]>): Promise<string> {
-  if (!store.createRecordInvite) throw new Error(t`This app does not sync yet, so a record of it cannot be shared on its own.`);
-  const invite = await store.createRecordInvite(record.entity, record.id, record.role);
   const line = lineFor(app, declaredId);
   if (!line) throw new Error("This app has no id to make a link to it with");
-  const target: AppTarget = { line, ...(record.page ? { page: record.page } : {}), params: record.page && record.param ? { [record.param]: record.id } : {} };
   const demo = await demoLinkFor(app);
-  const payload: RecordLinkPayload = { ...invite, role: record.role, ...(declaredId ? { appId: declaredId } : {}), name: app.name };
-  return withRecordLink(withAppTarget(demo ?? siteRoot(), target), payload);
+  return recordLinkOn(demo ?? siteRoot(), { line, name: app.name, declaredId }, store, record);
+}
+
+/**
+ * A record's link on a given app link: `base` is the app's demo link (a stranger gets the app from it)
+ * or the site's root; `app` says where the record is and what the app is called. Also the way a
+ * viewer opened from a record's link (demo.tsx) invites others to a record of its own: its base is
+ * the link it arrived by, its store the synced one the record lives in.
+ */
+export async function recordLinkOn(base: string, app: { line: string; name: string; declaredId?: string }, store: Store, record: NonNullable<ShownShare["record"]>): Promise<string> {
+  if (!store.createRecordInvite) throw new Error(t`This app does not sync yet, so a record of it cannot be shared on its own.`);
+  const invite = await store.createRecordInvite(record.entity, record.id, record.role);
+  const target: AppTarget = { line: app.line, ...(record.page ? { page: record.page } : {}), params: record.page && record.param ? { [record.param]: record.id } : {} };
+  const payload: RecordLinkPayload = { ...invite, role: record.role, ...(app.declaredId ? { appId: app.declaredId } : {}), name: app.name };
+  return withRecordLink(withAppTarget(base, target), payload);
 }
 
 /**
