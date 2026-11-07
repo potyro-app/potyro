@@ -1,93 +1,51 @@
 # Potyro
 
-**Potyro is an offline-first runtime that loads a TypeScript app module and runs it as a
-working, native-capable personal app.**
-
-You write (or have a model write) a `*.app.ts` module: it declares your data **shape** (entities,
-fields, pages) as plain data, and everything that is **logic** (computed values, filters, actions,
-reminders, even whole custom views) as ordinary TypeScript functions. Full language. Real imports,
-loops, conditionals, types, debugging. A single runtime shell loads that module and renders a usable
-app with local persistence, camera, notifications, geolocation, sync and sharing. No per-app build.
-No cloud requirement. No visual builder. No little DSL to hit the wall of.
+**The app you need, made by you.** Describe it in a sentence, or start from one somebody else made,
+and use it on your phone a minute later: a list for the garden, a game for the table, a ledger for
+the trip. Your data stays on your device unless you choose to share it. Apps other people made run
+in a safe box, so you can try a stranger's app without fear.
 
 <!-- shot: launcher -->
 
-**Start here:** [How Potyro works](docs/00-how-potyro-works.md), the architecture layer by layer for a
-developer. The gallery of apps is at [potyro.com](https://potyro.com).
+Try it at [potyro.app](https://potyro.app); browse the apps at [potyro.com](https://potyro.com).
 
-## The core decision
+## For developers
 
-Logic is JavaScript/TypeScript, not a restricted expression language. Every "safe little DSL"
-eventually reinvents variables, conditionals, loops and a bad module system; you end up rebuilding JS
-badly and still hitting walls. Potyro refuses that. **The language is unrestricted. What Potyro
-controls is the *capability surface* handed to your code (`ctx`) and the *execution boundary* it runs
-in, two things that are independent of the language.**
+Potyro is an offline-first runtime for small personal apps. An app is one TypeScript module: its
+**structure** (entities, fields, pages) is plain data, and all its **logic** (computed values,
+filters, actions, reminders, custom views) is ordinary TypeScript receiving `ctx`, the host's API.
+No expression language, no per-app build, no cloud requirement. The runtime renders the module as a
+working app with local persistence, device capabilities, sync, sharing and a model-driven Studio
+that writes and changes apps from a description.
 
-- **Structure stays declarative.** Entities, fields and view layout are data. That gives you storage,
-  forms, validation and migrations for free; it is a schema, not a DSL.
-- **Logic is full code.** Computed, filter, action, reminder and custom view are functions that
-  receive `ctx`, the host API surface. Full control means a rich `ctx`, not a permissive parser.
+Two things make it safe to run anyone's code: the host hands app code its power only through `ctx`,
+and **where** code runs is decided by who wrote it. Your own apps run directly; an app someone sent
+you runs in a sandboxed browser realm with capabilities denied by default and granted on consent.
+Same language, same functions, different authority.
 
-## Power and safety are different axes
+**Start here:** [How Potyro works](docs/00-how-potyro-works.md), the architecture layer by layer.
+To write an app outside this repository: `npm create potyro@latest my-app`, then
+[Your first Potyro app](docs/tutorials/01-your-first-app.md).
 
-The only property worth protecting is: *I can open an app someone sent me without it wrecking my
-machine.* That is **not** a language restriction. It is an execution choice, made per app by
-**provenance**:
+## What is in the box
 
-- **Your own apps run direct.** Full host context, real imports, the device's capabilities. Zero
-  sandbox, zero ceremony. This is the daily driver and the "I just want to write code" path.
-- **Received and shared apps run sealed.** The *same source* runs in a Worker inside an opaque-origin
-  sandboxed iframe with a strict Content Security Policy, reaching host power only through the same `ctx`, mediated:
-  capabilities denied by default and granted per consent, a watchdog on every call, each custom view
-  in a sandboxed frame of its own. Same language, same functions; only the injected authority
-  differs. (QuickJS-WASM remains as the fallback box behind a flag.)
-
-Same code, two authority levels. The language is never the thing that is limited.
-
-## Non-negotiable invariants
-
-1. **Logic is real TS; structure is declarative data.** Don't reintroduce an expression DSL.
-2. **`ctx` is the whole API surface.** All host power (data, time, caps, storage, files, people, ui,
-   nav) reaches app code through `ctx`. Enriching the system = enriching `ctx`.
-3. **Execution boundary is chosen by provenance, not by the app.** Trusted → direct; untrusted →
-   the sealed realm with mediated caps and a permission prompt.
-4. **Offline-first, including authoring.** Runtime and authoring work with no network. Servers are
-   optional (sync, demo links, rooms, AI) and clearly separated.
-5. **One codebase, two targets.** PWA and Capacitor share the runtime; native is additive.
-6. **Everything behind a seam.** `Store` (persistence) and `Capabilities` (device) are interfaces;
-   they *are* what `ctx` exposes. Swapping SQLite for the CRDT sync store, or web for native, never
-   touches app code or views.
-
-## What works today
-
-- Your own apps run direct; apps from anyone else run sealed in the browser realm, with consent
-  prompts, a watchdog and a crash-loop guard.
-- Records in SQLite in the browser's private file storage (OPFS), in a worker, with one tab owning
-  the storage; migrations; export to a zip with a real SQLite file, JSON and CSV inside.
-- Sync, opt-in per app: end-to-end encrypted spaces on Jazz, a local-first sync engine, behind a
-  relay that holds only ciphertext; an identity derived from a seed with no signup; recovery words
-  for a second device.
-- Sharing three ways: an invite into an app's data, a demo link anyone can try with sample records,
-  and rooms for multiplayer apps.
-- Device capabilities through `ctx.caps`: camera, live camera, notifications, geolocation, haptics,
-  files, network and sockets, AI, the share sheet, voice.
-- Android and iOS through Capacitor, the native shell around a web build, with native capabilities
-  and the platform keystore.
-- The Studio: describe an app, change it, fix it by recording what went wrong, point at the part you
-  mean, in your language, with one of six model engines (`packages/shell/src/engines.ts`), every candidate gated before it is kept.
-- Real apps in `apps/` (twenty-one on 2026-10-30; `ls apps` counts them), the example apps in
-  `examples/` (six; `ls examples/*.app.ts*`), the gallery on potyro.com, and a tutorial for writing
-  apps outside this repo.
+- **Runtime and shell**: records in SQLite in the browser's private storage, forms, views, migrations,
+  export; a PWA and, through Capacitor, Android and iOS from the same code.
+- **Capabilities** through `ctx.caps`: camera, notifications, geolocation, files, network and
+  sockets, the share sheet, voice, AI.
+- **Together**: end-to-end encrypted sync between your devices and the people you invite, demo links
+  anyone can try, rooms for multiplayer apps, documents several people write at once.
+- **The Studio**: describe an app, change it, fix it by showing what went wrong; a free allowance or
+  your own model key.
+- **Apps**: the real ones in `apps/`, the example fixtures in `examples/`, all on potyro.com.
 
 ## Repository map
 
 ```
-README.md                       ← you are here
 docs/00-how-potyro-works.md     ← START HERE: the architecture, layer by layer
 docs/README.md                  ← every doc, with its status
-CLAUDE.md                       ← the working agreement for agents and people working here
 docs/32-code-map.md             ← where each concern lives: the files and entry points
-.claude/skills/                 ← recipes for the recurring tasks (a new app, a ctx member, shipping)
+CLAUDE.md                       ← the working agreement for agents and people working here
 packages/                       ← the workspace: schema, store, host, runtime, views, shell, …
 apps/                           ← the real apps, each an installable package
 examples/                       ← the living fixtures the tests are written against
@@ -103,37 +61,21 @@ Node 22 and pnpm.
 ```sh
 pnpm i
 pnpm dev            # the shell on Vite's dev server; the examples are seeded as your own apps
-pnpm dev:sandbox    # the same, with the examples seeded as shared apps, to exercise the sealed box
+pnpm dev:sandbox    # the same, with the examples seeded as shared apps, to exercise the sandbox
 pnpm -r test        # unit tests, every package
 pnpm e2e            # the browser suite (one worker, on purpose)
 ```
 
-To write an app outside this repo: `npm create potyro@latest my-app`, then
-[Your first Potyro app](docs/tutorials/01-your-first-app.md).
+Testing strategy: [docs/09](docs/09-testing.md); how to try Potyro and give feedback: [docs/12](docs/12-testing-guide.md).
 
-## Testing
+## Open source, hosted by us
 
-The strategy is docs/09 and the one-page summary is in
-[How Potyro works](docs/00-how-potyro-works.md#testing-in-one-page). To try Potyro and give feedback,
-see docs/12.
+Everything here is Apache License 2.0: the runtime, the shell, the Studio, the apps and the servers
+around them. potyro.app and potyro.com are hosted instances of this code, run by the maintainer;
+[docs/16](docs/16-deployment.md) says how to run your own. [docs/31](docs/31-security-model.md)
+explains the sandbox, what our servers can see and what is not protected; to report a vulnerability
+see [SECURITY.md](SECURITY.md), never a public issue.
 
-## What is open, what is hosted
-
-Everything in this repository is open source under the Apache License 2.0: the runtime, the shell,
-the Studio, the apps, and the servers around them — the sync relay's setup, the AI relay, the rooms
-relay, the share-link service, and the paid plan's service when it is built (it is not yet, and
-nothing is sold). potyro.app (the app) and potyro.com (the gallery) are hosted instances of this
-code, run by the maintainer. You can run your own: [docs/16](docs/16-deployment.md) says how.
-
-## Security
-
-Shared apps run sealed; [docs/31](docs/31-security-model.md) explains the box, what our servers can
-see and what is not protected. To report a vulnerability, see [SECURITY.md](SECURITY.md); please do
-not open a public issue.
-
-## Licence and contributing
-
-© 2026 Edgar Zanella Alvarenga. Apache License 2.0: [LICENSE](LICENSE), with third-party material listed in [NOTICE](NOTICE). The
-tutorial code and the `npm create potyro` template are MIT No Attribution, so the apps you start from
-them carry no notice of ours. Contributions are welcome under the terms in
-[CONTRIBUTING.md](CONTRIBUTING.md); [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) applies.
+© 2026 Edgar Zanella Alvarenga. [LICENSE](LICENSE), third-party material in [NOTICE](NOTICE); the
+tutorial code and the `npm create potyro` template are MIT No Attribution. Contributions are welcome
+under [CONTRIBUTING.md](CONTRIBUTING.md); [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) applies.
