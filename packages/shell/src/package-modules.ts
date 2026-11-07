@@ -244,9 +244,17 @@ export function hasLibraries(mods: ModuleSource | undefined): boolean {
   return !!mods && !mods.standInLibraries && Object.keys(mods.lock).some(isLibraryKey);
 }
 
-/** esbuild reports a plugin's error inside its own framing; a person should read just the sentence. */
+/**
+ * esbuild reports an error inside its own framing ("Build failed with 1 error:" on the first line);
+ * a person should read the sentence that says what is wrong, and where. A module error of ours
+ * keeps its type; any other build error is reported as its first message with the file and line.
+ */
 export function unwrapBuildError(e: unknown): unknown {
-  const errors = (e as { errors?: Array<{ text?: string; pluginName?: string }> })?.errors;
+  const errors = (e as { errors?: Array<{ text?: string; pluginName?: string; location?: { file?: string; line?: number } | null }> })?.errors;
   const ours = errors?.find((x) => x.pluginName === MODULE_PLUGIN);
-  return ours?.text ? new ModuleError(ours.text) : e;
+  if (ours?.text) return new ModuleError(ours.text);
+  const first = errors?.find((x) => x.text);
+  if (!first?.text) return e;
+  const at = first.location?.file ? ` (${first.location.file}${first.location.line ? `:${first.location.line}` : ""})` : "";
+  return new Error(`${first.text}${at}`);
 }
