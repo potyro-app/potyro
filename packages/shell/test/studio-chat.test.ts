@@ -68,10 +68,10 @@ describe("the record", () => {
   it("keeps a request to the Potyro team, and what came of sending it", async () => {
     const platform = { id: "req-1", title: "Scan barcodes", body: "I wanted to scan." };
     await chat.appendMessage("plants", { kind: "refusal", text: "Potyro can't do this yet.", platform }, at(1));
-    await chat.appendMessage("plants", { kind: "event", text: "Sent.", request: { id: "req-1", state: "sent", url: "https://github.com/fuzue/potyro/issues/1" } }, at(2));
+    await chat.appendMessage("plants", { kind: "event", text: "Sent.", request: { id: "req-1", state: "sent", url: "https://github.com/potyro-app/potyro/issues/1" } }, at(2));
     const all = await chat.listMessages("plants");
     expect(all[0]!.platform).toEqual(platform);
-    expect(all[1]!.request).toEqual({ id: "req-1", state: "sent", url: "https://github.com/fuzue/potyro/issues/1" });
+    expect(all[1]!.request).toEqual({ id: "req-1", state: "sent", url: "https://github.com/potyro-app/potyro/issues/1" });
     const items = chat.threadItems(all, []);
     expect(items[0]).toMatchObject({ type: "agent", platform });
     expect(items[1]).toMatchObject({ type: "event", request: { id: "req-1", state: "sent" } });

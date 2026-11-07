@@ -54,9 +54,9 @@ describe("the card", () => {
   });
 
   it("says when it was sent, with the request's address", () => {
-    render(<PlatformRequestCard ask={ask} sent={{ id: "req-1", state: "sent", url: "https://github.com/fuzue/potyro/issues/9" }} review={async () => payload} onSend={async () => {}} />);
+    render(<PlatformRequestCard ask={ask} sent={{ id: "req-1", state: "sent", url: "https://github.com/potyro-app/potyro/issues/9" }} review={async () => payload} onSend={async () => {}} />);
     expect(screen.getByRole("status").textContent).toMatch(/Sent to the Potyro team/);
-    expect(screen.getByRole("link", { name: "See the request" }).getAttribute("href")).toBe("https://github.com/fuzue/potyro/issues/9");
+    expect(screen.getByRole("link", { name: "See the request" }).getAttribute("href")).toBe("https://github.com/potyro-app/potyro/issues/9");
     expect(screen.queryByRole("button", { name: "Send to the Potyro team" })).toBeNull();
   });
 
