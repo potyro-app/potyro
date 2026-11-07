@@ -1,10 +1,6 @@
 # Terms of use
 
-> **Draft.** Not in force yet. It waits for the owner's details and a review by counsel
-> (see [README.md](README.md)). The facts behind it are in [facts.md](facts.md). Notes in `<!-- -->`
-> comments are for the review and are not shown.
-
-Effective: <DATE>
+Effective: 2026-11-07
 
 ## Who you are dealing with
 
