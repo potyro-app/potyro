@@ -218,7 +218,7 @@ status line is an aggregate view over one record.
   `::1`), which browsers allow from an https page. Anything else is mixed content the browser would
   block anyway; Potyro refuses it first with `"insecure"`. A page served over plain http (the dev
   server) may open any `ws://`.
-- **The Android app: `ws://` to the local network too** — Home Assistant on `192.168.1.20:8123`. The
+- **The Android app: `ws://` to the local network too** — a Home Assistant on the local network, port 8123. The
   WebView is `https://localhost` and refuses ws:// from it, so these go through Potyro's own plugin
   (`PotyroLocalSocket`: `packages/native/android-templates/`, copied into the generated project and
   registered in `MainActivity` by `scripts/patch-android.mjs`, which `cap:add:android` and `cap:sync`

@@ -143,7 +143,7 @@ to run on uncommitted changes so a result always describes a commit. `pnpm ci:lo
 marks the commit with a `local-ci` check on GitHub once everything passed. Firefox
 (`ci:local e2e:firefox`) is a step of its own and not part of the verdict; the pixel baselines are
 skipped. On a laptop the whole run is slow and some shards fail on timeouts under the load; the CI
-machine, `vazio`, is where it is meant to run, and where a cron watcher runs it on every new `main`
+machine is where it is meant to run, and where a cron watcher runs it on every new `main`
 and deploys `main` when it is green (docs/16 §8).
 
 ---
