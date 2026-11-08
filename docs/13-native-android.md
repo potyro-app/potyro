@@ -21,7 +21,7 @@ The generated `android/` project is **git-ignored** — it's reproduced determin
 
 ## Prerequisites (already on this machine)
 
-- **Android Studio:** `/home/aivuk/android-studio/bin/studio`
+- **Android Studio:** wherever it is installed (`<android-studio>/bin/studio`)
 - **Android SDK:** `~/Android`  → export it so the CLI can find it:
   ```bash
   export ANDROID_HOME="$HOME/Android"
@@ -155,7 +155,7 @@ local model may work with **no extra native code**.
   refuses ws:// from `https://localhost`. Nothing about cleartext is changed in the manifest or the
   network security config; the plugin checks every address a name resolves to is local and speaks the
   protocol itself. To try it on a phone: a trusted app with
-  `await ctx.caps.network!.socket("ws://<your Home Assistant>:8123/api/websocket")` should get
+  `await ctx.caps.network!.socket("ws://<a server on your network>:8123/api/websocket")` should get
   `{"type":"auth_required"…}` as its first message.
 - **Voice input** (docs/29) is Potyro's own `PotyroSpeech` plugin
   (`android-templates/SpeechPlugin.java`, registered by `patch-android.mjs`): the on-device recognizer

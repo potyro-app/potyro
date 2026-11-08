@@ -241,7 +241,7 @@ targets. It was dry-run against desktop Chromium (`--cdp`). It reported `outOfPr
    Leave the app in the foreground on any screen.
 2. Run:
    ```sh
-   export PATH=/home/aivuk/.nvm/versions/node/v22.13.1/bin:$PATH
+   export PATH=$HOME/.nvm/versions/node/v22.13.1/bin:$PATH
    node docs/spikes/browser-realm/android/run-on-phone.mjs --spin 3000
    ```
    (`--pkg app.potyro` is the default.) The script runs `adb forward` to the app's
@@ -417,7 +417,7 @@ code with ambient authority, and never in the shell's own realm." The mental-mod
 > 2026-11-07; check out a commit before that (`git log -- docs/spikes/browser-realm`) to run them.
 
 ```sh
-export PATH=/home/aivuk/.nvm/versions/node/v22.13.1/bin:$PATH
+export PATH=$HOME/.nvm/versions/node/v22.13.1/bin:$PATH
 pnpm i && pnpm typecheck:spikes
 node docs/spikes/browser-realm/build.mjs                  # runtimes + fixture bundles → dist/
 # the page by hand: http://127.0.0.1:4291/ (probes on 4292 http/ws and 4293/udp)

@@ -23,7 +23,6 @@ Start with [How Potyro works](00-how-potyro-works.md). The rest goes deeper, one
 - [Share links](24-share-links.md) — Every shared link is a working demo: the link, demo records, the share service, credit and remix, page links, the gallery.
 - [Live camera](25-live-camera.md) — ctx.caps.camera.live(): a live video stream and the faces in it, for trusted apps.
 - [Rooms relay](26-rooms-relay.md) — A relay for real-time multiplayer apps: joining, messages and events, limits, what it does not do.
-- [iOS](27-ios.md) — Potyro on iPhone through Capacitor: the handoff for the iOS developer.
 - [Live connections](28-sockets.md) — ctx.caps.network.socket and .room: WebSockets and rooms from app code, with permission and limits.
 - [Voice input](29-voice.md) — The Studio's microphone and ctx.caps.speech.
 - [App translations](30-app-translations.md) — One language in the source, catalogs beside it: how an app carries its words in other languages.

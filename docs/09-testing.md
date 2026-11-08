@@ -77,6 +77,6 @@ There is no CI on GitHub: every workflow has been disabled since 2026-10-25. The
 `pnpm ci:local all` (`scripts/ci-local.mjs`): install, `pnpm -r build`, `pnpm -r test` (which runs
 the conformance suites' test files too), `pnpm typecheck`, `lint:boundaries`, `lint:tokens` and
 `lint:i18n`, and the trusted + sandbox browser suite as parallel shards. It is run on the commit to
-be merged, and the CI machine, vazio, runs it on every new `main` and deploys it when green
+be merged, and the CI machine runs it on every new `main` and deploys it when green
 (docs/16 §8). Green required to merge. Keep the example apps as living fixtures — if a change breaks one,
 that's a real regression, not a fixture to "fix".
