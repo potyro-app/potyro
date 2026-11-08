@@ -1,0 +1,23 @@
+{
+  "name": "@potyro/site",
+  "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
+  "type": "module",
+  "private": true,
+  "description": "potyro.com as one static site (#32): the gallery at / and /apps, the documentation at /docs, the privacy page and the terms, on the design system's tokens and fonts, with nothing from anyone else. `pnpm site:build` writes it into dist/site for rsync (docs/16).",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.0",
+    "@types/markdown-it": "14",
+    "markdown-it": "^14.1.0",
+    "mermaid": "^11.4.0",
+    "shiki": "^3.0.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.8"
+  }
+}

@@ -928,13 +928,40 @@ instead means the shell's route answered first; a `403` means the `Origin` is no
 member with 1001 ("relay restarting"); apps reconnect, and since nothing was kept, nothing is lost
 but the current member ids.
 
-## The gallery on potyro.com (docs/24 §10): deployed 2026-10-16
+## The site on potyro.com (#8): the home, the gallery at /apps/, the legal pages
 
-The gallery is a static folder: `index.html`, `gallery.css`, `gallery.js`, its own fonts, logo and
-tokens, `favicon.svg` and `shots/*.jpg`. Nothing runs on the server for it, it keeps no logs, and it
-loads nothing from anyone else (no outside fonts, analytics or CDN), so it is served with a strict
-policy. Until potyro.com has a website, the gallery is its front page. All its paths are relative,
-so it works at `/` or under `/gallery/` without being rebuilt.
+potyro.com is one static folder, built by `pnpm site:build` into `dist/site/`: the home
+(`site/src/home.mjs`, the words in `site/words.json`), the gallery page at `/apps/` (the same
+`gallery/src/build.mjs` page, its files at the root), the privacy page and the terms when their
+texts are ready, and beside them the design system's tokens and fonts, the colour clock, the logo,
+the apps' screenshots (`gallery/shots`, `site/shots`) and the recordings (`site/media`). Nothing runs
+on the server for it, it keeps no logs, and it loads nothing from anyone else, so it is served
+with a strict policy: no inline style, no inline script, and `media-src 'self'` for the clips.
+
+The recordings are made by `e2e/site-recordings-trusted.spec.ts`, which runs only when asked
+(`POTYRO_SITE_RECORD=1 POTYRO_E2E_PORT_BASE=5100 pnpm exec playwright test
+e2e/site-recordings-trusted.spec.ts --project trusted`): the real product on a phone-sized screen,
+every model answer replayed from a saved one, so a re-shoot after a UI change costs nothing. It
+writes the clips and marks into `dist/site-recordings/`; cut them from the marks (the two phones
+are filmed through the browser's screencast, so they share one clock) and copy them into
+`site/media/`.
+
+```bash
+pnpm site:build                       # → dist/site/ (refuses gallery data with a problem, or a missing picture)
+rsync -av --delete dist/site/ <admin>@<server>:/srv/potyro.com/
+```
+
+By hand, with an account that can write `/srv/potyro.com`: the deploy key cannot, since `rrsync`
+holds it to the app's web root. Nothing deploys the site automatically. The Caddy block is
+`potyro.com, www.potyro.com` in [`deploy/potyro.app.Caddyfile`](../deploy/potyro.app.Caddyfile):
+`file_server`, `no-cache` on the pages, a day's cache on the files (the pages name their
+stylesheets and scripts with `?v=<hash>`), `/gallery/*` → `/apps/`, and `log { output discard }`.
+
+## The gallery's links (docs/24 §10)
+
+The gallery page lists the apps in `gallery/gallery.json` with the demo link each one opens.
+`pnpm gallery:build` still writes the page alone into `dist/gallery/` (the tests use it); on
+potyro.com it is the site's `/apps/`.
 
 ### 1. Make the links (once per change to the list, from a machine with a browser)
 
@@ -953,30 +980,22 @@ passed, and no records but the apps' own samples (docs/24 §3). The share servic
 
 ### 2. Build and upload
 
-```bash
-pnpm gallery:build                    # → dist/gallery/ (refuses data with a problem, or a missing screenshot)
-rsync -av --delete dist/gallery/ <admin>@<server>:/srv/potyro.com/
-```
-
-By hand, with an account that can write `/srv/potyro.com`: the deploy key cannot, since `rrsync`
-holds it to the app's web root. Nothing deploys the gallery automatically.
+`pnpm site:build` and the rsync above: the gallery page goes up with the site.
 
 ### 3. Serve it (Caddy)
 
-The `potyro.com, www.potyro.com` block of [`deploy/potyro.app.Caddyfile`](../deploy/potyro.app.Caddyfile):
-`file_server` from `/srv/potyro.com`, `no-cache` on the page, a day's cache on its files, and
-`log { output discard }`, so the server keeps no record of a visit. Its policy:
+The site's block (above). Its policy:
 
 ```
 default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self';
-base-uri 'none'; form-action https://potyro.app; frame-ancestors 'none'
+media-src 'self'; base-uri 'none'; form-action https://potyro.app; frame-ancestors 'none'
 ```
 
-`img-src data:` is for the page's paper grain, an inline SVG; `font-src 'self'` for its own fonts.
-`form-action https://potyro.app` is for the one form, the "describe an app" box, which opens the
-app with the words (`gallery/src/build.mjs`). The page's data is a `<script type="application/json">`
-block, which a CSP does not treat as a script. There is no inline script or style, so it needs
-nothing looser.
+`img-src data:` is for the page's paper grain, an inline SVG; `font-src 'self'` for its own fonts;
+`media-src 'self'` for the home's recordings. `form-action https://potyro.app` is for the one form,
+the "describe an app" box, which opens the app with the words. The gallery page's data is a
+`<script type="application/json">` block, which a CSP does not treat as a script. There is no
+inline script or style anywhere, so it needs nothing looser.
 
 ### 4. Check it
 
@@ -1007,8 +1026,8 @@ Once the owner has filled the texts, the next build of each site has them, with 
   `try_files {path} /index.html`, as the server had until 2026-11-01, answers both with the app:
   try_files matches a path without a trailing slash only against files, and `privacy` is a directory
   (checked with Caddy 2.11.7).
-- **potyro.com** (`pnpm gallery:build`, rsync as above): `privacy/index.html`, `terms/index.html`
-  and `legal/` beside the gallery. The `file_server` serves them as they are (`/privacy` redirects
+- **potyro.com** (`pnpm site:build`, rsync as above): `privacy/index.html`, `terms/index.html`
+  and `legal/` beside the home and the gallery. The `file_server` serves them as they are (`/privacy` redirects
   to `/privacy/`). They have no script and no inline style, so the CSP above holds. They are not in
   the block's `no-cache` rule yet: add `/privacy/* /terms/*` to `@page` when they are first served.
 
