@@ -165,7 +165,7 @@ export function renderHome({ gallery, words: w, lucide, code, logos, v, sizes, l
       (s, i) => `
 <div class="block-row" id="${s.id}"><div class="wrap">
   <section class="block reveal ${i % 2 ? "flip" : ""}" data-traco="${s.hour}" aria-labelledby="${s.id}-h">
-    <div class="block-words"><h2 id="${s.id}-h">${e(w[s.id])}</h2><p class="say">${e(w[`${s.id}Text`])}</p>${s.extra ?? ""}</div>
+    <div class="block-words"><h2 id="${s.id}-h">${e(w[s.id])}</h2><p class="say">${e(w[`${s.id}Text`])}</p>${s.extra ?? ""}<p class="learn"><a href="/how/${s.id}/">${e(w.learnMore)}</a></p></div>
     <div class="block-pic">${s.pic}</div>
   </section>
 </div></div>`,
@@ -239,6 +239,7 @@ export function renderHome({ gallery, words: w, lucide, code, logos, v, sizes, l
   <a class="skip" href="#main">${e(w.skip)}</a>
   <header class="top">
     <a class="brand" href="/" aria-label="Potyro">${wordmark}</a>
+    <nav class="site-nav" aria-label="Potyro's site"><a href="/apps/">${e(w.apps)}</a><a href="/docs/">${e(w.docs)}</a><a href="/developers/">${e(w.developers)}</a></nav>
     <a class="btn-cta" href="${APP_SITE}">${e(w.cta)}</a>
   </header>
 
@@ -284,6 +285,8 @@ ${blocks}
     <nav class="foot-links" aria-label="Potyro">
       <a href="${APP_SITE}">${e(w.open)}</a>
       <a href="/apps/">${e(w.apps)}</a>
+      <a href="/docs/">${e(w.docs)}</a>
+      <a href="/developers/">${e(w.developers)}</a>
       <a href="${REPO_URL}">${e(w.source)}</a>${
         legal
           ? `

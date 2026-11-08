@@ -9,6 +9,14 @@
 .mark .ink-strong { fill: var(--ink); }
 .mark .stroke { fill: var(--traco); }
 
+.site-nav { display: none; gap: var(--space-5); margin-left: var(--space-6); margin-right: auto; }
+@media (min-width: 768px) { .site-nav { display: flex; } }
+.site-nav a { color: var(--ink-soft); font-weight: 600; text-decoration: none; padding: 6px 0; }
+.site-nav a:hover { color: var(--ink); }
+.learn { margin-top: var(--space-5); }
+.learn a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 18px; border-radius: var(--radius-pill); border: var(--stroke) solid #231f20; color: #231f20; font-weight: 600; text-decoration: none; }
+.learn a:hover { background: rgba(255, 255, 255, 0.35); }
+
 main { max-width: none; padding: 0; }
 .wrap { max-width: var(--wide); margin: 0 auto; padding: 0 var(--gutter); }
 
@@ -105,6 +113,7 @@ html.js .block.reveal .block-words > * { transform: translateY(16px); opacity: 0
 html.js .block.reveal.in .block-words > * { transform: none; opacity: 1; }
 html.js .block.reveal.in .block-words > :nth-child(2) { transition-delay: 80ms; }
 html.js .block.reveal.in .block-words > :nth-child(3) { transition-delay: 160ms; }
+html.js .block.reveal.in .block-words > :nth-child(4) { transition-delay: 240ms; }
 html.js .card.reveal { transform: translateY(28px); opacity: 0.001; transition: transform var(--dur-slow) var(--ease-out), opacity var(--dur-slow) var(--ease-out); }
 html.js .card.reveal.in { transform: none; opacity: 1; }
 @media (prefers-reduced-motion: reduce) {

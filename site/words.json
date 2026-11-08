@@ -51,6 +51,25 @@
     "clipAi": "Plant Doctor: a photo of a monstera goes in, the finding comes out",
     "stillPermissionAi": "Plant Doctor asks before sending a photo to an AI service: Not now, or Allow",
     "stillPermissionCamera": "Plant Doctor asks before using the camera: Cancel, or Confirm",
-    "ogAlt": "Potyro. The app you need, made by you. Describe it in a sentence, or write the code yourself. potyro.com"
+    "ogAlt": "Potyro. The app you need, made by you. Describe it in a sentence, or write the code yourself. potyro.com",
+    "docs": "Docs",
+    "developers": "Developers",
+    "learnMore": "Learn more",
+    "docsTitle": "Documentation",
+    "docsLead": "How Potyro is built, layer by layer, for a developer. Start with",
+    "docsDescription": "The Potyro documentation: how it works, the app module API, the runtime interfaces, storage, sync, security, sharing, the Studio, and the tutorials.",
+    "docsAll": "Every page",
+    "docsCurrent": "Current",
+    "docsTutorials": "Tutorials",
+    "docsTutorialsNote": "Writing an app by hand, one small app per article; the code in each is code that runs.",
+    "docsHistorical": "Historical",
+    "docsHistoricalNote": "Kept as a record of a decision or a point in time. Each says at the top which current page replaces it.",
+    "docsDecisions": "Decisions",
+    "docsOnThisPage": "On this page",
+    "docsPrevious": "Previous",
+    "docsNext": "Next",
+    "docsSource": "This page's source on GitHub",
+    "howEyebrow": "How it works",
+    "howOthers": "The other ideas"
   }
 }

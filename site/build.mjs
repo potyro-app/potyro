@@ -14,6 +14,8 @@ import { APP_SITE, GALLERY_DIR, hoursCss, imageSize, LOGO_FILES, readStrings, re
 import { readGallery, shownApps } from "../gallery/src/data.mjs";
 import { legalSite } from "../packages/legal/src/build.mjs";
 import { CODE, highlightCode, lucidePaths, renderHome, tilesCss } from "./src/home.mjs";
+import { renderDocs } from "./src/docs.mjs";
+import { renderPages } from "./src/pages.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const SITE_DIR = here;
@@ -61,12 +63,14 @@ export async function buildSite(opts = {}) {
   const chrome = readFileSync(join(GALLERY_DIR, "src", "page", "chrome.css"), "utf8");
   const galleryCss = chrome + "\n" + readFileSync(join(GALLERY_DIR, "src", "page", "gallery.css"), "utf8");
   const siteCss = chrome + "\n" + readFileSync(join(here, "src", "page", "home.css"), "utf8") + "\n/* the hero's tiles, placed */\n" + tilesCss();
+  const textCss = chrome + "\n" + readFileSync(join(here, "src", "page", "text.css"), "utf8");
   const galleryJs = readFileSync(join(GALLERY_DIR, "src", "page", "gallery.js"));
   const siteJs = readFileSync(join(here, "src", "page", "site.js"));
   put("tokens.css", tokens);
   put("hours.css", hours);
   put("gallery.css", galleryCss);
   put("site.css", siteCss);
+  put("text.css", textCss);
   put("gallery.js", galleryJs);
   put("site.js", siteJs);
   copyFileSync(join(GALLERY_DIR, "src", "page", "favicon.svg"), join(out, "favicon.svg"));
@@ -100,7 +104,7 @@ export async function buildSite(opts = {}) {
   for (const [path, body] of legal.files) put(path, body);
 
   // ---- the pages ----
-  const v = { css: shortHash(Buffer.concat([tokens, Buffer.from(hours), Buffer.from(siteCss), Buffer.from(galleryCss)])), js: shortHash(Buffer.concat([siteJs, galleryJs])) };
+  const v = { css: shortHash(Buffer.concat([tokens, Buffer.from(hours), Buffer.from(siteCss), Buffer.from(galleryCss), Buffer.from(textCss)])), js: shortHash(Buffer.concat([siteJs, galleryJs])) };
   const code = await highlightCode(CODE);
   const home = renderHome({ gallery, words, lucide: lucidePaths(DESIGN), code, logos, v, sizes, legal: legal.ready });
   put("index.html", home);
@@ -109,7 +113,14 @@ export async function buildSite(opts = {}) {
   const apps = renderPage(gallery, strings, { css: v.css, js: v.js, shots, logos: { "wordmark-large": logos["wordmark-large.svg"], tagline: logos["tagline.svg"] }, legal: legal.ready, base: "/" });
   put("apps/index.html", apps);
 
-  return { out, apps: published.length, legal: legal.ready ? null : legal.notice };
+  // ---- the text pages: the docs, the Learn-more pages, /developers ----
+  const docs = await renderDocs({ docsDir: join(ROOT, "docs"), w: words, logos, v, legal: legal.ready });
+  for (const [path, body] of docs.files) put(path, body);
+  const hoursOf = { data: "azul", database: "anil", make: "amarelo", together: "verde", ai: "roxo", share: "laranja", safe: "menta" };
+  const pages = await renderPages({ siteDir: here, docsDir: join(ROOT, "docs"), w: words, logos, v, legal: legal.ready, hours: hoursOf });
+  for (const [path, body] of pages.files) put(path, body);
+
+  return { out, apps: published.length, docs: docs.entries.length, pages: pages.pages.length, legal: legal.ready ? null : legal.notice };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -121,7 +132,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const cwd = process.env.INIT_CWD ?? process.cwd();
   try {
     const done = await buildSite({ out: take("--out") ? resolve(cwd, /** @type {string} */ (take("--out"))) : undefined, allowLocal: args.includes("--allow-local") });
-    console.log(`site: the home, ${done.apps} apps at /apps/ → ${done.out}`);
+    console.log(`site: the home, ${done.apps} apps at /apps/, ${done.docs} docs, ${done.pages} pages → ${done.out}`);
     if (done.legal) console.log(done.legal);
   } catch (e) {
     console.error(e instanceof Error ? e.message : e);

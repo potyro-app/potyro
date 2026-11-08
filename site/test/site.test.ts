@@ -98,6 +98,46 @@ describe("the share card", () => {
   });
 });
 
+describe("the text pages", () => {
+  const page = (path: string) => readFileSync(join(out, path, "index.html"), "utf8");
+
+  it("every doc with frontmatter, the ADRs and the tutorials are pages, listed on the index, with the files they name", () => {
+    const index = page("docs");
+    expect(index).toContain("How Potyro works");
+    const links = [...index.matchAll(/href="(\/docs\/[^"]+\/)"/g)].map((m) => m[1]);
+    expect(links.length).toBeGreaterThanOrEqual(25);
+    for (const url of new Set(links)) expect(existsSync(join(out, url, "index.html")), url).toBe(true);
+    for (const p of localPaths(index)) expect(existsSync(p.endsWith("/") ? join(out, p, "index.html") : join(out, p)), p).toBe(true);
+  });
+
+  it("draws the diagrams at build and keeps every style in a stylesheet", () => {
+    const how = page("docs/00-how-potyro-works");
+    expect(how).toContain('<svg class="mermaid"');
+    expect(how).not.toMatch(/ style="/);
+    expect(how).not.toMatch(/<style[\s>]/);
+    expect(existsSync(join(out, "docs", "00-how-potyro-works", "diagrams.css"))).toBe(true);
+    expect(how).toContain('href="/docs/00-how-potyro-works/diagrams.css"');
+    // "docs/22 §6" in prose became a link to that page
+    expect(how).toMatch(/<a href="\/docs\/22-browser-realm-prototype\/"[^>]*>docs\/22/);
+  });
+
+  it("has a Learn-more page behind every block of the home, and the developers page with the package map", () => {
+    for (const id of ["data", "database", "make", "together", "ai", "share", "safe"]) {
+      expect(home).toContain(`href="/how/${id}/"`);
+      const p = page(`how/${id}`);
+      expect(p.match(/<h1\b/g)).toHaveLength(1);
+      expect(p).not.toMatch(/ style="/);
+      for (const path of localPaths(p)) expect(existsSync(path.endsWith("/") ? join(out, path, "index.html") : join(out, path)), `${id}: ${path}`).toBe(true);
+    }
+    const dev = page("developers");
+    expect(dev).toContain('<svg class="mermaid"');
+    // The code is highlighted token by token, so read it as text.
+    expect(dev.replace(/<[^>]+>/g, "")).toContain("npm create potyro");
+    expect(home).toContain('href="/developers/"');
+    expect(home).toContain('href="/docs/"');
+  });
+});
+
 describe("the apps page", () => {
   it("is the gallery, with its files at the site's root", () => {
     expect(apps).toContain('<link rel="stylesheet" href="/gallery.css?v=');

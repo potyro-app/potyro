@@ -102,7 +102,7 @@ potyro.com, www.potyro.com {
 	@page path / /index.html /apps /apps/ /apps/index.html
 	header @page Cache-Control "no-cache"
 	# Stylesheets and scripts carry ?v=<hash> in the pages, so a day's cache never serves a stale one.
-	@assets path /gallery.css /gallery.js /site.css /site.js /tokens.css /hours.css /fonts/* /logo/* /shots/* /screens/* /media/* /favicon.svg
+	@assets path /gallery.css /gallery.js /site.css /site.js /text.css /tokens.css /hours.css /fonts/* /logo/* /shots/* /screens/* /media/* /favicon.svg /docs/*/diagrams.css /how/*/diagrams.css /developers/diagrams.css
 	header @assets Cache-Control "public, max-age=86400"
 
 	# No access log: a gallery that keeps no record of you, on the server too.
