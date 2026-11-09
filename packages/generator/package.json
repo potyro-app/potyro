@@ -21,6 +21,7 @@
     "test": "vitest run --passWithNoTests",
     "gen:reference": "vite-node scripts/build-reference.ts",
     "gen:corpus": "vite-node scripts/build-corpus.ts",
+    "check:app": "vite-node scripts/check-app.ts --",
     "eval:cli": "vite-node scripts/run-cli-eval.ts --",
     "eval:openrouter": "vite-node scripts/run-cli-eval.ts -- --backend openrouter",
     "eval:modify": "vite-node scripts/run-modify-eval.ts --",

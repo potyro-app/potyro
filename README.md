@@ -27,6 +27,7 @@ Same language, same functions, different authority.
 repository): [Introduction](docs/start/introduction.md), then
 [Your first app](docs/start/your-first-app.md) after `npm create potyro@latest my-app`. How Potyro
 is put together, for someone changing it: [How Potyro works](docs/00-how-potyro-works.md).
+An agent asked to make an app as a package reads [AGENTS.md](AGENTS.md).
 
 ## What is in the box
 

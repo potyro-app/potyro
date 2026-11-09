@@ -33,6 +33,8 @@
     "test:e2e:prod": "POTYRO_PROD=1 playwright test --project=prod",
     "test:e2e:firefox": "POTYRO_FIREFOX=1 playwright test --project=trusted-firefox --project=sandbox-firefox",
     "pack:app": "node scripts/pack-app.mjs",
+    "new:app": "node scripts/new-app.mjs",
+    "check:app": "pnpm --filter @potyro/generator check:app --",
     "gallery:build": "node gallery/src/build.mjs",
     "site:build": "node site/build.mjs",
     "gallery:publish": "node gallery/src/publish.mjs",
