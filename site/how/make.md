@@ -35,6 +35,6 @@ npm run build                       # → dist/my-app.potyro-app.zip, for Add an
 
 ## Go deeper
 
-- [Your first Potyro app](docs/tutorials/01-your-first-app.md): a reading list, in fifteen minutes
-- [The Studio and the generator](docs/00-how-potyro-works.md#the-studio-and-the-generator): the gates, the engines, the loops
-- [App module API](docs/04-app-module-api.md): `defineApp` and `ctx`, member by member
+- [Your first app](docs/start/your-first-app.md): a reading list, in fifteen minutes
+- [The Studio](docs/concepts/the-studio.md): how a described app becomes a written one
+- [The `ctx` reference](docs/reference/ctx.md): everything an app's functions can do

@@ -24,5 +24,5 @@ call fails and says so in words.
 
 ## Go deeper
 
-- [AI in apps](docs/23-ai-in-apps.md): the API, the permission, who pays, the model
-- [Device capabilities](docs/00-how-potyro-works.md#device-capabilities)
+- [AI in an app](docs/reference/ctx-caps-ai.md): the call, the permission, who pays
+- [Device capabilities](docs/guides/device-capabilities.md)

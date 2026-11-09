@@ -27,5 +27,4 @@ this app** keeps it as it is.
 
 ## Go deeper
 
-- [Share links](docs/24-share-links.md): the link, the demo records, credit and remix
-- [Sharing](docs/00-how-potyro-works.md#sharing)
+- [Sharing](docs/concepts/sharing.md): the link, the demo records, credit and remix, links into a page or a record

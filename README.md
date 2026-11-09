@@ -23,9 +23,10 @@ and **where** code runs is decided by who wrote it. Your own apps run directly; 
 you runs in a sandboxed browser realm with capabilities denied by default and granted on consent.
 Same language, same functions, different authority.
 
-**Start here:** [How Potyro works](docs/00-how-potyro-works.md), the architecture layer by layer.
-To write an app outside this repository: `npm create potyro@latest my-app`, then
-[Your first Potyro app](docs/tutorials/01-your-first-app.md).
+**Start here:** the [documentation](https://potyro.com/docs/) ([docs/](docs/README.md) in this
+repository): [Introduction](docs/start/introduction.md), then
+[Your first app](docs/start/your-first-app.md) after `npm create potyro@latest my-app`. How Potyro
+is put together, for someone changing it: [How Potyro works](docs/00-how-potyro-works.md).
 
 ## What is in the box
 
@@ -42,14 +43,16 @@ To write an app outside this repository: `npm create potyro@latest my-app`, then
 ## Repository map
 
 ```
-docs/00-how-potyro-works.md     ← START HERE: the architecture, layer by layer
-docs/README.md                  ← every doc, with its status
+docs/README.md                  ← every page of the documentation, and the engineering notes
+docs/start, concepts, guides,   ← the documentation as published at potyro.com/docs
+  reference, contributing
+docs/00-how-potyro-works.md     ← the architecture, layer by layer, for someone changing Potyro
 docs/32-code-map.md             ← where each concern lives: the files and entry points
 CLAUDE.md                       ← the working agreement for agents and people working here
 packages/                       ← the workspace: schema, store, host, runtime, views, shell, …
 apps/                           ← the real apps, each an installable package
 examples/                       ← the living fixtures the tests are written against
-docs/tutorials/                 ← writing Potyro apps outside this repo
+docs/tutorials/code/            ← the tutorials' code, one folder per stage
 gallery/                        ← the gallery site on potyro.com
 e2e/                            ← the browser suite
 ```
@@ -66,14 +69,15 @@ pnpm -r test        # unit tests, every package
 pnpm e2e            # the browser suite (one worker, on purpose)
 ```
 
-Testing strategy: [docs/09](docs/09-testing.md); how to try Potyro and give feedback: [docs/12](docs/12-testing-guide.md).
+The tests, and what must stay green: [Tests](docs/contributing/tests.md).
 
 ## Open source, hosted by us
 
 Everything here is Apache License 2.0: the runtime, the shell, the Studio, the apps and the servers
 around them. potyro.app and potyro.com are hosted instances of this code, run by the maintainer;
-[docs/16](docs/16-deployment.md) says how to run your own. [docs/31](docs/31-security-model.md)
-explains the sandbox, what our servers can see and what is not protected; to report a vulnerability
+[Self-host Potyro](docs/guides/self-host.md) says how to run your own.
+[Your apps and other people's apps](docs/concepts/trusted-and-sealed.md) explains the sandbox, what
+our servers can see and what is not protected; to report a vulnerability
 see [SECURITY.md](SECURITY.md), never a public issue.
 
 © 2026 Edgar Zanella Alvarenga. [LICENSE](LICENSE), third-party material in [NOTICE](NOTICE); the

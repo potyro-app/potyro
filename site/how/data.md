@@ -39,7 +39,6 @@ built yet.
 
 ## Go deeper
 
-- [Storage](docs/00-how-potyro-works.md#storage): how records are kept, and why a SQLite file per app
-- [Sync, CRDT and identity](docs/00-how-potyro-works.md#sync-crdt-and-identity)
-- [What our servers see](docs/31-security-model.md#7-what-our-servers-see) and [what is not protected](docs/31-security-model.md#8-what-is-not-protected)
+- [Data and sync](docs/concepts/data-and-sync.md): where records live, and what turning sync on does
+- [Your apps and other people's apps](docs/concepts/trusted-and-sealed.md): what the servers can see, and what is not protected
 - [Look inside any app](/how/database/): your data as tables, and how to take it out

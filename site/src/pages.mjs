@@ -5,8 +5,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { escapeHtml as e } from "../../gallery/src/build.mjs";
-import { drawDiagrams, frontmatter, markdown, sitePage, tocHtml } from "./render.mjs";
-import { docUrl } from "./docs.mjs";
+import { drawDiagrams, frontmatter, markdown, REPO_URL, sitePage, tocHtml } from "./render.mjs";
+import { collectDocs, docUrl } from "./docs.mjs";
 
 /** The ideas of the home, in its order; each has a page at /how/<id>/. */
 export const IDEAS = ["data", "database", "make", "together", "ai", "share", "safe"];
@@ -20,10 +20,15 @@ export function packageMapDiagram(docsDir) {
   return map;
 }
 
-/** Where a link in a site page goes: `/...` as it is, `docs/NN` to that doc, anything else as written. @param {string} href */
-const siteLink = (href) => {
-  const m = /^docs\/(\d\d-[\w-]+\.md|adr\/[\w-]+\.md|tutorials\/[\w-]+\.md)(#.*)?$/.exec(href);
-  return m ? docUrl(m[1]) + (m[2] ?? "") : href;
+/**
+ * Where a link in a site page goes: `/...` as it is, `docs/<section>/<page>.md` to that page, any
+ * other `docs/...` file to GitHub, anything else as written.
+ * @param {Set<string>} known  the published doc files, under docs/
+ */
+const siteLink = (known) => (/** @type {string} */ href) => {
+  const m = /^docs\/([\w\-/]+\.md)(#.*)?$/.exec(href);
+  if (!m) return href;
+  return known.has(m[1]) ? docUrl(m[1]) + (m[2] ?? "") : `${REPO_URL}/blob/main/docs/${m[1]}${m[2] ?? ""}`;
 };
 
 /**
@@ -40,7 +45,7 @@ const siteLink = (href) => {
 export async function renderPages({ siteDir, docsDir, w, logos, v, legal, hours }) {
   /** @type {Map<string, string>} */
   const files = new Map();
-  const md = markdown({ link: siteLink });
+  const md = markdown({ link: siteLink(new Set(collectDocs(docsDir).map((d) => d.file))) });
   /** @type {{ id: string; def: string }[]} */
   const diagrams = [];
   /** @type {{ path: string; url: string; meta: Record<string, string>; html: string; toc: { level: string; id: string; text: string }[]; ids: string[]; kind: "how" | "developers" }[]} */

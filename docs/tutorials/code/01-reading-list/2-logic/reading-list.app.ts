@@ -1,4 +1,4 @@
-// Reading list — the app built in docs/tutorials/01-your-first-app.md, at the end (step 5).
+// Reading list — the app built in docs/start/your-first-app.md, at the end (step 5).
 import { defineApp } from "potyro";
 
 /** "Ursula K. Le Guin · ★★★★☆": the line under a book, from its author and rating. */

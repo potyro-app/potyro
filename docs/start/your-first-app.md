@@ -1,5 +1,11 @@
-# Your first Potyro app
+---
+title: Your first app
+description: Write a reading list in TypeScript, pack it and run it in Potyro, in about fifteen minutes.
+section: start
+order: 1
+---
 
+# Your first app
 In this tutorial you write a small app in TypeScript, pack it, and run it in Potyro: a **reading
 list** that keeps books you want to read and books you finished, and asks how you liked one when you
 mark it read. It takes about fifteen minutes.
@@ -14,7 +20,7 @@ On the way you will learn the three things every Potyro app is made of:
 You need **Node 20 or newer** and Potyro open in a browser, at [potyro.app](https://potyro.app) or a
 local `pnpm dev`. You don't need to know React or set up a build: an app is one TypeScript file.
 
-The finished code is in [`code/01-reading-list`](code/01-reading-list/), one folder per stage.
+The finished code is in [`code/01-reading-list`](../tutorials/code/01-reading-list/), one folder per stage.
 
 ## 1. Create the project
 
@@ -218,7 +224,7 @@ Finally, set `icon: "book-open"` and an accent of your choice, such as `theme: {
 Remove the starter's `lineOf` function and its test for now; you will write new ones in step 5.
 
 Check your work. The full file at this stage is
-[`1-shape/reading-list.app.ts`](code/01-reading-list/1-shape/reading-list.app.ts).
+[`1-shape/reading-list.app.ts`](../tutorials/code/01-reading-list/1-shape/reading-list.app.ts).
 
 ```sh
 npm run typecheck
@@ -297,7 +303,7 @@ actions: ["finish"],        // in the "book" page's view
 ```
 
 Bump `version` to `"0.2.0"`, then pack and add it again. The final file is
-[`2-logic/reading-list.app.ts`](code/01-reading-list/2-logic/reading-list.app.ts).
+[`2-logic/reading-list.app.ts`](../tutorials/code/01-reading-list/2-logic/reading-list.app.ts).
 
 Your books are still there, because **Replace it, keep its data** keeps records. Tap **Finished it**
 on one, choose a rating, and it moves to the Read shelf with its stars.
@@ -344,9 +350,10 @@ shape. The rule:
 
 ## Where to go next
 
-- The full API is [docs/04 · App Module API](../04-app-module-api.md): every field type, every view,
-  and everything on `ctx`.
+- [Developing](developing.md): the edit, build, replace loop, typechecking and tests.
+- [How an app is put together](../concepts/how-an-app-is-put-together.md): the model behind the
+  file you wrote.
+- The reference: [defineApp](../reference/define-app.md), [field types](../reference/field-types.md),
+  [pages and views](../reference/pages-and-views.md) and [`ctx`](../reference/ctx.md).
 - The apps in [`apps/`](../../apps/) are real and small enough to read. *Countdowns* and
   *Which is cheaper* are good next reads.
-- The next tutorials cover custom item types and views, the camera, files, and live connections. The
-  series is listed in [the tutorials' index](README.md).

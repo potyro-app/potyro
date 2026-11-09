@@ -30,6 +30,4 @@ says.
 
 ## Go deeper
 
-- [Security model](docs/31-security-model.md): what keeps a shared app in its box, what the servers can see, what is not protected
-- [Security isolation](docs/00-how-potyro-works.md#security-isolation)
-- [The browser realm](docs/22-browser-realm-prototype.md): the measurements, and what shipped
+- [Your apps and other people's apps](docs/concepts/trusted-and-sealed.md): what keeps a shared app in its box, what the servers can see, what is not protected

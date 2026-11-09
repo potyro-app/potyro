@@ -101,24 +101,30 @@ describe("the share card", () => {
 describe("the text pages", () => {
   const page = (path: string) => readFileSync(join(out, path, "index.html"), "utf8");
 
-  it("every doc with frontmatter, the ADRs and the tutorials are pages, listed on the index, with the files they name", () => {
+  it("every page under docs/<section>/ is a page, listed on the index by section, with the files it names", () => {
     const index = page("docs");
-    expect(index).toContain("How Potyro works");
+    expect(index).toContain("Introduction");
+    for (const label of ["Start", "Concepts", "Guides", "Reference", "Contributing"]) expect(index).toContain(`>${label}</h2>`);
     const links = [...index.matchAll(/href="(\/docs\/[^"]+\/)"/g)].map((m) => m[1]);
     expect(links.length).toBeGreaterThanOrEqual(25);
     for (const url of new Set(links)) expect(existsSync(join(out, url, "index.html")), url).toBe(true);
     for (const p of localPaths(index)) expect(existsSync(p.endsWith("/") ? join(out, p, "index.html") : join(out, p)), p).toBe(true);
+    // The engineering notes are not published.
+    expect(existsSync(join(out, "docs", "00-how-potyro-works"))).toBe(false);
+    expect(index).not.toContain("/docs/00-");
   });
 
-  it("draws the diagrams at build and keeps every style in a stylesheet", () => {
-    const how = page("docs/00-how-potyro-works");
-    expect(how).toContain('<svg class="mermaid"');
-    expect(how).not.toMatch(/ style="/);
-    expect(how).not.toMatch(/<style[\s>]/);
-    expect(existsSync(join(out, "docs", "00-how-potyro-works", "diagrams.css"))).toBe(true);
-    expect(how).toContain('href="/docs/00-how-potyro-works/diagrams.css"');
-    // "docs/22 §6" in prose became a link to that page
-    expect(how).toMatch(/<a href="\/docs\/22-browser-realm-prototype\/"[^>]*>docs\/22/);
+  it("renders a page with its section, the sidebar, the pager and no inline style", () => {
+    const intro = page("docs/start/introduction");
+    expect(intro).toMatch(/<h1>Introduction<\/h1>/);
+    expect(intro).toContain('aria-current="page"');
+    expect(intro).toContain('class="pager"');
+    expect(intro).not.toMatch(/ style="/);
+    expect(intro).not.toMatch(/<style[\s>]/);
+    // A relative link to a repository file outside the published pages goes to GitHub.
+    const first = page("docs/start/your-first-app");
+    expect(first).toMatch(/href="https:\/\/github\.com\/[^"]+\/docs\/tutorials\/code\/01-reading-list\//);
+    for (const p of localPaths(first)) expect(existsSync(p.endsWith("/") ? join(out, p, "index.html") : join(out, p)), p).toBe(true);
   });
 
   it("has a Learn-more page behind every block of the home, and the developers page with the package map", () => {

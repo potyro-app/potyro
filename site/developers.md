@@ -48,8 +48,8 @@ expression language and no visual builder. Growing Potyro means growing `ctx`.
 {{package-map}}
 
 A package is a seam: it exports an interface, and the packages above it depend on that interface,
-never on another package's internals. [How Potyro works](docs/00-how-potyro-works.md) walks through
-them, lowest first.
+never on another package's internals. [Running the repository](docs/contributing/running-the-repository.md) walks
+through them, lowest first.
 
 ## Write an app
 
@@ -58,9 +58,9 @@ npm create potyro@latest my-app     # a project with an app in it
 npm run build                       # → dist/my-app.potyro-app.zip, for Add an app → From this device
 ```
 
-- [Your first Potyro app](docs/tutorials/01-your-first-app.md): a reading list, in fifteen minutes.
-- [App module API](docs/04-app-module-api.md): `defineApp` and `ctx`, member by member.
-- [Runtime interfaces](docs/05-runtime-interfaces.md): the contracts at the seams.
+- [Your first app](docs/start/your-first-app.md): a reading list, in fifteen minutes.
+- [How an app is put together](docs/concepts/how-an-app-is-put-together.md): the model behind the file.
+- [The `ctx` reference](docs/reference/ctx.md): everything an app's functions can do.
 
 ## The repository
 
