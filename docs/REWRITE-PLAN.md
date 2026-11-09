@@ -76,3 +76,20 @@ pages can replace docs/04–05 in the corpus later, measured with the eval, as a
 
 `site/src/docs.mjs`: read `docs/<section>/*.md`, group by `section`, sidebar in section order,
 skip `audience: internal`; `scripts/docs-index.mjs` lists the sections first, the notes last.
+
+## The files (link targets; every page links by these relative paths)
+
+start/introduction.md · start/your-first-app.md · start/developing.md
+concepts/how-an-app-is-put-together.md · concepts/trusted-and-sealed.md · concepts/data-and-sync.md ·
+concepts/sharing.md · concepts/the-studio.md · concepts/why-potyro.md
+guides/entities-and-fields.md · guides/pages-and-views.md · guides/computed-actions-reminders.md ·
+guides/custom-views.md · guides/asking-the-person.md · guides/working-together.md ·
+guides/changing-an-app-with-data.md · guides/translating-your-app.md · guides/device-capabilities.md ·
+guides/build-for-android.md · guides/self-host.md
+reference/define-app.md · reference/field-types.md · reference/pages-and-views.md · reference/ctx.md ·
+reference/ctx-caps-camera.md · reference/ctx-caps-network.md · reference/ctx-caps-ai.md ·
+reference/ctx-caps-speech.md · reference/package-format.md · reference/cli.md
+contributing/running-the-repository.md · contributing/tests.md · contributing/code-map.md ·
+contributing/design-notes.md
+
+Frontmatter on every page: title, description (one sentence), section (start|concepts|guides|reference|contributing), order (integer within the section).
