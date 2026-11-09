@@ -33,6 +33,6 @@ those frames as they pass and keeps none of them.
 
 ## Go deeper
 
-- [Sync, CRDT and identity](docs/00-how-potyro-works.md#sync-crdt-and-identity)
-- [The sync engine and identity](docs/adr/0001-sync-engine-and-identity.md): the decision, and the engines measured
-- [What our servers see](docs/31-security-model.md#7-what-our-servers-see)
+- [Data and sync](docs/concepts/data-and-sync.md): spaces, roles, and what two people editing at once does
+- [Working together](docs/guides/working-together.md): turning sync on, inviting people, collaborative text
+- [Your apps and other people's apps](docs/concepts/trusted-and-sealed.md): what the servers can and cannot see

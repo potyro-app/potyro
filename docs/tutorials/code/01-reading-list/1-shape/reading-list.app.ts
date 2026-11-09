@@ -1,4 +1,4 @@
-// Reading list, step 4 of docs/tutorials/01-your-first-app.md: the shape, no logic yet.
+// Reading list, step 4 of docs/start/your-first-app.md: the shape, no logic yet.
 import { defineApp } from "potyro";
 
 /** A date field's value as a number to sort by; a book with no date sorts last. */

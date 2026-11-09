@@ -1,5 +1,11 @@
-# Your first Potyro app
+---
+title: Your first app
+description: Write a reading list in TypeScript, pack it and run it in Potyro, in about fifteen minutes.
+section: start
+order: 1
+---
 
+# Your first app
 In this tutorial you write a small app in TypeScript, pack it, and run it in Potyro: a **reading
 list** that keeps books you want to read and books you finished, and asks how you liked one when you
 mark it read. It takes about fifteen minutes.

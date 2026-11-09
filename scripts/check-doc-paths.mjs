@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ROOTS = ["packages", "apps", "examples", "docs", "scripts", "gallery", "e2e"];
-const DEFAULT = ["README.md", "CLAUDE.md", "docs/00-how-potyro-works.md", "docs/32-code-map.md", "docs/README.md", ".claude/skills/new-app/SKILL.md", ".claude/skills/ctx-member/SKILL.md", ".claude/skills/ship-pr/SKILL.md"];
+const DEFAULT = ["README.md", "CLAUDE.md", "docs/00-how-potyro-works.md", "docs/32-code-map.md", "docs/contributing/code-map.md", "docs/contributing/running-the-repository.md", "docs/contributing/tests.md", "docs/README.md", ".claude/skills/new-app/SKILL.md", ".claude/skills/ctx-member/SKILL.md", ".claude/skills/ship-pr/SKILL.md"];
 const TOKEN = new RegExp(`(?<![\\w/.-])(?:${ROOTS.join("|")})/[\\w./\\-*<>…]+`, "g");
 const DOC_NAMES = readdirSync(join(ROOT, "docs"));
 

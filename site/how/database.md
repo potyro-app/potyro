@@ -25,5 +25,5 @@ readable if Potyro is gone.
 
 ## Go deeper
 
-- [Export, import and packages](docs/00-how-potyro-works.md#export-import-and-packages)
-- [Persistence and migrations](docs/06-persistence-and-migrations.md): the tables behind an app, and how they change
+- [Changing an app that has data](docs/guides/changing-an-app-with-data.md): what changes are safe, migrations, export and import
+- [The package format](docs/reference/package-format.md): what an app's zip holds
