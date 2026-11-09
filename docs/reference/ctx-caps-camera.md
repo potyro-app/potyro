@@ -32,8 +32,8 @@ cam.onStop((why) => showResumeButton(why));
 | `capture()` | always, where the device has a camera | with `permissions: { camera: true }`; asks the person once |
 | `live()` | always, where the device has a camera | `undefined` |
 
-`ctx.caps.camera` itself is `undefined` when the device has no camera or the permission is not
-declared. `live` is an optional member: check it before calling.
+`ctx.caps.camera` is `undefined` in a sealed app that does not declare the permission. `live` is
+an optional member: check it before calling.
 
 ## Permission
 

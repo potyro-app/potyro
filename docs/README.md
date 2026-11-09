@@ -9,10 +9,50 @@ The documentation, as published at [potyro.com/docs](https://potyro.com/docs/). 
 
 - [Introduction](start/introduction.md) — What Potyro is, what an app looks like, and how to run your first one.
 - [Your first app](start/your-first-app.md) — Write a reading list in TypeScript, pack it and run it in Potyro, in about fifteen minutes.
+- [Developing](start/developing.md) — The edit, build and replace loop for writing an app, with typechecking, tests, logging and a local Potyro.
 
 ## Concepts
 
+- [How an app is put together](concepts/how-an-app-is-put-together.md) — The parts of a Potyro app, which of them are data and which are code, and how an app travels from your editor to a device.
+- [Your apps and other people's apps](concepts/trusted-and-sealed.md) — Why an app you wrote runs with full access while one from someone else runs sealed, what sealing enforces, and what it does not protect.
 - [Data and sync](concepts/data-and-sync.md) — Where an app's records live, what happens when you turn on sync, and what changes when two people edit at once.
+- [Sharing](concepts/sharing.md) — What a shared link gives the other person, how Make it mine and credit work, and how an app links to a page or to a single record.
+- [The Studio](concepts/the-studio.md) — How the Studio writes and changes an app from a description, what a change must pass before it is accepted, and how AI reaches inside an app.
+- [Why Potyro](concepts/why-potyro.md) — The problem personal apps have, the one idea Potyro is built on, what it is not, and the principles that decide how it behaves.
+
+## Guides
+
+- [Entities and fields](guides/entities-and-fields.md) — Declare what an app keeps, choose a type for each field, and arrange the form.
+- [Pages and views](guides/pages-and-views.md) — Add pages to an app and choose a built-in view for each, from a list to a record's page, a gallery or a calendar.
+- [Computed, actions and reminders](guides/computed-actions-reminders.md) — Add logic to an entity with plain functions: values worked out from a record, buttons that change it, and notifications when a date comes.
+- [Custom views](guides/custom-views.md) — Draw a screen yourself when no built-in view fits, in React or any framework, and know how it behaves in a sealed app.
+- [Asking the person](guides/asking-the-person.md) — Confirm, offer choices, collect values and report back from app code with ctx.ui, plus timers and keeping the screen on.
+- [Working together](guides/working-together.md) — Turn on sync for an app, invite people, name people before they join, and write logic that survives two people editing at once.
+- [Changing an app that has data](guides/changing-an-app-with-data.md) — Which changes are safe, when schemaVersion must move, how to write a migration, and how an update reaches an installed app without losing its records.
+- [Translating your app](guides/translating-your-app.md) — Write the app in one language, keep each translation in a catalog file beside it, and let Potyro pick the language the person reads.
+- [Device capabilities](guides/device-capabilities.md) — Declare what the app needs, then reach the camera, position, notifications, files, network, AI and voice through ctx.caps, with one example each.
+- [Build for Android](guides/build-for-android.md) — Build Potyro's Android app from a checkout, install it on a phone, iterate, and check what only a device can prove.
+- [Self-host Potyro](guides/self-host.md) — Put Potyro on your own domain: the shell as static files, the sync relay, the optional services, a reverse proxy in front, and the checks that tell you it works.
+
+## Reference
+
+- [defineApp](reference/define-app.md) — Every top-level option of defineApp, with its type, default and meaning.
+- [Field types](reference/field-types.md) — Every field type, its options and the value it stores.
+- [Pages and view options](reference/pages-and-views.md) — The page object, the options every view shares, and every view type with its options.
+- [ctx](reference/ctx.md) — Every member of ctx, the one object through which an app reaches its data, the person, the screen and the device.
+- [ctx.caps.camera](reference/ctx-caps-camera.md) — Taking a photo with capture(), and the live video stream with the faces in it from live().
+- [ctx.caps.network](reference/ctx-caps-network.md) — fetch for requests, socket for a live connection to a server, and room for a room on Potyro's relay.
+- [ctx.caps.ai](reference/ctx-caps-ai.md) — extract() and ask(): sending a picture or a text to an AI service and getting an answer in the app's own shape.
+- [ctx.caps.speech](reference/ctx-caps-speech.md) — listen(): live words as the person speaks, the session, its results, languages and permission.
+- [Package format](reference/package-format.md) — The .potyro-app.zip: its files, the manifest, shipped files, the seed, libraries and the lock, and what install and update do.
+- [CLI](reference/cli.md) — npm create potyro, which scaffolds a project, and potyro pack, which makes the package Add an app installs.
+
+## Contributing
+
+- [Running the repository](contributing/running-the-repository.md) — Prerequisites, install, build, the dev servers, the packages and the seams between them.
+- [Tests](contributing/tests.md) — The test layers, their commands, what must stay green before a merge, and the generated files with tests guarding them.
+- [Code map](contributing/code-map.md) — Where each concern lives in the source, with the files and entry points for sync, sharing, storage, the sealed realm, ctx, views, the shell, links, design, i18n, the generator, apps, tests and native.
+- [Design notes](contributing/design-notes.md) — The numbered engineering notes in the repository, what each holds, and where to read them.
 
 ## Engineering notes
 

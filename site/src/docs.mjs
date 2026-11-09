@@ -48,7 +48,8 @@ export function collectDocs(docsDir) {
       out.push({ file, url: docUrl(file), title: meta.title, description: meta.description, section: id, order: Number(meta.order) });
     }
   }
-  const rank = new Map(SECTIONS.map((s, i) => [s.id, i]));
+  /** @type {Map<string, number>} */
+  const rank = new Map(SECTIONS.map((s, i) => [String(s.id), i]));
   return out.sort((a, b) => (rank.get(a.section) ?? 0) - (rank.get(b.section) ?? 0) || a.order - b.order || a.file.localeCompare(b.file));
 }
 

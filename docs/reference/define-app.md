@@ -57,9 +57,9 @@ TypeScript and never validated. An unknown key on a view is an error, not someth
 
 ### Words
 
-Wherever a type says `Words`, you may write a plain string, `{ text, context }` to tell two meanings
-of one text apart, or a map per language such as `{ en: "Water", pl: "Podlej" }`. Record values are
-never translated. See [Translating your app](../guides/translating-your-app.md).
+Wherever a type says `Words`, you may write a plain string. `{ text, context }` tells two meanings
+of one text apart. A map per language, such as `{ en: "Water", pl: "Podlej" }`, is also read. Record
+values are never translated. See [Translating your app](../guides/translating-your-app.md).
 
 ### Binding
 

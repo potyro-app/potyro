@@ -8,8 +8,7 @@ order: 1
 # Entities and fields
 
 This guide declares an entity and its fields, so Potyro can store the records and draw the form.
-Everything here is data. Potyro validates it when the app loads and tells you, by name, what is
-wrong.
+Everything here is data, and Potyro validates it when the app loads.
 
 ```ts
 entities: {
@@ -57,8 +56,7 @@ entities: {
 ## 1. Name the entity
 
 Give it a key (`expense`), a `label` for people, and an `icon`. The icon is a Lucide name, such as
-`"receipt"`. Set `displayField` to the field that names a record. Pickers, row titles and
-notifications read that field.
+`"receipt"`. Set `displayField` to the field that names a record. Pickers and row titles read it.
 
 ## 2. Choose a type for each field
 
