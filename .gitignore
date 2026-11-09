@@ -31,3 +31,6 @@ packages/generator/.potyro-eval-*/
 
 # devlens session recordings (the dev proxy writes them into the project it watches)
 .devlens/
+
+# apps written here to be packed, not to become part of Potyro (AGENTS.md)
+drafts/

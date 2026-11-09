@@ -4,7 +4,8 @@ Read automatically by Claude Code. It says what Potyro is, which page to read be
 change, how the packages fit, and the rules that keep parallel agents from colliding. Depth is in
 `docs/00-how-potyro-works.md` (the architecture, layer by layer); where code lives is in
 `docs/32-code-map.md` (by concern, with the entry points); recipes for the recurring tasks are the
-skills under `.claude/skills/`.
+skills under `.claude/skills/`. To write an app as a package to install, not a change to Potyro,
+read `AGENTS.md` instead.
 
 ## Mental model (one paragraph)
 
