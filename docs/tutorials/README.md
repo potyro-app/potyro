@@ -19,7 +19,7 @@ the code in an article is code that runs. It is yours to copy: MIT No Attributio
 it.
 
 **Getting started**
-1. ✅ [Your first Potyro app](01-your-first-app.md): entities, pages, an action, pack, install, update
+1. ✅ [Your first app](../start/your-first-app.md): entities, pages, an action, pack, install, update
 2. How a Potyro app is put together: shape as data, logic as functions, `ctx`; trusted and sealed
 3. Developing quickly: the edit–pack–replace loop, typechecking, `ctx.log`
 

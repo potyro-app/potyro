@@ -350,9 +350,10 @@ shape. The rule:
 
 ## Where to go next
 
-- The full API is [docs/04 · App Module API](../04-app-module-api.md): every field type, every view,
-  and everything on `ctx`.
+- [Developing](developing.md): the edit, build, replace loop, typechecking and tests.
+- [How an app is put together](../concepts/how-an-app-is-put-together.md): the model behind the
+  file you wrote.
+- The reference: [defineApp](../reference/define-app.md), [field types](../reference/field-types.md),
+  [pages and views](../reference/pages-and-views.md) and [`ctx`](../reference/ctx.md).
 - The apps in [`apps/`](../../apps/) are real and small enough to read. *Countdowns* and
   *Which is cheaper* are good next reads.
-- The next tutorials cover custom item types and views, the camera, files, and live connections. The
-  series is listed in [the tutorials' index](README.md).
