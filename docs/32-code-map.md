@@ -113,8 +113,9 @@ iframe (`sandbox="allow-scripts"`, `REALM_CSP`); each custom view in a frame of 
   `view-runtime.ts` (a sealed view inside its frame); `ctx-proxy.ts` `makeRealmCtx` (ctx as RPC).
 - `packages/host/src/realm/protocol.ts` — `CallKind`, `OPS` (every ctx op by name), `VIEW_OPS`,
   `HostToRealm`/`RealmToHost`, `HostToView`/`ViewToHost`, `REALM_CSP`.
-- `packages/host/src/realm/sealed-view.ts` `SealedViewController`; `view-watchdog.ts`; `view-guard.ts`
-  (crash-loop guard); `form-submit-shim.ts`; `realm-sockets.ts`; `realm-speech.ts`; `port-transport.ts`.
+- `packages/host/src/realm/sealed-view.ts` `SealedViewController`; `place-watch.ts` (told when the view's
+  place moves, so its height is measured again); `view-watchdog.ts`; `view-guard.ts` (crash-loop
+  guard); `form-submit-shim.ts`; `realm-sockets.ts`; `realm-speech.ts`; `port-transport.ts`.
 - `packages/host/src/isolate/isolate-host.ts` `createIsolateLoader`, `IsolateLoadedApp`; `harness.ts`
   `HARNESS_SOURCE`; `marshal.ts`. (Behind a flag: `localStorage["potyro:sandbox"] = "quickjs"`.)
 - `packages/shell/src/isolate-bridge.ts` `createSandboxLoader`, `createSharedAppLoader`;

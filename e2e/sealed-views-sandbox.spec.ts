@@ -255,3 +255,96 @@ test("the screen follows the shell's theme, light and dark", async ({ page }) =>
   await expect.poll(() => frame.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--ink").trim())).toBe(dark);
   expect(await frame.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe("dark");
 });
+
+// The screen is as tall as the room below it, wherever that room is NOW (#41). Its height came from
+// where its place was when it mounted, read again only when the window or the bottom bar changed
+// size: a strip above the app that came, grew or went afterwards (a demo link's bar, hidden for the
+// gallery's screenshots) left the screen ending short of the seal, or running under the bottom bar.
+const TALL = `import { defineApp } from "potyro";
+
+function Tall() {
+  return (
+    <section id="tall" style={{ margin: 0 }}>
+      {Array.from({ length: 40 }, (_, i) => (
+        <p key={i} id={"row-" + i} style={{ boxSizing: "border-box", height: 48, margin: 0 }}>Row {i}</p>
+      ))}
+    </section>
+  );
+}
+
+export default defineApp({
+  id: "tall-view",
+  name: "Tall view",
+  version: "1.0.0",
+  schemaVersion: 1,
+  entities: { note: { displayField: "text", fields: { text: { type: "text" } } } },
+  pages: [
+    { id: "tall", title: "Tall", view: { type: "custom", entity: "note", render: () => <Tall /> } },
+    { id: "notes", title: "Notes", view: { type: "list", entity: "note", display: { primary: "text" } } },
+  ],
+});
+`;
+
+test("a screen taller than the phone fills the room down to the seal and the bottom bar, and again when what is above it changes", async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await installShared(page, "tall-view", "Tall view", TALL);
+  const el = page.locator(".k-sealed-view iframe");
+  await expect(el).toHaveCount(1, { timeout: 30_000 });
+  const frame = (await (await el.elementHandle())!.contentFrame())!;
+  await expect(frame.locator("#row-0")).toBeVisible({ timeout: 30_000 });
+
+  /** The boxes as they are drawn: the screen, its frame, the seal's band, the bottom bar. */
+  const boxes = () =>
+    page.evaluate(() => {
+      const box = (sel: string) => {
+        const r = document.querySelector(sel)!.getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom, height: r.height };
+      };
+      return { view: box(".k-sealed-view"), frame: box(".k-sealed-view iframe"), seal: box(".k-seal-foot"), bar: box(".k-tabbar"), inner: innerHeight, scrollY, pageOverflow: document.documentElement.scrollHeight - innerHeight };
+    });
+  /** What is wrong with where the screen ends, or "" when it fills its room exactly. */
+  const wrong = async (): Promise<string> => {
+    const b = await boxes();
+    const said: string[] = [];
+    // The seal's band starts one page gap (at most 16 px) under the screen, and ends above the bottom bar.
+    const gap = b.seal.top - b.view.bottom;
+    if (gap < -0.5 || gap > 16.5) said.push(`the screen ends at ${b.view.bottom}, the seal starts at ${b.seal.top}`);
+    const under = b.bar.top - b.seal.bottom;
+    if (under < -0.5 || under > 16.5) said.push(`the seal ends at ${b.seal.bottom}, the bottom bar starts at ${b.bar.top}`);
+    if (Math.abs(b.frame.height - b.view.height) > 0.5) said.push(`the frame is ${b.frame.height} tall in a place ${b.view.height} tall`);
+    return said.join("; ");
+  };
+
+  // As it opens: the room from under the top bar to the seal, and the page itself does not scroll.
+  await expect.poll(wrong).toBe("");
+  const first = await boxes();
+  expect(first.pageOverflow).toBeLessThanOrEqual(1);
+  expect(first.view.height).toBeGreaterThan(500);
+  // Taller than its room: it scrolls inside its frame, whose window is exactly the room, and its last row can be reached whole.
+  expect(await frame.evaluate(() => innerHeight)).toBe(Math.round(first.view.height));
+  expect(await frame.evaluate(() => document.documentElement.scrollHeight)).toBe(40 * 48);
+  await frame.locator("#row-39").scrollIntoViewIfNeeded();
+  expect(await frame.evaluate(() => Math.round(document.getElementById("row-39")!.getBoundingClientRect().bottom) <= innerHeight)).toBe(true);
+
+  // A strip comes above the app, as a demo link's bar does: the screen starts lower, and still ends at the seal.
+  await page.evaluate(() => {
+    const strip = document.createElement("div");
+    strip.id = "strip-above";
+    strip.style.height = "120px";
+    const app = document.querySelector(".k-app")!;
+    app.parentElement!.insertBefore(strip, app);
+  });
+  await expect.poll(async () => (await boxes()).view.top).toBe(first.view.top + 120);
+  await expect.poll(wrong).toBe("");
+  expect((await boxes()).view.height).toBe(first.view.height - 120);
+
+  // The strip grows, then goes: each time the screen is as tall as the room that is there now.
+  await page.evaluate(() => (document.getElementById("strip-above")!.style.height = "200px"));
+  await expect.poll(wrong).toBe("");
+  expect((await boxes()).view.height).toBe(first.view.height - 200);
+  await page.evaluate(() => document.getElementById("strip-above")!.remove());
+  await expect.poll(wrong).toBe("");
+  const last = await boxes();
+  expect(last.view.height).toBe(first.view.height);
+  expect(last.pageOverflow).toBeLessThanOrEqual(1);
+});
