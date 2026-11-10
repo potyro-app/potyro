@@ -5,7 +5,15 @@
   "type": "module",
   "description": "Start a Potyro app: `npm create potyro my-app`",
   "license": "Apache-2.0 AND MIT-0",
-  "homepage": "https://potyro.app",
+  "homepage": "https://potyro.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/potyro-app/potyro.git",
+    "directory": "packages/create-potyro"
+  },
+  "bugs": {
+    "url": "https://github.com/potyro-app/potyro/issues"
+  },
   "keywords": [
     "potyro",
     "create",
@@ -22,8 +30,12 @@
     "README.md",
     "LICENSE"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "node ../../scripts/check-npm-packages.mjs --guard"
   },
   "devDependencies": {
     "fflate": "^0.8.3",
