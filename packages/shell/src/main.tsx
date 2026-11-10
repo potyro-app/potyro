@@ -31,6 +31,8 @@ import type { Provenance } from "@potyro/host";
 import type { PotyroRuntime } from "@potyro/runtime";
 import { App } from "./App.js";
 import { Studio } from "./studio.js";
+import { readNewFromUrl, type NewFromUrl } from "./new-from-url.js";
+import { galleryUrl } from "./gallery-link.js";
 import { Launcher, openInstalledApp } from "./launcher.js";
 import { applyLook } from "./look.js";
 import { listenForInstall } from "./install-offer.js";
@@ -243,16 +245,18 @@ async function importApp(caps: Capabilities, toaster: Toaster): Promise<void> {
  * What the landing page's prompt box sent (potyro.com, DESIGN.md §9): `?new=…` opens the Studio on
  * it. Read once, as the page loads, and then taken off the address, so a reload is home again.
  */
-function newFromUrl(): string | null {
-  const text = new URLSearchParams(location.search).get("new");
-  if (text === null) return null;
+function newFromUrl(): NewFromUrl | null {
+  const found = readNewFromUrl(location.search, document.referrer, galleryUrl());
+  if (found === null) return null;
   history.replaceState(null, "", location.pathname);
-  return text.trim();
+  return found;
 }
 const NEW_FROM_URL = typeof location === "undefined" ? null : newFromUrl();
 
 function Home() {
-  const [studio, setStudio] = useState<{ prefill?: string; draftId?: string } | null>(NEW_FROM_URL === null ? null : { prefill: NEW_FROM_URL || undefined });
+  const [studio, setStudio] = useState<{ prefill?: string; draftId?: string; start?: boolean } | null>(
+    NEW_FROM_URL === null ? null : { prefill: NEW_FROM_URL.text || undefined, start: NEW_FROM_URL.start },
+  );
   return (
     <>
       <Launcher
@@ -261,7 +265,7 @@ function Home() {
         onNewApp={(prefill) => setStudio({ prefill })}
         onResumeDraft={(draftId) => setStudio({ draftId })}
       />
-      {studio ? <Studio onClose={() => setStudio(null)} initialDescription={studio.prefill} initialDraftId={studio.draftId} /> : null}
+      {studio ? <Studio onClose={() => setStudio(null)} initialDescription={studio.prefill} initialDraftId={studio.draftId} startNow={studio.start} /> : null}
     </>
   );
 }

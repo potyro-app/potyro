@@ -209,6 +209,13 @@ export interface StudioProps {
   onClose: () => void;
   /** What to start the box with — a launcher search that found nothing offers to create it (#85). */
   initialDescription?: string;
+  /**
+   * Make the app from `initialDescription` without another press (#53): the person typed these words
+   * on the site a moment ago. Only main.tsx sets it, and only for a visit the browser says came from
+   * the site (new-from-url.ts). Once, when the engine is ready; with no way to make an app yet, the
+   * words stay in the box under the panel that says what is missing.
+   */
+  startNow?: boolean;
   /** The saved app to open on: "Studio — change this app" passes the one it was opened from. */
   initialAppId?: string;
   /** An unfinished conversation to pick up (the launcher's drafts). */
@@ -217,7 +224,7 @@ export interface StudioProps {
   initialPoint?: Pointed;
 }
 
-export function Studio({ onClose, initialDescription, initialAppId, initialDraftId, initialPoint }: StudioProps) {
+export function Studio({ onClose, initialDescription, initialAppId, initialDraftId, initialPoint, startNow }: StudioProps) {
   const { t } = useLingui();
   const opened = initialAppId ? getUserApp(initialAppId) : undefined;
   // The conversation's id is the app's once there is one, a draft's until then. A ref as well as
@@ -634,6 +641,16 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       setWorking(null);
     }
   };
+
+  // The words came from the site's own prompt box (#53): make the app from them, once, as soon as
+  // there is a way to. `send` runs with the words given, so the box's own state is not waited for.
+  const startedFromSite = useRef(false);
+  useEffect(() => {
+    if (!startNow || startedFromSite.current || !ready || busy || !initialDescription?.trim()) return;
+    startedFromSite.current = true;
+    void send(initialDescription);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when ready; `send` is new on every render
+  }, [startNow, ready, busy]);
 
   const fixHeld = async (): Promise<void> => {
     if (!held || busy) return;
