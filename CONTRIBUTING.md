@@ -6,8 +6,8 @@ before a change to `host`, `runtime` or the shell.
 
 ## Set up
 
-- **Node 22.** The default Node on many machines is older; some store tests fail on 18 for no
-  reason of yours, and Playwright needs 20 or later.
+- **Node 22** (`.nvmrc`; `nvm use` picks it). The default Node on many machines is older; some
+  store tests fail on 18 for no reason of yours, and Playwright needs 20 or later.
 - **pnpm**, the version in the root `package.json` (`packageManager`). `corepack enable` gets it.
 
 ```sh
@@ -108,6 +108,39 @@ it, pl).
 - An app's own words live in `.po` files beside the app (`docs/30-app-translations.md`), with the
   source text as the id. People's content is never translated.
 - Text the model reads stays English.
+
+## Publishing the npm packages
+
+Two packages go to npm: `potyro` (`packages/schema`) and `create-potyro` (`packages/create-potyro`).
+They carry the same version and are released together: the project `create-potyro` writes asks
+for `potyro@^<that version>`. Only the maintainer publishes.
+
+Never run `npm publish` inside a package's folder. Only pnpm's packing puts `dist/` in place of
+`src/` as the entry (`publishConfig`) and a version in place of `workspace:*`; the packages refuse
+a plain `npm publish` (`prepublishOnly`). Publish the tarballs the check has proven:
+
+```sh
+# 1. the same version in both package.json files, committed, on main
+pnpm i && pnpm --filter potyro --filter create-potyro test
+# 2. pack both, check the manifests and file lists, then create, install, typecheck, test and pack
+#    a project from the tarballs alone
+pnpm check:npm --install --out /tmp/potyro-npm
+# 3. publish those very files, `potyro` first (create-potyro's project needs it)
+npm login
+npm publish /tmp/potyro-npm/potyro-<version>.tgz --access public
+npm publish /tmp/potyro-npm/create-potyro-<version>.tgz --access public
+```
+
+Afterwards, in an empty folder on Node 22:
+
+```sh
+npm view potyro version license repository.url
+npm view create-potyro version license repository.url
+npm create potyro@latest my-app && cd my-app && npm install && npm run typecheck && npm test && npm run build
+```
+
+`pnpm check:npm` alone (no `--install`) needs no network and takes seconds. A published version
+cannot be replaced: a mistake is fixed by the next version.
 
 ## Paid runs
 

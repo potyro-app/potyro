@@ -40,7 +40,17 @@ records; `locales/*.po` beside the source always ship.
 
 ## Learn
 
-- [Your first Potyro app](https://github.com/potyro-app/potyro/blob/main/docs/tutorials/01-your-first-app.md):
-  a tutorial, fifteen minutes
-- [App Module API](https://github.com/potyro-app/potyro/blob/main/docs/04-app-module-api.md): every field,
-  view, and everything on `ctx`
+- [Your first Potyro app](https://potyro.com/docs/start/your-first-app/): a tutorial, fifteen minutes
+- [`defineApp`](https://potyro.com/docs/reference/define-app/) and
+  [`ctx`](https://potyro.com/docs/reference/ctx/): every field, view, and everything an app's
+  functions receive
+- [The CLI](https://potyro.com/docs/reference/cli/): `npm create potyro` and `potyro pack`
+- [All the documentation](https://potyro.com/docs/)
+
+Node 20 or newer. Custom views are React components: add `react` and `@types/react` to a project
+that writes one.
+
+## Licence
+
+Apache-2.0. The source is at [github.com/potyro-app/potyro](https://github.com/potyro-app/potyro),
+in `packages/schema`.

@@ -5,7 +5,15 @@
   "type": "module",
   "description": "Write Potyro apps: defineApp(), the ctx types, and `potyro pack` to make the package Add an app installs",
   "license": "Apache-2.0",
-  "homepage": "https://potyro.app",
+  "homepage": "https://potyro.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/potyro-app/potyro.git",
+    "directory": "packages/schema"
+  },
+  "bugs": {
+    "url": "https://github.com/potyro-app/potyro/issues"
+  },
   "keywords": [
     "potyro",
     "app",
@@ -26,6 +34,9 @@
     "README.md",
     "LICENSE"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "publishConfig": {
     "exports": {
       ".": {
@@ -40,12 +51,21 @@
     "build:dist": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepack": "pnpm build:dist",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "prepublishOnly": "node ../../scripts/check-npm-packages.mjs --guard"
   },
   "dependencies": {
     "esbuild": "^0.24.2",
     "fflate": "^0.8.3",
     "zod": "^3.23.8"
+  },
+  "peerDependencies": {
+    "@types/react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "@types/react": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
