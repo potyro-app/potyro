@@ -84,6 +84,19 @@ describe("the home", () => {
   });
 });
 
+describe("the prompt box", () => {
+  it("tells the app where its links came from, and no other link on the page does", () => {
+    const links = [...home.matchAll(/<a\b[^>]*>/g)].map((m) => m[0]);
+    const telling = links.filter((a) => a.includes("referrerpolicy"));
+    expect(telling.length).toBe(3);
+    for (const a of telling) {
+      expect(a).toContain('referrerpolicy="origin"');
+      expect(a).toMatch(/href="https:\/\/potyro\.app\/\?new=/);
+    }
+    expect(readFileSync(join(out, "site.js"), "utf8")).toContain('referrerPolicy = "origin"');
+  });
+});
+
 describe("the share card", () => {
   it("names a 1200×630 image that exists, for Open Graph and Twitter, and describes Potyro as structured data", () => {
     expect(home).toContain('<meta property="og:image" content="https://potyro.com/media/og.png" />');

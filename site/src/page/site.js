@@ -49,6 +49,24 @@
     });
   }
 
+  // What is typed here is sent as a link that tells the app it came from this site, and nothing more
+  // than that (`referrerpolicy="origin"`; every other link on the site says nothing). The app starts
+  // making the app at once only for a visit it can see came from here (#53); a plain form post
+  // carries no such word, so without this script the app fills its box and waits for a press.
+  var form = document.querySelector("form.prompt");
+  if (form) {
+    form.addEventListener("submit", function (e) {
+      var words = form.elements["new"] && form.elements["new"].value.trim();
+      if (!words) return;
+      e.preventDefault();
+      var go = document.createElement("a");
+      go.referrerPolicy = "origin";
+      go.href = form.action + (form.action.indexOf("?") < 0 ? "?" : "&") + "new=" + encodeURIComponent(words);
+      form.appendChild(go);
+      go.click();
+    });
+  }
+
   // The box sends on Enter; Shift+Enter is a new line, as the Studio's own box behaves.
   var box = document.querySelector(".prompt-box");
   if (box && box.form) {

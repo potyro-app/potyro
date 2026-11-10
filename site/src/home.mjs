@@ -256,9 +256,9 @@ export function renderHome({ gallery, words: w, lucide, code, logos, v, sizes, l
               <button type="submit" class="prompt-send" aria-label="${e(w.promptSend)}">${icon(ICON.arrowUp, 24)}</button>
             </div>
             <ul class="examples">
-              <li><a class="chip-link" href="${e(newAppHref(w.ex1))}">${e(w.ex1)}</a></li>
-              <li><a class="chip-link" href="${e(newAppHref(w.ex2))}">${e(w.ex2)}</a></li>
-              <li><a class="chip-link" href="${e(newAppHref(w.ex3))}">${e(w.ex3)}</a></li>
+              <li><a class="chip-link" referrerpolicy="origin" href="${e(newAppHref(w.ex1))}">${e(w.ex1)}</a></li>
+              <li><a class="chip-link" referrerpolicy="origin" href="${e(newAppHref(w.ex2))}">${e(w.ex2)}</a></li>
+              <li><a class="chip-link" referrerpolicy="origin" href="${e(newAppHref(w.ex3))}">${e(w.ex3)}</a></li>
             </ul>
           </form>
         </div>
