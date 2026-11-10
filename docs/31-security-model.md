@@ -28,6 +28,18 @@ trusted app back in the box, so a link cannot put new code into an app that runs
 authority (docs/07, "Trust at install"). Running a sealed app as yours is one explicit dialog
 (`packages/shell/src/trust-dialog.tsx`), and it can be undone.
 
+Two more ways code arrives, and the same rule holds for both:
+
+- **A version published into a shared space.** Everyone who can write to a space can publish a
+  version of its app, and each person is asked before their copy takes it. Saying "Update" accepts
+  the version, not its standing: unless the store's signed log shows that this person's own account
+  published it (another of their devices), the copy runs sealed from then on, whatever it was before
+  (`takeUpdate` in `packages/shell/src/version-gate.ts`, `Store.kvOwn`).
+- **Your apps on a new device.** The account's list holds every synced app, the ones you joined
+  beside the ones you made, and each entry records which it is. A new device runs directly only an
+  app one of your devices recorded as yours; a joined app, or an entry written before this was
+  recorded, comes back sealed (`installFromAccount` in `packages/shell/src/restore-apps.tsx`).
+
 The language is never restricted. A sealed app is the same TypeScript as a trusted one; only the
 authority handed to it differs.
 

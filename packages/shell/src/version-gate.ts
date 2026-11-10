@@ -27,8 +27,17 @@ interface Toast {
 }
 
 /** Install a published version as this device's copy, and open it. */
-async function takeUpdate(id: string, update: PublishedApp): Promise<void> {
-  const [{ saveUserApp }, { receiveCode }] = await Promise.all([import("./user-apps.js"), import("./app-modules.js")]);
+export async function takeUpdate(id: string, update: PublishedApp, store: Store): Promise<void> {
+  const [{ saveUserApp }, { receiveCode }, { publishedByOwnAccount }] = await Promise.all([
+    import("./user-apps.js"),
+    import("./app-modules.js"),
+    import("./app-sync.js"),
+  ]);
+  // Provenance decides execution (CLAUDE.md rule 3). A version another of this person's devices
+  // published is theirs, and the copy keeps running as it did. One published by anyone else is code
+  // from someone else, whatever this copy was before: it runs in the realm until the person promotes
+  // it. Saying "Update" is agreeing to the new version, not to giving it the run of the device.
+  const own = await publishedByOwnAccount(store, update);
   // Its own modules came with it, checked against its lock before anything is saved; its libraries
   // are fetched when it opens, with consent (#281).
   await receiveCode(id, update);
@@ -38,6 +47,7 @@ async function takeUpdate(id: string, update: PublishedApp): Promise<void> {
       name: update.name,
       source: update.source,
       ...(update.lock ? { lock: update.lock } : {}),
+      ...(own ? {} : { trusted: false }),
       origin: "imported",
       // What they asked for, when they published it. The bare "updated by a collaborator" is the
       // fallback for a copy published before notes travelled, not the normal case.
@@ -101,7 +111,7 @@ export async function openVersionGate(opts: {
   };
 
   const lockBehind = (published: PublishedApp): void =>
-    lock.set({ kind: "version", resolve: () => takeUpdate(id, published) });
+    lock.set({ kind: "version", resolve: () => takeUpdate(id, published, rawStore) });
 
   const published = await appSync.readPublishedApp(rawStore);
   const update = await appSync.pendingAppUpdate(rawStore, mine);
@@ -119,7 +129,7 @@ export async function openVersionGate(opts: {
         : { detail: t`Update your copy? Your version is kept in History, so you can go back.`, ok, cancel: t`Not now` },
     );
     if (take) {
-      await takeUpdate(id, update);
+      await takeUpdate(id, update, rawStore);
       return { proceed: false, recordVersion: false, published: Promise.resolve(), stop: () => {} };
     }
   }
@@ -148,7 +158,7 @@ export async function openVersionGate(opts: {
         ok: t({ message: "Update", comment: "Button: take the newer version of a shared app" }),
         cancel: t`Not now`,
       });
-      if (take) await takeUpdate(id, now);
+      if (take) await takeUpdate(id, now, rawStore);
     } finally {
       asking = false;
     }

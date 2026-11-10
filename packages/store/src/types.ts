@@ -231,6 +231,16 @@ export interface Store {
    */
   subscribeKv?(cb: () => void): Unsubscribe;
   /**
+   * Whether the value this key holds NOW was written by this device's own account.
+   *
+   * Optional: only a store with peers has more than one writer, and only a CRDT store can answer —
+   * from the signing session of the write, never from anything the writer said about itself. The
+   * shell asks it before installing an app version published into a shared space: code another
+   * member published must not run as the person's own. Absent, or `false`, means "not provably
+   * mine", and the caller treats the value as someone else's.
+   */
+  kvOwn?(k: string): Promise<boolean>;
+  /**
    * Every account that has ever held a role in this space — people who were removed included (KA-19).
    *
    * Optional: only a store with a space has members. It is what a `member` value is checked against

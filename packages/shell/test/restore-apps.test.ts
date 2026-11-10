@@ -32,6 +32,8 @@ const APP: AccountApp = {
   source: 'import { defineApp } from "potyro";\nexport default defineApp({ id: "split", name: "Split" });\n',
   group: "co_zGROUP",
   root: "co_zROOT",
+  // Recorded by one of this person's own devices as their own app.
+  trusted: true,
   updatedAt: NOW,
 };
 
@@ -42,6 +44,22 @@ beforeEach(() => {
 afterEach(() => localStorage.clear());
 
 describe("loading an app from your account", () => {
+  it("an app this person joined comes back as someone else's, not as their own", async () => {
+    // The account's list holds joined apps beside the person's own. Restoring one as trusted would
+    // run another person's code directly on the new device (CLAUDE.md rule 3).
+    await installFromAccount({ ...APP, trusted: false }, NOW);
+
+    expect(getUserApp("split")).toMatchObject({ trusted: false, sync: true });
+  });
+
+  it("an entry recorded before provenance travelled is treated as received", async () => {
+    const { trusted: _dropped, ...legacy } = APP;
+
+    await installFromAccount(legacy, NOW);
+
+    expect(getUserApp("split")?.trusted).toBe(false);
+  });
+
   it("installs it pointing at the space its data is already in", async () => {
     await installFromAccount(APP, NOW);
 

@@ -63,6 +63,7 @@ export function guardedStore(store: Store, refusal: () => string | null): Store 
     subscribeFiles: store.subscribeFiles ? (cb) => store.subscribeFiles!(cb) : undefined,
     kvKeys: store.kvKeys ? (prefix) => store.kvKeys!(prefix) : undefined,
     subscribeKv: store.subscribeKv ? (cb) => store.subscribeKv!(cb) : undefined,
+    kvOwn: store.kvOwn ? (k) => store.kvOwn!(k) : undefined,
     memberIds: store.memberIds ? () => store.memberIds!() : undefined,
     storedSchemaVersion: () => store.storedSchemaVersion(),
     // Reads of the space's own log. Dropping them made a locked app lose its Changes and Chat

@@ -34,6 +34,15 @@ export interface AccountApp {
   sizeBytes?: number;
   /** Whether this app is shared with other people, which is a different thing from being yours. */
   shared?: boolean;
+  /**
+   * Whether the device that recorded it runs it as the person's OWN (directly) rather than as
+   * something that came from someone else (in the realm). The account's list holds every synced
+   * app, the joined ones too, and a new device has nothing else to tell them apart by. Only the
+   * account's own devices write this list, so the value is the person's own record. Absent on an
+   * entry written before it was recorded: whoever installs from the list must then treat the app
+   * as received, never as their own.
+   */
+  trusted?: boolean;
   updatedAt: string;
   /**
    * Its code beyond `source` (#281): the lock, and its own modules as text — see `carried-code.ts`.
@@ -92,6 +101,7 @@ function parse(id: string, raw: unknown): AccountApp | null {
       icon: typeof v.icon === "string" ? v.icon : undefined,
       sizeBytes: typeof v.sizeBytes === "number" ? v.sizeBytes : undefined,
       shared: v.shared === true,
+      trusted: v.trusted === true,
       updatedAt: typeof v.updatedAt === "string" ? v.updatedAt : new Date(0).toISOString(),
       ...readCarriedCode(v),
     };

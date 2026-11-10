@@ -69,6 +69,7 @@ export interface Store {
   putBlob(b: Blob): Promise<MediaRef>;  getBlob(r: MediaRef): Promise<Blob | null>;
   kvGet(k: string): Promise<string | null>;  kvSet(k: string, v: string): Promise<void>;  kvDelete(k: string): Promise<void>;
   subscribeKv?(cb: () => void): Unsubscribe;  // synced stores: a peer changed kv (KA-22 live version gate)
+  kvOwn?(k: string): Promise<boolean>;       // synced stores: this account wrote the value in force (from the signed log)
   subscribeBlob?(r: MediaRef, cb: () => void): Unsubscribe;  // KA-20: a photo's bytes arrived
   blobHere?(r: MediaRef): Promise<boolean>;  // #255: bytes on this device? asks no one (getBlob fetches); absent = always
   spaceUsage?(): Promise<{ used: number; budget: number }>;  // #255: a shared space's bytes on the relay vs its budget; a file write past it throws SpaceFullError

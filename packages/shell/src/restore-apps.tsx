@@ -131,8 +131,12 @@ export async function installFromAccount(app: AccountApp, now: string): Promise<
       name: app.name,
       source: app.source,
       ...(app.lock ? { lock: app.lock } : {}),
-      trusted: true,
-      origin: "created",
+      // Provenance decides execution (CLAUDE.md rule 3), and it has to survive the trip: the list
+      // holds the apps this person joined as well as the ones they made. Only an entry a device of
+      // theirs recorded as their own runs directly here; a joined app, or an entry from before this
+      // was recorded, runs in the realm until they promote it themselves.
+      trusted: app.trusted === true,
+      origin: app.trusted === true ? "created" : "imported",
       // Stored in English: SYSTEM_NOTES (studio-thread.ts) recognises it by its words, and it syncs to devices in other languages.
       note: here ? "from your account, replacing this device's copy" : "from your account",
       // Synced, because that is where its data is — written WITH the app, not after it. Set in a
