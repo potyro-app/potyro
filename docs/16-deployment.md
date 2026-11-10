@@ -336,18 +336,72 @@ If sync never connects, check the relay URL first: **⌾ You → Sync relay** sh
 
 ## 6. Backups (#214)
 
-**None yet.** There is no nightly copy, no offsite copy and no restore drill; how they will be
-made is #214. What holds state on the server today:
+`deploy/backup.sh` makes the copy; it is in the repository, **installing it on the server and
+choosing where the offsite copy goes are the owner's, and are not done yet.** Until a restore has
+been performed once ([the drill](#the-restore-drill)), treat the backup as unproven.
+
+What holds state on the server:
 
 | What | Where | |
 |---|---|---|
-| The relay's database | `/var/lib/potyro/sync.db` | every shared space, encrypted, and every shared file's bytes ([below](#what-the-relay-holds-for-a-shared-apps-files-255)). |
+| The relay's database | `/var/lib/potyro/sync.db` | every shared space, encrypted, and every shared file's bytes ([below](#what-the-relay-holds-for-a-shared-apps-files-255)). For anyone who turned on "Back up my apps" it is the only copy off their device. |
 | The share links | `/var/lib/potyro/shares` | each link's sealed package and preview; a lost one answers 404. |
 | The AI ledger | `/var/lib/potyro-ai/ai-ledger.json` | the month's spend; lost, the caps start the month again from zero. |
-| The secrets | `/etc/potyro/*.env` | the owner's to keep, apart from the data, never in the repository. |
+| The secrets | `/etc/potyro/*.env` | the owner's to keep, apart from the data, never in the repository and never in a backup. |
 
 The Caddyfile, the containers and the code are in the repository and need no backup. The rooms
 relay and the request relay keep nothing on disk.
+
+### What the script does
+
+Each night it writes `/var/backups/potyro/<date>/`: the relay's database through SQLite's online
+backup (a consistent moment of a database that is being written, which a plain `cp` is not), checked
+with `PRAGMA integrity_check`; the share links as one tar; the AI ledger. With `BACKUP_REMOTE` set it
+copies the folder offsite with `rclone` (any remote rclone knows: an S3-compatible bucket, a storage
+box over SFTP), encrypted first with `age` when `BACKUP_AGE_RECIPIENT` is set. It keeps the newest
+seven days and the newest four Sundays, here and offsite, and fails when a disk is over 85% full.
+
+A failure exits non-zero, says why, and with `ALERT_URL` set posts that line there. A good run
+calls `OK_URL` when set: point it at a check that tells you when the nightly call did NOT come,
+because a backup that silently stopped is found out on the day it is needed.
+
+### Installing it (once, on the server)
+
+```
+sudo apt install sqlite3 rclone age
+sudo rclone config                                  # name the offsite remote, as root
+sudo install -m 600 deploy/env.example/backup.env.example /etc/potyro/backup.env   # then fill it in
+sudo deploy/backup.sh                               # by hand, once: read what it says
+echo '17 3 * * * root /opt/potyro-src/deploy/backup.sh >> /var/log/potyro-backup.log 2>&1' | sudo tee /etc/cron.d/potyro-backup
+```
+
+`bash deploy/backup.test.sh` checks the script against a scratch folder, on any machine with
+`sqlite3`. It does not prove the offsite remote works; the first run by hand does.
+
+### The restore drill
+
+Do it once before relying on the backup, and again after any change to the relay or the script.
+It runs beside the live relay and touches nothing of it.
+
+1. Fetch a night's folder from offsite into a scratch folder, and decrypt it if it was encrypted:
+   `rclone copy <remote>/<date> /tmp/drill && age -d -i <key file> -o /tmp/drill/sync.db /tmp/drill/sync.db.age`
+2. Check it: `sqlite3 /tmp/drill/sync.db 'PRAGMA integrity_check;'` answers `ok`.
+3. Start a scratch relay on it, on another port, with the relay's own pinned `jazz-run`:
+   `docker run --rm -p 127.0.0.1:4299:4299 -v /opt/potyro-relay:/app:ro -v /tmp/drill:/data -w /app node:22-bookworm node node_modules/.bin/jazz-run sync --host 0.0.0.0 --port 4299 --db /data/sync.db`
+4. Point a device at it and watch a real app arrive: a fresh browser profile on a build whose sync
+   address is the scratch relay, signed in with an account's recovery words, offered its apps, one
+   opened with its records in it.
+5. Write the date and what was seen in the table below. Stop the scratch relay, delete the folder.
+
+A real restore is the same, onto the real path: stop the relay (`docker stop potyro-relay`), put the
+checked `sync.db` at `/var/lib/potyro/sync.db` (remove any `sync.db-wal` and `sync.db-shm` left
+beside it), unpack `shares.tar` into `/var/lib/potyro`, copy the ledger back, start the relay.
+Devices send again whatever they hold that the restored copy lacks; what existed only on the server
+after the night of the copy is gone.
+
+| Drill | Copy from | Result |
+|---|---|---|
+| not yet performed | | |
 
 ## 7. Redeploying
 
