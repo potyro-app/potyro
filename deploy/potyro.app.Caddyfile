@@ -82,15 +82,7 @@ potyro.app {
 
 # potyro.com: the site (#8, docs/16) — the home at /, the gallery at /apps/, the legal pages — a static
 # folder with nothing from anyone else: its own fonts, pictures and recordings (media-src).
-potyro.com, www.potyro.com {
-	root * /srv/potyro.com
-	encode zstd gzip
-	file_server
-
-	# The gallery used to say it works under /gallery/; the site's apps page is /apps/.
-	redir /gallery/* /apps/ 301
-	redir /index.html / 301
-
+(site_headers) {
 	header {
 		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; media-src 'self'; base-uri 'none'; form-action https://potyro.app; frame-ancestors 'none'"
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
@@ -98,6 +90,34 @@ potyro.com, www.potyro.com {
 		Referrer-Policy "no-referrer"
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		-Server
+	}
+}
+
+# One address for the site: www answers with a redirect, never with a second copy of every page.
+www.potyro.com {
+	redir https://potyro.com{uri} 301
+}
+
+potyro.com {
+	root * /srv/potyro.com
+	encode zstd gzip
+	file_server
+
+	# The gallery used to say it works under /gallery/; the site's apps page is /apps/.
+	redir /gallery /apps/ 301
+	redir /gallery/* /apps/ 301
+	redir /index.html / 301
+
+	import site_headers
+	# An address that is not a page: the site's own "this page does not exist", with the 404 status
+	# and the same headers as every other page (an error is answered outside the block above).
+	handle_errors {
+		@missing expression {err.status_code} == 404
+		handle @missing {
+			import site_headers
+			rewrite * /404.html
+			file_server
+		}
 	}
 	@page path / /index.html /apps /apps/ /apps/index.html
 	header @page Cache-Control "no-cache"

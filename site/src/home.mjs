@@ -141,7 +141,7 @@ export function renderHome({ gallery, words: w, lucide, code, logos, v, sizes, l
   const clip = (/** @type {string} */ name, /** @type {string} */ label, cls = "") => {
     const poster = `/media/${name}-poster.jpg`;
     const s = size(poster);
-    return `<div class="phone rec-phone ${cls}"><video class="rec" muted loop playsinline preload="none" poster="${poster}" width="${s.width}" height="${s.height}" aria-label="${e(label)}"><source src="/media/${name}.mp4" type="video/mp4"><source src="/media/${name}.webm" type="video/webm"></video></div>`;
+    return `<div class="phone rec-phone ${cls}"><video class="rec" muted loop playsinline preload="none" poster="${poster}" width="${s.width}" height="${s.height}" aria-label="${e(label)}"><source src="/media/${name}.webm" type="video/webm"><source src="/media/${name}.mp4" type="video/mp4"></video></div>`;
   };
 
   const tiles = TILES.map((tile, i) => {
@@ -225,7 +225,7 @@ export function renderHome({ gallery, words: w, lucide, code, logos, v, sizes, l
     "@context": "https://schema.org",
     "@graph": [
       { "@type": "WebSite", "@id": "https://potyro.com/#site", url: "https://potyro.com/", name: "Potyro", description: w.description, inLanguage: "en" },
-      { "@type": "SoftwareApplication", "@id": "https://potyro.app/#app", name: "Potyro", url: "https://potyro.app/", description: w.description, applicationCategory: "DeveloperApplication", operatingSystem: "Web, Android", offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" }, image: "https://potyro.com/media/og.png", sameAs: [REPO_URL] },
+      { "@type": "SoftwareApplication", "@id": "https://potyro.app/#app", name: "Potyro", url: "https://potyro.app/", description: w.description, applicationCategory: "UtilitiesApplication", operatingSystem: "Web, Android", offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" }, image: "https://potyro.com/media/og.png", sameAs: [REPO_URL] },
     ],
   }).replace(/</g, "\\u003c")}</script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />

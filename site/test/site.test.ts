@@ -2,7 +2,7 @@
 // (the server's policy allows no inline style or script), nothing from anyone else, and the numbers
 // on the home counted from the gallery, not typed.
 import { describe, expect, it, beforeAll } from "vitest";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildSite, readWords } from "../build.mjs";
@@ -141,6 +141,40 @@ describe("the text pages", () => {
     expect(dev.replace(/<[^>]+>/g, "")).toContain("npm create potyro");
     expect(home).toContain('href="/developers/"');
     expect(home).toContain('href="/docs/"');
+  });
+});
+
+describe("for crawlers and for a mistyped address", () => {
+  it("the sitemap lists every page the build wrote, and nothing that is not one", () => {
+    const listed = [...readFileSync(join(out, "sitemap.xml"), "utf8").matchAll(/<loc>https:\/\/potyro\.com([^<]*)<\/loc>/g)].map((m) => m[1]);
+    const walk = (dir: string, at = ""): string[] =>
+      readdirSync(join(dir, at), { withFileTypes: true }).flatMap((f) => (f.isDirectory() ? walk(dir, `${at}${f.name}/`) : f.name === "index.html" ? [`/${at}`] : []));
+
+    expect(listed.sort()).toEqual(walk(out).sort());
+    expect(listed).toContain("/");
+    expect(listed).toContain("/apps/");
+    expect(listed.every((path) => !path.includes("404"))).toBe(true);
+  });
+
+  it("robots.txt lets everyone in and names the sitemap", () => {
+    const robots = readFileSync(join(out, "robots.txt"), "utf8");
+
+    expect(robots).toMatch(/^User-agent: \*\nAllow: \/\n/);
+    expect(robots).toContain("Sitemap: https://potyro.com/sitemap.xml");
+  });
+
+  it("an address that is not a page has a page of its own, in the site's chrome, with two ways on", () => {
+    const lost = readFileSync(join(out, "404.html"), "utf8");
+
+    expect(lost.match(/<h1\b/g)).toHaveLength(1);
+    expect(lost).toContain('<a href="/">');
+    expect(lost).toContain('<a href="/apps/">');
+    expect(lost).not.toMatch(/<style\b|\sstyle="/);
+    for (const path of localPaths(lost)) expect(existsSync(join(out, path.endsWith("/") ? `${path}index.html` : path)), path).toBe(true);
+  });
+
+  it("offers the smaller recording first, so a browser that plays both takes it", () => {
+    for (const clip of home.match(/<video\b[^>]*>.*?<\/video>/gs) ?? []) expect(clip.indexOf("video/webm")).toBeLessThan(clip.indexOf("video/mp4"));
   });
 });
 
