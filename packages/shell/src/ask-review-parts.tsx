@@ -11,6 +11,7 @@ type AppDefinition = Localized<SourceDefinition>;
 type Field = Localized<SourceField>;
 import type { ReviewRow } from "./ask-apply.js";
 import { trustLabel } from "./ask-verdicts.js";
+import { safeHref } from "@potyro/views";
 
 /** Names to show a link with: a proposed row by ref ("@lx" → its title), a record of the person's by id. */
 export interface LinkNames {
@@ -132,10 +133,13 @@ export function Sources({ row }: { row: ReviewRow }) {
           {/* What the person gave (their request, a paste) has no page to open: it is named instead. */}
           {s.url.startsWith("potyro:") ? (
             <span className="k-ask-source-own">{s.via ?? t({ message: "you", comment: "Ask review: a value came from what the person typed or pasted" })}</span>
-          ) : (
-            <a href={s.url} target="_blank" rel="noreferrer noopener">
+          ) : safeHref(s.url) ? (
+            <a href={safeHref(s.url)!} target="_blank" rel="noreferrer noopener">
               {s.host}
             </a>
+          ) : (
+            // An address that does not lead out to the web is named, never linked.
+            <span>{s.host}</span>
           )}
           <q>{s.quote}</q>
         </li>

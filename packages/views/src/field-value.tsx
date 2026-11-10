@@ -15,6 +15,7 @@ import { EnumPill } from "./enum-input.js";
 import { MediaTile, mediaList } from "./media-input.js";
 import { FileValue } from "./file-input.js";
 import { MoneyValue } from "./money-input.js";
+import { safeHref } from "./safe-href.js";
 
 export function FieldValue({
   runtime,
@@ -194,12 +195,17 @@ function FieldByType({ runtime, field, value }: { runtime: PotyroRuntime; field:
       return field.multiline ? <span className="k-text-lines">{String(value)}</span> : <>{formatValue(value)}</>;
     case "boolean":
       return value ? <Trans comment="A ticked yes/no field">Yes</Trans> : <Trans comment="An unticked yes/no field">No</Trans>;
-    case "url":
+    case "url": {
+      // The value may have come from anyone the app is shared with: only an address that goes out
+      // to the web or to mail becomes a link, anything else is shown as the text it is.
+      const href = safeHref(value);
+      if (!href) return <>{String(value)}</>;
       return (
-        <a href={String(value)} target="_blank" rel="noreferrer noopener">
+        <a href={href} target="_blank" rel="noreferrer noopener">
           {String(value)}
         </a>
       );
+    }
     case "money":
       // Whole minor units, written the way the reader's own device writes money (KA-26).
       return <MoneyValue field={field as ShownMoneyField} value={value} />;
