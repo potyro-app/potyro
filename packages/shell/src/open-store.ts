@@ -461,7 +461,7 @@ export async function adoptLocalStorageData(store: Store, namespace: string): Pr
  * useful: recording only the app you happen to open would mean a backup that depends on remembering
  * to open things.
  */
-export async function rememberAppOnAccount(app: { id: string; name: string; icon?: string; source: string; shared?: boolean }): Promise<boolean> {
+export async function rememberAppOnAccount(app: { id: string; name: string; icon?: string; source: string; shared?: boolean; trusted: boolean }): Promise<boolean> {
   const handle = lastSyncHandle;
   if (!handle) return false;
   try {
@@ -476,6 +476,7 @@ export async function rememberAppOnAccount(app: { id: string; name: string; icon
       group: handle.groupID,
       root: handle.store.rootId,
       shared: app.shared,
+      trusted: app.trusted,
       updatedAt: new Date().toISOString(),
     });
   } catch {
@@ -590,6 +591,8 @@ export async function publishAppListToAccount(node: unknown): Promise<number> {
         source: app.source,
         group,
         root,
+        // Provenance travels with the entry: a joined app must not come back as the person's own.
+        trusted: app.trusted === true,
         updatedAt: app.updatedAt ?? now,
       });
       if (ok) recorded += 1;

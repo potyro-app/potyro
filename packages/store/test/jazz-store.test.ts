@@ -270,6 +270,26 @@ describe("JazzStore — two peers through the Store seam", () => {
     return { anaStore, brunoStore, ana, bruno, group };
   }
 
+  it("kvOwn: a value is this account's only while this account wrote the one in force", async () => {
+    // What the shell asks before running a published app version as the person's own: who wrote it
+    // comes from the signing session, so a peer cannot claim to be someone else.
+    const { anaStore, brunoStore } = await pair();
+
+    await anaStore.kvSet("app", "ana's version");
+    await settle();
+    expect(await anaStore.kvOwn("app")).toBe(true);
+    expect(await brunoStore.kvOwn("app")).toBe(false);
+
+    await settle(20); // a later clock tick, so the next write is unambiguously the newer one
+    await brunoStore.kvSet("app", "bruno's version");
+    await settle();
+    expect(await anaStore.kvGet("app")).toBe("bruno's version");
+    expect(await anaStore.kvOwn("app")).toBe(false);
+    expect(await brunoStore.kvOwn("app")).toBe(true);
+
+    expect(await anaStore.kvOwn("never-written")).toBe(false);
+  });
+
   /**
    * A READ must never mint a container (#220).
    *

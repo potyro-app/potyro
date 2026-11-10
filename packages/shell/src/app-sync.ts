@@ -104,6 +104,23 @@ export async function publishAppSource(store: Store, app: PublishedApp): Promise
   return true;
 }
 
+/**
+ * Whether `app`, as read from the space, was published by this person's own account (another of
+ * their devices) rather than by someone they share the app with.
+ *
+ * Asked of the store's signed log, then the published copy is read AGAIN and compared: a version
+ * written by someone else between the two reads must not borrow the answer given for ours.
+ */
+export async function publishedByOwnAccount(store: Store, app: PublishedApp): Promise<boolean> {
+  try {
+    if ((await store.kvOwn?.(KEY)) !== true) return false;
+    const now = await readPublishedApp(store);
+    return now?.source === app.source && now.updatedAt === app.updatedAt;
+  } catch {
+    return false;
+  }
+}
+
 /** The space's copy, when it is newer than this device's and actually different. */
 export async function pendingAppUpdate(store: Store, local: PublishedApp): Promise<PublishedApp | null> {
   const published = await readPublishedApp(store);

@@ -1834,6 +1834,29 @@ export class JazzStore implements Store {
     await this.whenDurable?.();
   }
 
+  async kvOwn(k: string): Promise<boolean> {
+    const me = this.node.getCurrentAccountOrAgentID?.();
+    const map = await this.childIfPresent(this.root, ROOT_KV);
+    if (!me || !map?.editsAt) return false;
+    const current = map.get(k);
+    if (typeof current !== "string") return false;
+    // The writes that can be the one in force: those with the latest time. Times are the writers'
+    // own clocks and a tie is broken inside cojson, so EVERY write at that time has to be this
+    // account's, and one of them has to be the value actually read — otherwise it is not provably
+    // ours. `by` comes from the signing session, not from the writer's word.
+    let latest = -Infinity;
+    let winners: Array<{ by: string; value: unknown }> = [];
+    for (const e of map.editsAt(k)) {
+      const at = e.at.getTime();
+      if (at > latest) {
+        latest = at;
+        winners = [];
+      }
+      if (at === latest) winners.push({ by: String(e.by), value: e.value });
+    }
+    return winners.length > 0 && winners.every((w) => w.by === me) && winners.some((w) => w.value === current);
+  }
+
   async kvDelete(k: string): Promise<void> {
     (await this.child(this.root, ROOT_KV)).delete(k);
     await this.whenDurable?.();

@@ -664,6 +664,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
         icon: entry.icon ?? entry.identity?.icon,
         source: saved.source,
         shared: (space?.().members.length ?? 1) > 1,
+        trusted: saved.trusted === true,
       });
     })().catch((e: unknown) => console.warn("[potyro] could not record this app on your account:", e));
   }

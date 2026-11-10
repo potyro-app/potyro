@@ -53,6 +53,19 @@ describe("the apps your account knows about", () => {
     expect(app?.sizeBytes).toBe(4_200);
   });
 
+  it("keeps whether the app is the person's own, and reads an entry without it as not theirs", async () => {
+    // The list holds joined apps too. A new device runs only what a device of theirs recorded as
+    // their own directly; an older entry that says nothing must not read as "own".
+    const handle = await createJazzStore("split", { db: await memoryDb(), crypto, keys: memoryKeys() });
+
+    await publishAppToAccount(handle.node, { ...APP, id: "mine", trusted: true });
+    await publishAppToAccount(handle.node, { ...APP, id: "joined", trusted: false });
+    await publishAppToAccount(handle.node, { ...APP, id: "older" });
+
+    const byId = Object.fromEntries((await readAccountApps(handle.node)).map((a) => [a.id, a.trusted]));
+    expect(byId).toEqual({ mine: true, joined: false, older: false });
+  });
+
   it("is empty — not an error — on a device that has never written one", async () => {
     const handle = await createJazzStore("plants", { db: await memoryDb(), crypto, keys: memoryKeys() });
     expect(await readAccountApps(handle.node)).toEqual([]);
