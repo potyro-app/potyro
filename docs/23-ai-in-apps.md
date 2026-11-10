@@ -141,10 +141,11 @@ A refusal about one field of the request also carries `param`, the field's name.
 | Code | Status | When | What the shell does |
 |---|---|---|---|
 | `allowance` | 429 | The device's month is used up — or what is left is not enough for this request (a shorter one may still fit; the message says so) | Move to the person's own key |
-| `address-day` | 429 | This network's day is used up (an IPv6 network by its /64) | Own key; else "back tomorrow" |
-| `service-day` | 429 | The whole service's day is used up | Own key; else "back tomorrow" |
-| `service-month` | 429 | The whole service's month is used up | Own key |
+| `address-day` | 429 | This network's day is spent (an IPv6 network by its /64) | Own key; else "back tomorrow" |
+| `service-day` | 429 | The whole service's day is spent | Own key; else "back tomorrow" |
+| `service-month` | 429 | The whole service's month is spent | Own key |
 | `busy` | 429 | The device has too many requests out | Wait and retry |
+| `service-busy` | 503, `Retry-After: 5` | Nothing is used up, but there is no room this moment: the requests in flight hold what is left of the service's day or month, or of this network's day, or as many are out as the relay sends at once (`AI_MAX_IN_FLIGHT`) | "Busy, try again in a moment"; nothing kept |
 | `off` | 503 | The kill switch is on | Own key; else "try later" |
 | `device` | 401 | No `Bearer potyro-device:<id>` | A bug: update |
 | `model` | 400 | A model the free allowance does not offer | Use the default model, or own key |
@@ -154,10 +155,18 @@ A refusal about one field of the request also carries `param`, the field's name.
 | `method` | 405 | Not a POST | A bug: update |
 | `upstream` | 502 | OpenRouter failed, or refused Potyro's key | Retry, or own key |
 
-Every `429` but `busy` carries `x-potyro-left-usd`. A refusal from OpenRouter itself that the sender
-can act on (a 400 such as "reasoning is mandatory") is passed back as OpenRouter sent it.
-`/complete` keeps its own shape (`429 {"ok":false,"error":"allowance","reason":…}`, with
-`service-day` among the reasons), which the shell already reads.
+Every `429` but `busy` carries `x-potyro-left-usd`; `service-busy` never does. A refusal from
+OpenRouter itself that the sender can act on (a 400 such as "reasoning is mandatory") is passed back
+as OpenRouter sent it. `/complete` keeps its own shape (`429 {"ok":false,"error":"allowance","reason":…}`,
+with `service-day` among the reasons), which the shell already reads; its "no room this moment" is
+`503 {"ok":false,"error":"busy"}` with `Retry-After`, which the shell says as "didn't answer, try
+again in a minute".
+
+**Used up is about money spent; busy is about this moment.** A request in flight is held for the
+most it could cost, about ten times what it will. So many people at the same minute can hold a
+whole day of which almost nothing is spent. The `-day` and `-month` codes are answered only when
+what was really *spent* leaves no room, because the shell keeps them until the day or month ends;
+when only holds are in the way the answer is `service-busy`, which is over in seconds.
 
 ### The Potyro engine: the Studio's free path (#121, #455)
 
@@ -190,7 +199,8 @@ can act on (a 400 such as "reasoning is mandatory") is passed back as OpenRouter
   `allowance` is a stop only when its `x-potyro-left-usd` is under the relay's least hold ($0.02):
   with more left, this one request does not fit and a shorter one may, so it is said as *"This
   conversation is too long for the free allowance. Start a new app, or add your own key."* and
-  nothing is kept. `busy`, `plan`, `too-big`, `upstream` are said and nothing stops; `device`,
+  nothing is kept. `busy`, `service-busy`, `plan`, `too-big`, `upstream` are said and nothing
+  stops (`service-busy` reads *"Free app making is busy right now. Try again in a moment."*); `device`,
   `model`, `request`, `method` say to reload. Fix this returns any of them as its refusal, never a
   throw (`start-fix.ts`).
 - **The panel** shows whenever no engine can make an app (no free route and no key, or it stopped):

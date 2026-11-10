@@ -152,7 +152,7 @@ describe("the chat route", () => {
   it("refuses a device past its monthly allowance BEFORE dispatch, and counts it as exhausted once", async () => {
     const up = upstream([() => new Response(answer(0.3)), () => new Response(answer(0.15))]);
     const ledger = memoryLedger();
-    const chat = createChatProxy({ upstream: up.fn, now: () => NOW, ledger, limits: { deviceMonthUsd: 0.5, reserveUsd: 0.1 } });
+    const chat = createChatProxy({ upstream: up.fn, now: () => NOW, ledger, limits: { deviceMonthUsd: 0.5, reserveUsd: 0.1, addressDayUsd: 0.6 } });
     await text(await chat.handle(post(chatBody())));
     // 0.3 spent + 0.1 held fits under 0.5: sent.
     await text(await chat.handle(post(chatBody())));
@@ -253,7 +253,7 @@ describe("the chat route", () => {
     expect(ledger.spent("2026-10")).toBeCloseTo(0.0031);
   });
 
-  it("charges the estimate whenever the answer does not say what it cost, and passes a refusal back as it is", async () => {
+  it("charges the estimate for a whole answer that does not say what it cost, and nothing for one OpenRouter refused or failed", async () => {
     const ledger = memoryLedger();
     const errors: unknown[] = [];
     const up = upstream([
@@ -261,29 +261,48 @@ describe("the chat route", () => {
       () => new Response('{"error":{"message":"reasoning is mandatory"}}', { status: 400 }),
       () => new Response('{"error":{"message":"Insufficient credits"}}', { status: 402 }),
       () => new Response('{"error":{"message":"upstream died"}}'),
-      new Error("network"),
+      () => new Response('{"error":{"message":"Rate limit exceeded"}}', { status: 429 }),
+      () => new Response('{"error":{"message":"Bad gateway"}}', { status: 502 }),
       () => new Response(answer(0.001)),
     ]);
     const chat = createChatProxy({ upstream: up.fn, now: () => NOW, ledger, limits: { reserveUsd: 0.02 }, onError: (e) => errors.push(e) });
     const each = estimate(chatBody());
+    // A whole answer with no cost in it: it ran, and how far is not known. The estimate.
     await text(await chat.handle(post(chatBody())));
     expect(ledger.spent("2026-10")).toBeCloseTo(each, 9);
-    // A refusal the Studio acts on comes back as it is.
+    // A refusal the Studio acts on comes back as it is. It never ran: nothing.
     const refused = await chat.handle(post(chatBody()));
     expect(refused.status).toBe(400);
     expect(await text(refused)).toContain("reasoning is mandatory");
-    // Potyro's key out of credit is not the sender's business.
+    expect(ledger.spent("2026-10")).toBeCloseTo(each, 9);
+    // Potyro's key out of credit is not the sender's business, and not the sender's to pay for.
     expect(await chat.handle(post(chatBody()))).toMatchObject({ status: 502, json: { error: { code: "upstream" } } });
+    expect(ledger.spent("2026-10")).toBeCloseTo(each, 9);
+    // A 200 whose body is an error and says no cost: a whole answer again, the estimate.
     await text(await chat.handle(post(chatBody())));
+    expect(ledger.spent("2026-10")).toBeCloseTo(2 * each, 9);
+    // OpenRouter's own 429, passed through with no cost: nothing.
+    const limited = await chat.handle(post(chatBody()));
+    expect(limited.status).toBe(429);
+    await text(limited);
+    // OpenRouter down: nothing.
     expect((await chat.handle(post(chatBody()))).status).toBe(502);
-    // Five answers without a cost: five estimates. Then one that says what it cost: that.
-    expect(ledger.spent("2026-10")).toBeCloseTo(5 * each, 9);
+    expect(ledger.spent("2026-10")).toBeCloseTo(2 * each, 9);
+    expect(ledger.deviceSpent("2026-10", "device-0001")).toBeCloseTo(2 * each, 9);
+    // One that says what it cost: that.
     await text(await chat.handle(post(chatBody())));
-    expect(ledger.spent("2026-10")).toBeCloseTo(5 * each + 0.001, 9);
+    expect(ledger.spent("2026-10")).toBeCloseTo(2 * each + 0.001, 9);
     expect(errors).toHaveLength(2);
   });
 
-  it("charges the estimate when the sender goes away before OpenRouter answers, and does not report it as a failure", async () => {
+  it("charges an error answer what it says it cost, when it says", async () => {
+    const ledger = memoryLedger();
+    const chat = createChatProxy({ upstream: async () => new Response('{"error":{"message":"cut"},"usage":{"cost":0.004}}', { status: 400 }), now: () => NOW, ledger });
+    await text(await chat.handle(post(chatBody())));
+    expect(ledger.spent("2026-10")).toBeCloseTo(0.004, 9);
+  });
+
+  it("charges only what was sent when the sender goes away before OpenRouter answers, and does not report it as a failure", async () => {
     const ledger = memoryLedger();
     const errors: unknown[] = [];
     const gone = new AbortController();
@@ -297,20 +316,44 @@ describe("the chat route", () => {
     const pending = chat.handle(post(chatBody(), { signal: gone.signal }));
     gone.abort();
     expect((await pending).status).toBe(502);
-    expect(ledger.deviceSpent("2026-10", "device-0001")).toBeCloseTo(estimate(chatBody()), 9);
+    // The request's own side of the estimate, none of the 64 000 tokens it might have answered with.
+    expect(ledger.deviceSpent("2026-10", "device-0001")).toBeCloseTo(estimate(chatBody(), 0), 12);
+    expect(estimate(chatBody(), 0)).toBeLessThan(estimate(chatBody()) / 100);
     expect(errors).toEqual([]);
   });
 
-  it("charges the estimate when a timeout or the network ends a request, and reports it", async () => {
+  it("charges nothing when OpenRouter was never reached", async () => {
     const ledger = memoryLedger();
     const errors: unknown[] = [];
-    const chat = createChatProxy({ upstream: async () => Promise.reject(new DOMException("timed out", "TimeoutError")), now: () => NOW, ledger, onError: (e) => errors.push(e) });
+    const refused = Object.assign(new TypeError("fetch failed"), { cause: Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNREFUSED" }) });
+    const chat = createChatProxy({ upstream: async () => Promise.reject(refused), now: () => NOW, ledger, onError: (e) => errors.push(e) });
     expect((await chat.handle(post(chatBody()))).status).toBe(502);
-    expect(ledger.spent("2026-10")).toBeCloseTo(estimate(chatBody()), 9);
+    expect(ledger.spent("2026-10")).toBe(0);
+    expect(ledger.daySpent("2026-10-15")).toBe(0);
     expect(errors).toHaveLength(1);
   });
 
-  it("charges the estimate for a stream cut before its usage chunk", async () => {
+  it("charges a request that timed out with no answer for what it sent and what could have been written meanwhile", async () => {
+    let now = NOW;
+    const ledger = memoryLedger();
+    const errors: unknown[] = [];
+    const chat = createChatProxy({
+      upstream: async () => {
+        now += 10_000;
+        throw new DOMException("timed out", "TimeoutError");
+      },
+      now: () => now,
+      ledger,
+      limits: { outTokensPerSecond: 300 },
+      onError: (e) => errors.push(e),
+    });
+    expect((await chat.handle(post(chatBody()))).status).toBe(502);
+    // Ten seconds out, at 300 tokens a second at most: 3 000 tokens of the 64 000 it could ask for.
+    expect(ledger.spent("2026-10")).toBeCloseTo(estimate(chatBody(), 3_000), 12);
+    expect(errors).toHaveLength(1);
+  });
+
+  it("charges the estimate for a stream that ends without its usage chunk", async () => {
     const c = controlled();
     const ledger = memoryLedger();
     const chat = createChatProxy({ upstream: async () => new Response(c.stream), now: () => NOW, ledger });
@@ -319,6 +362,58 @@ describe("the chat route", () => {
     c.end();
     await text(res);
     expect(ledger.spent("2026-10")).toBeCloseTo(estimate(chatBody({ stream: true, max_tokens: 1_000 }), 1_000), 9);
+  });
+
+  it("charges a stream the sender leaves for what it sent and every byte of answer it was given", async () => {
+    const c = controlled();
+    const ledger = memoryLedger();
+    const chat = createChatProxy({ upstream: async () => new Response(c.stream), now: () => NOW, ledger });
+    const body = chatBody({ stream: true });
+    const res = await chat.handle(post(body));
+    if (!("stream" in res)) throw new Error("not piped");
+    const reader = res.stream.getReader();
+    c.push(": OPENROUTER PROCESSING\n\n");
+    c.push('data: {"id":"gen-1","choices":[{"index":0,"delta":{"content":"Hello "}}]}\n\n');
+    c.push('data: {"id":"gen-1","choices":[{"index":0,"delta":{"reasoning":"thinking"}}]}\n\n');
+    c.push('data: {"id":"gen-1","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"a\\":1}"}}]}}]}\n\n');
+    c.push('data: {"id":"gen-1","choices":[{"index":0,"delta":{"content":"wörld"}}]}\n\n');
+    for (let i = 0; i < 5; i++) await reader.read();
+    await reader.cancel();
+    // "Hello " 6 + "thinking" 8 + {"a":1} 7 + "wörld" 6 bytes: 27 tokens at the very most, of 64 000.
+    expect(ledger.deviceSpent("2026-10", "device-0001")).toBeCloseTo(estimate(body, 27), 12);
+    expect(ledger.daySpent("2026-10-15")).toBeCloseTo(estimate(body, 27), 12);
+  });
+
+  it("does not give an answer away to a sender that leaves just before the usage chunk", async () => {
+    const c = controlled();
+    const ledger = memoryLedger();
+    const chat = createChatProxy({ upstream: async () => new Response(c.stream), now: () => NOW, ledger });
+    const body = chatBody({ stream: true, max_tokens: 2_000 });
+    const res = await chat.handle(post(body));
+    if (!("stream" in res)) throw new Error("not piped");
+    const reader = res.stream.getReader();
+    // 300 chunks of 20 characters: 6 000 bytes of answer, which is more tokens than it may ask for.
+    for (let i = 0; i < 300; i++) c.push(`data: {"choices":[{"delta":{"content":"${"x".repeat(20)}"}}]}\n\n`);
+    for (let i = 0; i < 300; i++) await reader.read();
+    await reader.cancel();
+    // Everything but the cost arrived: it pays the whole estimate, as an answer without a cost does.
+    expect(ledger.spent("2026-10")).toBeCloseTo(estimate(body, 2_000), 12);
+  });
+
+  it("charges a stream OpenRouter cuts for what came, and for the time it was out when little came", async () => {
+    let now = NOW;
+    const ledger = memoryLedger();
+    let ctl!: ReadableStreamDefaultController<Uint8Array>;
+    const stream = new ReadableStream<Uint8Array>({ start: (c) => void (ctl = c) });
+    const chat = createChatProxy({ upstream: async () => new Response(stream), now: () => now, ledger, limits: { outTokensPerSecond: 300 } });
+    const body = chatBody({ stream: true });
+    const res = await chat.handle(post(body));
+    ctl.enqueue(enc.encode('data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n'));
+    // Twenty seconds of hidden thinking could be 6 000 tokens; the two bytes that came say less.
+    now += 20_000;
+    ctl.error(new Error("socket hang up"));
+    await text(res).catch(() => {});
+    expect(ledger.spent("2026-10")).toBeCloseTo(estimate(body, 6_000), 12);
   });
 
   it("refuses unsent a request whose estimate is more than the device has left, and says a smaller one may fit", async () => {
@@ -348,8 +443,8 @@ describe("the chat route", () => {
     await reader.read();
     await reader.cancel();
     expect(cancelled).toBe(true);
-    // The cost is not known: the estimate is charged, and the slot is free again.
-    expect(ledger.spent("2026-10")).toBeCloseTo(estimate(chatBody({ stream: true })), 9);
+    // Nothing of an answer had come (a keep-alive line is not one): what it sent is charged, and the slot is free again.
+    expect(ledger.spent("2026-10")).toBeCloseTo(estimate(chatBody({ stream: true }), 0), 12);
     const again = await chat.handle(post(chatBody()));
     expect(again.status).toBe(200);
   });
@@ -430,7 +525,7 @@ describe("the chat route", () => {
     expect((await chat.handle(post(chatBody(), { ip: "3.3.3.3" }))).status).toBe(200);
   });
 
-  it("holds every request in flight against the service's caps, so many at once cannot cross them", async () => {
+  it("holds every request in flight against the service's caps, so many at once cannot cross them, and says busy, not used up", async () => {
     const pending: Array<ReturnType<typeof controlled>> = [];
     const slow = async (): Promise<Response> => {
       const c = controlled();
@@ -438,21 +533,88 @@ describe("the chat route", () => {
       return new Response(c.stream);
     };
     const each = estimate(chatBody());
+    const ledger = memoryLedger();
     // Room for three holds of the 0.02 reserve, not four.
-    const chat = createChatProxy({ upstream: slow, now: () => NOW, limits: { dayUsd: 0.07, monthlyUsd: 10, addressDayUsd: 0.05, reserveUsd: 0.02 } });
+    const chat = createChatProxy({ upstream: slow, now: () => NOW, ledger, limits: { dayUsd: 0.07, monthlyUsd: 10, addressDayUsd: 0.05, reserveUsd: 0.02 } });
     expect(each).toBeLessThan(0.02);
-    for (let i = 0; i < 3; i++) expect((await chat.handle(post(chatBody(), { ip: `10.0.0.${i}`, authorization: `Bearer potyro-device:device-000${i}` }))).status).toBe(200);
-    expect(await chat.handle(post(chatBody(), { ip: "10.0.0.9", authorization: "Bearer potyro-device:device-0009" }))).toMatchObject({ json: { error: { code: "service-day" } } });
+    const from = (i: number) => post(chatBody(), { ip: `10.0.0.${i}`, authorization: `Bearer potyro-device:device-000${i}` });
+    const out: ChatReply[] = [];
+    for (let i = 0; i < 3; i++) out.push(await chat.handle(from(i)));
+    expect(out.map((r) => r.status)).toEqual([200, 200, 200]);
+    // Nothing is spent yet: the day is not used up, the relay is full for a moment.
+    const fourth = await chat.handle(from(9));
+    expect(fourth).toMatchObject({
+      status: 503,
+      headers: { "retry-after": "5" },
+      json: { error: { code: "service-busy", type: "potyro", message: CHAT_MESSAGES["service-busy"] } },
+    });
+    expect(fourth.headers["x-potyro-left-usd"]).toBeUndefined();
     expect(pending).toHaveLength(3);
+    // They settle at a tenth of a cent each, and the same request goes.
+    pending.forEach((p) => (p.push(answer(0.001)), p.end()));
+    await Promise.all(out.map(text));
+    expect(ledger.daySpent("2026-10-15")).toBeCloseTo(0.003, 9);
+    expect((await chat.handle(from(9))).status).toBe(200);
   });
 
-  it("gives an address four devices' months a day by default, and never as much as the service's day", () => {
+  it("says busy, not this network's day, when an address is over only by what its requests in flight hold", async () => {
+    const pending: Array<ReturnType<typeof controlled>> = [];
+    const slow = async (): Promise<Response> => {
+      const c = controlled();
+      pending.push(c);
+      return new Response(c.stream);
+    };
+    // A classroom behind one address: room for two holds of 0.02 in its 0.05 a day.
+    const chat = createChatProxy({ upstream: slow, now: () => NOW, limits: { addressDayUsd: 0.05, dayUsd: 5, reserveUsd: 0.02 } });
+    const from = (i: number) => post(chatBody(), { authorization: `Bearer potyro-device:pupil-000${i}` });
+    const out = [await chat.handle(from(1)), await chat.handle(from(2))];
+    expect(await chat.handle(from(3))).toMatchObject({ status: 503, headers: { "retry-after": "5" }, json: { error: { code: "service-busy" } } });
+    pending.forEach((p) => (p.push(answer(0.001)), p.end()));
+    await Promise.all(out.map(text));
+    expect((await chat.handle(from(3))).status).toBe(200);
+  });
+
+  it("lets only so many requests be out at once for the whole service, and says busy to the next", async () => {
+    const pending: Array<ReturnType<typeof controlled>> = [];
+    const slow = async (): Promise<Response> => {
+      const c = controlled();
+      pending.push(c);
+      return new Response(c.stream);
+    };
+    const ledger = memoryLedger();
+    const budget = createBudget({ now: () => NOW, ledger, monthlyUsd: 1000, maxInFlight: 2 });
+    const chat = createChatProxy({ upstream: slow, now: () => NOW, ledger, budget, limits: { addressDayUsd: 50 } });
+    const from = (i: number) => post(chatBody(), { ip: `10.0.0.${i}`, authorization: `Bearer potyro-device:device-000${i}` });
+    const out = [await chat.handle(from(1)), await chat.handle(from(2))];
+    expect(await chat.handle(from(3))).toMatchObject({ status: 503, headers: { "retry-after": "5" }, json: { error: { code: "service-busy" } } });
+    expect(pending).toHaveLength(2);
+    pending[0]!.push(answer(0));
+    pending[0]!.end();
+    await text(out[0]!);
+    expect((await chat.handle(from(3))).status).toBe(200);
+  });
+
+  it("still says used up, before busy, when the day's money really is spent", async () => {
+    const ledger = memoryLedger();
+    ledger.addDaySpend("2026-10-15", 0.06);
+    const budget = createBudget({ now: () => NOW, ledger, monthlyUsd: 10, dayUsd: 0.07, maxInFlight: 1 });
+    budget.hold(0.001);
+    const up = upstream();
+    const chat = createChatProxy({ upstream: up.fn, now: () => NOW, ledger, budget, limits: { addressDayUsd: 0.05 } });
+    expect(await chat.handle(post(chatBody()))).toMatchObject({ status: 429, headers: { "x-potyro-left-usd": "0" }, json: { error: { code: "service-day" } } });
+    expect(up.sent).toHaveLength(0);
+  });
+
+  it("gives an address a fifth of the service's day by default, at most four devices' months, and takes another share", () => {
     expect(chatLimits({ deviceMonthUsd: 0.5, monthlyUsd: 100 }).addressDayUsd).toBe(2);
-    // $10 a month is $1.25 a day: one network may have half of it.
-    expect(chatLimits({ deviceMonthUsd: 0.5, monthlyUsd: 10 })).toMatchObject({ dayUsd: 1.25, addressDayUsd: 0.625 });
+    // $10 a month is $1.25 a day: one network may have a fifth of it, so no two or three close the day.
+    expect(chatLimits({ deviceMonthUsd: 0.5, monthlyUsd: 10 })).toMatchObject({ dayUsd: 1.25, addressDayUsd: 0.25 });
+    expect(chatLimits({ deviceMonthUsd: 0.5, monthlyUsd: 10, addressDayShare: 0.1 }).addressDayUsd).toBe(0.125);
     expect(() => chatLimits({ addressDayUsd: 2, dayUsd: 1 })).toThrow(/below the service's daily cap/);
+    for (const share of [0, 1, 1.5]) expect(() => chatLimits({ addressDayShare: share })).toThrow(/AI_ADDRESS_DAY_SHARE/);
     // A shared budget's day is the one in force.
-    expect(chatLimits({ deviceMonthUsd: 0.5 }, 8).addressDayUsd).toBe(2);
+    expect(chatLimits({ deviceMonthUsd: 0.5 }, 8)).toMatchObject({ addressDayUsd: 1.6 });
+    expect(chatLimits({ deviceMonthUsd: 0.5 }, 80).addressDayUsd).toBe(2);
   });
 
   it("will not start with a model it has no price for", () => {

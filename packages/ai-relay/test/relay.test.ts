@@ -224,12 +224,34 @@ describe("the relay", () => {
     const chatPost = { method: "POST", body: JSON.stringify({ model: "deepseek/deepseek-v4-flash-0731", messages: [{ role: "user", content: "hi" }] }), ip: "5.5.5.5", authorization: "Bearer potyro-device:device-0009" };
     const out = relay.handle(post(payload()));
     expect(budget.held()).toBeCloseTo(each, 9);
-    expect(await chat.handle(chatPost)).toMatchObject({ status: 429, json: { error: { code: "service-month" } } });
+    // Nothing is spent: the month is not used up, there is no room while that one is out.
+    expect(await chat.handle(chatPost)).toMatchObject({ status: 503, json: { error: { code: "service-busy" } } });
     waiting.forEach((w) => w());
     expect((await out).status).toBe(200);
     expect(budget.held()).toBe(0);
     expect(ledger.spent("2026-10")).toBeCloseTo(0.0001, 9);
     expect((await chat.handle(chatPost)).status).toBe(200);
+  });
+
+  it("answers busy with when to come back, not used up, while requests in flight are all that is in the way", async () => {
+    const ledger = memoryLedger();
+    const budget = createBudget({ now: () => NOW, ledger, monthlyUsd: 10, maxInFlight: 1 });
+    const waiting: Array<() => void> = [];
+    const slow = () => new Promise<UpstreamReply>((resolve) => waiting.push(() => resolve({ ok: true, text: "x", cost: 0.0001 })));
+    const relay = createAiRelay({ upstream: slow, now: () => NOW, ledger, budget });
+    const out = relay.handle(post(payload()));
+    const second = await relay.handle(post(payload({ device: "device-0002" }), "9.9.9.9"));
+    expect(second).toEqual({ status: 503, body: { ok: false, error: "busy" }, headers: { "retry-after": "5" } });
+    // Not sent, and not counted as one of the device's turns.
+    expect(waiting).toHaveLength(1);
+    expect(ledger.count("2026-10", "device-0002")).toBe(0);
+    waiting.forEach((w) => w());
+    await out;
+    // The first has settled: the same request goes out now.
+    const again = relay.handle(post(payload({ device: "device-0002" }), "9.9.9.9"));
+    expect(waiting).toHaveLength(2);
+    waiting[1]!();
+    expect((await again).status).toBe(200);
   });
 
   it("counts an IPv6 sender by its /64", async () => {

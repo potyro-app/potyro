@@ -106,17 +106,49 @@ describe("the service's budget", () => {
     const ledger = memoryLedger();
     const budget = createBudget({ now: () => now, ledger, monthlyUsd: 1, dayUsd: 0.1 });
     const release = budget.hold(0.06);
-    expect(budget.over(0.05)).toBe("service-day");
+    // In the way, though nothing is spent: not now, and not "used up" either.
+    expect(budget.over(0.05)).toBe("busy");
     expect(budget.over(0.04)).toBeNull();
     release(0.07);
     release(0.07); // once only
     expect(budget.held()).toBe(0);
     expect(ledger.daySpent("2026-10-15")).toBeCloseTo(0.07);
+    // Spent: the day really is used up for a request this size.
     expect(budget.over(0.04)).toBe("service-day");
     now += 24 * HOUR;
     expect(budget.over(0.04)).toBeNull();
     ledger.addSpend("2026-10", 0.99);
     expect(budget.over(0.02)).toBe("service-month");
+  });
+
+  it("says busy, never used up, when a cap is crossed only by what requests in flight hold", () => {
+    const ledger = memoryLedger();
+    const budget = createBudget({ now: () => NOW, ledger, monthlyUsd: 0.5, dayUsd: 0.41 });
+    const releases = Array.from({ length: 19 }, () => budget.hold(0.02));
+    // 0.38 held of a day of 0.41 and nothing spent: the twentieth fits, the twenty-first waits.
+    expect(budget.over(0.02)).toBeNull();
+    releases.push(budget.hold(0.02));
+    expect(budget.over(0.02)).toBe("busy");
+    // They settle at what they really cost, and there is room again.
+    releases.forEach((r) => r(0.001));
+    expect(budget.over(0.02)).toBeNull();
+    // The month the same: 0.49 held of 0.50 by one large request.
+    const big = createBudget({ now: () => NOW, monthlyUsd: 0.5, dayUsd: 5 });
+    big.hold(0.49);
+    expect(big.over(0.02)).toBe("busy");
+  });
+
+  it("lets only so many requests be out at once, whatever they hold", () => {
+    const budget = createBudget({ now: () => NOW, monthlyUsd: 100, maxInFlight: 2 });
+    expect(createBudget({ now: () => NOW }).maxInFlight).toBe(50);
+    const a = budget.hold(0.001);
+    budget.hold(0.001);
+    expect(budget.inFlight()).toBe(2);
+    expect(budget.over(0.001)).toBe("busy");
+    a(0);
+    expect(budget.inFlight()).toBe(1);
+    expect(budget.over(0.001)).toBeNull();
+    expect(() => createBudget({ now: () => NOW, maxInFlight: 0 })).toThrow(/AI_MAX_IN_FLIGHT/);
   });
 });
 
