@@ -10,6 +10,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { PlatformRequestPayload } from "@potyro/platform-requests";
 import type { PlatformAsk, SentRequest } from "./studio-chat.js";
 import { LegalLink } from "./legal-links.js";
+import { safeHref } from "@potyro/views";
 
 export interface PlatformRequestCardProps {
   ask: PlatformAsk;
@@ -89,8 +90,8 @@ export function PlatformRequestCard({ ask, sent, review, onSend }: PlatformReque
       ) : done ? (
         <p className="k-ask-card-state" role="status">
           <Trans>Sent to the Potyro team. If they add it, you'll hear about it here.</Trans>{" "}
-          {sent?.url ? (
-            <a href={sent.url} target="_blank" rel="noreferrer noopener">
+          {safeHref(sent?.url) ? (
+            <a href={safeHref(sent?.url)!} target="_blank" rel="noreferrer noopener">
               <Trans>See the request</Trans>
             </a>
           ) : null}

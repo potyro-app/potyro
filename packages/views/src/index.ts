@@ -22,6 +22,7 @@ export { CustomView, TRUST_REQUEST } from "./custom.js";
 export { useDisplayCells } from "./cells.js";
 export { useDynamicText, usePageTitles } from "./dynamic.js";
 export { FieldValue } from "./field-value.js";
+export { safeHref } from "./safe-href.js";
 export { FieldInput, type FieldInputProps } from "./field-input.js";
 export { resolveGroups, type ResolvedGroup, type GroupSurface } from "./groups.js";
 export { RecordForm, ValuesForm, createDefaults, type RecordFormProps, type ValuesFormProps } from "./record-form.js";

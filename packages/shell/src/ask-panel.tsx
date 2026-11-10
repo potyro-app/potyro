@@ -14,7 +14,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { AskContext, AskStep, ChatMessage, Citation, Proposal } from "@potyro/generator/agent";
-import { mapArea, subscribeMapArea, Glyph } from "@potyro/views";
+import { mapArea, subscribeMapArea, Glyph, safeHref } from "@potyro/views";
 import { ApplyError, applyEdits, applyProposal, entitiesToLoad, prepareReview, runActions, type Review, type ReviewRow } from "./ask-apply.js";
 import { doneText, ReviewPanel, type AcceptedEdit, type AcceptedRun } from "./ask-review.js";
 import { placeByAddress } from "./ask-geocode.js";
@@ -140,9 +140,14 @@ function Found({ citations }: { citations: Citation[] }) {
       <ul>
         {citations.map((c) => (
           <li key={c.url}>
-            <a href={c.url} target="_blank" rel="noreferrer noopener">
-              {c.title || c.url}
-            </a>
+            {safeHref(c.url) ? (
+              <a href={safeHref(c.url)!} target="_blank" rel="noreferrer noopener">
+                {c.title || c.url}
+              </a>
+            ) : (
+              // An address that does not lead out to the web is named, never linked.
+              <span>{c.title || c.url}</span>
+            )}
           </li>
         ))}
       </ul>
