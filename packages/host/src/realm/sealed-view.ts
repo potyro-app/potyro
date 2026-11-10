@@ -12,6 +12,7 @@ import type { SealedView, SealedViewEvents } from "../types.js";
 import { SocketBridge } from "../socket-bridge.js";
 import type { Channel } from "./channel.js";
 import { spawnViewFrame, type ViewFrameHandle } from "./frame.js";
+import { watchPlace } from "./place-watch.js";
 import type { CtxBase, Op, ViewOp, ViewToHost } from "./protocol.js";
 import { ViewGuard } from "./view-guard.js";
 import { VIEW_CHECK_MS, VIEW_PING_MS, ViewWatchdog, type ViewVerdict, type ViewWatchdogOptions } from "./view-watchdog.js";
@@ -275,6 +276,17 @@ export class SealedViewController implements SealedView {
       chrome.observe(probe);
       offs.push(() => chrome.disconnect());
     }
+    // The room also starts where the view's place starts, and that moves with no resize of anything
+    // named here: a bar above the app that comes, wraps, grows or goes (a demo link's bar; the
+    // gallery's screenshots hide it), a layout that settles after the mount. Measured once, the
+    // view then ended short of the seal or ran under the bottom bar (#41). So its top corner is
+    // watched, and the room is measured again whenever it is somewhere else.
+    const corner = doc.createElement("div");
+    corner.setAttribute("aria-hidden", "true");
+    corner.style.cssText = "position:absolute;top:0;left:0;width:1px;height:1px;visibility:hidden;pointer-events:none";
+    el.appendChild(corner);
+    offs.push(() => corner.remove());
+    offs.push(watchPlace(corner, size));
 
     // ---- the theme, again whenever it changes ----
     const retheme = (): void => post({ t: "tokens", tokens: frameTokens(el) });
