@@ -8,6 +8,7 @@ rebuilt from the repository plus the owner's secrets. The whole deployment is de
 |---|---|
 | `potyro.app.Caddyfile` | `/etc/caddy/Caddyfile` on the server: potyro.app, potyro.com, and the names that forward to potyro.app |
 | `containers.sh` | run on that server, as root, from a checkout: copies each service's package into `/opt/potyro-*` and (re)creates its container |
+| `backup.sh` | run on that server each night by cron: the relay's database, the share links and the AI ledger, copied safely, checked, sent offsite, old copies pruned (docs/16 §6); `backup.test.sh` checks it against a scratch folder |
 | `env.example/*.env.example` | one template per env file in `/etc/potyro/` (`requests.env`, `ai.env`, `share-links.env`): the variable names, never the values |
 
 The shell itself is not here: it is static files, built and rsynced to `/srv/potyro/site` by the
