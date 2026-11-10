@@ -336,9 +336,10 @@ If sync never connects, check the relay URL first: **⌾ You → Sync relay** sh
 
 ## 6. Backups (#214)
 
-`deploy/backup.sh` makes the copy; it is in the repository, **installing it on the server and
-choosing where the offsite copy goes are the owner's, and are not done yet.** Until a restore has
-been performed once ([the drill](#the-restore-drill)), treat the backup as unproven.
+`deploy/backup.sh` makes the copy. A restore from one has been performed
+([the drill](#the-restore-drill), 2026-11-10). **The nightly run and the offsite copy are the
+owner's to set up, and are not done yet:** until they are, the only copy is one made by hand, on
+the server's own disk, which a lost server takes with it.
 
 What holds state on the server:
 
@@ -390,7 +391,12 @@ It runs beside the live relay and touches nothing of it.
    `docker run --rm -p 127.0.0.1:4299:4299 -v /opt/potyro-relay:/app:ro -v /tmp/drill:/data -w /app node:22-bookworm node node_modules/.bin/jazz-run sync --host 0.0.0.0 --port 4299 --db /data/sync.db`
 4. Point a device at it and watch a real app arrive: a fresh browser profile on a build whose sync
    address is the scratch relay, signed in with an account's recovery words, offered its apps, one
-   opened with its records in it.
+   opened with its records in it. `e2e/restore-drill-trusted.spec.ts` does both ends with a
+   throwaway account, from a checkout with the scratch relay's port forwarded
+   (`ssh -N -L 4299:127.0.0.1:4299 <server>`): its `write` half before the backup is made (an
+   account, an app that syncs through the live relay, one note), its `read` half against the
+   scratch relay. Run `read` once more against a scratch relay on an EMPTY folder: it must fail,
+   or the drill proved nothing.
 5. Write the date and what was seen in the table below. Stop the scratch relay, delete the folder.
 
 A real restore is the same, onto the real path: stop the relay (`docker stop potyro-relay`), put the
@@ -401,7 +407,7 @@ after the night of the copy is gone.
 
 | Drill | Copy from | Result |
 |---|---|---|
-| not yet performed | | |
+| 2026-11-10 | the same evening's copy, made by hand, from the server's own disk (no offsite yet) | `integrity_check` ok (9.2 MB database, 300 share-link files in the tar). A new account made an app with one note through the live relay; after the backup, a scratch relay on the copy alone gave a fresh device, signed in with the recovery words, the app and the note. Against an empty scratch relay the same steps failed, as they must. Not covered: the offsite leg, the encryption, unpacking the share links. |
 
 ## 7. Redeploying
 
