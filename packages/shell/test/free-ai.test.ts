@@ -32,7 +32,7 @@ const health = (body: unknown) => (async () => json(200, body)) as unknown as ty
 const HEALTH = "https://apps.test/ai/health";
 const potyro = { ...DEFAULT_ENGINE_CONFIG, engine: "potyro" as const };
 const refusal = (code: FreeCode, message = "the relay's words", left?: string) =>
-  json(code === "off" ? 503 : 429, { error: { code, message, type: "potyro" } }, left === undefined ? {} : { "x-potyro-left-usd": left });
+  json(code === "off" || code === "service-busy" ? 503 : 429, { error: { code, message, type: "potyro" } }, left === undefined ? {} : { "x-potyro-left-usd": left });
 
 beforeEach(async () => {
   globalThis.localStorage.clear();
@@ -61,7 +61,7 @@ describe("the relay's refusals, in words", () => {
     expect(JSON.parse(localStorage.getItem("potyro:free-ai-stop")!)).toEqual({ code: "address-day", until: new Date().toISOString().slice(0, 10) });
   });
 
-  it("stops for the month, the day, or the pause — not for a busy device or a request it could not take", () => {
+  it("stops for the month, the day, or the pause — not for a busy device, a busy relay or a request it could not take", () => {
     expect(FREE_CODES.filter(isStop).sort()).toEqual(["address-day", "allowance", "off", "service-day", "service-month"]);
   });
 });
@@ -174,6 +174,19 @@ describe("the free engine", () => {
     expect(stoppedNow()?.code).toBe("service-month");
     now = Date.parse("2026-11-01T00:00:01Z");
     expect(stoppedNow()).toBeNull();
+  });
+
+  it("a relay that is full for a moment says to try again in a moment, and nothing is kept or stopped", async () => {
+    await checkFreeAi({ url: HEALTH, fetch: health({ ok: true, chat: true }), online: () => true });
+    const busy = () => json(503, { error: { code: "service-busy", message: CHAT_MESSAGES["service-busy"], type: "potyro" } }, { "retry-after": "5" });
+    await expect(freeFetch(async () => busy())("x")).rejects.toThrow("Free app making is busy right now. Try again in a moment.");
+    expect(isStop("service-busy")).toBe(false);
+    expect(stoppedNow()).toBeNull();
+    expect(localStorage.getItem("potyro:free-ai-stop")).toBeNull();
+    expect(getFreeAi().left).toBeNull();
+    expect(engineReady(potyro)).toBe(true);
+    // The very next request goes.
+    expect((await freeFetch(async () => json(200, { choices: [] }, { "x-potyro-left-usd": "0.42" }))("x")).status).toBe(200);
   });
 
   it("no answer from /health is unknown, not 'no free route', and is asked again after a minute", async () => {

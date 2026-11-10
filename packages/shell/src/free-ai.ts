@@ -13,7 +13,8 @@
 //     that month or day is over, so the Studio shows its no-dead-end panel at once, rather than after
 //     one more request that cannot go. Only a real "used up" is kept: an `allowance` refusal while
 //     more than the relay's least hold is left means THIS request is too big for what is left, and a
-//     shorter one may still go (`stopOf`).
+//     shorter one may still go (`stopOf`). And `service-busy` (503, Retry-After) is never a stop:
+//     nothing is used up, too many people asked in the same moment, and the next try may go.
 //
 // The engine itself is the ordinary chat engine (engines.ts `chatEngineOptions`) pointed at the relay,
 // with this device's random id as its key; `freeFetch` reads the header and the refusals on the way.
@@ -37,6 +38,7 @@ export const FREE_CODES = [
   "off",
   "device",
   "busy",
+  "service-busy",
   "request",
   "too-big",
   "method",
@@ -89,6 +91,8 @@ export function refusalText(code: FreeCode): string {
       return t`Free app making is paused right now. Add your own key, or try again later.`;
     case "busy":
       return t`This device already has a request going. Wait for it to finish, then try again.`;
+    case "service-busy":
+      return t`Free app making is busy right now. Try again in a moment.`;
     case "plan":
       return t`Web search isn't part of free app making. Turn web search off, or add your own key.`;
     case "too-big":

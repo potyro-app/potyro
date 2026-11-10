@@ -4,6 +4,7 @@ import type { AddressInfo } from "node:net";
 import { killSwitch, openRouter, openRouterChat, startServer } from "../src/server.ts";
 import { clientAddress, readTrustProxy } from "../src/address.ts";
 import { createAiRelay, type RelayRequest } from "../src/relay.ts";
+import { createBudget } from "../src/budget.ts";
 import { createChatProxy } from "../src/chat.ts";
 import { memoryLedger } from "../src/ledger.ts";
 import { AI_FORMAT, OPENROUTER_URL } from "../src/request.ts";
@@ -128,6 +129,25 @@ describe("the chat route over HTTP", () => {
     expect(off.status).toBe(503);
     expect(off.headers.get("access-control-allow-origin")).toBe("https://localhost");
     expect(await off.json()).toMatchObject({ error: { code: "off", type: "potyro" } });
+  });
+
+  it("sends a busy refusal's Retry-After, and lets a native WebView read it", async () => {
+    const budget = createBudget({ now: Date.now, monthlyUsd: 10, maxInFlight: 1 });
+    budget.hold(0.001);
+    const chat = createChatProxy({ upstream: async () => new Response("{}"), now: Date.now, budget });
+    const relay = createAiRelay({ upstream: async () => ({ ok: true, text: "x", cost: 0 }), now: Date.now, budget });
+    server = await startServer({ handle: relay.handle, chat: chat.handle, port: 0, host: "127.0.0.1" });
+    const { port } = server.address() as AddressInfo;
+    const res = await fetch(`http://127.0.0.1:${port}/ai/v1/chat/completions`, { method: "POST", headers: { ...headers, origin: "https://localhost" }, body });
+    expect(res.status).toBe(503);
+    expect(res.headers.get("retry-after")).toBe("5");
+    expect(res.headers.get("access-control-expose-headers")).toContain("retry-after");
+    expect(await res.json()).toMatchObject({ error: { code: "service-busy", type: "potyro" } });
+    const payload = { format: AI_FORMAT, device: "device-0001", system: "s", parts: [{ type: "text", text: "hi" }], maxTokens: 100 };
+    const complete = await fetch(`http://127.0.0.1:${port}/ai/complete`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+    expect(complete.status).toBe(503);
+    expect(complete.headers.get("retry-after")).toBe("5");
+    expect(await complete.json()).toEqual({ ok: false, error: "busy" });
   });
 });
 

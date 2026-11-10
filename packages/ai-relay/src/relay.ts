@@ -13,7 +13,9 @@
 //     device. A request is counted when it is SENT, whatever comes back;
 //   - a MONTHLY and a DAILY SPENDING CAP for the whole service, shared with the chat route
 //     (budget.ts), checked before every dispatch with what the request could cost at most
-//     (prices.ts) on top of every request still out. After it, what it really cost (OpenRouter's
+//     (prices.ts) on top of every request still out. Past a cap by what was SPENT is "used up"
+//     (429 `allowance`); past it only by what requests in flight hold, or with as many out as the
+//     relay sends at once, is 503 `busy` with Retry-After. After it, what it really cost (OpenRouter's
 //     `usage.cost`) is spent — or the estimate, when OpenRouter did not say: a failure, an empty
 //     answer, a timeout. The month's spend and each device's count are kept in a `Ledger`
 //     (ledger.ts), which the server writes to a file, so a restart does not hand out a second
@@ -25,7 +27,7 @@
 // Pure apart from `upstream` and the ledger; server.ts is the thin HTTP part.
 
 import { addressKey } from "./address.ts";
-import { createBudget, type Budget } from "./budget.ts";
+import { BUSY_RETRY_SECONDS, createBudget, type Budget } from "./budget.ts";
 import { memoryLedger, monthOf, type Ledger } from "./ledger.ts";
 import { estimateUsd, MODEL_PRICES, priceOf, type Prices } from "./prices.ts";
 import { AI_LIMITS, AI_MODEL, openRouterBody, readAiPayload, type UpstreamReply } from "./request.ts";
@@ -77,6 +79,7 @@ export interface RelayRequest {
 export interface RelayResponse {
   status: number;
   body: Record<string, unknown>;
+  headers?: Record<string, string>;
 }
 
 /** Requests per key over the last 24 hours, in memory (window.ts). */
@@ -90,6 +93,13 @@ function dayCounter(now: () => number) {
 
 /** "Used up" — the shell then tries the person's own key, and says so when there is none. */
 const usedUp = (reason: string): RelayResponse => ({ status: 429, body: { ok: false, error: "allowance", reason } });
+
+/**
+ * "Busy" — nothing is used up: the requests in flight (on either route) hold the room there is, or
+ * as many are out as the relay sends at once (budget.ts). The shell says "try again", and does not
+ * take it for an allowance that ran out.
+ */
+const serviceBusy = (): RelayResponse => ({ status: 503, body: { ok: false, error: "busy" }, headers: { "retry-after": String(BUSY_RETRY_SECONDS) } });
 
 export function createAiRelay(deps: RelayDeps): { handle: (req: RelayRequest) => Promise<RelayResponse> } {
   const limits: Limits = { ...DEFAULT_LIMITS, ...deps.limits };
@@ -120,6 +130,7 @@ export function createAiRelay(deps: RelayDeps): { handle: (req: RelayRequest) =>
 
     // Every limit before anything is sent; the caps with room for the most this request could cost.
     const cap = budget.over(estimate);
+    if (cap === "busy") return serviceBusy();
     if (cap) return usedUp(cap);
     if (ledger.count(month, p.device) >= limits.perDeviceMonth) {
       ledger.markExhausted(month, p.device);

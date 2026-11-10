@@ -3357,6 +3357,10 @@ msgid "Free app making is busy on this network today. It's back tomorrow, or add
 msgstr "A criação grátis de apps está esgotada nesta rede hoje. Volta amanhã, ou coloca sua própria chave."
 
 #: ../shell/src/free-ai.ts
+msgid "Free app making is busy right now. Try again in a moment."
+msgstr "A criação grátis de apps está ocupada agora. Tenta de novo daqui a um instante."
+
+#: ../shell/src/free-ai.ts
 msgid "Free app making is paused right now. Add your own key, or try again later."
 msgstr "A criação grátis de apps está pausada agora. Coloca sua própria chave, ou tenta de novo mais tarde."
 

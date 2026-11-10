@@ -5,13 +5,16 @@
 //   AI_MODEL                 default google/gemini-2.5-flash-lite (AI_MODEL in request.ts) — `/complete` only
 //   AI_MONTHLY_CAP_USD       default 10 — the whole service's spend a calendar month, every route, checked before each request
 //   AI_DAY_USD               default AI_MONTHLY_CAP_USD / 8 — the same, a calendar day (UTC), so one day cannot eat the month
+//   AI_MAX_IN_FLIGHT         default 50 — requests out towards OpenRouter at once, both routes together; the next is answered
+//                            503 busy with Retry-After (as is one that only the holds of requests in flight leave no room for)
 //   AI_MODEL_PRICES          JSON {"<model>": {"input": 0.14, "output": 0.28}}, $ a million tokens, over the table in prices.ts
 //   AI_PER_DEVICE_DAY        default 20 — `/complete`
 //   AI_PER_DEVICE_MONTH      default 100 — `/complete`
 //   AI_PER_ADDRESS_DAY       default 60 — `/complete`
 //   AI_CHAT_MODELS           default deepseek/deepseek-v4-flash-0731 — comma-separated, the only models the chat route sends
 //   AI_DEVICE_MONTH_USD      default 0.5 — what one device may spend a month on the chat route
-//   AI_ADDRESS_DAY_USD       default 4 × AI_DEVICE_MONTH_USD, at most half of AI_DAY_USD — one address (IPv6: its /64) a day on the chat route; must be below AI_DAY_USD
+//   AI_ADDRESS_DAY_USD       default 4 × AI_DEVICE_MONTH_USD, at most AI_ADDRESS_DAY_SHARE of AI_DAY_USD — one address (IPv6: its /64) a day on the chat route; must be below AI_DAY_USD
+//   AI_ADDRESS_DAY_SHARE     default 0.2 — the most of AI_DAY_USD one address may have when AI_ADDRESS_DAY_USD is not set; above 0, below 1
 //   AI_CHAT_RESERVE_USD      default 0.02 — the least a chat request is held for while it is out (more when its estimate is more)
 //   AI_CHAT_MAX_TOKENS       default 64000 — the clamp on a chat request's max_tokens (the Studio's high thinking level)
 //   AI_CHAT_OFF              "1" turns the chat route off (503), read on every request
@@ -78,7 +81,7 @@ export interface ServerOptions {
 function corsHeaders(req: IncomingMessage, origins: readonly string[]): Record<string, string> {
   const origin = req.headers.origin;
   if (!origin || !origins.includes(origin)) return {};
-  return { "access-control-allow-origin": origin, vary: "Origin", "access-control-expose-headers": "x-potyro-left-usd" };
+  return { "access-control-allow-origin": origin, vary: "Origin", "access-control-expose-headers": "x-potyro-left-usd, retry-after" };
 }
 
 /** Writes the stream to the response as it comes; stops reading (and so the upstream) if the client goes. */
@@ -174,7 +177,7 @@ export function startServer(opts: ServerOptions): Promise<Server> {
           const chat = Boolean(opts.chat) && !(opts.chatOff?.() ?? false);
           return reply(r.status, { ...r.body, chat, ...(chat && opts.chatModel ? { model: opts.chatModel } : {}), ...(opts.planUrl ? { plan: opts.planUrl } : {}) });
         }
-        return reply(r.status, r.body);
+        return reply(r.status, r.body, r.headers);
       }, fail);
     });
   });
@@ -253,7 +256,7 @@ async function main(): Promise<void> {
   );
   const monthlyUsd = num("AI_MONTHLY_CAP_USD");
   // One budget for both routes: the caps count every request still out, on either.
-  const budget = createBudget({ now: Date.now, ledger, monthlyUsd: monthlyUsd ?? DEFAULT_MONTHLY_USD, dayUsd: num("AI_DAY_USD") });
+  const budget = createBudget({ now: Date.now, ledger, monthlyUsd: monthlyUsd ?? DEFAULT_MONTHLY_USD, dayUsd: num("AI_DAY_USD"), maxInFlight: num("AI_MAX_IN_FLIGHT") });
   const prices = readModelPrices(process.env.AI_MODEL_PRICES);
   const limits = defined<Limits>([
     ["monthlyUsd", monthlyUsd],
@@ -265,6 +268,7 @@ async function main(): Promise<void> {
     ["monthlyUsd", monthlyUsd],
     ["deviceMonthUsd", num("AI_DEVICE_MONTH_USD")],
     ["addressDayUsd", num("AI_ADDRESS_DAY_USD")],
+    ["addressDayShare", num("AI_ADDRESS_DAY_SHARE")],
     ["reserveUsd", num("AI_CHAT_RESERVE_USD")],
     ["maxTokens", num("AI_CHAT_MAX_TOKENS")],
   ]);
@@ -282,7 +286,7 @@ async function main(): Promise<void> {
   // A plan's page, when one exists (#120): told to the devices that asked for one, through `/health`.
   const planUrl = process.env.AI_PLAN_URL?.trim() || undefined;
   await startServer({ handle: relay.handle, chat: chat.handle, chatOff: isOff, chatModel: models[0], counts: counts.handle, port, host, trustProxy, corsOrigins, ...(planUrl ? { planUrl } : {}) });
-  console.log(`[ai-relay] ${model}; chat ${models.join(", ")}; cap $${budget.monthlyUsd} a month, $${budget.dayUsd} a day; proxy ${trustProxy}; listening on ${host}:${port}`);
+  console.log(`[ai-relay] ${model}; chat ${models.join(", ")}; cap $${budget.monthlyUsd} a month, $${budget.dayUsd} a day, ${budget.maxInFlight} at once; proxy ${trustProxy}; listening on ${host}:${port}`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) void main();

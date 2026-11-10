@@ -16,7 +16,12 @@
 //     monthly caps it shares with `/complete` (budget.ts). Every one is checked BEFORE dispatch with
 //     what the request could cost at most (prices.ts), and that much is held while it is out; after
 //     it, what OpenRouter says it cost (`usage.cost`, from the final chunk when streamed) is charged,
-//     and when it did not say (the sender went away, a timeout, a cut stream, no usage), the estimate.
+//     and when it did not say, what "WHAT A REQUEST WITHOUT A COST IS CHARGED" below works out;
+//   - "used up" and "busy" are different answers. Used up (429 `allowance`, `address-day`,
+//     `service-day`, `service-month`) is about money really spent, and the shell remembers it until
+//     the month or day ends. When only the holds of requests in flight are in the way — the
+//     service's, the address's — or as many are out as the relay sends at once, it is 503
+//     `service-busy` with Retry-After, which nobody remembers: it is over in seconds.
 //
 // Every refusal is in OpenAI's error shape, `{error: {code, message, type: "potyro"}}`, with a code
 // the shell maps (docs/23 "The chat route's refusals") and a message a person can act on.
@@ -31,7 +36,7 @@
 // Pure apart from `upstream` and the ledger; server.ts is the thin HTTP part.
 
 import { addressKey } from "./address.ts";
-import { createBudget, type Budget, type CapReason } from "./budget.ts";
+import { BUSY_RETRY_SECONDS, createBudget, type Budget, type CapReason } from "./budget.ts";
 import { memoryLedger, monthOf, type Ledger } from "./ledger.ts";
 import { estimateUsd, MODEL_PRICES, priceOf, type Prices } from "./prices.ts";
 import { dayWindow } from "./window.ts";
@@ -44,10 +49,15 @@ export interface ChatLimits {
   deviceMonthUsd: number;
   /**
    * US dollars a day for one address (an IPv6 one by its /64), whatever device ids it sends. A whole
-   * home or office behind one address shares it, so by default it is four devices' months — but
-   * never more than half the service's day, so one network cannot close the day for everyone.
+   * home, school or mobile carrier behind one address shares it, so by default it is four devices'
+   * months — but never more than `addressDayShare` of the service's day.
    */
   addressDayUsd: number;
+  /**
+   * The most of the service's day one address may have when `addressDayUsd` is not set: above 0,
+   * below 1. Default a fifth (ADDRESS_DAY_SHARE).
+   */
+  addressDayShare: number;
   /** The whole service, every route together, when no shared `budget` is given (budget.ts). */
   monthlyUsd: number;
   /** The same, a day; default an eighth of `monthlyUsd`. */
@@ -56,10 +66,29 @@ export interface ChatLimits {
   reserveUsd: number;
   /** The most output tokens one request may ask for. Reasoning comes out of the same budget. */
   maxTokens: number;
+  /**
+   * The most tokens a second a model is taken to write, for charging a request that was cut and
+   * did not say what it cost ("WHAT A REQUEST WITHOUT A COST IS CHARGED"). On the high side for the
+   * models in `AI_CHAT_MODELS`; raise it with a faster one.
+   */
+  outTokensPerSecond: number;
   /** The whole request body, checked before parsing. */
   bytes: number;
   concurrentPerDevice: number;
 }
+
+/**
+ * The most of the service's day one address may spend, by default: a fifth.
+ *
+ * It was a half, so two addresses could close the day for everyone. A smaller share protects the
+ * service; a larger one is kinder to the many people who share one address (a school, a mobile
+ * carrier's NAT). A fifth means it takes five different networks to close a day, and with the
+ * default $1.25 day still leaves one address $0.25, a dozen or two apps. With a real budget the
+ * share stops mattering: four devices' months ($2) is the lower of the two from a $10 day up. What
+ * used to hurt a shared address most was not this number but its holds being read as "used up"
+ * (thirty pupils pressing Make at once): that is `service-busy` now, and nobody is locked out.
+ */
+export const ADDRESS_DAY_SHARE = 0.2;
 
 /** The defaults; `addressDayUsd` and `dayUsd` follow from the others (`chatLimits`). */
 export const DEFAULT_CHAT_LIMITS: Omit<ChatLimits, "addressDayUsd" | "dayUsd"> = {
@@ -67,6 +96,8 @@ export const DEFAULT_CHAT_LIMITS: Omit<ChatLimits, "addressDayUsd" | "dayUsd"> =
   monthlyUsd: 10,
   reserveUsd: 0.02,
   maxTokens: 64_000,
+  outTokensPerSecond: 300,
+  addressDayShare: ADDRESS_DAY_SHARE,
   bytes: 4 * 1024 * 1024,
   concurrentPerDevice: 3,
 };
@@ -78,7 +109,9 @@ export const ADDRESS_DEVICES = 4;
 export function chatLimits(set: Partial<ChatLimits> = {}, dayUsd?: number): ChatLimits {
   const base = { ...DEFAULT_CHAT_LIMITS, ...set };
   const day = dayUsd ?? set.dayUsd ?? base.monthlyUsd / 8;
-  const limits: ChatLimits = { ...base, dayUsd: day, addressDayUsd: set.addressDayUsd ?? Math.min(ADDRESS_DEVICES * base.deviceMonthUsd, day / 2) };
+  const share = base.addressDayShare;
+  if (!(share > 0 && share < 1)) throw new Error(`AI_ADDRESS_DAY_SHARE (${share}) must be above 0 and below 1: the part of the service's day one address may spend`);
+  const limits: ChatLimits = { ...base, dayUsd: day, addressDayUsd: set.addressDayUsd ?? Math.min(ADDRESS_DEVICES * base.deviceMonthUsd, day * share) };
   if (limits.addressDayUsd >= limits.dayUsd) {
     throw new Error(`AI_ADDRESS_DAY_USD (${limits.addressDayUsd}) must be below the service's daily cap AI_DAY_USD (${limits.dayUsd})`);
   }
@@ -172,6 +205,7 @@ export type ChatErrorCode =
   | "service-month"
   | "plan"
   | "busy"
+  | "service-busy"
   | "request"
   | "too-big"
   | "method"
@@ -188,6 +222,7 @@ export const CHAT_MESSAGES: Readonly<Record<ChatErrorCode, string>> = {
   "service-month": "Free AI is used up for this month. To keep going, add your own key in Model settings.",
   plan: "Web search is not part of free AI. Turn web search off, or add your own key in Model settings.",
   busy: "This device already has requests out with free AI. Wait for one to finish, then try again.",
+  "service-busy": "Free AI is busy right now. Try again in a moment.",
   request: "Free AI cannot take this request. Update Potyro and try again.",
   "too-big": "This chat is too long for free AI. Start a new one, or add your own key in Model settings.",
   method: "Free AI cannot take this request. Update Potyro and try again.",
@@ -282,43 +317,78 @@ const READ_ALONG_BYTES = 16 * 1024 * 1024;
 /** The longest line of a stream kept while looking for the one with the cost. */
 const LINE_BYTES = 1024 * 1024;
 
+const utf8 = new TextEncoder();
+/** The bytes of every string in a value: no fewer than the tokens it took to write them. */
+function textBytes(v: unknown): number {
+  if (typeof v === "string") return utf8.encode(v).length;
+  if (Array.isArray(v)) return v.reduce<number>((n, x) => n + textBytes(x), 0);
+  if (isRecord(v)) return Object.values(v).reduce<number>((n, x) => n + textBytes(x), 0);
+  return 0;
+}
+/** The bytes of answer one stream chunk carries: its deltas' strings (content, reasoning, tool calls). */
+const chunkBytes = (json: unknown): number => {
+  const choices = (json as { choices?: unknown } | null)?.choices;
+  return Array.isArray(choices) ? choices.reduce<number>((n, c) => n + textBytes((c as { delta?: unknown; message?: unknown } | null)?.delta ?? (c as { message?: unknown } | null)?.message), 0) : 0;
+};
+
+/** How an answer ended, for the charge. */
+interface Ended {
+  /** What the answer said it cost; null when it did not say. */
+  cost: number | null;
+  /** True when it did not reach its end: the sender went away, or the upstream broke off. */
+  cut: boolean;
+  /** Bytes of answer that came: a stream's delta strings, or all of an unstreamed body. */
+  outBytes: number;
+}
+
 /**
- * The answer as it comes, byte for byte, read along for `usage.cost`. `settle` is called exactly once,
- * with the cost if the answer said it and null if not: at the end, on an error, or when the sender
- * goes away (which also stops the upstream request).
+ * The answer as it comes, byte for byte, read along for `usage.cost` and for how much answer came.
+ * `settle` is called exactly once: at the end, on an error, or when the sender goes away (which
+ * also stops the upstream request).
  */
-function readAlong(body: ReadableStream<Uint8Array> | null, streamed: boolean, settle: (cost: number | null) => void): ReadableStream<Uint8Array> {
+function readAlong(body: ReadableStream<Uint8Array> | null, streamed: boolean, settle: (ended: Ended) => void): ReadableStream<Uint8Array> {
   const decoder = new TextDecoder();
   let settled = false;
   let cost: number | null = null;
-  const finish = (): void => {
-    if (!settled) (settled = true), settle(cost);
-  };
+  let outBytes = 0;
   // Streamed: the current unfinished line. Not streamed: everything so far.
   let text = "";
+  const finish = (cut: boolean): void => {
+    if (settled) return;
+    settled = true;
+    // A stream's unfinished line is answer too.
+    settle({ cost, cut, outBytes: outBytes + (streamed ? text.length : 0) });
+  };
   let over = false;
   const lines = (chunk: string, last: boolean): void => {
     text += chunk;
     const parts = text.split("\n");
     text = last ? "" : parts.pop()!;
-    if (text.length > LINE_BYTES) text = "";
+    // Too long to keep: counted as answer, byte for byte.
+    if (text.length > LINE_BYTES) (outBytes += text.length), (text = "");
     for (const line of parts) {
-      if (!line.startsWith("data:") || !line.includes('"cost"')) continue;
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (data === "[DONE]") continue;
       try {
-        cost = costOf(JSON.parse(line.slice(5).trim())) ?? cost;
+        const json = JSON.parse(data) as unknown;
+        if (line.includes('"cost"')) cost = costOf(json) ?? cost;
+        outBytes += chunkBytes(json);
       } catch {
-        // not JSON ([DONE], or cut)
+        // Not JSON (cut): counted as it is.
+        outBytes += data.length;
       }
     }
   };
   const whole = (chunk: string, last: boolean): void => {
+    outBytes += chunk.length;
     if (!over) text += chunk;
     if (text.length > READ_ALONG_BYTES) (over = true), (text = "");
     if (!last || over) return;
     try {
       cost = costOf(JSON.parse(stripKeepAlive(text)) as unknown);
     } catch {
-      // not JSON: the estimate is charged
+      // not JSON: charged as an answer that did not say
     }
   };
   const take = streamed ? lines : whole;
@@ -326,28 +396,39 @@ function readAlong(body: ReadableStream<Uint8Array> | null, streamed: boolean, s
   return new ReadableStream<Uint8Array>({
     async pull(controller) {
       if (!reader) {
-        finish();
+        finish(false);
         return controller.close();
       }
       try {
         const { done, value } = await reader.read();
         if (done) {
           take(decoder.decode(), true);
-          finish();
+          finish(false);
           return controller.close();
         }
         take(decoder.decode(value, { stream: true }), false);
         controller.enqueue(value);
       } catch (e) {
-        finish();
+        finish(true);
         controller.error(e);
       }
     },
     async cancel(reason) {
-      finish();
+      finish(true);
       await reader?.cancel(reason).catch(() => {});
     },
   });
+}
+
+/** Error codes of a connection that was never made (Node, undici): the request did not leave. */
+const NEVER_SENT = new Set(["ECONNREFUSED", "ENOTFOUND", "EAI_AGAIN", "ENETUNREACH", "EHOSTUNREACH", "UND_ERR_CONNECT_TIMEOUT"]);
+/** True when a failed fetch never reached OpenRouter (the cause chain says the connection was not made). */
+export function neverSent(e: unknown): boolean {
+  for (let x: unknown = e, i = 0; x && i < 5; x = (x as { cause?: unknown }).cause, i++) {
+    const code = (x as { code?: unknown }).code;
+    if (typeof code === "string" && NEVER_SENT.has(code)) return true;
+  }
+  return false;
 }
 
 /** A refusal in OpenAI's error shape, with Potyro's code and words. */
@@ -362,6 +443,12 @@ function refuse(status: number, code: ChatErrorCode, extra: { message?: string; 
 /** "Used up" — the shell then moves to the person's own key, or says there is none. */
 const usedUp = (code: "allowance" | "address-day" | CapReason, message?: string, left = "0"): ChatReply =>
   refuse(429, code, { headers: { "x-potyro-left-usd": left }, ...(message ? { message } : {}) });
+
+/**
+ * "Busy" — nothing is used up: requests in flight are in the way, and will not be for long. 503 with
+ * Retry-After and no `x-potyro-left-usd`, so no client takes it for an allowance that ran out.
+ */
+const serviceBusy = (): ChatReply => refuse(503, "service-busy", { headers: { "retry-after": String(BUSY_RETRY_SECONDS) } });
 
 export function createChatProxy(deps: ChatDeps): { handle: (req: ChatRequest) => Promise<ChatReply> } {
   const ledger = deps.ledger ?? memoryLedger();
@@ -401,17 +488,22 @@ export function createChatProxy(deps: ChatDeps): { handle: (req: ChatRequest) =>
     if (!read.ok) return refuse(read.status, read.code, read.param ? { param: read.param } : {});
 
     // Every allowance before anything is sent, each with room for the most this request could cost.
-    const month = monthOf(deps.now());
+    // What is USED UP is said first (money really spent: waiting does not help); then what is only
+    // BUSY (holds of requests in flight, or too many out at once: waiting a moment does).
+    const startedAt = deps.now();
+    const month = monthOf(startedAt);
     const address = `address:${addressKey(req.ip)}`;
-    const estimate = estimateUsd(priceOf(prices, read.body.model as string), req.body.length, read.maxTokens);
+    const price = priceOf(prices, read.body.model as string);
+    const estimate = estimateUsd(price, req.body.length, read.maxTokens);
     const h = Math.max(limits.reserveUsd, estimate);
     const cap = budget.over(h);
-    if (cap) return usedUp(cap);
+    if (cap && cap !== "busy") return usedUp(cap);
     if (usedAll(month, device)) {
       ledger.markExhausted(month, device);
       return usedUp("allowance");
     }
-    if (addressDay.sum(address) + (held.get(address) ?? 0) + h > limits.addressDayUsd) return usedUp("address-day");
+    const addressSpent = addressDay.sum(address);
+    if (addressSpent + h > limits.addressDayUsd) return usedUp("address-day");
     if ((inFlight.get(device) ?? 0) >= limits.concurrentPerDevice) return refuse(429, "busy");
     const spent = ledger.deviceSpent(month, device);
     const left = usd(limits.deviceMonthUsd - spent);
@@ -419,6 +511,9 @@ export function createChatProxy(deps: ChatDeps): { handle: (req: ChatRequest) =>
     if (spent + h > limits.deviceMonthUsd) return usedUp("allowance", NOT_ENOUGH_LEFT, left);
     // Room for this one, but not with the ones it already has out: wait, not used up.
     if (spent + (held.get(device) ?? 0) + h > limits.deviceMonthUsd) return refuse(429, "busy");
+    // Room in the service's day and month and in this address's day, but for what other requests
+    // hold while they are out (or as many are out as the relay sends at once): come back in a moment.
+    if (cap === "busy" || addressSpent + (held.get(address) ?? 0) + h > limits.addressDayUsd) return serviceBusy();
 
     hold(device, h);
     hold(address, h);
@@ -441,27 +536,61 @@ export function createChatProxy(deps: ChatDeps): { handle: (req: ChatRequest) =>
       if (usedAll(month, device)) ledger.markExhausted(month, device);
     };
 
+    // WHAT A REQUEST WITHOUT A COST IS CHARGED
+    //
+    // OpenRouter's own `usage.cost` is charged whenever an answer carries it. When none came, the
+    // charge is the most the request can defensibly have cost, never more than its estimate:
+    //
+    //   1. OpenRouter was never reached (the connection was not made): NOTHING. Nothing ran.
+    //   2. OpenRouter answered with an error status and no cost (Potyro's key refused or out of
+    //      credit, a 5xx, a 400 or its own 429 passed back): NOTHING. It bills what a model wrote,
+    //      and here none wrote. The sender got no answer either, so nothing is given away.
+    //   3. The answer was CUT (`cutUsd`) — the sender went away, a timeout, the upstream broke off,
+    //      before the first byte or in the middle of a stream: the INPUT side of the estimate (the
+    //      model may have read the whole request), plus output for whichever is MORE of
+    //        a. the bytes of answer that came, one token a byte. A token is never less than a
+    //           byte, so this is no less than what was received (about four times it, for English);
+    //        b. the seconds the request was out × `outTokensPerSecond`: what a model could have
+    //           written that never showed (reasoning that is not streamed, an unstreamed answer
+    //           still being written, a provider that kept writing after the sender left);
+    //      and never more than the `max_tokens` the estimate already holds.
+    //   4. A WHOLE answer with a 2xx that carries no cost: the full ESTIMATE, as before. It ran to
+    //      its end and nothing says how far it went.
+    //
+    // Leaving late buys nothing. A sender that takes most of a stream and goes just before the
+    // usage chunk pays, by 3a, for every byte it was given at a token a byte, which is more than
+    // those tokens cost; once what came reaches `max_tokens` it pays the same full estimate as 4.
+    // Leaving early is cheap because little was written: pressing Stop after two seconds is
+    // charged for the request and two seconds of writing, not for 64 000 tokens that never were.
+    const cutUsd = (outBytes: number): number => {
+      const seconds = Math.max(0, (deps.now() - startedAt) / 1000);
+      const tokens = Math.min(read.maxTokens, Math.max(outBytes, Math.ceil(seconds * limits.outTokensPerSecond)));
+      return Math.min(estimate, estimateUsd(price, req.body.length, tokens));
+    };
+
     let res: Response;
     try {
       res = await deps.upstream(read.body, req.signal);
     } catch (e) {
-      // It went out and nothing came back (the sender went away, a timeout, the network): it may
-      // have run, so the estimate is charged. The sender leaving is not a failure to report.
-      settle(estimate);
+      // Nothing came back (the sender went away, a timeout, the network). Never reached: rule 1.
+      // Otherwise it may have run for as long as it was out: rule 3. The sender leaving is not a
+      // failure to report.
+      settle(neverSent(e) ? 0 : cutUsd(0));
       if (!req.signal?.aborted) deps.onError?.(e);
       return refuse(502, "upstream");
     }
-    // Potyro's key refused or out of credit, or the upstream down: not the sender's to see. No
-    // usage.cost came back, so the estimate is charged.
+    // Potyro's key refused or out of credit, or the upstream down: not the sender's to see, and
+    // nothing ran (rule 2).
     if (res.status === 401 || res.status === 402 || res.status === 403 || res.status >= 500) {
-      settle(estimate);
+      settle(0);
       deps.onError?.(new Error(`OpenRouter ${res.status}`));
       await res.body?.cancel().catch(() => {});
       return refuse(502, "upstream");
     }
-    // Anything else goes back as it is (a refusal the sender can act on: 400 "reasoning is
-    // mandatory", 413, 429), charged what it says it cost, or the estimate when it does not say.
-    const stream = readAlong(res.body, read.streamed, (cost) => settle(cost ?? estimate));
+    // Anything else goes back as it is (an answer; or a refusal the sender can act on: 400
+    // "reasoning is mandatory", 413, 429), charged what it says it cost, or by the rules above.
+    const ran = res.status >= 200 && res.status < 300;
+    const stream = readAlong(res.body, read.streamed, ({ cost, cut, outBytes }) => settle(cost ?? (!ran ? 0 : cut ? cutUsd(outBytes) : estimate)));
     return {
       status: res.status,
       headers: {
