@@ -1,0 +1,3 @@
+# The app. What there is to read about Potyro is on https://potyro.com (its sitemap is there).
+User-agent: *
+Allow: /
