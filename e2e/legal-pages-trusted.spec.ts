@@ -170,12 +170,17 @@ test.describe("once the texts are finished", () => {
     await page.setViewportSize({ width: 320, height: 640 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
     // The fonts came from their hashed names in tokens.css, and none failed.
-    const fonts = await page.evaluate(async () => {
-      await document.fonts.ready;
-      const all = [...document.fonts];
-      return { figtree: all.some((f) => f.family.replace(/"/g, "") === "Figtree" && f.status === "loaded"), failed: all.filter((f) => f.status === "error").length };
-    });
-    expect(fonts).toEqual({ figtree: true, failed: 0 });
+    // Asked again until it is so, never awaited inside the page: scripts are off in this context, and
+    // with them off Firefox never settles a promise the page made (`document.fonts.ready`), so an
+    // evaluate that waits on one hangs until the test's own timeout.
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const all = [...document.fonts];
+          return { figtree: all.some((f) => f.family.replace(/"/g, "") === "Figtree" && f.status === "loaded"), failed: all.filter((f) => f.status === "error").length };
+        }),
+      )
+      .toEqual({ figtree: true, failed: 0 });
     expect(missing).toEqual([]);
     await context.close();
   });
