@@ -185,9 +185,11 @@ export async function noRealModel(context: BrowserContext): Promise<string[]> {
 }
 
 /** A gallery at potyro.com (the link's address when the build names none), with one app to make your own. */
+// With a viewport tag, as the real site has: without one, Playwright's Firefox lays a phone-sized
+// page out at desktop width and its taps land beside the link ("<html> intercepts pointer events").
 export async function fakeGallery(context: BrowserContext, link: string): Promise<void> {
   await context.route("https://potyro.com/**", (route) =>
-    route.fulfill({ status: 200, contentType: "text/html", body: `<!doctype html><title>Potyro gallery</title><h1>Apps to try</h1><a href="${link}&remix=1">Make it mine</a>` }),
+    route.fulfill({ status: 200, contentType: "text/html", body: `<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><title>Potyro gallery</title><h1>Apps to try</h1><a href="${link}&remix=1">Make it mine</a>` }),
   );
 }
 
