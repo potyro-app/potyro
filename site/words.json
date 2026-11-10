@@ -69,6 +69,10 @@
     "docsNext": "Next",
     "docsSource": "This page's source on GitHub",
     "howEyebrow": "How it works",
-    "howOthers": "The other ideas"
+    "howOthers": "The other ideas",
+    "notFoundTitle": "This page does not exist",
+    "notFoundText": "The address may have a typo, or the page has moved.",
+    "notFoundHome": "Go to the home page",
+    "notFoundApps": "See the apps"
   }
 }

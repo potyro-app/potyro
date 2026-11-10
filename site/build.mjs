@@ -16,6 +16,9 @@ import { legalSite } from "../packages/legal/src/build.mjs";
 import { CODE, highlightCode, lucidePaths, renderHome, tilesCss } from "./src/home.mjs";
 import { renderDocs } from "./src/docs.mjs";
 import { renderPages } from "./src/pages.mjs";
+import { sitePage } from "./src/render.mjs";
+
+const SITE = "https://potyro.com";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const SITE_DIR = here;
@@ -48,7 +51,10 @@ export async function buildSite(opts = {}) {
 
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
+  /** Every page written, by its address from the root: what the sitemap lists. @type {string[]} */
+  const written = [];
   const put = (/** @type {string} */ path, /** @type {Buffer | string} */ bytes) => {
+    if (path === "index.html" || path.endsWith("/index.html")) written.push(`/${path.slice(0, -"index.html".length)}`);
     mkdirSync(dirname(join(out, path)), { recursive: true });
     writeFileSync(join(out, path), bytes);
   };
@@ -119,6 +125,14 @@ export async function buildSite(opts = {}) {
   const hoursOf = { data: "azul", database: "anil", make: "amarelo", together: "verde", ai: "roxo", share: "laranja", safe: "menta" };
   const pages = await renderPages({ siteDir: here, docsDir: join(ROOT, "docs"), w: words, logos, v, legal: legal.ready, hours: hoursOf });
   for (const [path, body] of pages.files) put(path, body);
+
+  // ---- for crawlers and for a mistyped address ----
+  // The server answers an unknown address with 404.html and the 404 status (deploy/potyro.app.Caddyfile).
+  const lost = `<div class="layout one"><article class="how"><header class="head"><h1>${words.notFoundTitle}</h1><p class="lede">${words.notFoundText}</p></header><p><a href="/">${words.notFoundHome}</a> · <a href="/apps/">${words.notFoundApps}</a></p></article></div>`;
+  writeFileSync(join(out, "404.html"), sitePage({ title: words.notFoundTitle, description: words.notFoundText, path: "/404.html", main: lost, current: "", styles: [], v, logos, w: words, legal: legal.ready }));
+  const listed = [...new Set(written)].sort();
+  put("sitemap.xml", `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${listed.map((path) => `  <url><loc>${SITE}${path}</loc></url>`).join("\n")}\n</urlset>\n`);
+  put("robots.txt", `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`);
 
   return { out, apps: published.length, docs: docs.entries.length, pages: pages.pages.length, legal: legal.ready ? null : legal.notice };
 }
