@@ -151,7 +151,7 @@ describe("the page", () => {
     const page = renderPage(g, readStrings(strings), { css: "c", js: "j", shots: {} });
     expect(page).not.toContain("<img src=x");
     // inside the data block too
-    expect(page.split('id="gallery-data">')[1]).not.toMatch(/<img/);
+    expect(page.split('id="page-data">')[1]).not.toMatch(/<img/);
   });
 
   it("builds into a folder: the page, its style and script, and only the screenshots it shows", () => {
@@ -167,6 +167,13 @@ describe("the page", () => {
     expect(page).toContain('src="shots/groceries.png" width="1" height="1"');
     expect(() => readFileSync(join(dir, "out", "shots", "stray.png"))).toThrow();
     for (const f of ["gallery.css", "gallery.js", "favicon.svg", "shots/groceries.png"]) expect(readFileSync(join(dir, "out", f)).length).toBeGreaterThan(0);
+  });
+
+  it("the logo leads to the app when the gallery stands alone, and to the site's home when it is one of its pages", () => {
+    const alone = renderPage(published(), readStrings(strings), { css: "c", js: "j", shots: {} });
+    const onSite = renderPage(published(), readStrings(strings), { css: "c", js: "j", shots: {}, base: "/" });
+    expect(alone).toContain('<a class="brand" href="https://potyro.app/">');
+    expect(onSite).toContain('<a class="brand" href="/">');
   });
 
   it("links the privacy page and the terms only when it has them (#117)", () => {

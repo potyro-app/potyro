@@ -83,7 +83,7 @@
       var text = button.getAttribute("data-copy") || "";
       var done = function () {
         var was = button.textContent;
-        button.textContent = "Copied";
+        button.textContent = button.getAttribute("data-copied") || "Copied";
         setTimeout(function () {
           button.textContent = was;
         }, 1500);

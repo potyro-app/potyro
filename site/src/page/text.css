@@ -16,7 +16,12 @@
 .mark .ink { fill: var(--ink-soft); } .mark .ink-strong { fill: var(--ink); } .mark .stroke { fill: #e44f89; }
 .made .symbol { height: 16px; width: auto; }
 .site-nav { display: none; gap: var(--space-5); margin-left: var(--space-6); margin-right: auto; }
-@media (min-width: 768px) { .site-nav { display: flex; } }
+/* The header holds the logo, the pages, the language, the theme and the way in. They come in as
+   there is room for them in the longest language: the pages from 900px, the way in from 1180px. */
+@media (min-width: 900px) { .site-nav { display: flex; } }
+.site-nav ~ .top-tools .btn-cta { display: none; }
+@media (min-width: 1180px) { .site-nav ~ .top-tools .btn-cta { display: inline-flex; } }
+.site-nav a { white-space: nowrap; }
 .site-nav a { color: var(--ink-soft); font-weight: 600; text-decoration: none; padding: 6px 0; border-bottom: var(--stroke) solid transparent; }
 .site-nav a:hover { color: var(--ink); }
 .site-nav a[aria-current="page"] { color: var(--ink); border-bottom-color: #e44f89; }
