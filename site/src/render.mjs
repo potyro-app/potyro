@@ -5,7 +5,7 @@
 import { createRequire } from "node:module";
 import MarkdownIt from "markdown-it";
 import { createCssVariablesTheme, createHighlighter } from "shiki";
-import { escapeHtml as e, inlineLogo, APP_SITE, CONTACT } from "../../gallery/src/build.mjs";
+import { escapeHtml as e, inlineLogo, topTools, APP_SITE, CONTACT } from "../../gallery/src/build.mjs";
 
 const require = createRequire(import.meta.url);
 export const REPO_URL = "https://github.com/potyro-app/potyro";
@@ -271,7 +271,10 @@ ${p.styles.map((s) => `  <link rel="stylesheet" href="${s}" />`).join("\n")}
   <header class="top">
     <a class="brand" href="/" aria-label="Potyro">${wordmark}</a>
     <nav class="site-nav" aria-label="Potyro's site">${nav("/apps/", "apps", p.w.apps)}${nav("/docs/", "docs", p.w.docs)}${nav("/developers/", "developers", p.w.developers)}</nav>
-    <a class="btn-cta" href="${APP_SITE}">${e(p.w.cta)}</a>
+    <div class="top-tools">
+      ${topTools({ toDark: p.w.toDark })}
+      <a class="btn-cta" href="${APP_SITE}">${e(p.w.cta)}</a>
+    </div>
   </header>
   <main id="main" tabindex="-1">
 ${p.main}
@@ -290,6 +293,8 @@ ${p.main}
     </nav>
     <p class="made">${inlineLogo(p.logos["symbol-rosa.svg"], "mark symbol")} <span>${e(p.w.made)}</span></p>
   </footer>
+  <script type="application/json" id="page-data">${JSON.stringify({ languages: ["en"], strings: { en: { toDark: p.w.toDark, toLight: p.w.toLight } } }).replace(/</g, "\\u003c")}</script>
+  <script src="/text.js?v=${p.v.js}" defer></script>
 </body>
 </html>
 `;

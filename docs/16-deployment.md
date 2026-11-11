@@ -994,7 +994,7 @@ but the current member ids.
 ## The site on potyro.com (#8): the home, the gallery at /apps/, the legal pages
 
 potyro.com is one static folder, built by `pnpm site:build` into `dist/site/`: the home
-(`site/src/home.mjs`, the words in `site/words.json`), the gallery page at `/apps/` (the same
+(`site/src/home.mjs`, the words in `site/words.json`, in Potyro's six languages; the docs and the Learn-more pages are English), the gallery page at `/apps/` (the same
 `gallery/src/build.mjs` page, its files at the root), the privacy page and the terms when their
 texts are ready, and beside them the design system's tokens and fonts, the colour clock, the logo,
 the apps' screenshots (`gallery/shots`, `site/shots`) and the recordings (`site/media`). Nothing runs

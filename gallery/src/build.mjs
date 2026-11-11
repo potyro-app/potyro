@@ -36,7 +36,28 @@ function reportAddress(contacts) {
 export const APP_SITE = "https://potyro.app/";
 
 /** The languages' own names, for the picker: never translated. */
-const AUTONYMS = { en: "English", "pt-BR": "Português (Brasil)", de: "Deutsch", es: "Español", pl: "Polski", it: "Italiano" };
+export const AUTONYMS = { en: "English", "pt-BR": "Português (Brasil)", de: "Deutsch", es: "Español", pl: "Polski", it: "Italiano" };
+
+/**
+ * The header's two controls, the same on every page of the site: the language (only where a page
+ * has more than one) and the theme. Both stay hidden until the script (page/chrome.js) is there
+ * to make them work.
+ * @param {{ languages?: readonly string[]; language?: string; toDark: string }} p
+ */
+export function topTools(p) {
+  const langs = p.languages ?? [];
+  const picker =
+    langs.length > 1
+      ? `<label class="lang" hidden><span class="visually-hidden" data-t="language">${escapeHtml(p.language ?? "Language")}</span>
+        <select id="lang">${langs.map((l) => `<option value="${l}" lang="${l}">${escapeHtml(AUTONYMS[/** @type {keyof typeof AUTONYMS} */ (l)] ?? l)}</option>`).join("")}</select>
+      </label>
+      `
+      : "";
+  return `${picker}<button type="button" class="theme" id="theme" hidden aria-label="${escapeHtml(p.toDark)}">${icon(ICON.sunMoon)}</button>`;
+}
+
+/** The script of a page: what every page shares (the language, the theme), then the page's own. @param {Buffer} own */
+export const pageScript = (own) => Buffer.concat([readFileSync(join(here, "page", "chrome.js")), Buffer.from("\n"), own]);
 
 /** The logo files the page shows as images, light and dark grounds (packages/design/logo). */
 export const LOGO_FILES = ["wordmark-rosa.svg", "wordmark-rosa-on-dark.svg", "symbol-rosa.svg", "symbol-rosa-on-dark.svg"];
@@ -165,6 +186,9 @@ export function renderPage(gallery, strings, assets) {
   const wordmark = `<span class="wordmark" role="img" aria-label="Potyro"><img class="wordmark-light" src="${b}logo/wordmark-rosa.svg" alt="" width="133" height="50" /><img class="wordmark-dark" src="${b}logo/wordmark-rosa-on-dark.svg" alt="" width="133" height="50" /></span>`;
   const symbol = `<span class="wordmark symbol" aria-hidden="true"><img class="wordmark-light" src="${b}logo/symbol-rosa.svg" alt="" width="33" height="31" /><img class="wordmark-dark" src="${b}logo/symbol-rosa-on-dark.svg" alt="" width="33" height="31" /></span>`;
   const newAppHref = (/** @type {string} */ text) => `${APP_SITE}?new=${encodeURIComponent(text)}`;
+  // The logo leads to the home of the site the page is on: the site's own when the page is one of
+  // its pages (/apps/ on potyro.com), the app when the gallery stands alone.
+  const home = assets.base === "/" ? "/" : APP_SITE;
 
   const card = (/** @type {import("./data.mjs").GalleryApp} */ app, /** @type {number} */ i) => {
     const name = word(app.name);
@@ -253,12 +277,9 @@ export function renderPage(gallery, strings, assets) {
 <body>
   <a class="skip" href="#apps" data-t="skip">${e(s.skip)}</a>
   <header class="top">
-    <a class="brand" href="${APP_SITE}">${wordmark}</a>
+    <a class="brand" href="${home}">${wordmark}</a>
     <div class="top-tools">
-      <label class="lang" hidden><span class="visually-hidden" data-t="language">${e(s.language)}</span>
-        <select id="lang">${LANGUAGES.map((l) => `<option value="${l}" lang="${l}">${e(AUTONYMS[l])}</option>`).join("")}</select>
-      </label>
-      <button type="button" class="theme" id="theme" hidden aria-label="${e(s.toDark)}">${icon(ICON.sunMoon)}</button>
+      ${topTools({ languages: LANGUAGES, language: s.language, toDark: s.toDark })}
       <a class="btn-cta" href="${APP_SITE}" data-t="cta">${e(s.cta)}</a>
     </div>
   </header>
@@ -271,13 +292,13 @@ export function renderPage(gallery, strings, assets) {
         <form class="prompt" action="${APP_SITE}" method="get">
           <label class="prompt-label" for="prompt" data-t="promptLabel">${e(s.promptLabel)}</label>
           <div class="prompt-field">
-            <textarea class="prompt-box" id="prompt" name="new" rows="3" placeholder="${e(s.promptPlaceholder)}" data-t-placeholder="promptPlaceholder" required></textarea>
-            <button type="submit" class="prompt-send" aria-label="${e(s.promptSend)}" data-t-label="promptSend">${icon(ICON.arrowUp, 24)}</button>
+            <textarea class="prompt-box" id="prompt" name="new" rows="3" placeholder="${e(s.promptPlaceholder)}" data-t-attr="placeholder:promptPlaceholder" required></textarea>
+            <button type="submit" class="prompt-send" aria-label="${e(s.promptSend)}" data-t-attr="aria-label:promptSend">${icon(ICON.arrowUp, 24)}</button>
           </div>
           <ul class="examples">
-            <li><a class="chip-link" href="${e(newAppHref(s.ex1))}" data-t="ex1" data-new-from="ex1">${e(s.ex1)}</a></li>
-            <li><a class="chip-link" href="${e(newAppHref(s.ex2))}" data-t="ex2" data-new-from="ex2">${e(s.ex2)}</a></li>
-            <li><a class="chip-link" href="${e(newAppHref(s.ex3))}" data-t="ex3" data-new-from="ex3">${e(s.ex3)}</a></li>
+            <li><a class="chip-link" href="${e(newAppHref(s.ex1))}" data-t="ex1" data-new="${APP_SITE}">${e(s.ex1)}</a></li>
+            <li><a class="chip-link" href="${e(newAppHref(s.ex2))}" data-t="ex2" data-new="${APP_SITE}">${e(s.ex2)}</a></li>
+            <li><a class="chip-link" href="${e(newAppHref(s.ex3))}" data-t="ex3" data-new="${APP_SITE}">${e(s.ex3)}</a></li>
           </ul>
         </form>
       </div>
@@ -326,7 +347,7 @@ export function renderPage(gallery, strings, assets) {
     <p class="made">${symbol} <span data-t="made">${e(s.made)}</span></p>
   </footer>
 
-  <script type="application/json" id="gallery-data">${json}</script>
+  <script type="application/json" id="page-data">${json}</script>
   <script src="${b}gallery.js?v=${assets.js}"></script>
 </body>
 </html>
@@ -363,7 +384,7 @@ export function buildGallery(opts = {}) {
   const gallery = readGallery(readJson(dataPath), { allowLocal: opts.allowLocal });
   const strings = readStrings(readJson(join(GALLERY_DIR, "strings.json")));
   const css = Buffer.concat([readFileSync(join(here, "page", "chrome.css")), Buffer.from("\n"), readFileSync(join(here, "page", "gallery.css"))]);
-  const js = readFileSync(join(here, "page", "gallery.js"));
+  const js = pageScript(readFileSync(join(here, "page", "gallery.js")));
   const tokens = readFileSync(join(DESIGN, "tokens.css"));
   const hours = hoursCss();
   /** @type {Record<string, { width: number; height: number }>} */

@@ -7,8 +7,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createCssVariablesTheme, createHighlighter } from "shiki";
-import { escapeHtml as e, inlineLogo, APP_SITE, CONTACT } from "../../gallery/src/build.mjs";
-import { hourOf, remixLink, shownApps } from "../../gallery/src/data.mjs";
+import { escapeHtml as e, inlineLogo, topTools, APP_SITE, CONTACT } from "../../gallery/src/build.mjs";
+import { hourOf, LANGUAGES, remixLink, shownApps } from "../../gallery/src/data.mjs";
 
 export const REPO_URL = "https://github.com/potyro-app/potyro";
 
@@ -22,6 +22,25 @@ const ICON = {
 };
 const icon = (/** @type {string} */ paths, size = 20) =>
   `<svg class="k-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${paths}</svg>`;
+
+/**
+ * The words a page says, in every language, for its script: `keys` are the ones the page marked. A
+ * language that lacks one, or loses a `{placeholder}` the English has, is a build that fails.
+ * @param {Record<string, Record<string, string>>} words @param {string[]} keys
+ */
+export function wordsFor(words, keys) {
+  const holes = (/** @type {string} */ x) => (x.match(/\{\w+\}/g) ?? []).sort().join();
+  const missing = LANGUAGES.flatMap((lang) =>
+    keys
+      .filter((k) => {
+        const own = words[lang]?.[k];
+        return typeof own !== "string" || !own.trim() || holes(own) !== holes(words.en?.[k] ?? "");
+      })
+      .map((k) => `${lang} "${k}"`),
+  );
+  if (missing.length) throw new Error(`site/words.json: the home says these and a language does not (or loses a {placeholder}): ${missing.join(", ")}`);
+  return Object.fromEntries(LANGUAGES.map((lang) => [lang, Object.fromEntries(keys.map((k) => [k, words[lang][k]]))]));
+}
 
 /**
  * The hero's tiles: the eleven hours of the clock, each with one real app of that hour — the app's
@@ -112,7 +131,8 @@ export function lucidePaths(designDir) {
  * The home page.
  * @param {object} input
  * @param {import("../../gallery/src/data.mjs").Gallery} input.gallery
- * @param {Record<string, string>} input.words  the English words (site/words.json)
+ * @param {Record<string, Record<string, string>>} input.words  the words by language (site/words.json): the page is
+ *   written in English, and carries the other languages for its script to say the same in (page/chrome.js)
  * @param {Record<string, string>} input.lucide  icon name → path
  * @param {string} input.code  the highlighted code block
  * @param {Record<string, string>} input.logos  svg text by file name
@@ -120,7 +140,16 @@ export function lucidePaths(designDir) {
  * @param {Record<string, { width: number; height: number }>} input.sizes  by served path (`/screens/x.jpg`, `/shots/x.jpg`, `/media/x-poster.jpg`)
  * @param {boolean} input.legal  whether /privacy and /terms exist
  */
-export function renderHome({ gallery, words: w, lucide, code, logos, v, sizes, legal }) {
+export function renderHome({ gallery, words, lucide, code, logos, v, sizes, legal }) {
+  const w = words.en;
+  // Every word the page says is marked with its key, and the keys marked are the ones the other
+  // languages must have: a sentence added here in English fails the build until it is translated.
+  /** @type {Set<string>} */
+  const said = new Set(["language", "toDark", "toLight", "reportSubject"]);
+  /** The element's text is this word. @param {string} key */
+  const t = (key) => (said.add(key), ` data-t="${key}"`);
+  /** Attributes that are words: `ta("placeholder:promptPlaceholder")`. @param {string[]} pairs */
+  const ta = (...pairs) => (pairs.forEach((x) => said.add(x.slice(x.indexOf(":") + 1))), ` data-t-attr="${pairs.join(" ")}"`);
   const published = shownApps(gallery).published;
   const count = published.length;
   const size = (/** @type {string} */ path, fallback = { width: 412, height: 915 }) => sizes[path] ?? fallback;
@@ -134,14 +163,15 @@ export function renderHome({ gallery, words: w, lucide, code, logos, v, sizes, l
     return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="${d}"/></svg>`;
   };
 
-  const phone = (/** @type {string} */ src, alt = "", cls = "") => {
+  // A picture says what it shows with a word of the page (`altKey`), or nothing when it only decorates.
+  const phone = (/** @type {string} */ src, altKey = "", cls = "") => {
     const s = size(src);
-    return `<div class="phone ${cls}"><img src="${e(src)}" width="${s.width}" height="${s.height}" alt="${e(alt)}" loading="lazy" decoding="async"></div>`;
+    return `<div class="phone ${cls}"><img src="${e(src)}" width="${s.width}" height="${s.height}" alt="${altKey ? e(w[altKey]) : ""}"${altKey ? ta(`alt:${altKey}`) : ""} loading="lazy" decoding="async"></div>`;
   };
-  const clip = (/** @type {string} */ name, /** @type {string} */ label, cls = "") => {
+  const clip = (/** @type {string} */ name, /** @type {string} */ labelKey, cls = "") => {
     const poster = `/media/${name}-poster.jpg`;
     const s = size(poster);
-    return `<div class="phone rec-phone ${cls}"><video class="rec" muted loop playsinline preload="none" poster="${poster}" width="${s.width}" height="${s.height}" aria-label="${e(label)}"><source src="/media/${name}.webm" type="video/webm"><source src="/media/${name}.mp4" type="video/mp4"></video></div>`;
+    return `<div class="phone rec-phone ${cls}"><video class="rec" muted loop playsinline preload="none" poster="${poster}" width="${s.width}" height="${s.height}" aria-label="${e(w[labelKey])}"${ta(`aria-label:${labelKey}`)}><source src="/media/${name}.webm" type="video/webm"><source src="/media/${name}.mp4" type="video/mp4"></video></div>`;
   };
 
   const tiles = TILES.map((tile, i) => {
@@ -153,19 +183,19 @@ export function renderHome({ gallery, words: w, lucide, code, logos, v, sizes, l
 
   const steps = [
     { id: "data", hour: "azul", pic: SCREENS.data.map((x) => phone(`/screens/${x}.jpg`)).join("") },
-    { id: "database", hour: "anil", pic: clip("data", w.clipData) },
-    { id: "make", hour: "amarelo", pic: clip("studio", w.clipStudio), extra: code },
-    { id: "together", hour: "verde", pic: clip("together-a", w.clipTogetherA, "pair") + clip("together-b", w.clipTogetherB, "pair") },
-    { id: "ai", hour: "roxo", pic: clip("plant-doctor", w.clipAi) },
-    { id: "share", hour: "laranja", pic: SCREENS.share.map((x) => phone(`/screens/${x}.jpg`)).join(""), extra: `<p class="link-pill"><span>${e(w.shareLink)}</span><button type="button" class="btn" data-copy="https://potyro.com/">${e(w.copyLink)}</button></p>` },
-    { id: "safe", hour: "menta", pic: phone("/media/permission-ai.png", w.stillPermissionAi, "boxed") + phone("/media/permission-camera.png", w.stillPermissionCamera) },
+    { id: "database", hour: "anil", pic: clip("data", "clipData") },
+    { id: "make", hour: "amarelo", pic: clip("studio", "clipStudio"), extra: code },
+    { id: "together", hour: "verde", pic: clip("together-a", "clipTogetherA", "pair") + clip("together-b", "clipTogetherB", "pair") },
+    { id: "ai", hour: "roxo", pic: clip("plant-doctor", "clipAi") },
+    { id: "share", hour: "laranja", pic: SCREENS.share.map((x) => phone(`/screens/${x}.jpg`)).join(""), extra: `<p class="link-pill"><span>${e(w.shareLink)}</span><button type="button" class="btn" data-copy="https://potyro.com/" data-copied="${e(w.copied)}"${t("copyLink")}${ta("data-copied:copied")}>${e(w.copyLink)}</button></p>` },
+    { id: "safe", hour: "menta", pic: phone("/media/permission-ai.png", "stillPermissionAi", "boxed") + phone("/media/permission-camera.png", "stillPermissionCamera") },
   ];
   const blocks = steps
     .map(
       (s, i) => `
 <div class="block-row" id="${s.id}"><div class="wrap">
   <section class="block reveal ${i % 2 ? "flip" : ""}" data-traco="${s.hour}" aria-labelledby="${s.id}-h">
-    <div class="block-words"><h2 id="${s.id}-h">${e(w[s.id])}</h2><p class="say">${e(w[`${s.id}Text`])}</p>${s.extra ?? ""}<p class="learn"><a href="/how/${s.id}/">${e(w.learnMore)}</a></p></div>
+    <div class="block-words"><h2 id="${s.id}-h"${t(s.id)}>${e(w[s.id])}</h2><p class="say"${t(`${s.id}Text`)}>${e(w[`${s.id}Text`])}</p>${s.extra ?? ""}<p class="learn"><a href="/how/${s.id}/"${t("learnMore")}>${e(w.learnMore)}</a></p></div>
     <div class="block-pic">${s.pic}</div>
   </section>
 </div></div>`,
@@ -181,11 +211,11 @@ export function renderHome({ gallery, words: w, lucide, code, logos, v, sizes, l
     return `
     <li class="card reveal" data-traco="${e(hourOf(app.category, gallery.categories))}">
       <a class="card-shot" href="${e(app.link ?? "")}" tabindex="-1" aria-hidden="true"><img src="${e(shot)}" width="${s.width}" height="${s.height}" alt="" loading="lazy" decoding="async"></a>
-      <h3>${e(name)}</h3>
-      <p>${e(app.line.en)}</p>
+      <h3 data-app-name="${e(app.id)}">${e(name)}</h3>
+      <p data-app-line="${e(app.id)}">${e(app.line.en)}</p>
       <div class="card-actions">
-        <a class="btn" href="${e(app.link ?? "")}" aria-label="${e(fill(w.tryLabel, { name }))}">${e(w.tryIt)} ${icon(ICON.arrowRight, 16)}</a>
-        <a class="btn btn-mine" href="${e(remixLink(app.link ?? "#"))}" aria-label="${e(fill(w.mineLabel, { name }))}">${icon(ICON.copy, 16)} ${e(w.makeItMine)}</a>
+        <a class="btn" href="${e(app.link ?? "")}" data-name-of="${e(app.id)}" aria-label="${e(fill(w.tryLabel, { name }))}"${ta("aria-label:tryLabel")}><span${t("tryIt")}>${e(w.tryIt)}</span> ${icon(ICON.arrowRight, 16)}</a>
+        <a class="btn btn-mine" href="${e(remixLink(app.link ?? "#"))}" data-name-of="${e(app.id)}" aria-label="${e(fill(w.mineLabel, { name }))}"${ta("aria-label:mineLabel")}>${icon(ICON.copy, 16)} <span${t("makeItMine")}>${e(w.makeItMine)}</span></a>
       </div>
     </li>`;
   }).join("");
@@ -194,13 +224,13 @@ export function renderHome({ gallery, words: w, lucide, code, logos, v, sizes, l
   const newAppHref = (/** @type {string} */ text) => `${APP_SITE}?new=${encodeURIComponent(text)}`;
   const heroSize = size(heroShot);
 
-  return `<!doctype html>
+  const page = `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>${e(w.title)}</title>
-  <meta name="description" content="${e(w.description)}" />
+  <title${t("title")}>${e(w.title)}</title>
+  <meta name="description" content="${e(w.description)}"${ta("content:description")} />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#1c1b1c" media="(prefers-color-scheme: dark)" />
@@ -236,70 +266,83 @@ export function renderHome({ gallery, words: w, lucide, code, logos, v, sizes, l
   <link rel="stylesheet" href="/site.css?v=${v.css}" />
 </head>
 <body>
-  <a class="skip" href="#main">${e(w.skip)}</a>
+  <a class="skip" href="#main"${t("skip")}>${e(w.skip)}</a>
   <header class="top">
     <a class="brand" href="/" aria-label="Potyro">${wordmark}</a>
-    <nav class="site-nav" aria-label="Potyro's site"><a href="/apps/">${e(w.apps)}</a><a href="/docs/">${e(w.docs)}</a><a href="/developers/">${e(w.developers)}</a></nav>
-    <a class="btn-cta" href="${APP_SITE}">${e(w.cta)}</a>
+    <nav class="site-nav" aria-label="Potyro's site"><a href="/apps/"${t("apps")}>${e(w.apps)}</a><a href="/docs/"${t("docs")}>${e(w.docs)}</a><a href="/developers/"${t("developers")}>${e(w.developers)}</a></nav>
+    <div class="top-tools">
+      ${topTools({ languages: LANGUAGES, language: w.language, toDark: w.toDark })}
+      <a class="btn-cta" href="${APP_SITE}"${t("cta")}>${e(w.cta)}</a>
+    </div>
   </header>
 
   <main id="main">
     <section class="hero" aria-labelledby="hero-h">
       <div class="wrap">
         <div>
-          <h1 id="hero-h">${e(w.h1)}</h1>
-          <p class="lead">${e(w.lead)}</p>
+          <h1 id="hero-h"${t("h1")}>${e(w.h1)}</h1>
+          <p class="lead"${t("lead")}>${e(w.lead)}</p>
           <form class="prompt" action="${APP_SITE}" method="get">
-            <label class="prompt-label" for="prompt">${e(w.promptLabel)}</label>
+            <label class="prompt-label" for="prompt"${t("promptLabel")}>${e(w.promptLabel)}</label>
             <div class="prompt-field">
-              <textarea class="prompt-box" id="prompt" name="new" rows="3" placeholder="${e(w.promptPlaceholder)}" required></textarea>
-              <button type="submit" class="prompt-send" aria-label="${e(w.promptSend)}">${icon(ICON.arrowUp, 24)}</button>
+              <textarea class="prompt-box" id="prompt" name="new" rows="3" placeholder="${e(w.promptPlaceholder)}"${ta("placeholder:promptPlaceholder")} required></textarea>
+              <button type="submit" class="prompt-send" aria-label="${e(w.promptSend)}"${ta("aria-label:promptSend")}>${icon(ICON.arrowUp, 24)}</button>
             </div>
             <ul class="examples">
-              <li><a class="chip-link" referrerpolicy="origin" href="${e(newAppHref(w.ex1))}">${e(w.ex1)}</a></li>
-              <li><a class="chip-link" referrerpolicy="origin" href="${e(newAppHref(w.ex2))}">${e(w.ex2)}</a></li>
-              <li><a class="chip-link" referrerpolicy="origin" href="${e(newAppHref(w.ex3))}">${e(w.ex3)}</a></li>
+              <li><a class="chip-link" referrerpolicy="origin" href="${e(newAppHref(w.ex1))}" data-new="${APP_SITE}"${t("ex1")}>${e(w.ex1)}</a></li>
+              <li><a class="chip-link" referrerpolicy="origin" href="${e(newAppHref(w.ex2))}" data-new="${APP_SITE}"${t("ex2")}>${e(w.ex2)}</a></li>
+              <li><a class="chip-link" referrerpolicy="origin" href="${e(newAppHref(w.ex3))}" data-new="${APP_SITE}"${t("ex3")}>${e(w.ex3)}</a></li>
             </ul>
           </form>
         </div>
-        <ul class="blocks" aria-label="${e(w.tilesLabel)}">${tiles}<li class="hero-phone"><div class="phone"><img src="${heroShot}" width="${heroSize.width}" height="${heroSize.height}" alt="Split: a weekend's shared costs, who owes whom" fetchpriority="high" decoding="async"></div></li></ul>
+        <ul class="blocks" aria-label="${e(w.tilesLabel)}"${ta("aria-label:tilesLabel")}>${tiles}<li class="hero-phone"><div class="phone"><img src="${heroShot}" width="${heroSize.width}" height="${heroSize.height}" alt="${e(w.heroAlt)}"${ta("alt:heroAlt")} fetchpriority="high" decoding="async"></div></li></ul>
       </div>
     </section>
 ${blocks}
     <section class="apps" id="apps" aria-labelledby="apps-h" tabindex="-1">
-      <h2 id="apps-h">${e(w.appsHeading)}</h2>
+      <h2 id="apps-h"${t("appsHeading")}>${e(w.appsHeading)}</h2>
       <ol class="cards">${cards}
       </ol>
-      <p class="see-all"><a href="/apps/">${e(fill(w.seeAll, { count }))} ${icon(ICON.arrowRight, 16)}</a></p>
+      <p class="see-all"><a href="/apps/"><span data-count="${count}"${t("seeAll")}>${e(fill(w.seeAll, { count }))}</span> ${icon(ICON.arrowRight, 16)}</a></p>
     </section>
 
     <section class="close" aria-label="Potyro">
       ${inlineLogo(logos["wordmark-large.svg"], "mark wordmark-large")}
       ${inlineLogo(logos["tagline.svg"], "mark tagline")}
-      <a class="btn-cta" href="${APP_SITE}">${e(w.cta)}</a>
+      <a class="btn-cta" href="${APP_SITE}"${t("cta")}>${e(w.cta)}</a>
     </section>
   </main>
 
   <footer class="foot">
-    <p class="privacy">${e(w.privacy)}</p>
+    <p class="privacy"${t("privacy")}>${e(w.privacy)}</p>
     <nav class="foot-links" aria-label="Potyro">
-      <a href="${APP_SITE}">${e(w.open)}</a>
-      <a href="/apps/">${e(w.apps)}</a>
-      <a href="/docs/">${e(w.docs)}</a>
-      <a href="/developers/">${e(w.developers)}</a>
-      <a href="${REPO_URL}">${e(w.source)}</a>${
+      <a href="${APP_SITE}"${t("open")}>${e(w.open)}</a>
+      <a href="/apps/"${t("apps")}>${e(w.apps)}</a>
+      <a href="/docs/"${t("docs")}>${e(w.docs)}</a>
+      <a href="/developers/"${t("developers")}>${e(w.developers)}</a>
+      <a href="${REPO_URL}"${t("source")}>${e(w.source)}</a>${
         legal
           ? `
-      <a href="/privacy/">${e(w.legalPrivacy)}</a>
-      <a href="/terms/">${e(w.legalTerms)}</a>`
+      <a href="/privacy/"${t("legalPrivacy")}>${e(w.legalPrivacy)}</a>
+      <a href="/terms/"${t("legalTerms")}>${e(w.legalTerms)}</a>`
           : ""
       }
-      <a href="${e(mail)}">${e(w.report)}</a>
+      <a href="${e(mail)}" data-mail="${e(CONTACT)}"${t("report")}>${e(w.report)}</a>
     </nav>
-    <p class="made">${inlineLogo(logos["symbol-rosa.svg"], "mark symbol")} <span>${e(w.made)}</span></p>
+    <p class="made">${inlineLogo(logos["symbol-rosa.svg"], "mark symbol")} <span${t("made")}>${e(w.made)}</span></p>
   </footer>
+  <script type="application/json" id="page-data">@@PAGE_DATA@@</script>
   <script src="/site.js?v=${v.js}" defer></script>
 </body>
 </html>
 `;
+
+  // What the script needs to say it all in another language: the words the page marked, and the
+  // names and lines of the apps it shows. A language that lacks one of them is a build that fails.
+  const data = {
+    languages: LANGUAGES,
+    strings: wordsFor(words, [...said]),
+    apps: Object.fromEntries(HOME_APPS.map((id) => { const a = published.find((x) => x.id === id); return [id, { name: a?.name, line: a?.line }]; })),
+  };
+  return page.replace("@@PAGE_DATA@@", () => JSON.stringify(data).replace(/</g, "\\u003c"));
 }

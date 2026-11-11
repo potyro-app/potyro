@@ -6,7 +6,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildSite, readWords } from "../build.mjs";
-import { HOME_APPS } from "../src/home.mjs";
+import { HOME_APPS, wordsFor } from "../src/home.mjs";
 import { readGallery, shownApps } from "../../gallery/src/data.mjs";
 
 const here = new URL("..", import.meta.url).pathname;
@@ -40,6 +40,52 @@ describe("the words", () => {
   });
 });
 
+describe("the languages and the theme", () => {
+  const wordsOf = (page: string) => JSON.parse(page.split('id="page-data">')[1].split("</script>")[0]);
+
+  it("the home carries every word it says in Potyro's six languages, and marks where each goes", () => {
+    const data = wordsOf(home);
+    expect(data.languages).toEqual(["en", "pt-BR", "de", "es", "pl", "it"]);
+    const keys = Object.keys(data.strings.en);
+    for (const lang of data.languages) expect(Object.keys(data.strings[lang]), lang).toEqual(keys);
+    // Every mark on the page names a word the script has, so nothing stays English by oversight.
+    const marked = [...home.matchAll(/ data-t="(\w+)"/g)].map((m) => m[1]).concat([...home.matchAll(/ data-t-attr="([^"]+)"/g)].flatMap((m) => m[1].split(" ").map((x) => x.split(":")[1])));
+    expect(marked.length).toBeGreaterThan(40);
+    for (const key of marked) expect(keys, key).toContain(key);
+    // The words a visitor reads first are among them.
+    for (const key of ["h1", "lead", "promptPlaceholder", "ex1", "data", "safeText", "seeAll", "cta"]) expect(marked, key).toContain(key);
+    expect(data.strings["pt-BR"].h1).not.toBe(data.strings.en.h1);
+    // The apps shown say their name and line in the language too.
+    expect(Object.keys(data.apps)).toHaveLength(6);
+    expect(home).toMatch(/<h3 data-app-name="[\w-]+">/);
+  });
+
+  it("a word the home says and a language lacks stops the build", () => {
+    const words = JSON.parse(readFileSync(join(here, "words.json"), "utf8"));
+    const { h1: _gone, ...rest } = words.it;
+    expect(() => wordsFor(words, ["h1", "seeAll"])).not.toThrow();
+    expect(() => wordsFor({ ...words, it: rest }, ["h1", "seeAll"])).toThrow(/it "h1"/);
+    expect(() => wordsFor({ ...words, de: { ...words.de, seeAll: "Alle Apps ansehen" } }, ["h1", "seeAll"])).toThrow(/de "seeAll"/);
+    expect(() => readWords({ ...words, es: { ...words.es, nothing: "x" } })).toThrow(/nothing/);
+  });
+
+  it("every page has the theme switch, and only the pages written in more than one language have the picker", () => {
+    const doc = readFileSync(join(out, "docs", "index.html"), "utf8");
+    const how = readFileSync(join(out, "how", "data", "index.html"), "utf8");
+    for (const page of [home, apps, doc, how]) expect(page).toMatch(/<button type="button" class="theme" id="theme" hidden/);
+    for (const page of [home, apps]) expect(page).toContain('<select id="lang">');
+    for (const page of [doc, how]) {
+      expect(page).not.toContain('id="lang"');
+      expect(wordsOf(page).languages).toEqual(["en"]);
+      expect(page).toMatch(/<script src="\/text\.js\?v=\w+" defer><\/script>/);
+    }
+    // One script per page: what the pages share is the head of each.
+    const shared = readFileSync(join(out, "text.js"), "utf8");
+    expect(shared).toContain("potyro-gallery:theme");
+    for (const f of ["site.js", "gallery.js"]) expect(readFileSync(join(out, f), "utf8").startsWith(shared.trimEnd())).toBe(true);
+  });
+});
+
 describe("the home", () => {
   it("names only files the build wrote, by their path from the root", () => {
     for (const path of localPaths(home)) {
@@ -52,8 +98,8 @@ describe("the home", () => {
   it("carries no inline style or script, and loads nothing from anyone else", () => {
     expect(home).not.toMatch(/ style="/);
     expect(home).not.toMatch(/<style[\s>]/);
-    // The structured data is a data block, not a script the policy would run.
-    expect(home.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, "")).not.toMatch(/<script(?![^>]*\bsrc=)/);
+    // The structured data and the words are data blocks, not scripts the policy would run.
+    expect(home.replace(/<script type="application\/(?:ld\+)?json"[^>]*>[\s\S]*?<\/script>/g, "")).not.toMatch(/<script(?![^>]*\bsrc=)/);
     for (const m of home.matchAll(/\b(?:href|src|poster)="(https?:\/\/[^"/]+)/g)) {
       expect(["https://potyro.app", "https://potyro.com", "https://github.com"], m[1]).toContain(m[1]);
     }
@@ -192,6 +238,11 @@ describe("for crawlers and for a mistyped address", () => {
 });
 
 describe("the apps page", () => {
+  it("its logo leads to the site's home, as on every other page, and not to the app", () => {
+    expect(apps).toMatch(/<a class="brand" href="\/">/);
+    expect(home).toMatch(/<a class="brand" href="\/"/);
+  });
+
   it("is the gallery, with its files at the site's root", () => {
     expect(apps).toContain('<link rel="stylesheet" href="/gallery.css?v=');
     expect(apps).toContain('<script src="/gallery.js?v=');

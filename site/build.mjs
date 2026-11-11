@@ -10,7 +10,7 @@ import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { APP_SITE, GALLERY_DIR, hoursCss, imageSize, LOGO_FILES, readStrings, renderPage } from "../gallery/src/build.mjs";
+import { APP_SITE, GALLERY_DIR, hoursCss, imageSize, LOGO_FILES, pageScript, readStrings, renderPage } from "../gallery/src/build.mjs";
 import { readGallery, shownApps } from "../gallery/src/data.mjs";
 import { legalSite } from "../packages/legal/src/build.mjs";
 import { CODE, highlightCode, lucidePaths, renderHome, tilesCss } from "./src/home.mjs";
@@ -30,13 +30,23 @@ const shortHash = (bytes) => createHash("sha256").update(bytes).digest("hex").sl
 /** @param {string} path */
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 
-/** The home's words, checked: every key that the English has, and only English for now. @param {unknown} raw */
+/**
+ * The site's words, checked, by language. English says everything; another language says what the
+ * home says (the home's own render checks that none is missing) and no word English does not have:
+ * the docs and the Learn-more pages are written in English only.
+ * @param {unknown} raw
+ */
 export function readWords(raw) {
   const words = /** @type {Record<string, Record<string, string>>} */ (raw);
   const en = words?.en;
   if (!en || !Object.keys(en).length) throw new Error("site/words.json has no en");
-  for (const [k, v] of Object.entries(en)) if (typeof v !== "string" || !v.trim()) throw new Error(`site/words.json: en "${k}" is empty`);
-  return en;
+  for (const [lang, said] of Object.entries(words)) {
+    for (const [k, v] of Object.entries(said)) {
+      if (typeof v !== "string" || !v.trim()) throw new Error(`site/words.json: ${lang} "${k}" is empty`);
+      if (!(k in en)) throw new Error(`site/words.json: ${lang} has "${k}", which en does not`);
+    }
+  }
+  return words;
 }
 
 /**
@@ -47,7 +57,8 @@ export async function buildSite(opts = {}) {
   const out = resolve(opts.out ?? join(ROOT, "dist", "site"));
   const gallery = readGallery(readJson(join(GALLERY_DIR, "gallery.json")), { allowLocal: opts.allowLocal });
   const strings = readStrings(readJson(join(GALLERY_DIR, "strings.json")));
-  const words = readWords(readJson(join(here, "words.json")));
+  const allWords = readWords(readJson(join(here, "words.json")));
+  const words = allWords.en;
 
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
@@ -70,8 +81,10 @@ export async function buildSite(opts = {}) {
   const galleryCss = chrome + "\n" + readFileSync(join(GALLERY_DIR, "src", "page", "gallery.css"), "utf8");
   const siteCss = chrome + "\n" + readFileSync(join(here, "src", "page", "home.css"), "utf8") + "\n/* the hero's tiles, placed */\n" + tilesCss();
   const textCss = chrome + "\n" + readFileSync(join(here, "src", "page", "text.css"), "utf8");
-  const galleryJs = readFileSync(join(GALLERY_DIR, "src", "page", "gallery.js"));
-  const siteJs = readFileSync(join(here, "src", "page", "site.js"));
+  // Each page loads one script: what every page shares (the language, the theme), then its own.
+  const galleryJs = pageScript(readFileSync(join(GALLERY_DIR, "src", "page", "gallery.js")));
+  const siteJs = pageScript(readFileSync(join(here, "src", "page", "site.js")));
+  const textJs = pageScript(Buffer.from(""));
   put("tokens.css", tokens);
   put("hours.css", hours);
   put("gallery.css", galleryCss);
@@ -79,6 +92,7 @@ export async function buildSite(opts = {}) {
   put("text.css", textCss);
   put("gallery.js", galleryJs);
   put("site.js", siteJs);
+  put("text.js", textJs);
   copyFileSync(join(GALLERY_DIR, "src", "page", "favicon.svg"), join(out, "favicon.svg"));
   copyDir(join(DESIGN, "fonts"), "fonts", (f) => f.endsWith(".woff2"));
   mkdirSync(join(out, "logo"), { recursive: true });
@@ -110,9 +124,9 @@ export async function buildSite(opts = {}) {
   for (const [path, body] of legal.files) put(path, body);
 
   // ---- the pages ----
-  const v = { css: shortHash(Buffer.concat([tokens, Buffer.from(hours), Buffer.from(siteCss), Buffer.from(galleryCss), Buffer.from(textCss)])), js: shortHash(Buffer.concat([siteJs, galleryJs])) };
+  const v = { css: shortHash(Buffer.concat([tokens, Buffer.from(hours), Buffer.from(siteCss), Buffer.from(galleryCss), Buffer.from(textCss)])), js: shortHash(Buffer.concat([siteJs, galleryJs, textJs])) };
   const code = await highlightCode(CODE);
-  const home = renderHome({ gallery, words, lucide: lucidePaths(DESIGN), code, logos, v, sizes, legal: legal.ready });
+  const home = renderHome({ gallery, words: allWords, lucide: lucidePaths(DESIGN), code, logos, v, sizes, legal: legal.ready });
   put("index.html", home);
   /** @type {Record<string, { width: number; height: number }>} */
   const shots = Object.fromEntries(published.map((a) => [a.screenshot ?? "", sizes[`/${a.screenshot}`]]));
