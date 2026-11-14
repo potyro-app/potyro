@@ -8,8 +8,8 @@ import { defineApp } from "potyro";
 import { MemoryStore } from "@potyro/store";
 import { FakeAi, FakeCapabilities } from "@potyro/capabilities";
 import { createHost, type MakeCtxBase, type NavBridge, type UiBridge } from "../src/index.js";
-import { newAsyncContext } from "quickjs-emscripten";
-import { createIsolateLoader, type QuickJSAsyncContextLike } from "../src/isolate/index.js";
+import * as quickjsEngine from "quickjs-emscripten";
+import { boundedContexts, createIsolateLoader, type QuickJSAsyncContextLike, type QuickJSEngine } from "../src/isolate/index.js";
 import { RUNNERS, liveThreads, type Runner } from "./runners.js";
 
 const ACTION = `async function (r, ctx) {
@@ -319,8 +319,8 @@ async function open(
   const host = createHost({
     loadIsolated: await createIsolateLoader({
       store,
-      newContext: async () => {
-        const context = (await newAsyncContext()) as unknown as QuickJSAsyncContextLike;
+      newContext: async (memory) => {
+        const context = await boundedContexts(quickjsEngine as unknown as QuickJSEngine)(memory);
         opts.context?.(context);
         return context;
       },

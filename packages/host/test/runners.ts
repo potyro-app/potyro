@@ -8,10 +8,10 @@
 // CSP and opaque origin are tested in e2e (realm-escape-sandbox.spec.ts).
 
 import { Worker } from "node:worker_threads";
-import { newAsyncContext } from "quickjs-emscripten";
+import * as quickjsEngine from "quickjs-emscripten";
 import type { Store } from "@potyro/store";
 import type { LoadedApp, Provenance } from "../src/index.js";
-import { createIsolateLoader, type QuickJSAsyncContextLike } from "../src/isolate/index.js";
+import { boundedContexts, createIsolateLoader, type QuickJSAsyncContextLike, type QuickJSEngine } from "../src/isolate/index.js";
 import { createRealmLoader, type RealmSpawner } from "../src/realm/index.js";
 // @ts-expect-error — a plain .mjs build script, typed by use
 import { bundleRealmWorker } from "../realm-build.mjs";
@@ -75,7 +75,7 @@ export const quickjs: Runner = {
   async loader(store, opts = {}) {
     return createIsolateLoader({
       store,
-      newContext: () => newAsyncContext() as unknown as Promise<QuickJSAsyncContextLike>,
+      newContext: boundedContexts(quickjsEngine as unknown as QuickJSEngine),
       timeoutMs: opts.timeoutMs,
       loadTimeoutMs: opts.loadTimeoutMs,
     });

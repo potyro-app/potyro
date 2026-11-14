@@ -79,7 +79,7 @@ What is lost against QuickJS, and how it is answered (docs/22 §7):
 
 | QuickJS gave | The realm | Answer |
 |---|---|---|
-| A memory cap (claimed 64 MB) | None per Worker | The cap never held as shipped (docs/22 §6.1). Cap what crosses `ctx`; process isolation where the engine has it. |
+| A memory cap (claimed 64 MB) | None per Worker | The cap did not hold when the realm was chosen (docs/22 §6.1). Cap what crosses `ctx`; process isolation where the engine has it. |
 | Interrupting one call, keeping the VM | The whole realm stops after ≤ 1 s of silence | App state lives in the Store, so a stop loses a cache; the next call restarts it. |
 | Pre-empting any code | Logic: yes, by ending its thread. Views: only where the frame is out of process | Views run sealed anyway (#267): a view silent for 2 s, or blocking the page for 2 s, is taken down and the app's plain version shown; a view that hangs a tab for good is never mounted again on that device until the person asks (crash-loop guard); a stuck out-of-process view's shared Chromium process is freed by restarting every realm. |
 | The same semantics everywhere | The engine's own built-ins and ICU data | The point of #272: an app behaves as in the person's browser. Formatting is still `format.ts` at both provenances. |
@@ -91,6 +91,11 @@ What is lost against QuickJS, and how it is answered (docs/22 §7):
 Worker, no DOM: the Node tests), and for the rest of a session in which the realm would not start
 (`RealmStartError`: the box failed, not the app). Either way the app is sealed. Verification and the
 Studio's checks still run candidates in QuickJS until phase 2 moves them.
+
+In the fallback a box's memory is bounded, all of it: each app's engine is its own WebAssembly
+module in a memory the host makes with a maximum — 96 MB, or the 64 MB a check passes — which the
+engine cannot grow past (docs/22 §6.1). An app that asks for more is stopped, its engine closed and
+its memory let go; the person reads "The app was stopped before this finished."
 
 Trusted apps **skip the sealed box entirely** — native speed, real imports, native modules. You
 don't pay sandbox cost for your own code. (On web, a trusted app may still run in a Worker for

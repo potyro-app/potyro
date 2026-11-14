@@ -115,7 +115,9 @@ A shared app cannot hold Potyro hostage by spinning.
 
 Where the realm cannot start (no Worker, or a browser where the frame fails), the shell runs shared
 apps in a QuickJS-WASM isolate instead, still sealed, with the same mediated `ctx`
-(`packages/host/src/isolate/`, docs/22 §10.3). It is behind a flag and due to be removed.
+(`packages/host/src/isolate/`, docs/22 §10.3). It is behind a flag and due to be removed. There
+an app's memory is bounded: its engine lives in a WebAssembly memory of its own that cannot grow
+past 96 MB, and an app that asks for more is stopped and its memory let go (docs/22 §6.1).
 
 ## 7. What our servers see
 
@@ -156,8 +158,9 @@ Read this before you rely on Potyro for something that matters.
   of rotating the space's keys (docs/16).
 - **Rooms frames are plain text to the relay** (docs/26 §4). An app that needs more encrypts its
   messages itself, with a key in the link's fragment.
-- **A sealed app's memory is not capped**, and it may start nested Workers from `blob:`; they end
-  with its frame (docs/22 §6.1, §10.5).
+- **A sealed app's memory is not capped in the realm** (a Worker has no limit of its own; the
+  fallback box has one, §6), and it may start nested Workers from `blob:`; they end with its frame
+  (docs/22 §6.1, §10.5).
 - **The WebRTC removal is a deny-list.** It has to be checked again on every engine release and for
   every new API that opens a channel CSP does not govern (docs/22 §10.5).
 - **Android WebView** has not been measured for the realm (docs/22 §5). If the realm will not start

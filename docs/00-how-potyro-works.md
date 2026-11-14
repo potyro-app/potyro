@@ -920,7 +920,8 @@ so a change to the app's own code can still be judged.
 for one device through localStorage, or automatically where no realm can be built (no DOM or no
 Worker, which is the Node tests and a very old WebView). Both boxes are sealed; the choice is which
 engine, never whether the app gets ambient authority. The Studio's own checks of a candidate still
-run in QuickJS. The realm won on the measurements in docs/22: a shared app that uses `Intl`, `URL`
+run in QuickJS. A QuickJS box holds at most 96 MB, everything counted: its engine lives in a
+WebAssembly memory of its own that cannot grow further, and an app that asks for more is stopped. The realm won on the measurements in docs/22: a shared app that uses `Intl`, `URL`
 and a charting library runs and draws, where through QuickJS its computed values came back empty,
 and a `ctx` round trip is faster.
 
@@ -936,7 +937,7 @@ was added, its tile and the Studio. Every one opens the same dialog with the sam
 confirms. A failure that promotion would not fix, such as a module that does not match its lock, is
 never offered promotion as the way out.
 
-**The limits**, plainly. A Worker's memory is not capped. Nested Workers from `blob:` are allowed by
+**The limits**, plainly. A Worker's memory is not capped (the QuickJS box's is). Nested Workers from `blob:` are allowed by
 the CSP and end with the frame. On every engine but desktop Chromium a view's frame shares the
 shell's thread, which is why the crash-loop guard exists. On the web, code on this origin can still
 ask the vault's key to decrypt the identity's secret; the vault removes the secret from the clear,

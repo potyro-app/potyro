@@ -2,9 +2,11 @@
 // the WASM engine is only loaded when an untrusted app is actually run.
 export {
   createIsolateLoader,
+  DEFAULT_MEMORY,
   type IsolateLoaderOptions,
   type QuickJSAsyncContextLike,
   type QuickJSHandle,
 } from "./isolate-host.js";
+export { boundedContexts, boxMemory, type BoxMemory, type QuickJSEngine } from "./bounded-memory.js";
 export { serialize, deserialize } from "./marshal.js";
 export { HARNESS_SOURCE } from "./harness.js";
