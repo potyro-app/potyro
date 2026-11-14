@@ -10,7 +10,7 @@ import { StrictMode, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import type { PotyroRecord } from "potyro";
-import { copyStoreData, createMemorySqliteStore, declareApp, isReservedPath, isStorageElsewhere, packBundle, unpackBundle, type Store } from "@potyro/store";
+import { copyStoreData, createMemorySqliteStore, declareApp, isReservedPath, isStorageWithheld, packBundle, unpackBundle, type Store } from "@potyro/store";
 import { watchStorageOwner } from "./storage-elsewhere.js";
 import { appClosed, appOpened, settleOwed } from "./erase-app-data.js";
 import { appCode, modulesOf } from "./app-modules.js";
@@ -529,7 +529,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   } catch (e) {
     resumeTiles();
     // Another tab owns the storage: the whole tab already says so, with "Use it here".
-    if (isStorageElsewhere(e)) return null;
+    if (isStorageWithheld(e)) return null;
     mount(root, <Splash id={id} name={saved.name} source={saved.source} failed={e instanceof Error ? e.message : String(e)} action={retry} />);
     return null;
   }
@@ -1310,7 +1310,7 @@ listenForInstall();
 
 boot().catch((err: unknown) => {
   // Not a boot error: the screen saying another tab has the storage is already up.
-  if (isStorageElsewhere(err)) return;
+  if (isStorageWithheld(err)) return;
   const root = document.getElementById("root");
   if (root) {
     const why = err instanceof Error ? err.message : String(err);

@@ -21,7 +21,7 @@ import { bringInEverything, previewPlans, type BringInProgress, type BringInResu
 import type { AppPlan, MoveVia } from "./move-plan.js";
 import { shellCaps } from "./shell-caps.js";
 import { openStore } from "./open-store.js";
-import { isStorageElsewhere } from "@potyro/store";
+import { isStorageWithheld } from "@potyro/store";
 import { DEFAULT_NAME } from "@potyro/identity";
 
 /** Can this tab write the site's storage now? Opening a store says, without writing anything. */
@@ -31,7 +31,7 @@ async function storageIsHere(): Promise<boolean> {
     await probe.close();
     return true;
   } catch (e) {
-    if (isStorageElsewhere(e)) return false;
+    if (isStorageWithheld(e)) return false;
     return true; // any other failure is reported by the import itself, by name
   }
 }

@@ -2369,6 +2369,10 @@ msgstr "Close model settings"
 msgid "Close studio"
 msgstr "Close studio"
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Close the browser completely — every window — then open Potyro again."
+msgstr "Close the browser completely — every window — then open Potyro again."
+
 #. Closes the better-wording form
 #: ../shell/src/suggest-wording.tsx
 msgid "Close the suggestion"
@@ -5910,6 +5914,10 @@ msgstr "Reset icon"
 msgid "Reset name"
 msgstr "Reset name"
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Restart your browser to open Potyro"
+msgstr "Restart your browser to open Potyro"
+
 #: ../shell/src/history.tsx
 msgid "Restore v{seq}"
 msgstr "Restore v{seq}"
@@ -7714,6 +7722,7 @@ msgstr "Try {name}, made with Potyro"
 #: ../shell/src/main.tsx
 #: ../shell/src/main.tsx
 #: ../shell/src/share-sheet.tsx
+#: ../shell/src/storage-elsewhere.tsx
 #: ../views/src/media-input.tsx
 msgid "Try again"
 msgstr "Try again"
@@ -8444,6 +8453,10 @@ msgstr "Your apps, their records, files and Studio conversations are kept in thi
 #: ../shell/src/move-banner.tsx
 msgid "Your browser blocked the new window. Allow pop-ups for this site and try again — or save them as a file instead."
 msgstr "Your browser blocked the new window. Allow pop-ups for this site and try again — or save them as a file instead."
+
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Your browser cannot open the place where it keeps your apps right now. Nothing is lost: your apps and everything in them are kept safe on this device."
+msgstr "Your browser cannot open the place where it keeps your apps right now. Nothing is lost: your apps and everything in them are kept safe on this device."
 
 #. Detail of the question before voice input through the browser's speech service; {service} = Google, Apple or Microsoft
 #: ../shell/src/app-speech.ts

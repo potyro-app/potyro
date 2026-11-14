@@ -99,6 +99,20 @@ describe("one owner for the storage", () => {
     expect(locks.holders()).toBe(0);
   });
 
+  it("gives the lock back when the files could not even be asked about", async () => {
+    // Firefox, with its own bookkeeping for the origin's files stuck, answers every open with
+    // "UnknownError: Unknown failure". The lock stayed held by a worker that owned nothing, the next
+    // open in the same worker waited on it, and the tab said "Potyro is open in another tab" with no
+    // other tab anywhere.
+    const locks = fakeLocks();
+    const failure = Object.assign(new Error("Unknown failure"), { name: "UnknownError" });
+    const owner = ownStorage({ ...base, locks, takeover: false, filesFree: async () => Promise.reject(failure) });
+    await expect(owner).rejects.toBe(failure);
+    await Promise.resolve();
+    expect(locks.holders()).toBe(0);
+    await expect(ownStorage({ ...base, locks, takeover: false })).resolves.toBeDefined();
+  });
+
   it("keeps trying the files while a stolen lock's old owner closes", async () => {
     let tries = 0;
     const owner = await ownStorage({ ...base, filesWithinMs: 5000, locks: fakeLocks(), takeover: true, filesFree: async () => ++tries >= 3 });

@@ -91,10 +91,17 @@ export async function ownStorage(o: OwnStorageOpts): Promise<{ release(): void }
   if (o.locks) release = await takeLock(o.locks, o);
 
   const deadline = Date.now() + o.filesWithinMs;
-  for (;;) {
-    if (await o.filesFree()) return { release };
-    if (Date.now() >= deadline) break;
-    await sleep(100);
+  try {
+    for (;;) {
+      if (await o.filesFree()) return { release };
+      if (Date.now() >= deadline) break;
+      await sleep(100);
+    }
+  } catch (err) {
+    // The files could not even be asked about (storage-rescue.ts). Not ours, then: a lock kept here
+    // is one the next open in this same worker waits on, and reports as another tab's.
+    release();
+    throw err;
   }
   // Somebody holds the files without holding the lock: an older build in another tab, most likely.
   // Hand the lock back, or this tab would keep the next one out while owning nothing.

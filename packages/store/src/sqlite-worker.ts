@@ -26,6 +26,7 @@
 
 import sqlite3InitModule from "@sqlite.org/sqlite-wasm";
 import { ELSEWHERE, isStorageElsewhere, ownStorage, StorageElsewhereError, type LockManagerLike } from "./storage-owner.js";
+import { isStorageStuck, looksStuck, putBack, setAside, STUCK, StorageStuckError, type RescueDir, type RescueStash } from "./storage-rescue.js";
 
 interface Sqlite3Db {
   exec(sqlOrOpts: string | { sql: string; bind?: unknown[] }): unknown;
@@ -46,7 +47,7 @@ export type WorkerRequest =
 
 export type WorkerReply =
   | { id: number; ok: true; rows?: Record<string, unknown>[] }
-  | { id: number; ok: false; error: string; code?: typeof ELSEWHERE };
+  | { id: number; ok: false; error: string; code?: typeof ELSEWHERE | typeof STUCK };
 
 /** Said without being asked: another tab took the storage, and this worker has let go of it. */
 export type WorkerEvent = { event: "lost" };
@@ -157,6 +158,114 @@ async function poolFilesFree(): Promise<boolean> {
   return true;
 }
 
+// ---- storage the browser will not open (storage-rescue.ts) -------------------------------------
+
+/** The browser refused its own storage. Set once; only a restart of the browser changes it. */
+let stuck = false;
+
+type WritableSyncHandle = { truncate(size: number): void; write(data: Uint8Array, opts: { at: number }): number; flush(): void; close(): void };
+
+/** A pool's file directory as the rescue uses it. Created when putting back into a directory that is gone. */
+async function rescueDir(directory: string): Promise<RescueDir> {
+  const root = await (self.navigator as Navigator).storage.getDirectory();
+  const dir = await (await root.getDirectoryHandle(directory.slice(1), { create: true })).getDirectoryHandle(OPAQUE, { create: true });
+  return {
+    names: async () => (await filesOf(dir)).map((f) => f.name),
+    read: async (name) => (await (await dir.getFileHandle(name)).getFile()).arrayBuffer(),
+    async write(name, bytes) {
+      const file = (await dir.getFileHandle(name, { create: true })) as unknown as { createSyncAccessHandle(): Promise<WritableSyncHandle> };
+      const handle = await file.createSyncAccessHandle();
+      try {
+        handle.truncate(0);
+        handle.write(new Uint8Array(bytes), { at: 0 });
+        handle.flush();
+      } finally {
+        handle.close();
+      }
+    },
+    remove: (name) => dir.removeEntry(name),
+  };
+}
+
+/** Where pool files wait for the browser to be restarted. IndexedDB: a different store, which still works. */
+const RESCUE_DB = "potyro-storage-rescue";
+const RESCUE_FILES = "files";
+
+function rescueStash(): RescueStash {
+  const open = (): Promise<IDBDatabase> =>
+    new Promise((resolve, reject) => {
+      const asked = self.indexedDB.open(RESCUE_DB, 1);
+      asked.onupgradeneeded = () => asked.result.createObjectStore(RESCUE_FILES);
+      asked.onsuccess = () => resolve(asked.result);
+      asked.onerror = () => reject(asked.error);
+    });
+  const within = async <T>(mode: IDBTransactionMode, work: (files: IDBObjectStore) => IDBRequest<T>): Promise<T> => {
+    const db = await open();
+    try {
+      return await new Promise<T>((resolve, reject) => {
+        const tx = db.transaction(RESCUE_FILES, mode);
+        const asked = work(tx.objectStore(RESCUE_FILES));
+        tx.oncomplete = () => resolve(asked.result);
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      });
+    } finally {
+      db.close();
+    }
+  };
+  return {
+    put: async (key, bytes) => void (await within("readwrite", (files) => files.put(bytes, key))),
+    get: (key) => within<ArrayBuffer | undefined>("readonly", (files) => files.get(key)),
+    keys: async () => (await within("readonly", (files) => files.getAllKeys())).map(String),
+    clear: async () => void (await within("readwrite", (files) => files.clear())),
+  };
+}
+
+/**
+ * `poolFilesFree`, for a browser that may refuse its storage altogether.
+ *
+ * First whatever an earlier start set aside is put back: if the browser still will not write, the
+ * files stay in the stash and this says so, rather than a pool opening empty beside them. Then the
+ * files are tried. A refusal that is the browser's and not another tab's is asked once more a moment
+ * later, and if it stands the files are set aside for the next start of the browser.
+ */
+async function poolFilesReady(): Promise<boolean> {
+  // A browser with no IndexedDB here (some private windows) has set nothing aside: not a reason to
+  // call its storage stuck, and the open goes on to fail or fall back as it always did.
+  const waiting = await rescueStash()
+    .keys()
+    .catch(() => []);
+  if (waiting.length > 0) {
+    try {
+      await putBack(rescueDir, rescueStash());
+    } catch (err) {
+      console.warn("[potyro] storage: what was set aside cannot be put back yet", err);
+      throw new StorageStuckError();
+    }
+  }
+  try {
+    return await poolFilesFree();
+  } catch (err) {
+    if (!looksStuck(err)) throw err;
+  }
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  try {
+    return await poolFilesFree();
+  } catch (err) {
+    if (!looksStuck(err)) throw err;
+    console.warn("[potyro] storage: the browser will not open its files; setting them aside until it is restarted", err);
+  }
+  try {
+    const dirs: Record<string, RescueDir> = {};
+    for (const { directory } of [CURRENT_POOL, LEGACY_POOL]) if (await opaqueDir(directory)) dirs[directory] = await rescueDir(directory);
+    await setAside(dirs, rescueStash());
+  } catch (err) {
+    // Nothing was removed (storage-rescue.ts): the files are where they were, and still unopenable.
+    console.warn("[potyro] storage: the files could not be set aside", err);
+  }
+  throw new StorageStuckError();
+}
+
 const dbs = new Map<string, Sqlite3Db>();
 
 interface Capi {
@@ -249,11 +358,13 @@ async function install(takeover: boolean): Promise<void> {
       locks: (self.navigator as Navigator & { locks?: LockManagerLike }).locks,
       takeover,
       waitMs: 2000,
-      filesFree: poolFilesFree,
+      filesFree: poolFilesReady,
       filesWithinMs: takeover ? 5000 : 1500,
       onLost,
     }).catch((err: unknown) => {
       owning = null;
+      // Remembered: every database of this load is asked for, and each would set aside again.
+      if (isStorageStuck(err)) stuck = true;
       throw err;
     });
     await owning;
@@ -349,6 +460,10 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       reply({ id: msg.id, ok: false, error: new StorageElsewhereError().message, code: ELSEWHERE });
       return;
     }
+    if (stuck) {
+      reply({ id: msg.id, ok: false, error: new StorageStuckError().message, code: STUCK });
+      return;
+    }
     if (msg.op === "open") {
       await open(msg.db, msg.takeover === true);
       reply({ id: msg.id, ok: true });
@@ -367,7 +482,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       id: msg.id,
       ok: false,
       error: err instanceof Error ? err.message : String(err),
-      ...(isStorageElsewhere(err) ? { code: ELSEWHERE } : {}),
+      ...(isStorageElsewhere(err) ? { code: ELSEWHERE } : isStorageStuck(err) ? { code: STUCK } : {}),
     });
   } finally {
     letGoWhenIdle();
