@@ -177,8 +177,9 @@ async function rescueDir(directory: string): Promise<RescueDir> {
       const handle = await file.createSyncAccessHandle();
       try {
         handle.truncate(0);
-        handle.write(new Uint8Array(bytes), { at: 0 });
+        const written = handle.write(new Uint8Array(bytes), { at: 0 });
         handle.flush();
+        if (written !== bytes.byteLength) throw new Error(`"${name}": ${written} of ${bytes.byteLength} bytes written`);
       } finally {
         handle.close();
       }
@@ -222,6 +223,32 @@ function rescueStash(): RescueStash {
 }
 
 /**
+ * A note, in OPFS itself, that files were set aside. An empty file beside the pool: making one and
+ * finding one both work while the browser refuses to open anything for writing.
+ *
+ * The stash is in IndexedDB, and "could not read the stash" must not be taken for "nothing is in
+ * it": a pool installed empty then would be new, empty apps beside the real ones, and putting the
+ * real ones back later would write over whatever had been made since.
+ */
+const SET_ASIDE_NOTE = "potyro-set-aside";
+
+async function noteSetAside(on: boolean): Promise<void> {
+  const root = await (self.navigator as Navigator).storage.getDirectory();
+  if (on) await root.getFileHandle(SET_ASIDE_NOTE, { create: true });
+  else await root.removeEntry(SET_ASIDE_NOTE).catch(() => undefined);
+}
+
+async function setAsideNoted(): Promise<boolean> {
+  try {
+    const root = await (self.navigator as Navigator).storage.getDirectory();
+    await root.getFileHandle(SET_ASIDE_NOTE);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * `poolFilesFree`, for a browser that may refuse its storage altogether.
  *
  * First whatever an earlier start set aside is put back: if the browser still will not write, the
@@ -230,19 +257,32 @@ function rescueStash(): RescueStash {
  * later, and if it stands the files are set aside for the next start of the browser.
  */
 async function poolFilesReady(): Promise<boolean> {
-  // A browser with no IndexedDB here (some private windows) has set nothing aside: not a reason to
-  // call its storage stuck, and the open goes on to fail or fall back as it always did.
-  const waiting = await rescueStash()
-    .keys()
-    .catch(() => []);
+  let waiting: string[];
+  try {
+    waiting = await rescueStash().keys();
+  } catch (err) {
+    // A stash that cannot be read. Where files were set aside they are in it, and nothing opens
+    // until it reads again. Where none were (a browser with no IndexedDB here), there is nothing to
+    // put back, and the open goes on to fail or fall back as it always did.
+    if (await setAsideNoted()) {
+      console.warn("[potyro] storage: what was set aside cannot be read yet", err);
+      throw new StorageStuckError();
+    }
+    waiting = [];
+  }
   if (waiting.length > 0) {
     try {
       await putBack(rescueDir, rescueStash());
     } catch (err) {
+      // Held by a tab of an older build, which takes no lock: that tab's to let go of, not stuck.
+      if ((err as { name?: string })?.name === "NoModificationAllowedError") return false;
+      // Anything else leaves the stash as it was. Said as stuck whatever the cause, because every
+      // other answer lets a caller open different storage, empty, beside the records waiting here.
       console.warn("[potyro] storage: what was set aside cannot be put back yet", err);
       throw new StorageStuckError();
     }
   }
+  await noteSetAside(false).catch(() => undefined);
   try {
     return await poolFilesFree();
   } catch (err) {
@@ -258,6 +298,7 @@ async function poolFilesReady(): Promise<boolean> {
   try {
     const dirs: Record<string, RescueDir> = {};
     for (const { directory } of [CURRENT_POOL, LEGACY_POOL]) if (await opaqueDir(directory)) dirs[directory] = await rescueDir(directory);
+    await noteSetAside(true); // before anything is removed
     await setAside(dirs, rescueStash());
   } catch (err) {
     // Nothing was removed (storage-rescue.ts): the files are where they were, and still unopenable.

@@ -125,7 +125,12 @@ export async function putBack(dirOf: (directory: string) => Promise<RescueDir>, 
     const cut = key.lastIndexOf("/");
     const bytes = await stash.get(key);
     if (!bytes) throw new Error(`"${key}" is no longer in the stash`);
-    await (await dirOf(key.slice(0, cut))).write(key.slice(cut + 1), bytes);
+    const dir = await dirOf(key.slice(0, cut));
+    const name = key.slice(cut + 1);
+    await dir.write(name, bytes);
+    // Read back before the stash may be emptied: a write can come back short without failing, and
+    // by now the stash holds the only whole copy.
+    if (!same(bytes, await dir.read(name))) throw new Error(`"${key}" was not written back whole`);
   }
   await stash.clear();
   return true;

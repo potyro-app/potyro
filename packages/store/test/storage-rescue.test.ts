@@ -8,7 +8,8 @@ import { isStorageStuck, looksStuck, putBack, setAside, StorageStuckError, type 
 const bytes = (...n: number[]): ArrayBuffer => new Uint8Array(n).buffer;
 const list = (b: ArrayBuffer | undefined): number[] => [...new Uint8Array(b ?? new ArrayBuffer(0))];
 
-function fakeDir(files: Record<string, ArrayBuffer>, opts: { stuck?: boolean } = {}): RescueDir & { files: Map<string, ArrayBuffer>; opts: { stuck?: boolean } } {
+type DirOpts = { stuck?: boolean; short?: boolean };
+function fakeDir(files: Record<string, ArrayBuffer>, opts: DirOpts = {}): RescueDir & { files: Map<string, ArrayBuffer>; opts: DirOpts } {
   const held = new Map(Object.entries(files));
   return {
     files: held,
@@ -17,7 +18,7 @@ function fakeDir(files: Record<string, ArrayBuffer>, opts: { stuck?: boolean } =
     read: async (name) => held.get(name)!.slice(0),
     async write(name, data) {
       if (opts.stuck) throw Object.assign(new Error("Unknown failure"), { name: "UnknownError" });
-      held.set(name, data.slice(0));
+      held.set(name, opts.short ? data.slice(0, Math.max(0, data.byteLength - 1)) : data.slice(0));
     },
     async remove(name) {
       held.delete(name);
@@ -97,6 +98,20 @@ describe("storage the browser will not open", () => {
     await expect(putBack(async () => dir, stash)).rejects.toSatisfy(looksStuck);
     expect(list(stash.held.get("/potyro/a"))).toEqual([1, 2, 3]);
     dir.opts.stuck = false;
+    expect(await putBack(async () => dir, stash)).toBe(true);
+    expect(list(dir.files.get("a"))).toEqual([1, 2, 3]);
+  });
+
+  it("keeps the stash when a file was not written back whole", async () => {
+    // A sync access handle may write fewer bytes than it was given (a disk nearly full). The stash is
+    // the only whole copy by then: emptied after a short write, a database is gone for good.
+    const dir = fakeDir({ a: bytes(1, 2, 3) });
+    const stash = fakeStash();
+    await setAside({ "/potyro": dir }, stash);
+    dir.opts.short = true;
+    await expect(putBack(async () => dir, stash)).rejects.toThrow(/whole/);
+    expect(list(stash.held.get("/potyro/a"))).toEqual([1, 2, 3]);
+    dir.opts.short = false;
     expect(await putBack(async () => dir, stash)).toBe(true);
     expect(list(dir.files.get("a"))).toEqual([1, 2, 3]);
   });
