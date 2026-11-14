@@ -202,8 +202,11 @@ export default defineApp({
           help: "Your own words: where it lives, who gave it to you",
         },
         // Where it lives: Today goes room by room, the way you walk round with the watering can.
+        // The rooms are the person's own, so not an enum: the form offers the ones already typed
+        // and a new one is simply kept — "Kitchen" is picked the second time, not spelled again.
         room: {
           type: "text",
+          suggest: true,
           label: "Room",
           placeholder: "Living room",
         },

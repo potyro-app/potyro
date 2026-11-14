@@ -146,7 +146,8 @@ entities: {
 member · relation · list`. (No `computed` field *type* — computed is a function block. This cleanly
 separates shape from logic.) Options per type are unchanged from the prior schema draft
 (min/max/unit, enum options, relation `to`/`many`, list `of`/`ordered`, media `accept`/
-`multiple`, etc.). `default` may be a value or a function `(ctx) => value`. A `text` field with
+`multiple`, etc.). `default` may be a value or a function `(ctx) => value`. A `text` field with `suggest` offers the
+values already typed into it (below, "A list that grows"). A `text` field with
 `collaborative: true` is one several people type into at once — edited with `ctx.text` (docs/04
 "Writing together"), merged character by character in a shared app, each stretch remembering who
 typed it.
@@ -218,6 +219,30 @@ tint, the same in the form, in a row badge and on the record page: derived from 
 name, or named by the field with `colors: { overdue: "red" }` from the closed set red · orange ·
 yellow · green · teal · blue · purple · pink · grey. A required enum with no `default` starts on
 nothing. `tags` with no `options` is free-text: type a word, press Enter, it becomes a chip.
+
+**A list that grows with the person's data is a `text` field with `suggest`** (#82), never an enum
+that someone has to keep extending and never bare text. An `enum` is a closed set: a value outside
+`options` is refused on write, which is right for a status and wrong for a wine's region, a shop, a
+brand, a room — things the person names as they go. `suggest: true` keeps the field plain text and
+makes its form control a combobox: under the input are the values the entity's records already hold
+in that field, typing narrows them, a tap or Enter takes one, and a value that is not there is kept
+as typed and offered from the next record on. `suggest: ["Red", "White", "Rosé"]` adds starting
+values to offer before any record uses them; they are suggestions, not a limit, and they are stored
+words, so they are not translated. Nothing is refused, nothing is migrated (it is still `text`), and
+adding or removing `suggest` never moves `schemaVersion`.
+
+- **One choice, however it was typed.** "barolo", "Barolo" and " Barolo " are the same choice: the
+  list shows it once, in the spelling most records use (a record's spelling wins over a declared
+  one). The form saves the value without the space around it, and a value that differs from an
+  offered one only by letter case is saved in the offered spelling — so a filter, a group or a
+  count over the field sees one "Barolo", not three.
+- **Filters, groups and sorts read the same field.** A filter chip `from` the field offers the
+  values the records hold (#79). The declared starting values are NOT filter choices until a record
+  uses them: a filter shows what is in the data.
+- **Where the values come from.** The host reads them from the store for its own form; app code is
+  handed nothing. A sealed app's form is the same host control (docs/07). A field with no records
+  behind it — a `list` row's sub-field, a `ctx.ui.form` field — offers only its declared values.
+- It is for a one-line field: `multiline` and `collaborative` text ignore it.
 
 A `datetime` is a **day** unless the field says `precision: "minute"` (#103). Most dates are
 days — when a plant was watered, when a bill is due — and the form offers a day: the box reads

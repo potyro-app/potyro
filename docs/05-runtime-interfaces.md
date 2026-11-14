@@ -560,6 +560,13 @@ A view's full-screen layer (a form sheet) is portalled to `usePortalRoot()`, whi
 the Studio shows an app beside its conversation, and the app's forms belong to that screen, not
 to the page. Popovers anchored to a control keep the page — they are placed by page coordinates.
 
+The generated form picks its control from the field alone (`FieldInput`). The one control that
+reads records besides a relation's picker is a `text` field with `suggest` (#82, docs/03 "A list that
+grows"): `SuggestInput` runs `runtime.useQuery(entity)` — the host's own read, the same one a filter
+chip's values come from — and `suggestedValues` (packages/runtime) folds them with the declared
+starting values. `RecordForm` passes it `source: { entity, field }`; a `FieldInput` rendered without
+a `source` offers the declared values only. The form trims such a field when it saves.
+
 A view that lists records reports how many it shows through `PageCountContext` (`useReportCount`),
 which the shell's page header provides; the header never runs the page's query a second time to
 count. Inside a page `layout` the items report to nobody (`null` provider) except a `split`'s list.

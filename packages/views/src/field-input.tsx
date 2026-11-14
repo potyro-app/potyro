@@ -18,6 +18,7 @@ import { MediaInput } from "./media-input.js";
 import { FileInput } from "./file-input.js";
 import { MoneyInput } from "./money-input.js";
 import { RelationInput } from "./relation-input.js";
+import { SuggestInput, type SuggestSource } from "./suggest-input.js";
 import { canDrawMaps, loadMapLibre, mapDraws, removeMap } from "./maplibre.js";
 
 export interface FieldInputProps {
@@ -27,11 +28,16 @@ export interface FieldInputProps {
   onChange: (v: unknown) => void;
   /** The field's label, for controls that name themselves (a number with its stepper buttons). */
   label?: string;
+  /** The record field this edits, when it is one: where a `suggest` text field reads the values in use (#82). */
+  source?: SuggestSource;
 }
 
-export function FieldInput({ runtime, field, value, onChange, label }: FieldInputProps) {
+export function FieldInput({ runtime, field, value, onChange, label, source }: FieldInputProps) {
   switch (field.type) {
     case "text":
+      // The values used before, under the input; anything else is kept as typed (#82).
+      if (field.suggest && !field.multiline && !field.collaborative)
+        return <SuggestInput runtime={runtime} suggest={field.suggest} source={source} value={value} onChange={onChange} label={label ?? (field as { label?: string }).label} placeholder={field.placeholder} />;
       // `placeholder` is the field's own (#100): example text in the empty control.
       return field.multiline ? (
         <textarea className="k-input" rows={3} placeholder={field.placeholder} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} />

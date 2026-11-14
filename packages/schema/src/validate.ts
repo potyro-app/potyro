@@ -44,7 +44,14 @@ export const fieldSchema: z.ZodType<unknown> = z.lazy(() => {
     default: z.any().optional(),
   };
 
-  const text = z.object({ type: z.literal("text"), multiline: z.boolean().optional(), collaborative: z.boolean().optional(), ...common });
+  // `suggest` (#82): the form offers the values the records already hold; an array adds starting
+  // values. The words say what to write instead, because a repair round forwards them to the model.
+  const suggest = z.custom<true | string[]>((v) => v === true || (Array.isArray(v) && v.every((s) => typeof s === "string" && s.trim() !== "")), {
+    message:
+      '`suggest` is `true` (offer the values already used in this field) or a list of starting values, e.g. suggest: ["Red", "White"]; ' +
+      "leave it out for plain text, and use an `enum` when only the listed values are allowed",
+  });
+  const text = z.object({ type: z.literal("text"), multiline: z.boolean().optional(), collaborative: z.boolean().optional(), suggest: suggest.optional(), ...common });
   const richtext = z.object({ type: z.literal("richtext"), ...common });
   const number = z.object({
     type: z.literal("number"),
