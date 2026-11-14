@@ -22,8 +22,8 @@ msgid "“To settle up” lists the fewest payments that make everyone even. Tap
 msgstr "“Para acertar” lista o mínimo de pagamentos para todos ficarem quites. Toque em “Acertar” em um deles quando for pago."
 
 #: guide.3
-msgid "Tap “Invite” to name who is in the group, or to send them a link."
-msgstr "Toque em “Convidar” para dizer quem está no grupo ou para enviar um link."
+msgid "People you name under “Invite” can be in an expense before they have the app; when they open the link, they say which one they are."
+msgstr "Quem você anota em “Convidar” já pode estar em uma despesa antes de ter o app; ao abrir o link, cada um diz qual deles é."
 
 #: scope.label
 #: entities.group.label

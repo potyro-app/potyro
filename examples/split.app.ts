@@ -499,7 +499,7 @@ export default defineApp({
     "Tap “Add expense”: what it cost, who paid, and who it was for.",
     "For a bill with many lines, tap “Split a receipt”: photograph it, check the lines it read, and say who had what.",
     "“To settle up” lists the fewest payments that make everyone even. Tap “Settle” on one once it is paid.",
-    "Tap “Invite” to name who is in the group, or to send them a link.",
+    "People you name under “Invite” can be in an expense before they have the app; when they open the link, they say which one they are.",
   ],
 
   // The group is the app's selection, in the header, and every page follows it. `required` because

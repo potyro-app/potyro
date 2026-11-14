@@ -22,7 +22,7 @@ msgid "“To settle up” lists the fewest payments that make everyone even. Tap
 msgstr ""
 
 #: guide.3
-msgid "Tap “Invite” to name who is in the group, or to send them a link."
+msgid "People you name under “Invite” can be in an expense before they have the app; when they open the link, they say which one they are."
 msgstr ""
 
 #: scope.label
