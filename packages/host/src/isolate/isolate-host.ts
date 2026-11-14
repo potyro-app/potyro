@@ -18,6 +18,7 @@ import { guestBookOf } from "../guests.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "../authorship.js";
 import { deserialize, serialize } from "./marshal.js";
 import { BOX_BYTES, HARNESS_SOURCE, PICTURE_BYTES } from "./harness.js";
+import { AI_LIMITS } from "../ai.js";
 import { SocketBridge, type BoxSocketEvent, type BoxSocketInfo } from "../socket-bridge.js";
 import { SpeechBridge, type BoxSpeechEvent, type BoxSpeechInfo } from "../speech-bridge.js";
 
@@ -37,6 +38,8 @@ export interface QuickJSAsyncContextLike {
   /** Buffers across the edge as they are (a picture's bytes). Optional: without them bytes cross as base64. */
   newArrayBuffer?(buffer: ArrayBufferLike): QuickJSHandle;
   getArrayBuffer?(h: QuickJSHandle): { value: Uint8Array; dispose(): void };
+  /** A handle's `typeof`, without running anything of the box's: asked before a value is read. */
+  typeof?(h: QuickJSHandle): string;
   newAsyncifiedFunction(name: string, fn: (...args: QuickJSHandle[]) => Promise<QuickJSHandle>): QuickJSHandle;
   evalCode(code: string): { error?: QuickJSHandle; value?: QuickJSHandle };
   evalCodeAsync(code: string): Promise<{ error?: QuickJSHandle; value?: QuickJSHandle }>;
@@ -89,8 +92,20 @@ function shareFromIsolate(opts: unknown): never {
   return { ...(opts as object), files } as never;
 }
 
-/** How many captures, and how many buffers on their way across, are held at once; the oldest is let go. */
+/** How many captures are held for a box at once; the oldest is let go. */
 const SHOTS_HELD = 8;
+/**
+ * The most bytes the host keeps for one box in each of two places: its captures, and the buffers on
+ * their way across its edge. Two pictures' worth — one going out while one comes in (read a capture,
+ * hand back the edited bytes), or two full-size photos held — and no more: without a total, a box
+ * could make the host keep a fresh 25 MB copy per call to `__hostBytesOut`, eight times over.
+ */
+const HELD_BYTES = 2 * PICTURE_BYTES;
+/** How many buffers may be on their way at once, however small. */
+const CROSSING_HELD = 32;
+
+const NOT_BYTES = "!these are not bytes";
+const NOT_ARRIVED = "those bytes did not arrive: hand them over again";
 
 const megabytes = (n: number): string => `${Math.round(n / 104857.6) / 10} MB`;
 
@@ -117,8 +132,15 @@ class IsolateLoadedApp implements LoadedApp {
   /** Captures taken by this box, kept here so their bytes never have to cross into it (see harness `Picture`). */
   private readonly shots = new Map<string, Blob>();
   private shotSeq = 0;
-  /** Bytes between the box and the host, by number: handed out by the box, or waiting for it to take. */
+  /**
+   * Bytes between the box and the host, by number: handed out by the box, or waiting for it to take.
+   * Each is taken once, within the tick it was made in; whatever is left when the box's last running
+   * call ends is dropped (`invoke`), and all of them together stay within `HELD_BYTES`.
+   */
   private readonly crossing = new Map<string, Uint8Array>();
+  private crossingBytes = 0;
+  /** Calls into the box that have not ended yet. */
+  private running = 0;
   private progress = new Map<string, UiProgress>();
   /** Screens the box holds on and timers it draws, by its id for each (`ui.keepAwake`, `ui.drawsTimer`). */
   private awake = new Map<string, { release(): void }>();
@@ -376,10 +398,13 @@ class IsolateLoadedApp implements LoadedApp {
           if (!(shot instanceof Blob)) throw new Error("the camera gave no picture");
           if (shot.size > PICTURE_BYTES) throw new Error(`this picture is ${megabytes(shot.size)}; a shared app takes at most ${megabytes(PICTURE_BYTES)}`);
           // The picture stays here; the box gets its number. Handing it on then moves no bytes.
+          // The app was closed while the camera was open: nothing is kept for a box that is gone.
+          if (this.disposed) throw new HostFault("the app was closed", "closed");
           const id = `s${++this.shotSeq}`;
           this.shots.set(id, shot);
+          // The oldest go first, by count and by what they weigh together; the one just taken stays.
           for (const old of this.shots.keys()) {
-            if (this.shots.size <= SHOTS_HELD) break;
+            if (old === id || (this.shots.size <= SHOTS_HELD && this.shotBytes() <= HELD_BYTES)) break;
             this.shots.delete(old);
           }
           return serialize({ shot: id, size: shot.size, mime: shot.type || null });
@@ -409,6 +434,8 @@ class IsolateLoadedApp implements LoadedApp {
             if (i && typeof i === "object" && (i as { __held?: unknown }).__held !== undefined) return this.handed((i as { __held: unknown }).__held);
             return i && typeof i === "object" && typeof (i as { __bytes?: unknown }).__bytes === "string" ? bytesOfBase64((i as { __bytes: string }).__bytes) : i ?? undefined;
           };
+          // Counted before any of them is decoded: the fifth picture is refused, not read first.
+          if (Array.isArray(v) && v.length > AI_LIMITS.images) throw new Error(`ctx.caps.ai: at most ${AI_LIMITS.images} images a call, not ${v.length}`);
           return v == null ? undefined : Array.isArray(v) ? v.map(one) : one(v);
         };
         this.openQuestion();
@@ -478,10 +505,13 @@ class IsolateLoadedApp implements LoadedApp {
       // A held capture's bytes, for an app that reads them itself. Within what the box can take.
       case "shot.bytes": {
         const shot = this.shot(op.shot);
+        const native = op.native === true && Boolean(this.vm.newArrayBuffer);
+        // Asked before the picture is copied out of its Blob, not after.
+        if (native) this.room(shot.size);
+        else if (shot.size > BOX_BYTES) throw new Error(`this picture is ${megabytes(shot.size)}; at most ${megabytes(BOX_BYTES)} can be read here`);
         const bytes = new Uint8Array(await shot.arrayBuffer());
-        if (op.native === true && this.vm.newArrayBuffer) return serialize({ held: this.hold(bytes) });
-        if (shot.size > BOX_BYTES) throw new Error(`this picture is ${megabytes(shot.size)}; at most ${megabytes(BOX_BYTES)} can be read here`);
-        return serialize(base64OfBytes(bytes));
+        if (this.disposed) throw new HostFault("the app was closed", "closed");
+        return serialize(native ? { held: this.hold(bytes) } : base64OfBytes(bytes));
       }
       // The app's own folder (#252). No permission gate: the folder is this app's alone, and import /
       // export go through a dialog the person answers, which is the consent. Bytes travel as base64.
@@ -662,30 +692,39 @@ class IsolateLoadedApp implements LoadedApp {
 
     // A picture's bytes, as a buffer and not as text (see the harness's `bytesOut`). Synchronous and
     // authority-free: they only move bytes this box already has, or was already given, under a number.
+    // Nothing of the box's runs inside them: an argument's type is asked first (reading a value as
+    // a string would call its toString), and what they answer on a failure is a fixed sentence.
     const { newArrayBuffer, getArrayBuffer } = this.vm;
-    if (newArrayBuffer && getArrayBuffer) {
+    if (newArrayBuffer && getArrayBuffer && this.vm.typeof) {
+      const typeOf = (h: QuickJSHandle | undefined): string => (h ? this.vm.typeof!(h) : "undefined");
       const outFn = this.vm.newFunction("__hostBytesOut", (handle) => {
         try {
-          const view = getArrayBuffer.call(this.vm, handle);
+          if (typeOf(handle) !== "object") return this.vm.newString(NOT_BYTES);
+          const view = getArrayBuffer.call(this.vm, handle!);
           try {
-            if (view.value.byteLength > PICTURE_BYTES) return this.vm.newString(`!these bytes are ${megabytes(view.value.byteLength)}; at most ${megabytes(PICTURE_BYTES)}`);
+            const size = view.value.byteLength;
+            if (size > PICTURE_BYTES) return this.vm.newString(`!these bytes are ${megabytes(size)}; at most ${megabytes(PICTURE_BYTES)}`);
+            // Before the copy: a buffer there is no room for is never taken.
+            const full = this.noRoom(size);
+            if (full) return this.vm.newString(`!${full}`);
             // A copy: the view is the box's own memory, which moves.
             return this.vm.newString(this.hold(view.value.slice()));
           } finally {
             view.dispose();
           }
         } catch {
-          return this.vm.newString("!these are not bytes");
+          return this.vm.newString(NOT_BYTES);
         }
       });
       this.vm.setProp(this.vm.global, "__hostBytesOut", outFn);
       outFn.dispose();
       const inFn = this.vm.newFunction("__hostBytesIn", (idHandle) => {
         try {
-          const bytes = this.handed(this.vm.getString(idHandle));
+          if (typeOf(idHandle) !== "string") return this.vm.newString(NOT_ARRIVED);
+          const bytes = this.handed(this.vm.getString(idHandle!));
           return newArrayBuffer.call(this.vm, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
-        } catch (e) {
-          return this.vm.newString(e instanceof Error ? e.message : String(e));
+        } catch {
+          return this.vm.newString(NOT_ARRIVED);
         }
       });
       this.vm.setProp(this.vm.global, "__hostBytesIn", inFn);
@@ -715,23 +754,52 @@ class IsolateLoadedApp implements LoadedApp {
     return shot;
   }
 
-  /** Keep bytes on their way across under a number, a few at a time. */
+  private shotBytes(): number {
+    let total = 0;
+    for (const shot of this.shots.values()) total += shot.size;
+    return total;
+  }
+
+  /** What the host keeps for this box right now, in bytes: for tests, and for anyone measuring. */
+  heldBytes(): { crossing: number; shots: number } {
+    return { crossing: this.crossingBytes, shots: this.shotBytes() };
+  }
+
+  /** Why `size` more bytes cannot be on their way now, or null when they can. Nothing is evicted to make room. */
+  private noRoom(size: number): string | null {
+    if (this.crossing.size >= CROSSING_HELD || this.crossingBytes + size > HELD_BYTES) {
+      return `too many bytes are on their way at once (at most ${megabytes(HELD_BYTES)}): hand over what is waiting first`;
+    }
+    return null;
+  }
+
+  private room(size: number): void {
+    const full = this.noRoom(size);
+    if (full) throw new Error(full);
+  }
+
+  /** Keep bytes on their way across under a number, within the budget; a number is never used twice. */
   private hold(bytes: Uint8Array): string {
+    this.room(bytes.byteLength);
     const id = `b${++this.shotSeq}`;
     this.crossing.set(id, bytes);
-    for (const old of this.crossing.keys()) {
-      if (this.crossing.size <= SHOTS_HELD) break;
-      this.crossing.delete(old);
-    }
+    this.crossingBytes += bytes.byteLength;
     return id;
   }
 
-  /** Bytes the box handed over (`__hostBytesOut`), taken once. */
+  /** Bytes on their way, taken once: what the box handed over (`__hostBytesOut`), or is about to read. */
   private handed(id: unknown): Uint8Array {
     const bytes = typeof id === "string" ? this.crossing.get(id) : undefined;
-    if (!bytes) throw new Error("those bytes did not arrive: hand them over again");
+    if (!bytes) throw new Error(NOT_ARRIVED);
     this.crossing.delete(id as string);
+    this.crossingBytes -= bytes.byteLength;
     return bytes;
+  }
+
+  /** Let go of everything on its way: nothing honest is in transit once no call is running. */
+  private dropCrossing(): void {
+    this.crossing.clear();
+    this.crossingBytes = 0;
   }
 
   private capsAvailable(ctx: Ctx): string[] {
@@ -838,10 +906,16 @@ class IsolateLoadedApp implements LoadedApp {
     let handle: QuickJSHandle | null = null;
     let settled!: Promise<{ error?: QuickJSHandle; value?: QuickJSHandle }>;
     this.cutShort = false;
-    this.enter(() => {
-      handle = this.vm.unwrapResult(this.vm.evalCode(code));
-      settled = this.vm.resolvePromise(handle);
-    });
+    this.running++;
+    try {
+      this.enter(() => {
+        handle = this.vm.unwrapResult(this.vm.evalCode(code));
+        settled = this.vm.resolvePromise(handle);
+      });
+    } catch (e) {
+      this.ended();
+      throw e;
+    }
 
     const started = Date.now();
     const waitedBefore = this.waitedOnPeople();
@@ -870,9 +944,22 @@ class IsolateLoadedApp implements LoadedApp {
       throw e;
     } finally {
       clearTimeout(timer);
+      this.ended();
       if (!this.disposed) (handle as QuickJSHandle | null)?.dispose();
       // ctxHost is left as it is: an action that awaited a question resumes after this call has
       // returned, and its host calls still need a ctx of this app.
+    }
+  }
+
+  /**
+   * A call ended — it settled, threw or was cut short. Bytes on their way are taken within the tick
+   * they were made in, so once the last running call is over, whatever is left was never going to be
+   * taken: it is dropped, and a box cannot leave the host holding it.
+   */
+  private ended(): void {
+    if (--this.running <= 0) {
+      this.running = 0;
+      this.dropCrossing();
     }
   }
 
@@ -965,7 +1052,7 @@ class IsolateLoadedApp implements LoadedApp {
     this.awake.clear();
     this.speech.endAll();
     this.shots.clear();
-    this.crossing.clear();
+    this.dropCrossing();
     this.disposed = true;
     this.vm.dispose();
   }

@@ -24,8 +24,8 @@ import { MARSHAL_SOURCE } from "./marshal.js";
 /**
  * The most bytes that cross the box's edge as base64 in one piece: a `Uint8Array` for
  * `ctx.files.write`, `ctx.ui.share` or a socket's send. They are encoded by an interpreter, inside
- * JSON, in a box with 64 MB of memory and a budget per call: past this the call would end as
- * "interrupted", so it ends as a sentence instead.
+ * JSON, under a budget per call: past this the call would end as "interrupted", so it ends as a
+ * sentence instead.
  */
 export const BOX_BYTES = 4 * 1024 * 1024;
 
