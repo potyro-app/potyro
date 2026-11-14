@@ -20,3 +20,6 @@ export {
   type ReplayReport,
   type StepOutcome,
 } from "./replay.js";
+
+// A filter's choices when its field declares none: the values the records hold (#79).
+export { distinctValues, offersRecordValues, DISTINCT_VALUES_CAP, type OfferedValue } from "./distinct-values.js";

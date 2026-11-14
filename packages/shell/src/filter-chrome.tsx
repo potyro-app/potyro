@@ -2,7 +2,9 @@
 // write into `ctx.params`, re-running the view query. Supports three chip kinds:
 //   • boolean — a toggle (param = true | undefined)
 //   • geo     — a "use my location" button (param = { lat, lng } from ctx.caps.geo) → "near me"
-//   • field   — `from` names an enum/tags field; its options become single- or multi-select chips
+//   • field   — `from` names an enum/tags field; its options become single- or multi-select chips.
+//               A field that declares no options (text, url, number, free tags) offers the distinct
+//               values its records hold instead (#79)
 // The recipes pantry picker (a record-source picker) stays its own chrome for now.
 //
 // Every option, always on screen, does not survive contact with a real app: Places' two lists come
@@ -15,7 +17,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { PotyroRuntime } from "@potyro/runtime";
+import { distinctValues, offersRecordValues, type OfferedValue, type PotyroRuntime } from "@potyro/runtime";
 import type { FilterChip as SourceChip, Localized } from "potyro";
 import { Glyph, optionLabel, usePortalRoot } from "@potyro/views";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -58,6 +60,27 @@ function chosen(chip: FilterChip, params: Record<string, unknown>): string[] {
 }
 
 const isOptionChip = (chip: FilterChip): boolean => !DIRECT_TYPES.has(chip.type ?? "");
+
+/** What a chip's `from` field declares, as far as the chrome reads it. */
+type ChoiceField = { type?: string; options?: string[]; labels?: Record<string, string> };
+
+const fieldOf = (chip: FilterChip, entity: string, runtime: PotyroRuntime): ChoiceField | undefined =>
+  chip.from ? (runtime.definition.entities[entity]?.fields[chip.from] as ChoiceField | undefined) : undefined;
+
+/**
+ * Can this chip ever offer a choice? Read off the definition alone, so it does not change as
+ * records come and go.
+ *
+ * One that cannot — its `from` names nothing, or a field whose values are not choices (a place, a
+ * file) — is left out, and the Filter button with it when it was the only one: a sheet that opens on
+ * nothing reads as the app being broken (#79).
+ */
+function canOffer(chip: FilterChip, entity: string, runtime: PotyroRuntime): boolean {
+  if (!chip.from) return false;
+  if (runtime.definition.entities[chip.from]) return true;
+  const field = fieldOf(chip, entity, runtime);
+  return Boolean(field?.options?.length) || offersRecordValues(field);
+}
 
 /**
  * The app's own buttons for this page (#216).
@@ -125,7 +148,7 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
   }
 
   const entity = view!.entity ?? "";
-  const options = filters.filter(isOptionChip);
+  const options = filters.filter((c) => isOptionChip(c) && canOffer(c, entity, runtime));
   // A box to type in gets a line of its own, the width of the screen: it is what someone with three
   // hundred rows came for. Everything else is one row of chips under it, scrolling sideways on a
   // phone rather than stacking three rows of choices above the content.
@@ -134,7 +157,8 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
   const picked = options.flatMap((chip) => chosen(chip, params).map((value) => ({ chip, value })));
 
   const drop = (chip: FilterChip, value: string): void => {
-    const rest = chosen(chip, params).filter((v) => v !== value);
+    // The values as the param holds them: a number picked from the records stays a number.
+    const rest = held(chip, params).filter((v) => String(v) !== value);
     setParam(chip.param, chip.multi && rest.length ? rest : undefined);
   };
 
@@ -205,7 +229,7 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
 function ValueLabel({ chip, entity, runtime, value }: { chip: FilterChip; entity: string; runtime: PotyroRuntime; value: string }) {
   const fromEntity = chip.from && runtime.definition.entities[chip.from] ? chip.from : "";
   const { rows } = runtime.useQuery(fromEntity);
-  if (!fromEntity) return <>{optionLabel(chip.from ? (runtime.definition.entities[entity]?.fields[chip.from] as { labels?: Record<string, string> } | undefined) : undefined, value)}</>;
+  if (!fromEntity) return <>{optionLabel(fieldOf(chip, entity, runtime), value)}</>;
   const field = (runtime.definition.entities[fromEntity]?.displayField as string | undefined) ?? "id";
   const row = rows.find((r) => String(r.id) === value);
   return <>{row ? String(row[field] ?? value) : value}</>;
@@ -287,7 +311,10 @@ function ChipControl({ chip, entity, runtime, params, setParam }: ChipProps) {
   if (chip.from && runtime.definition.entities[chip.from]) {
     return <RecordChips chip={chip} runtime={runtime} params={params} setParam={setParam} />;
   }
-  return <OptionChips chip={chip} entity={entity} runtime={runtime} params={params} setParam={setParam} />;
+  const field = fieldOf(chip, entity, runtime);
+  if (field?.options?.length) return <ChoiceChips chip={chip} field={field} options={field.options} params={params} setParam={setParam} />;
+  if (offersRecordValues(field)) return <ValueChips chip={chip} entity={entity} runtime={runtime} params={params} setParam={setParam} />;
+  return null;
 }
 
 function RecordChips({ chip, runtime, params, setParam }: Omit<ChipProps, "entity">) {
@@ -404,23 +431,48 @@ function BooleanChip({ chip, params, setParam }: Omit<ChipProps, "entity" | "run
   );
 }
 
-function OptionChips({ chip, entity, runtime, params, setParam }: ChipProps) {
-  const field = chip.from
-    ? (runtime.definition.entities[entity]?.fields[chip.from] as { options?: string[]; labels?: Record<string, string> } | undefined)
-    : undefined;
-  const options = field?.options ?? [];
-  if (options.length === 0) return null;
+/** The values chosen for a chip, as the param holds them (a number stays a number). */
+function held(chip: FilterChip, params: Record<string, unknown>): OfferedValue[] {
+  const value = params[chip.param];
+  if (value == null) return [];
+  return (Array.isArray(value) ? value : [value]) as OfferedValue[];
+}
 
-  const isSelected = (opt: string): boolean =>
-    chip.multi ? ((params[chip.param] as string[] | undefined) ?? []).includes(opt) : params[chip.param] === opt;
+/**
+ * Choices read from the records (#79): `from` names a field that declares no options — a country
+ * typed as text, a year, free tags — so what can be chosen is what the records hold.
+ *
+ * Every record of the entity, not the page's filtered rows: narrowing to "Italy" must not take
+ * "Poland" off the sheet. A value still chosen after its last record went stays offered, so it can
+ * be taken off here as well as from its chip in the row.
+ */
+function ValueChips({ chip, entity, runtime, params, setParam }: ChipProps) {
+  const { rows, loading } = runtime.useQuery(entity);
+  // Nothing rather than "nothing to pick" for the moment the records take to arrive.
+  if (loading) return null;
+  const present = distinctValues(rows, chip.from!);
+  const known = new Set(present.map(String));
+  const options = [...present, ...held(chip, params).filter((v) => !known.has(String(v)))];
+  return <ChoiceChips chip={chip} field={fieldOf(chip, entity, runtime)} options={options} params={params} setParam={setParam} />;
+}
 
-  const toggle = (opt: string): void => {
+/** One chip per choice — an enum's options, or the values the records hold. */
+function ChoiceChips({
+  chip,
+  field,
+  options,
+  params,
+  setParam,
+}: Omit<ChipProps, "entity" | "runtime"> & { field: ChoiceField | undefined; options: readonly OfferedValue[] }) {
+  const current = held(chip, params);
+  const isSelected = (opt: OfferedValue): boolean => current.some((v) => String(v) === String(opt));
+
+  const toggle = (opt: OfferedValue): void => {
     if (chip.multi) {
-      const current = (params[chip.param] as string[] | undefined) ?? [];
-      const next = current.includes(opt) ? current.filter((x) => x !== opt) : [...current, opt];
+      const next = isSelected(opt) ? current.filter((v) => String(v) !== String(opt)) : [...current, opt];
       setParam(chip.param, next.length ? next : undefined);
     } else {
-      setParam(chip.param, params[chip.param] === opt ? undefined : opt);
+      setParam(chip.param, isSelected(opt) ? undefined : opt);
     }
   };
 
@@ -431,10 +483,14 @@ function OptionChips({ chip, entity, runtime, params, setParam }: ChipProps) {
       </span>
       <div className="k-chips">
         {options.map((opt) => (
-          <button key={opt} type="button" className="k-chip" data-on={isSelected(opt)} aria-pressed={isSelected(opt)} onClick={() => toggle(opt)}>
-            {optionLabel(field, opt)}
+          <button key={`${typeof opt}:${opt}`} type="button" className="k-chip" data-on={isSelected(opt)} aria-pressed={isSelected(opt)} onClick={() => toggle(opt)}>
+            {optionLabel(field, String(opt))}
           </button>
         ))}
+        {/* No records yet, so no values: say so, as a record chip does, rather than a bare label. */}
+        {options.length === 0 ? <span className="k-muted">
+            <Trans>Nothing to pick yet.</Trans>
+          </span> : null}
       </div>
     </div>
   );
