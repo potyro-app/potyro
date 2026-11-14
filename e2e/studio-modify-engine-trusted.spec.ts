@@ -57,7 +57,7 @@ test("the chosen engine drives BOTH create and modify", async ({ page }) => {
   // Wait for what the Studio SAYS it did — the new version's card (the stub answers with the whole
   // file, which the loop accepts and labels) — rather than racing the source.
   await expect(currentCard(studio).locator(".k-card-seq")).toHaveText("v2", { timeout: 60_000 });
-  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/whole file|Applied/);
+  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/New in “Book”: a “Rating” field\..*whole file/);
   await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 60_000 });
 
   const tools = await openSource(page, studio);
@@ -66,13 +66,16 @@ test("the chosen engine drives BOTH create and modify", async ({ page }) => {
   expect(after).toContain('id: "reader"'); // and the app was not replaced
   expect(sent[1]).toContain("reader"); // the CURRENT source travelled with the edit
   expect(sent[1]).toContain("add a 5-star rating field");
-  expect(hits).toEqual(["openrouter", "openrouter"]); // claude -p never touched
+  // The stub's change came without a word, so the loop asked once what it changed (#72): the change
+  // itself already accepted, and said on the card from the app when nothing more came back.
+  expect(sent[2]).toContain("passed every check");
+  expect(hits).toEqual(["openrouter", "openrouter", "openrouter"]); // claude -p never touched
 });
 
 // The edit contract, end to end in the Studio. The model's reply is prose plus ONE SEARCH/REPLACE
 // block, and what has to hold is that the block landed and NOTHING ELSE MOVED — the whole reason
 // edits replaced whole-file replies is that retyping the untouched lines damaged them.
-test("an edit-block reply changes only the lines it names, and the Studio says how many", async ({ page }) => {
+test("an edit-block reply changes only the lines it names, and the Studio says what changed", async ({ page }) => {
   const CREATED = [
     'import { defineApp } from "potyro";',
     "export default defineApp({",
@@ -121,7 +124,7 @@ test("an edit-block reply changes only the lines it names, and the Studio says h
 
   // How the change arrived, on the new version's card — not as an error, and nothing held back.
   await expect(currentCard(studio).locator(".k-card-seq")).toHaveText("v2", { timeout: 60_000 });
-  await expect(currentCard(studio).locator(".k-card-what")).toHaveText("Applied 1 edit.");
+  await expect(currentCard(studio).locator(".k-card-what")).toHaveText("Renaming the page. The page “Books” is now called “Every book”.");
   await expect(studio.locator(".k-card-held")).toHaveCount(0);
 
   const tools = await openSource(page, studio);

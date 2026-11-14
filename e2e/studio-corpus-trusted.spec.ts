@@ -35,7 +35,7 @@ test("search_corpus answers from the release's example apps, inside the browser"
   await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 60_000 });
 
   await ask(studio, "add a 5-star rating field");
-  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Applied 1 edit/, { timeout: 60_000 });
+  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Adding the rating\. New in “Book”: a “Rating” field\./, { timeout: 60_000 });
 
   expect(requests).toHaveLength(3);
   const toolTurn = requests[2]!.at(-1)!;

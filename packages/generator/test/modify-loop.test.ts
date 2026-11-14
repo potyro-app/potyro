@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runModifyLoop, type ModifyLoopDeps } from "../src/agent/modify-loop.js";
+import { EXPLAIN_NOTE, runModifyLoop, type ModifyLoopDeps } from "../src/agent/modify-loop.js";
 import type { AgentTool } from "../src/agent/tools.js";
 import type { ChatEngine, ChatRequest, ChatResponse } from "../src/chat-backend.js";
 import { NOT_IN_APP } from "../src/prompt.js";
@@ -277,5 +277,59 @@ describe("runModifyLoop", () => {
       expect(out.kind === "failed" && out.reason).toMatch(/3 steps/);
       expect(out.kind === "failed" && out.cause).toBe("steps");
     });
+  });
+});
+
+// #72, #73: a person was told "Applied 6 edits." about the turn that added the button they asked
+// for, and "Applied 3 edits." about a request done in a third. A change sent without a word is
+// asked, once, what it changed and what it left out — and stands whatever the answer is.
+describe("a change that passes but says nothing is asked for its explanation, once", () => {
+  const bare = edit("", '  id: "x",', '  id: "y",').trimStart();
+
+  it("asks what changed and what was left out, and the answer rides on the accepted change", async () => {
+    const { engine, seen } = scripted([{ content: bare }, { content: "The app is now called y; you see it on the home screen.\n\nNot done:\n- the banner, needs ctx.scope" }]);
+    const out = await runModifyLoop(base({ engine }));
+    expect(seen).toHaveLength(2);
+    expect(seen[1]!.messages.at(-1)).toEqual({ role: "user", content: EXPLAIN_NOTE });
+    expect(EXPLAIN_NOTE).toMatch(/Not done:/);
+    expect(out).toMatchObject({ kind: "source", via: "edits", applied: 1, notDone: ["the banner, needs ctx.scope"] });
+    expect(out.kind === "source" && out.rationale).toMatch(/^The app is now called y/);
+    expect(out.kind === "source" && out.source).toContain('id: "y"');
+  });
+
+  it("a change that explains itself is accepted at once", async () => {
+    const { engine, seen } = scripted([{ content: edit("Renamed it.", '  id: "x",', '  id: "y",') }]);
+    expect(await runModifyLoop(base({ engine }))).toMatchObject({ kind: "source", rationale: "Renamed it." });
+    expect(seen).toHaveLength(1);
+  });
+
+  it("the same edits sent again with words are the explanation, not a repeat", async () => {
+    const { engine } = scripted([{ content: bare }, { content: edit("Renamed it.", '  id: "x",', '  id: "y",') }]);
+    const out = await runModifyLoop(base({ engine }));
+    expect(out).toMatchObject({ kind: "source", applied: 1, rationale: "Renamed it." });
+  });
+
+  it("nothing said, a question or a refusal: the accepted change stands as it was", async () => {
+    for (const answer of ["", "ASK: which one?", `${NOT_IN_APP} it cannot be done.`]) {
+      const { engine, seen } = scripted([{ content: bare }, { content: answer }]);
+      const out = await runModifyLoop(base({ engine }));
+      expect(out).toMatchObject({ kind: "source", via: "edits", applied: 1 });
+      expect(out.kind === "source" && out.rationale).toBeUndefined();
+      expect(seen).toHaveLength(2);
+    }
+  });
+
+  it("asks only once: a different change sent in answer goes through the gate and is taken as it is", async () => {
+    const other = edit("", '  id: "x",', '  id: "z",').trimStart();
+    const { engine, seen } = scripted([{ content: bare }, { content: other }]);
+    const out = await runModifyLoop(base({ engine }));
+    expect(out.kind === "source" && out.source).toContain('id: "z"');
+    expect(seen).toHaveLength(2);
+  });
+
+  it("with no step left to ask in, the change is accepted without asking", async () => {
+    const { engine, seen } = scripted([{ content: bare }]);
+    expect(await runModifyLoop(base({ engine, maxSteps: 1 }))).toMatchObject({ kind: "source", applied: 1 });
+    expect(seen).toHaveLength(1);
   });
 });

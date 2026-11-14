@@ -36,6 +36,7 @@ import { knownNoTools, rememberNoTools } from "./endpoint-tools.js";
 import { unreachableText } from "./endpoint-check.js";
 import { freeRefusal } from "./free-ai.js";
 import type { AppSeed } from "./app-seed.js";
+import { describeChange, describeNewApp, describedIn, explainChange, proseForCard, type Described } from "./studio-summary.js";
 
 /** What a turn came to. `summary` is what the conversation says happened. */
 export type Outcome =
@@ -116,7 +117,7 @@ export interface StudioEngine {
   repair(source: string, issues: string[], modules?: Record<string, string>): Promise<{ source: string; summary: string; loss: string | null; modules?: Record<string, string> }>;
 }
 
-/** What a turn that changed the app says it did. */
+/** What a turn that changed the app says it did, when neither the model nor the app's own difference says more (#72). */
 const appliedEdits = (n: number): string => plural(n, { one: "Applied # edit.", other: "Applied # edits." });
 
 /** Seconds on the heartbeat, in the person's language ("12s"). */
@@ -211,6 +212,21 @@ export function studioEngine(
     return t`${applied} Not done yet: ${parts}`;
   };
 
+  /** An app as a card describes it (#72), its words in the person's language; null when it does not load. */
+  const described = async (src: string, mods?: ModuleSource): Promise<Described | null> => {
+    try {
+      return describedIn(await loadTrustedModule(src, mods), [language]);
+    } catch {
+      return null;
+    }
+  };
+
+  /** A new app's card (#72): what it is and the first thing to do in it. Nothing when it does not load: the Studio names it. */
+  const made = async (src: string): Promise<string> => {
+    const app = await described(src);
+    return app?.name ? describeNewApp(app) : "";
+  };
+
   /**
    * An endpoint the request never reached, said as what to check (the same words as Test connection),
    * or null for any other failure. The error's own words stay as the detail.
@@ -273,7 +289,7 @@ export function studioEngine(
       return {
         kind: "source",
         source: result.source,
-        summary: "",
+        summary: await made(result.source),
         ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}),
         ...("seed" in result && result.seed ? { seed: result.seed } : {}),
       };
@@ -314,7 +330,7 @@ export function studioEngine(
       // A reply that is not an app says so here; passed to the bundler, prose reads as a syntax
       // error in the middle of an English sentence.
       if (!looksLikeApp(reply)) return { kind: "failed", text: t`The model answered with an explanation instead of an app. Try again, or say it another way.` };
-      return { kind: "source", source: reply, summary: "" };
+      return { kind: "source", source: reply, summary: await made(reply) };
     } catch (e) {
       const away = unreachable(e);
       if (away) return away;
@@ -331,10 +347,25 @@ export function studioEngine(
       const shown = joined?.text ?? source;
       const aimed = joined && context?.pointedAt?.lines ? { ...context, pointedAt: { ...context.pointedAt, lines: [context.pointedAt.lines[0] + 1, context.pointedAt.lines[1] + 1] as const } } : context;
       /** What came back, as the entry and the modules it changed; a broken text is a failure to say. */
-      const files = async (text: string): Promise<{ source: string; modules?: Record<string, string> } | Outcome> => {
+      const files = async (text: string): Promise<{ got: { source: string; modules?: Record<string, string> }; have: ModuleSource | undefined } | Outcome> => {
         const u = await unpackCandidate(text, joined, modules);
         if (!u.ok) return notChanged({ kind: "error", error: new Error(u.problem) });
-        return { source: u.source, ...(u.changed ? { modules: u.changed } : {}) };
+        return { got: { source: u.source, ...(u.changed ? { modules: u.changed } : {}) }, have: u.modules };
+      };
+      /**
+       * What the card says changed (#72): the model's own words first, then what the app itself shows
+       * is different — pages, buttons, filters, fields, each with where to find it. A count of edits
+       * is said only when neither has anything to say.
+       */
+      const explain = async (
+        now: { source: string; have: ModuleSource | undefined },
+        result: { via: "edits" | "whole-file"; applied: number; rationale?: string; notDone?: string[] },
+        wholeFile: string,
+      ): Promise<string> => {
+        const [was, is] = await Promise.all([described(source, modules), described(now.source, now.have)]);
+        const told = explainChange(proseForCard(result.rationale), was && is ? describeChange(was, is) : []);
+        const applied = result.via === "edits" ? told || appliedEdits(result.applied) : [told, wholeFile].filter(Boolean).join(" ");
+        return describeNotDone(applied, result.notDone);
       };
       /** One turn through the edit guard: every engine but a chat engine, and an endpoint that takes no tools. */
       const oneTurn = async (): Promise<Outcome> => {
@@ -355,11 +386,10 @@ export function studioEngine(
         // asked for five times.
         if (result.kind === "diagnosis") return notTheApps(result.text);
         if (result.kind === "failed") return notChanged(result);
-        const applied =
-          result.via === "edits" ? appliedEdits(result.applied) : t`The model sent the whole file back instead of edits. Check that nothing else changed.`;
-        const summary = describeNotDone(applied, result.notDone);
-        const got = await files(result.source);
-        if ("kind" in got) return got;
+        const unpacked = await files(result.source);
+        if ("kind" in unpacked) return unpacked;
+        const { got, have } = unpacked;
+        const summary = await explain({ source: got.source, have }, result, t`The model sent the whole file back instead of edits. Check that nothing else changed.`);
         if (result.loss !== null) return { kind: "loss", ...got, summary, loss: result.loss };
         return { kind: "source", ...got, summary, notDone: result.notDone };
       };
@@ -399,13 +429,13 @@ export function studioEngine(
         }
         if (result.kind === "failed") return { ...notChanged(result), ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}) };
         if (result.kind === "stopped") return notChanged(result);
-        const applied = result.via === "edits" ? appliedEdits(result.applied) : t`The model sent the whole file back instead of edits.`;
-        const got = await files(result.source);
-        if ("kind" in got) return got;
+        const unpacked = await files(result.source);
+        if ("kind" in unpacked) return unpacked;
+        const { got, have } = unpacked;
         return {
           kind: "source",
           ...got,
-          summary: describeNotDone(applied, result.notDone),
+          summary: await explain({ source: got.source, have }, result, t`The model sent the whole file back instead of edits.`),
           notDone: result.notDone,
           ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}),
         };

@@ -43,7 +43,7 @@ test("a candidate that validates but throws when it runs is sent back with the e
   await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 60_000 });
 
   await ask(studio, "give each book a score");
-  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Applied 1 edit/, { timeout: 90_000 });
+  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Adding a score from the title's length\./, { timeout: 90_000 });
 
   expect(requests).toHaveLength(3);
   const sentBack = requests[2]!.at(-1)!;

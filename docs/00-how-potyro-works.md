@@ -1163,6 +1163,17 @@ And up to two independent first drafts are made, the second only when the first 
 the gate cannot rank two apps that both pass. A new app has no original to compare with, so an error
 blocks and a warning does not.
 
+**What a version's card says** (`packages/shell/src/studio-summary.ts`). A count of edits says
+nothing to someone who does not read code, so the card is written from the app itself. The model's
+own words lead; then the host compares the app before and after (its name, its pages, the buttons on
+them, filters, the kinds of record and their fields) and adds a sentence for each difference those
+words do not already name, with where to find it: "New on the “Bottles” page: a “Scan label”
+button." A new app's card says its name, its pages and the first thing to tap. A change that passes
+every gate but came without a word is asked once, the change already accepted, what it changed and
+which parts of the request it left out; what it lists under `Not done:` follows on the card. The
+count of edits is said only when neither the model nor the app has anything to show. Code saved by
+hand with nothing changed records no version.
+
 **Fix** (`packages/generator/src/agent/loop.ts`, `packages/shell/src/verify-candidate.ts`) is for
 "this does not work". The person records a **case**: what they did, as the app's own navigation
 vocabulary rather than a DOM recording, and what they expected. The case is replayed first against
