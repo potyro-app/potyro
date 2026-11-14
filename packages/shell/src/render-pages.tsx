@@ -18,6 +18,7 @@ import type { Localized, PageLayout } from "potyro";
 import type { PotyroRuntime } from "@potyro/runtime";
 import type { RunReport } from "@potyro/generator/backends";
 import { canObserveRender, SETTLE_MS } from "./observe-render.js";
+import { chipCanOffer } from "./filter-chrome.js";
 
 /** How long a page must stay unchanged to count as settled. */
 const QUIET_MS = 200;
@@ -57,6 +58,27 @@ function settled(host: HTMLElement, cap: number): Promise<void> {
 
 function text(args: unknown[]): string {
   return args.map((a) => (a instanceof Error ? a.message : typeof a === "string" ? a : String(a))).join(" ");
+}
+
+/** The chips that are a control of their own (a switch, a box): they offer nothing to choose from, by design. */
+const DIRECT_CHIPS = new Set(["boolean", "geo", "text", "number"]);
+
+/**
+ * A page's filters that can never offer a choice (#79), read off the definition alone: a chip whose
+ * `from` names no entity, and no field of the view's entity that has options or values to pick from.
+ * The page leaves such a chip out, so nothing crashes and nothing shows — the model that wrote it
+ * would otherwise never hear of it.
+ */
+export function deadFilters(runtime: PotyroRuntime, pageId: string): string[] {
+  const page = runtime.definition.pages.find((p) => p.id === pageId);
+  const view = page?.view as { entity?: string; filters?: Array<{ label?: unknown; param: string; from?: string; type?: string }> } | undefined;
+  const entity = view?.entity ?? "";
+  return (view?.filters ?? [])
+    .filter((chip) => !DIRECT_CHIPS.has(chip.type ?? "") && !chipCanOffer(chip as never, entity, runtime))
+    .map((chip) => {
+      const why = chip.from ? `its \`from\`, "${chip.from}", is no entity and no field of ${entity || "the view's entity"} with options or values to choose from` : "it has no `from` to take its choices from, and no `type` that makes it a control of its own";
+      return `page "${pageId}": the filter "${chip.param}" can never offer a choice, so it is not shown — ${why}`;
+    });
 }
 
 export interface PageToRender {
@@ -140,6 +162,7 @@ export async function renderPages(runtime: PotyroRuntime, pages: readonly PageTo
         await settled(host, settleMs);
         rendered++;
         shown.push(page.id);
+        warnings.push(...deadFilters(runtime, page.id));
         if (crashed || crashedNow) continue;
         if (host.querySelector(".k-loading")) warnings.push(`page "${page.id}" was still loading after ${settleMs / 1000}s`);
         else if (!(host.textContent ?? "").trim() && !host.querySelector("img, canvas, svg, video, input, button")) {

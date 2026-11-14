@@ -16,7 +16,8 @@
 // only the passes whose answer would differ. A page's own buttons are not part of the smoke run, so
 // each is tried once here; one that never asks the AI is left unjudged, as it was before.
 
-import { actionInfo, plainWords, type AppDefinition, type Id } from "potyro";
+import { actionInfo, plainWords, type AppDefinition, type FieldRefusal, type Id, type ValueIssue } from "potyro";
+import { actionFailure } from "@potyro/host";
 import { AI_ANSWER_PASSES, UNLISTED_TEXT, answerSchema, type AiAnswer, type AiAnswerPass, type StandInAi } from "@potyro/capabilities";
 import type { PotyroRuntime } from "@potyro/runtime";
 import { paramsForPage, seededInput, type SmokeOptions } from "@potyro/generator/backends";
@@ -43,7 +44,64 @@ export interface AnswerPasses {
   run(def: AppDefinition, runtime: PotyroRuntime): Promise<AnswerRun>;
 }
 
-const message = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+const MAX_OPTIONS = 12;
+
+/** What a field takes, from the rule a value broke — in a developer's words: this is read by the model. */
+function takes(issue: ValueIssue): string {
+  switch (issue.rule) {
+    case "options": {
+      const shown = issue.options.slice(0, MAX_OPTIONS).map((o) => JSON.stringify(o)).join(", ");
+      return `one of ${shown}${issue.options.length > MAX_OPTIONS ? ` (and ${issue.options.length - MAX_OPTIONS} more)` : ""}`;
+    }
+    case "min":
+      return `a number of at least ${issue.bound}`;
+    case "max":
+      return `a number of at most ${issue.bound}`;
+    case "row":
+      return `rows whose ${issue.key} is ${takes(issue.issue)}`;
+    case "record":
+      return issue.many ? "a list of record ids" : "a record id";
+    case "person":
+    case "member":
+      return issue.many ? "a list of people's ids" : "a person's id";
+    case "text":
+      return "a string";
+    case "number":
+      return "a finite number";
+    case "whole":
+      return "a whole number";
+    case "amount":
+      return "an amount of money";
+    case "yesNo":
+      return "true or false";
+    case "tags":
+      return "a list of strings";
+    case "date":
+      return "a date";
+    case "place":
+      return "a place: { lat, lng }";
+    case "media":
+      return "what ctx.media.put returned";
+    case "file":
+      return "a file of the app's folder";
+    case "list":
+      return "a list of rows";
+  }
+}
+
+const refused = (r: FieldRefusal): string => `its write to ${r.entity}.${r.field} is refused — ${r.field} takes ${takes(r.issue)}`;
+
+/**
+ * Why a run failed, sorted the way the host sorts it (`actionFailure`, #76): a refused write names
+ * the field and what it takes, from the refusal's own data; a call the runner cut short is `slow`;
+ * anything else is the developer's line — the error's class and message.
+ */
+function causeOf(e: unknown): { slow: boolean; cause: string } {
+  const failure = actionFailure(e);
+  if (failure.kind === "refused") return { slow: false, cause: refused(failure.refusal) };
+  if (failure.kind === "stopped" && failure.why === "slow") return { slow: true, cause: "it was stopped for running too long" };
+  return { slow: false, cause: failure.detail };
+}
 
 /** "grape, country" — a few keys by name, the rest counted. */
 function keys(paths: readonly string[]): string {
@@ -73,7 +131,7 @@ export function listedValues(def: AppDefinition): (key: string) => readonly stri
   return (key) => lists.get(key.toLowerCase());
 }
 
-type Outcome = { kind: "ok" } | { kind: "threw"; cause: string } | { kind: "stuck" };
+type Outcome = { kind: "ok" } | { kind: "threw"; cause: string } | { kind: "stuck"; cause: string };
 
 export function createAnswerPasses(ai: StandInAi, opts: { actionMs?: number } = {}): AnswerPasses {
   const actionMs = opts.actionMs ?? ACTION_MS;
@@ -92,11 +150,15 @@ export function createAnswerPasses(ai: StandInAi, opts: { actionMs?: number } = 
     ai.pass = pass;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const stuck = new Promise<Outcome>((resolve) => {
-      timer = setTimeout(() => resolve({ kind: "stuck" }), Math.max(0, Math.min(actionMs, left)));
+      const wait = Math.max(0, Math.min(actionMs, left));
+      timer = setTimeout(() => resolve({ kind: "stuck", cause: `it was still running after ${Math.round(wait / 100) / 10}s` }), wait);
     });
     const done = call().then(
       (): Outcome => ({ kind: "ok" }),
-      (e): Outcome => ({ kind: "threw", cause: message(e) }),
+      (e): Outcome => {
+        const { slow, cause } = causeOf(e);
+        return slow ? { kind: "stuck", cause } : { kind: "threw", cause };
+      },
     );
     try {
       return await Promise.race([done, stuck]);
@@ -113,7 +175,7 @@ export function createAnswerPasses(ai: StandInAi, opts: { actionMs?: number } = 
       try {
         await run();
       } catch (e) {
-        cause = message(e);
+        cause = causeOf(e).cause;
         throw e;
       } finally {
         if (ai.schemas.length) asked.push({ entity: action.entity, key: action.key, schemas: [...ai.schemas], ...(cause === undefined ? {} : { cause }) });
@@ -157,7 +219,7 @@ export function createAnswerPasses(ai: StandInAi, opts: { actionMs?: number } = 
           if (outcome.kind === "stuck") {
             // The box may still be inside that call: nothing more can be trusted to run in it.
             gaveUp = true;
-            errors.push(`${name} does not finish ${when(pass, given)}: it was still running after ${Math.round(Math.min(actionMs, left) / 100) / 10}s`);
+            errors.push(`${name} does not finish ${when(pass, given)}: ${outcome.cause}`);
             return;
           }
           // The same failure as on a plausible answer is not this answer's doing, and is said already.

@@ -112,6 +112,46 @@ describe("runCandidate", () => {
   });
 });
 
+describe("a filter that can never offer a choice (#79)", () => {
+  const withFilters = (filters: unknown[]): PotyroApp =>
+    defineApp({
+      id: "notes-filters",
+      name: "Notes",
+      version: "1.0.0",
+      schemaVersion: 1,
+      entities: {
+        note: {
+          label: "Note",
+          displayField: "title",
+          fields: { title: { type: "text", required: true }, kind: { type: "enum", options: ["idea", "task"] }, where: { type: "geo" }, done: { type: "boolean" } },
+        },
+      },
+      pages: [{ id: "all", title: "All", view: { type: "list", entity: "note", display: { primary: "title" }, filters } }],
+    } as never);
+
+  it("is a warning that names the page, the chip and why", async () => {
+    const report = await runCandidate("", {
+      compose: direct(withFilters([{ label: "Kind", param: "kind", from: "kindd" }, { label: "Where", param: "where", from: "where" }, { label: "Any", param: "any" }])),
+      settleMs: 300,
+    });
+    expect(report.errors).toEqual([]);
+    expect(report.warnings).toEqual([
+      'page "all": the filter "kind" can never offer a choice, so it is not shown — its `from`, "kindd", is no entity and no field of note with options or values to choose from',
+      'page "all": the filter "where" can never offer a choice, so it is not shown — its `from`, "where", is no entity and no field of note with options or values to choose from',
+      'page "all": the filter "any" can never offer a choice, so it is not shown — it has no `from` to take its choices from, and no `type` that makes it a control of its own',
+    ]);
+  });
+
+  it("says nothing of chips that offer choices, or that are a control of their own", async () => {
+    const report = await runCandidate("", {
+      compose: direct(withFilters([{ label: "Kind", param: "kind", from: "kind" }, { label: "Title", param: "title", from: "title" }, { label: "Done", param: "done", type: "boolean" }, { label: "Search", param: "q", type: "text" }])),
+      settleMs: 300,
+    });
+    expect(report.errors).toEqual([]);
+    expect(report.warnings).toEqual([]);
+  });
+});
+
 describe("the Studio's gate is a regression gate (#262)", () => {
   // The source string picks the app: the original already has a failing computed; the candidate keeps
   // it and adds a field — or adds a crashing page.

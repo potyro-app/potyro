@@ -1135,15 +1135,19 @@ an entity or a page is sent back with the loss named (`packages/generator/src/gu
 a whole-file reply is still accepted but labelled, so the Studio says so. A candidate that passes
 is then run (`packages/shell/src/run-candidate.ts`): on a throwaway store seeded with sample
 records, in the isolate with a budget, every computed value, filter, action and reminder runs and
-every page is mounted; what threw comes back as errors and a page that shows nothing as a warning.
+every page is mounted; what threw comes back as errors and a page that shows nothing as a warning,
+as does a filter chip that can never offer a choice (`deadFilters` in `packages/shell/src/render-pages.tsx`).
 What an action commonly starts with stands in, so the rest of it runs: the camera hands over a small
 picture and `ctx.caps.ai` answers whatever shape is asked for, from the shape alone — no model is
 called (`StandInAi` in `packages/capabilities/src/stand-in-ai.ts`). An action that read such an
 answer, a page's own button included, is run again on the answers a real model gives and its author
 did not imagine — everything optional missing, then every free text a string no list holds
 (`packages/shell/src/run-ai-answers.ts`) — and a throw or a refused write comes back naming the
-action, the answer and the cause: `the "Scan label" action (bottle.scanLabel) fails when the AI
-answers grape with text that is in no list (…): Grape must be one of: …`. Only the actions that asked
+action, the answer and the cause, sorted as the host sorts a failure (`actionFailure`): a refused
+write says the field and what it takes from the refusal's own data — `the "Scan label" action
+(bottle.scanLabel) fails when the AI answers grape with text that is in no list (…): its write to
+bottle.grape is refused — grape takes one of "merlot", "syrah"` — and a call the runner cut short is
+one that "does not finish". Only the actions that asked
 get the extra runs, inside a budget of their own. In every case
 the candidate is judged against the original's own run, so failures the app already had are context
 and never a reason to refuse the change. A model that repeats itself has stopped reasoning: the

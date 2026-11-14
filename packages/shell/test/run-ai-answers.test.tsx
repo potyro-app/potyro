@@ -30,7 +30,7 @@ beforeAll(() => {
 });
 
 /** As the Studio composes a candidate: bundled, untrusted, in the isolate — with the run's capabilities. */
-const isolated = async (source: string, store: MemoryStore, caps: Capabilities) =>
+const isolatedWithin = (timeoutMs: number) => async (source: string, store: MemoryStore, caps: Capabilities) =>
   compose({
     provenance: "untrusted",
     bundleCode: await bundleAppSource(source, esbuild as unknown as EsbuildLike, stubs),
@@ -38,8 +38,9 @@ const isolated = async (source: string, store: MemoryStore, caps: Capabilities) 
     caps,
     ui: UI,
     nav: createNavBridge(() => {}),
-    loadIsolated: await createSandboxLoader(store, { timeoutMs: 5_000, loadTimeoutMs: 5_000 }),
+    loadIsolated: await createSandboxLoader(store, { timeoutMs, loadTimeoutMs: 5_000 }),
   });
+const isolated = isolatedWithin(5_000);
 
 const run = (source: string) => runCandidate(source, { compose: isolated, settleMs: 300 });
 
@@ -112,7 +113,7 @@ describe("the candidate run answers an action's AI calls (#74)", () => {
     expect(report.errors).toHaveLength(1);
     expect(report.errors[0]).toMatch(/^the "Scan label" action \(bottle\.scanLabel\) fails when the AI answers name, grape, country with text that is in no list/);
     expect(report.errors[0]).toBe(
-      'the "Scan label" action (bottle.scanLabel) fails when the AI answers name, grape, country with text that is in no list ("Something not in any list"): isolate app error: Grape must be one of: merlot, syrah, riesling.',
+      'the "Scan label" action (bottle.scanLabel) fails when the AI answers name, grape, country with text that is in no list ("Something not in any list"): its write to bottle.grape is refused — grape takes one of "merlot", "syrah", "riesling"',
     );
   }, 30_000);
 
@@ -121,10 +122,10 @@ describe("the candidate run answers an action's AI calls (#74)", () => {
     expect(report.errors).toHaveLength(2);
     expect(report.errors[0]).toMatch(/^the "Scan a bottle" button of page "all" fails when the AI finds no name, grape, country, alcohol and 1 more/);
     expect(report.errors[0]).toBe(
-      `the "Scan a bottle" button of page "all" fails when the AI finds no name, grape, country, alcohol and 1 more (it answers null, or an empty list): isolate app error: cannot read property 'trim' of null`,
+      `the "Scan a bottle" button of page "all" fails when the AI finds no name, grape, country, alcohol and 1 more (it answers null, or an empty list): TypeError: cannot read property 'trim' of null`,
     );
     expect(report.errors[1]).toMatch(/^the "Scan a bottle" button of page "all" fails when the AI answers name, grape, country with text that is in no list/);
-    expect(report.errors[1]).toMatch(/Grape must be one of/);
+    expect(report.errors[1]).toMatch(/its write to bottle\.grape is refused — grape takes one of "merlot", "syrah", "riesling"$/);
   }, 30_000);
 
   it("passes both once they take only what the app has an option for", async () => {
@@ -146,6 +147,19 @@ describe("the candidate run answers an action's AI calls (#74)", () => {
   }, 30_000);
 });
 
+describe("an action the runner cuts short under an answer (#74, #76)", () => {
+  it("is one that does not finish, not one that threw", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const spins = `
+      const info = await ctx.caps.ai.extract({ text: bottle.name, schema: { grape: "text?" } });
+      while (info.grape === null) {}`;
+    const report = await runCandidate(cellar(spins), { compose: isolatedWithin(400), settleMs: 300 });
+    expect(report.errors).toEqual([
+      'the "Scan label" action (bottle.scanLabel) does not finish when the AI finds no grape (it answers null, or an empty list): it was stopped for running too long',
+    ]);
+  }, 30_000);
+});
+
 describe("an AI failure and the regression gate (#74, #262)", () => {
   const gate = (original: string) => regressionGate(run, original);
 
@@ -161,7 +175,7 @@ describe("an AI failure and the regression gate (#74, #262)", () => {
     const { report, preexisting } = await gate(cellar(NAIVE_SCAN))(changed);
     expect(report.errors).toEqual([]);
     expect(preexisting.errors).toHaveLength(1);
-    expect(preexisting.errors[0]).toContain("Grape must be one of");
+    expect(preexisting.errors[0]).toContain("its write to bottle.grape is refused");
   }, 30_000);
 });
 
