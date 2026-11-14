@@ -354,6 +354,14 @@ SharedWorker cannot host the pool (sync access handles are for dedicated workers
 second tab through the first tab's worker would give it the bytes but not the truth, because each
 tab keeps its own in-memory model of what is stored.
 
+**Storage the browser will not open** (`packages/store/src/storage-rescue.ts`). Firefox can be left,
+by a session that ended badly, refusing every sync access handle of the origin ("UnknownError:
+Unknown failure") through reloads and restarts, while every file still reads whole. The worker then
+copies the pool's files into IndexedDB, checks each copy, removes the files, and the tab asks for
+the browser to be restarted; on the next start the files are written back before the pool is
+installed. Until they are back the tab says the same thing again, and never opens an empty pool
+beside them.
+
 **LocalStore** is the fallback where a worker cannot get storage at all, a Firefox private window
 for instance. It serialises the app under one key in localStorage and rewrites it after each
 mutation, which is fine at personal scale and nowhere else.
@@ -405,6 +413,7 @@ On top of any store sit three things that are the same whichever one is undernea
 - `packages/store/src/types.ts` — the `Store` interface
 - `packages/store/src/sqlite-store.ts`, `packages/store/src/sqlite-backend.ts`, `packages/store/src/sqlite-worker.ts`, `packages/store/src/sqlite-worker-client.ts` — SQLite over OPFS in a worker
 - `packages/store/src/storage-owner.ts` — one tab owns the pool
+- `packages/store/src/storage-rescue.ts` — pool files set aside when the browser refuses them, and put back
 - `packages/store/src/local-store.ts`, `packages/store/src/memory-store.ts`, `packages/store/src/idb-sqlite.ts` — the fallbacks
 - `packages/store/src/file-space.ts` — the app's folder
 - `packages/store/src/migrate.ts` — migration steps, shared by every store

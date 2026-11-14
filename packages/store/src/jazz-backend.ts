@@ -34,6 +34,7 @@ import { accountName } from "./account-name.js";
 import { createJazzSqliteDriver, type SqliteDriverAsync } from "./jazz-sqlite-driver.js";
 import type { SqliteDbHandle } from "./sqlite-store.js";
 import { isStorageElsewhere } from "./storage-owner.js";
+import { isStorageStuck } from "./storage-rescue.js";
 
 /** Where the ids above are remembered. `localStorage` in the browser; a Map in tests. */
 export interface JazzKeyStore {
@@ -608,7 +609,9 @@ async function openDeviceDatabase(dbName: string): Promise<{
     } catch (err) {
       // Another tab owns the storage. Falling back would open a second, stale copy of the device's
       // database and write to it — the split this refuses (storage-owner.ts).
-      if (isStorageElsewhere(err)) throw err;
+      // The same when the browser will not open its storage (storage-rescue.ts): the real database
+      // is set aside, and comes back with the browser's next start.
+      if (isStorageElsewhere(err) || isStorageStuck(err)) throw err;
       // No worker, or no OPFS. Sync matters more than speed.
       console.info(`[potyro] storage: no worker database (${err instanceof Error ? err.message : String(err)}), falling back`);
       driver = undefined;

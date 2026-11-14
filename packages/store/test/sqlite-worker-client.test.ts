@@ -6,7 +6,7 @@
 // callback — it relies on one channel answered in order — so that property is worth pinning.
 
 import { describe, expect, it } from "vitest";
-import { isStorageElsewhere, onStorageElsewhere, openWorkerSqlite, type WorkerFactory } from "../src/sqlite-worker-client.js";
+import { isStorageElsewhere, isStorageStuck, isStorageWithheld, onStorageElsewhere, onStorageStuck, openWorkerSqlite, type WorkerFactory } from "../src/sqlite-worker-client.js";
 
 /** A worker that records what it was asked, and answers in the order it was asked. */
 function fakeWorker(): { factory: WorkerFactory; sql: string[]; terminated: () => boolean } {
@@ -230,6 +230,34 @@ describe("the storage worker client", () => {
     stop();
     expect(isStorageElsewhere(err)).toBe(true);
     expect(told).toBe(1);
+  });
+
+  // The browser will not open its own storage until it is restarted (storage-rescue.ts). Like
+  // another tab's storage, never something to fall back from: the records are set aside, not gone.
+  it("says when the browser's storage is stuck, as itself and not as another tab", async () => {
+    const factory: WorkerFactory = () => {
+      const w = {
+        onmessage: null as ((e: { data: unknown }) => void) | null,
+        postMessage(message: unknown) {
+          const m = message as { id: number };
+          setTimeout(() => w.onmessage?.({ data: { id: m.id, ok: false, error: "stuck", code: "storage-stuck" } }), 0);
+        },
+        terminate() {},
+      };
+      return w;
+    };
+    let stuck = 0;
+    let elsewhere = 0;
+    const stops = [onStorageStuck(() => stuck++), onStorageElsewhere(() => elsewhere++)];
+    // This module already heard of another tab in the test above, and says so on subscribing.
+    const elsewhereBefore = elsewhere;
+    const err = await openWorkerSqlite("stuck-storage", factory).catch((e: unknown) => e);
+    for (const stop of stops) stop();
+    expect(isStorageStuck(err)).toBe(true);
+    expect(isStorageElsewhere(err)).toBe(false);
+    expect(isStorageWithheld(err)).toBe(true);
+    expect(stuck).toBe(1);
+    expect(elsewhere).toBe(elsewhereBefore);
   });
 
   it("fails what is still waiting when another tab takes the storage over", async () => {

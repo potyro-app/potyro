@@ -90,6 +90,7 @@ app (`/<namespace>.sqlite3`); older homes are a per-app pool, IndexedDB snapshot
   `deleteWorkerSqlite`, `workerDbName` (the file name a namespace gets), `workersAvailable`,
   `onStorageElsewhere`, `takeOverStorageOnNextLoad`.
 - `packages/store/src/storage-owner.ts` — the cross-tab Web Lock: `ownStorage`, `StorageElsewhereError`.
+- `packages/store/src/storage-rescue.ts` — a browser that refuses its own storage: `setAside`, `putBack`, `StorageStuckError`; the screen is `StuckScreen` in `packages/shell/src/storage-elsewhere.tsx`.
 - `packages/store/src/sqlite-store.ts` `SqliteStore`; `sqlite-backend.ts` `initSqlite`, `openOpfsDb`,
   `createSqliteStore`, `createMemorySqliteStore` (tests); `local-store.ts` `LocalStore`;
   `idb-sqlite.ts`; `memory-store.ts`; `migrate.ts`; `export.ts`; `copy-store.ts` `copyStoreData`.

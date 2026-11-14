@@ -17,7 +17,7 @@
 
 import { currentSite } from "./site.js";
 import { t } from "@lingui/core/macro";
-import { copyStoreData, createSqliteStore, isStorageElsewhere, LocalStore, SqliteStore, openWorkerSqliteHandle, workersAvailable, type CarriedCode, type Store } from "@potyro/store";
+import { copyStoreData, createSqliteStore, isStorageWithheld, LocalStore, SqliteStore, openWorkerSqliteHandle, workersAvailable, type CarriedCode, type Store } from "@potyro/store";
 
 /**
  * The handle from the most recent synced `openStore`, so the composition root can read the space
@@ -326,7 +326,7 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
     } catch (err) {
       // Another tab owns the storage (packages/store/src/storage-owner.ts): the whole tab says so and
       // offers "Use it here" (storage-elsewhere.tsx). Never a second copy in localStorage.
-      if (isStorageElsewhere(err)) throw err;
+      if (isStorageWithheld(err)) throw err;
       // The last resort, for what the owner cannot see (a tab of an older build, holding the files
       // without the lock, is reported as elsewhere too): a database that is THERE but cannot be
       // opened right now is not a reason to open another one. The fallbacks below are a different

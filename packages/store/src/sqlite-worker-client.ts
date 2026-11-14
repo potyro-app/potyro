@@ -11,9 +11,21 @@
 
 import type { SqliteDriverAsync } from "./jazz-sqlite-driver.js";
 import type { SqliteDbHandle } from "./sqlite-store.js";
-import { ELSEWHERE, StorageElsewhereError } from "./storage-owner.js";
+import { ELSEWHERE, isStorageElsewhere, StorageElsewhereError } from "./storage-owner.js";
+
+import { isStorageStuck, STUCK, StorageStuckError } from "./storage-rescue.js";
 
 export { isStorageElsewhere, StorageElsewhereError } from "./storage-owner.js";
+export { isStorageStuck, StorageStuckError } from "./storage-rescue.js";
+
+/**
+ * This tab cannot have the storage right now — another tab owns it, or the browser will not open it
+ * until it is restarted. Either way the tab says so itself, and nothing may open other storage in
+ * its place: that would be a second, empty copy of the same apps.
+ */
+export function isStorageWithheld(err: unknown): boolean {
+  return isStorageElsewhere(err) || isStorageStuck(err);
+}
 
 // ---- one tab owns the storage (storage-owner.ts) ------------------------------------------------
 
@@ -35,6 +47,32 @@ export function onStorageElsewhere(listener: () => void): () => void {
   elsewhereListeners.add(listener);
   if (elsewhere) listener();
   return () => elsewhereListeners.delete(listener);
+}
+
+// ---- the browser's storage is stuck (storage-rescue.ts) -----------------------------------------
+
+/** Set once the worker says the browser will not open its storage. The way back is a restart of the browser. */
+let stuck = false;
+const stuckListeners = new Set<() => void>();
+
+function markStuck(): void {
+  if (stuck) return;
+  stuck = true;
+  for (const l of [...stuckListeners]) l();
+}
+
+/** Be told when the browser's storage turns out to be stuck. Called at once if that is already known. */
+export function onStorageStuck(listener: () => void): () => void {
+  stuckListeners.add(listener);
+  if (stuck) listener();
+  return () => stuckListeners.delete(listener);
+}
+
+/** Why nothing can be opened in this tab, if anything says so already. */
+function withheld(): Error | null {
+  if (elsewhere) return new StorageElsewhereError();
+  if (stuck) return new StorageStuckError();
+  return null;
 }
 
 /** Said in this tab's session storage, read by the next page load's first open. */
@@ -93,7 +131,8 @@ export function workersAvailable(): boolean {
  */
 export function openWorkerSqlite(name: string, factory?: WorkerFactory): Promise<WorkerSqlite> {
   // Not an error to fall back from: opening anything else would be a second copy of the same apps.
-  if (elsewhere && !factory) return Promise.reject(new StorageElsewhereError());
+  const refused = factory ? null : withheld();
+  if (refused) return Promise.reject(refused);
   // ONE worker for everything, holding one pool and a database per name.
   //
   // The SAH pool takes exclusive sync access handles over its directory, so a second worker over
@@ -175,6 +214,10 @@ function connect(factory?: WorkerFactory): { worker: ReturnType<WorkerFactory>; 
     if (reply.code === ELSEWHERE) {
       markElsewhere();
       return pending.reject(new StorageElsewhereError());
+    }
+    if (reply.code === STUCK) {
+      markStuck();
+      return pending.reject(new StorageStuckError());
     }
     pending.reject(new Error(reply.error ?? "the storage worker failed"));
   };
@@ -312,7 +355,8 @@ export const workerDbName = (name: string): string => name.replace(/[^A-Za-z0-9.
  * app would go on writing into a file this one had just removed.
  */
 export async function deleteWorkerSqlite(name: string, factory?: WorkerFactory): Promise<void> {
-  if (elsewhere && !factory) throw new StorageElsewhereError();
+  const refused = factory ? null : withheld();
+  if (refused) throw refused;
   const db = workerDbName(name);
   openings.delete(db);
   const { send } = connect(factory);

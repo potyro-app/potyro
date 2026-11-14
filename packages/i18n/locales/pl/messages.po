@@ -2369,6 +2369,10 @@ msgstr "Zamknij ustawienia modelu"
 msgid "Close studio"
 msgstr "Zamknij Studio"
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Close the browser completely — every window — then open Potyro again."
+msgstr "Zamknij przeglądarkę całkowicie — każde okno — a potem otwórz Potyro ponownie."
+
 #. Closes the better-wording form
 #: ../shell/src/suggest-wording.tsx
 msgid "Close the suggestion"
@@ -5910,6 +5914,10 @@ msgstr "Przywróć ikonę"
 msgid "Reset name"
 msgstr "Przywróć nazwę"
 
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Restart your browser to open Potyro"
+msgstr "Uruchom przeglądarkę ponownie, aby otworzyć Potyro"
+
 #: ../shell/src/history.tsx
 msgid "Restore v{seq}"
 msgstr "Przywróć v{seq}"
@@ -7714,6 +7722,7 @@ msgstr "Wypróbuj: {name}, zrobione w Potyro"
 #: ../shell/src/main.tsx
 #: ../shell/src/main.tsx
 #: ../shell/src/share-sheet.tsx
+#: ../shell/src/storage-elsewhere.tsx
 #: ../views/src/media-input.tsx
 msgid "Try again"
 msgstr "Spróbuj ponownie"
@@ -8444,6 +8453,10 @@ msgstr "Twoje aplikacje, ich wpisy, pliki i rozmowy w Studio są zapisane w tej 
 #: ../shell/src/move-banner.tsx
 msgid "Your browser blocked the new window. Allow pop-ups for this site and try again — or save them as a file instead."
 msgstr "Przeglądarka zablokowała nowe okno. Zezwól na wyskakujące okna dla tej strony i spróbuj ponownie — albo zapisz je jako plik."
+
+#: ../shell/src/storage-elsewhere.tsx
+msgid "Your browser cannot open the place where it keeps your apps right now. Nothing is lost: your apps and everything in them are kept safe on this device."
+msgstr "Twoja przeglądarka nie może teraz otworzyć miejsca, w którym trzyma twoje aplikacje. Nic nie przepadło: twoje aplikacje i wszystko, co w nich jest, są bezpieczne na tym urządzeniu."
 
 #. Detail of the question before voice input through the browser's speech service; {service} = Google, Apple or Microsoft
 #: ../shell/src/app-speech.ts

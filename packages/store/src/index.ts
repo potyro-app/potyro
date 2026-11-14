@@ -36,7 +36,7 @@ export { publishAppToAccount, readAccountApps, publishNameToAccount, readAccount
 export { readAccountChat, publishChatMessages, removeChatMessages, watchAccountChats, type AccountChat, type AccountChatMessage } from "./account-chats.js";
 export { SqliteStore, type SqliteDbHandle } from "./sqlite-store.js";
 export { JazzStore, SPACE_BUDGET, type JazzStoreDeps } from "./jazz-store.js";
-export { deleteWorkerSqlite, isStorageElsewhere, onStorageElsewhere, openWorkerSqliteHandle, StorageElsewhereError, takeOverStorageOnNextLoad, workersAvailable } from "./sqlite-worker-client.js";
+export { deleteWorkerSqlite, isStorageElsewhere, isStorageStuck, isStorageWithheld, onStorageElsewhere, onStorageStuck, openWorkerSqliteHandle, StorageElsewhereError, StorageStuckError, takeOverStorageOnNextLoad, workersAvailable } from "./sqlite-worker-client.js";
 export { createJazzStore, openAccountNode, openAccountNodeInBrowser, warmDeviceDatabase, rememberAppSpace, peekAppSpace, openJazzStore, createSpaceInvite, joinSpace, removeSpaceMember, spaceMembers, myRole, publishName, publishAccountName, readProfileName, subscribeSpace, subscribeMemberProfiles, type CreateJazzStoreOpts, type JazzStoreHandle, type JazzKeyStore } from "./jazz-backend.js";
 export { createJazzSqliteDriver, type SqliteDriverAsync } from "./jazz-sqlite-driver.js";
 export {
