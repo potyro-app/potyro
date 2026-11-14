@@ -43,4 +43,17 @@ describe("text field `suggest`", () => {
       expect(issues).toContain("use an `enum` when only the listed values are allowed");
     },
   );
+
+  it("refuses `suggest` on a multiline or collaborative text, naming the field and both ways out", () => {
+    expect(issuesOf(withRegion({ type: "text", suggest: true, multiline: true }))).toEqual([
+      'entity "wine" field "region" has both `suggest` and `multiline: true`: `suggest` offers one-line values to pick from, so it works only on a one-line text field — remove `suggest` to keep the multiline text, or remove `multiline` to keep the suggestions',
+    ]);
+    expect(issuesOf(withRegion({ type: "text", suggest: ["a"], collaborative: true })).join("\n")).toContain(
+      'entity "wine" field "region" has both `suggest` and `collaborative: true`',
+    );
+    // Inside a list's rows too.
+    expect(issuesOf(withRegion({ type: "list", of: { note: { type: "text", suggest: true, multiline: true } } })).join("\n")).toContain('field "region.note" has both `suggest` and `multiline: true`');
+    // `false` is not the option.
+    expect(issuesOf(withRegion({ type: "text", suggest: true, multiline: false, collaborative: false }))).toEqual([]);
+  });
 });

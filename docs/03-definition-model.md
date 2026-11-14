@@ -242,7 +242,8 @@ adding or removing `suggest` never moves `schemaVersion`.
 - **Where the values come from.** The host reads them from the store for its own form; app code is
   handed nothing. A sealed app's form is the same host control (docs/07). A field with no records
   behind it — a `list` row's sub-field, a `ctx.ui.form` field — offers only its declared values.
-- It is for a one-line field: `multiline` and `collaborative` text ignore it.
+- It is for a one-line field: `suggest` together with `multiline: true` or `collaborative: true` is
+  a validation error that names the field and says to remove one of the two.
 
 A `datetime` is a **day** unless the field says `precision: "minute"` (#103). Most dates are
 days — when a plant was watered, when a bill is due — and the form offers a day: the box reads
