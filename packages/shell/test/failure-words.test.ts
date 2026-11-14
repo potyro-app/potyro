@@ -11,7 +11,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineApp } from "potyro";
 import { MemoryStore } from "@potyro/store";
 import { FakeCapabilities } from "@potyro/capabilities";
-import { actionFailure, type AppFailure } from "@potyro/host";
+import { actionFailure, HostFault, type AppFailure } from "@potyro/host";
 import { setLocale } from "@potyro/i18n";
 import { compose } from "../src/compose.js";
 import { createSandboxLoader } from "../src/isolate-bridge.js";
@@ -102,6 +102,29 @@ describe.each(["yours", "sealed"] as const)("an action's refused write, in an ap
     await runtime.runAction("wine", "bug", id);
     expect(toasts).toEqual(["Pick a bottle first", "That did not work"]);
     expect(heard[1]!.message).toMatch(/^TypeError: /);
+  });
+});
+
+describe("a call Potyro ended", () => {
+  const def = defineApp(definition());
+  const say = (e: unknown): string => failureWords(actionFailure(e), def as never);
+
+  it("says what happened, without the numbers or how the app is run", async () => {
+    // What the realm's watchdog and the QuickJS interrupt reject with (packages/host/test/app-error.test.ts).
+    const slow = say(new HostFault("stopped: a action call did not finish within 1000 ms", "slow"));
+    expect(slow).toBe("This took too long, so it was stopped.");
+    expect(say(new HostFault("isolate call timed out after 1000 ms", "slow"))).toBe(slow);
+    expect(say(new HostFault("stopped: it sent more than 500 messages in 250 ms", "stopped"))).toBe("The app was stopped before this finished.");
+    expect(say(new HostFault("this app was closed", "closed"))).toBe("The app was closed before this finished.");
+    for (const locale of ["de", "es", "it", "pl", "pt-BR"] as const) {
+      await setLocale(locale);
+      const said = (["slow", "stopped", "closed"] as const).map((why) => say(new HostFault("stopped: x 1000 ms", why)));
+      expect(new Set(said).size, locale).toBe(3);
+      for (const s of said) {
+        expect(s, locale).not.toMatch(/1000|realm|isolate|sandbox|worker/i);
+        expect(["This took too long, so it was stopped.", "The app was stopped before this finished.", "The app was closed before this finished."], locale).not.toContain(s);
+      }
+    }
   });
 });
 

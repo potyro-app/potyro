@@ -1,6 +1,6 @@
 // What a person reads when an action fails (#76).
 //
-// An action is the app's code, and it fails for three kinds of reason (the host sorts them,
+// An action is the app's code, and it fails for four kinds of reason (the host sorts them,
 // `actionFailure` in packages/host/src/app-error.ts):
 //
 //   refused  a write the app's own field does not take — an AI read "Cabernet Sauvignon" off a label
@@ -8,7 +8,9 @@
 //            person's language, naming the field and the kind of thing by the app's own labels, and
 //            what the field does take
 //   said     words the app threw for the person ("Pick a photo first"): shown as they are
-//   broke    a bug, or a call that ran out of time: one plain sentence. What exactly broke is in the
+//   stopped  Potyro ended the call — it ran too long, the app was stopped, the person left it —
+//            and says so plainly, without the milliseconds
+//   broke    a bug: one plain sentence. What exactly broke is in the
 //            console and in what the Studio hears, never in front of the person
 //
 // Nothing here mentions how the app is run. A toast used to begin "realm app error:".
@@ -89,6 +91,12 @@ function ruleWords(issue: Exclude<ValueIssue, { rule: "row" }>, field: string, d
 export function failureWords(failure: ActionFailure, definition: Localized<AppDefinition>): string {
   if (failure.kind === "said") return failure.message;
   if (failure.kind === "broke") return t`That did not work`;
+  if (failure.kind === "stopped") {
+    // The numbers (how long, which call) are in the console; the person is told what happened to them.
+    if (failure.why === "slow") return t({ message: `This took too long, so it was stopped.`, comment: "A toast: a button in an app ran for too long and Potyro ended it" });
+    if (failure.why === "closed") return t({ message: `The app was closed before this finished.`, comment: "A toast: the person left an app while one of its buttons was still working" });
+    return t({ message: `The app was stopped before this finished.`, comment: "A toast: Potyro had to stop an app while one of its buttons was still working" });
+  }
   const entityDef = definition.entities[failure.refusal.entity];
   let declared: Field | undefined = entityDef?.fields?.[failure.refusal.field];
   // A field the app does not declare cannot have been refused by its rule: say the plain sentence.

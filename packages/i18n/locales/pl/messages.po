@@ -7008,6 +7008,16 @@ msgstr "aplikacja zmieniła się od odczytania tego tekstu — spróbuj ponownie
 msgid "The app could not be fetched. Check the connection and try again."
 msgstr "Nie udało się pobrać aplikacji. Sprawdź połączenie i spróbuj ponownie."
 
+#. A toast: the person left an app while one of its buttons was still working
+#: ../shell/src/failure-words.ts
+msgid "The app was closed before this finished."
+msgstr "Aplikacja została zamknięta, zanim to się skończyło."
+
+#. A toast: Potyro had to stop an app while one of its buttons was still working
+#: ../shell/src/failure-words.ts
+msgid "The app was stopped before this finished."
+msgstr "Aplikacja została zatrzymana, zanim to się skończyło."
+
 #: ../shell/src/live-connections-setting.tsx
 msgid "The app will ask for the address again."
 msgstr "Aplikacja znowu zapyta o adres."
@@ -7705,6 +7715,11 @@ msgstr "nie udało się odczytać tego kodu źródłowego"
 #: ../shell/src/add-app.ts
 msgid "This source does not define an app (no `defineApp` with an id)"
 msgstr "Ten kod źródłowy nie definiuje aplikacji (brak `defineApp` z id)"
+
+#. A toast: a button in an app ran for too long and Potyro ended it
+#: ../shell/src/failure-words.ts
+msgid "This took too long, so it was stopped."
+msgstr "To trwało zbyt długo, więc zostało zatrzymane."
 
 #: ../shell/src/version-gate.ts
 msgid "This version changes how “{name}” stores its data."

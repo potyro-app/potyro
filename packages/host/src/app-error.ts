@@ -1,15 +1,17 @@
 // What an app's failed code is, once it has left the app (#76).
 //
-// An action can fail three ways, and a person is owed a different sentence for each:
+// An action can fail four ways, and a person is owed a different sentence for each:
 //
 //   refused  the host refused a write (a value that does not fit its field): the entity, the field
 //            and the rule are known as data, so it is said in the person's language, in the app's labels
 //   said     the app (or the host, on its behalf) threw an `Error` with words of its own — "Pick a
 //            photo first", "Free AI isn't available yet" — and those words are the message
-//   broke    anything else: the engine's own errors (`TypeError: x is undefined`), a call that ran
-//            out of time, a box that was stopped. Nothing in that is for a person to read
+//   stopped  the runner ended the call: it ran out of time, the box was stopped, the person left
+//            the app. Said plainly ("This took too long, so it was stopped"), without the numbers
+//   broke    anything else: the engine's own errors (`TypeError: x is undefined`), the runner's
+//            own faults. Nothing in that is for a person to read
 //
-// The same three whichever way the app runs. Directly, the thrown error arrives as it is. From a
+// The same four whichever way the app runs. Directly, the thrown error arrives as it is. From a
 // sealed box only data crosses, so what was thrown is described (`thrownOf`) on the far side and
 // rebuilt here as an `AppCodeError`, without a prefix naming the box: the box is how Potyro runs
 // the app, not something its message should mention. Trouble that is the box's own (a timeout, a
@@ -44,9 +46,18 @@ export class AppCodeError extends Error {
   }
 }
 
+/**
+ * Why the runner gave up on a call: it ran too long (`slow`), the box was stopped for another reason
+ * (`stopped`), the person left the app (`closed`) — or something of the runner's own (`fault`).
+ */
+export type FaultWhy = "slow" | "stopped" | "closed" | "fault";
+
 /** The runner's own trouble — a call out of time, a box stopped or closed — not the app's words. */
 export class HostFault extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly why: FaultWhy = "fault",
+  ) {
     super(message);
     this.name = "HostFault";
   }
@@ -121,6 +132,8 @@ const ENGINE_ERRORS = new Set(["TypeError", "ReferenceError", "RangeError", "Syn
 export type ActionFailure =
   | { kind: "refused"; refusal: FieldRefusal; detail: string }
   | { kind: "said"; message: string; detail: string }
+  /** The runner ended the call: it took too long, the app was stopped, or the person left it. Worth saying. */
+  | { kind: "stopped"; why: "slow" | "stopped" | "closed"; detail: string }
   | { kind: "broke"; detail: string };
 
 /**
@@ -128,7 +141,7 @@ export type ActionFailure =
  * console and the Studio; only `refusal` and a `said` message are for the person.
  */
 export function actionFailure(e: unknown): ActionFailure {
-  if (e instanceof HostFault) return { kind: "broke", detail: e.message };
+  if (e instanceof HostFault) return e.why === "fault" ? { kind: "broke", detail: e.message } : { kind: "stopped", why: e.why, detail: e.message };
   const thrown = e instanceof AppCodeError ? e.thrown : thrownOf(e);
   const detail = thrown.name === "Error" ? thrown.message : `${thrown.name}: ${thrown.message}`;
   if (thrown.refusal) return { kind: "refused", refusal: thrown.refusal, detail };

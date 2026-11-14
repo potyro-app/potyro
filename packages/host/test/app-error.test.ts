@@ -35,7 +35,8 @@ globalThis.__potyroApp = {
         },
         refuse: async function(){ throw new Error("Pick a bottle first"); },
         bug: async function(r){ return r.cellar.shelf; },
-        spin: async function(){ for (;;) {} }
+        spin: async function(){ for (;;) {} },
+        wait: async function(){ await new Promise(function(){}); }
       }
     }
   },
@@ -138,12 +139,25 @@ describe.each([direct, ...sealed])("an action that fails, run by: $name", (how) 
 });
 
 describe.each(sealed)("the box's own trouble, in: $name", (how) => {
-  it("a call that runs out of time is the runner's fault, never the app's words", async () => {
+  // The person used to read "stopped: a pageAction call did not finish within 1000 ms"; sorting it
+  // as merely broken took away the one useful thing in that (e2e realm-escape-sandbox caught it).
+  it("a call that never yields is stopped for taking too long, and says so as that — not as a bug", async () => {
     const { fail } = await setup(how.start({ timeoutMs: 200, heartbeatTimeoutMs: 400 }));
     const e = await fail("spin");
-    // The realm's watchdog stops the box (a HostFault); QuickJS interrupts the call with its own InternalError.
-    if (how.name === "realm") expect(e).toBeInstanceOf(HostFault);
-    expect(actionFailure(e).kind).toBe("broke");
+    expect(e).toBeInstanceOf(HostFault);
+    const failure = actionFailure(e);
+    expect(failure).toMatchObject({ kind: "stopped", why: "slow" });
+    // The numbers stay in the developer's line.
+    expect(failure.detail).toMatch(/did not finish within 200 ms/);
+  }, 20_000);
+
+  it("a call still running when the app is put away ended because the app was closed", async () => {
+    if (how.name !== "realm") return; // QuickJS runs a call to its end on the shell's thread: nothing is pending to end
+    const { loaded, ctx, record } = await setup(how.start({ timeoutMs: 5_000, heartbeatTimeoutMs: 5_000 }));
+    const call = loaded.callAction("wine", "wait", record, ctx).then(() => null, (e: unknown) => e);
+    await new Promise((r) => setTimeout(r, 100));
+    (loaded as unknown as { dispose(): void }).dispose();
+    expect(actionFailure(await call)).toMatchObject({ kind: "stopped", why: "closed", detail: "this app was closed" });
   }, 20_000);
 });
 
@@ -161,5 +175,10 @@ describe("what a box sends back is not trusted to be well-formed", () => {
     expect(actionFailure(undefined).kind).toBe("said"); // "undefined" — a thrown non-error is still words
     expect(actionFailure(new Error("")).kind).toBe("broke");
     expect(actionFailure(new RangeError("Maximum call stack size exceeded")).kind).toBe("broke");
+  });
+
+  it("the runner's own trouble is sorted by why: stopped kinds are said, a plain fault is broken", () => {
+    expect(actionFailure(new HostFault("stopped: it sent more than 500 messages in 250 ms", "stopped"))).toEqual({ kind: "stopped", why: "stopped", detail: "stopped: it sent more than 500 messages in 250 ms" });
+    expect(actionFailure(new HostFault("a action call's arguments cannot be sent into the app: x"))).toEqual({ kind: "broke", detail: "a action call's arguments cannot be sent into the app: x" });
   });
 });

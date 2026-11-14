@@ -57,4 +57,4 @@ export {
 export { makeSpeech, englishSpeechConsent, leavesDevice, HostSpeechSession, SpeechError, SPEECH_LIMITS, type MakeSpeechArgs } from "./speech.js";
 export { SpeechBridge, type BoxSpeechEvent, type BoxSpeechInfo } from "./speech-bridge.js";
 export { onAppFailure, reportAppFailure, activeFailureListeners, type AppFailure } from "./failures.js";
-export { actionFailure, AppCodeError, HostFault, type ActionFailure, type Thrown } from "./app-error.js";
+export { actionFailure, AppCodeError, HostFault, type ActionFailure, type FaultWhy, type Thrown } from "./app-error.js";

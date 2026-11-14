@@ -13,7 +13,7 @@
 
 import type { AppDefinition, Ctx, FieldRefusal, PermissionManifest, Resolved, UiProgress, UiTimer, Value } from "potyro";
 import type { TimerData } from "../timers.js";
-import { AppCodeError, HostFault, thrownFrom, thrownOf } from "../app-error.js";
+import { AppCodeError, HostFault, thrownFrom, thrownOf, type FaultWhy } from "../app-error.js";
 import type { BindingRef, LoadedApp, Provenance, SealedView } from "../types.js";
 import { OPS, VIEW_OPS, type CallKind, type CtxBase, type FetchAnswer, type Op, type RealmToHost, type ViewOp } from "./protocol.js";
 import { SocketBridge, type BoxSocketInfo } from "../socket-bridge.js";
@@ -245,7 +245,7 @@ export class RealmLoadedApp implements LoadedApp {
 
   /** Start (or restart, after a kill) the realm and load the app into it. */
   start(): Promise<void> {
-    if (this.disposed) return Promise.reject(new HostFault("this app was closed"));
+    if (this.disposed) return Promise.reject(new HostFault("this app was closed", "closed"));
     this.starting ??= this.spawn().finally(() => (this.starting = null));
     return this.starting;
   }
@@ -274,7 +274,7 @@ export class RealmLoadedApp implements LoadedApp {
       });
       port.postMessage({ t: "load", code: this.code, ...(this.catalogs ? { catalogs: this.catalogs } : {}) });
       const raw = JSON.parse(await Promise.race([ready, late])) as AppDefinition;
-      if (this.disposed) throw new HostFault("this app was closed");
+      if (this.disposed) throw new HostFault("this app was closed", "closed");
       // The same normalisation the isolate does after reading the definition out (#105).
       this.definition = { ...raw, pages: (raw.pages ?? []).map((p) => (p.view ? p : { ...p, view: p.layout!.items[0]!.view })) };
       this.permissions = this.definition.permissions ?? {};
@@ -296,14 +296,14 @@ export class RealmLoadedApp implements LoadedApp {
   }
 
   /** Stop the realm now; what was waiting on it is rejected. The next call starts a fresh one. */
-  kill(reason: string): void {
+  kill(reason: string, why: FaultWhy = "stopped"): void {
     if (!this.realm) return;
     this.o.onKill?.(reason);
     // The new realm will not know these connections' numbers: they end with the old one.
     this.sockets.endAll("stopped", "the app was stopped");
     this.speech.endAll();
     this.teardown();
-    for (const [, p] of this.pending) p.reject(new HostFault(`stopped: ${reason}`));
+    for (const [, p] of this.pending) p.reject(new HostFault(`stopped: ${reason}`, why));
     this.pending.clear();
   }
 
@@ -357,7 +357,7 @@ export class RealmLoadedApp implements LoadedApp {
     this.sockets.endAll("left", "the app was closed");
     this.speech.endAll();
     this.teardown();
-    for (const [, p] of this.pending) p.reject(new HostFault("this app was closed"));
+    for (const [, p] of this.pending) p.reject(new HostFault("this app was closed", "closed"));
     this.pending.clear();
     this.ctxById.clear();
   }
@@ -382,11 +382,11 @@ export class RealmLoadedApp implements LoadedApp {
       return;
     }
     const silent = t - this.lastBeat - (this.stalledMs - this.stalledAtBeat);
-    if (silent > this.o.heartbeatTimeoutMs) return this.kill(`its logic stopped answering for ${Math.round(silent)} ms`);
+    if (silent > this.o.heartbeatTimeoutMs) return this.kill(`its logic stopped answering for ${Math.round(silent)} ms`, "slow");
     const waited = this.waitedOnPeople();
     for (const [, p] of this.pending) {
       const used = t - p.started - (waited - p.waitedBefore) - (this.stalledMs - p.stalledBefore);
-      if (used > this.o.timeoutMs) return this.kill(`a ${p.label} did not finish within ${this.o.timeoutMs} ms`);
+      if (used > this.o.timeoutMs) return this.kill(`a ${p.label} did not finish within ${this.o.timeoutMs} ms`, "slow");
     }
   }
 
@@ -761,7 +761,7 @@ export class RealmLoadedApp implements LoadedApp {
   }
 
   private async invoke(kind: CallKind, args: unknown[], ctx: Ctx): Promise<Value> {
-    if (this.disposed) throw new HostFault("this app was closed");
+    if (this.disposed) throw new HostFault("this app was closed", "closed");
     if (!this.port) await this.start();
     const port = this.port!;
     const id = ++this.seq;

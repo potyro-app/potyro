@@ -85,6 +85,13 @@ const messageOf = (e: unknown): string => (e instanceof Error ? e.message : Stri
 /** What a person is told when an action fails and nobody supplied the words: plain English, nothing internal. */
 export const ACTION_BROKE = "That did not work";
 
+/** The same, when the runner ended the call: it ran too long, the app was stopped, the person left it. */
+export const ACTION_STOPPED = {
+  slow: "This took too long, so it was stopped.",
+  stopped: "The app was stopped before this finished.",
+  closed: "The app was closed before this finished.",
+} as const;
+
 /**
  * A failed action in plain English (#76) — the fallback for a runtime nobody gave `failureWords`.
  * A refused write names the field by the app's label; an app's own words are its words; anything
@@ -93,6 +100,7 @@ export const ACTION_BROKE = "That did not work";
 export function plainFailure(failure: ActionFailure, definition: Localized<AppDefinition>): string {
   if (failure.kind === "said") return failure.message;
   if (failure.kind === "broke") return ACTION_BROKE;
+  if (failure.kind === "stopped") return ACTION_STOPPED[failure.why];
   const field = definition.entities[failure.refusal.entity]?.fields?.[failure.refusal.field];
   const label = field?.label === undefined ? humanizeKey(failure.refusal.field) : plainWords(field.label);
   return describeValueIssue(failure.refusal.issue, label, field);

@@ -626,13 +626,29 @@ class IsolateLoadedApp implements LoadedApp {
     return this.questionMs + (this.questionsOpen ? Date.now() - this.questionSince : 0);
   }
 
+  /** An entry into the VM was cut short since the running call began (see `enter`, `invoke`). */
+  private cutShort = false;
+  private tooSlow(): HostFault {
+    return new HostFault(`interrupted: the call did not finish within ${this.timeoutMs} ms`, "slow");
+  }
+
   /** One synchronous entry into the VM, under the per-entry CPU budget, then the jobs it queued. */
   private enter(run: () => void): void {
     const deadline = Date.now() + this.timeoutMs;
-    this.vm.runtime.setInterruptHandler(() => Date.now() > deadline);
+    // Whether THIS entry was cut short: the engine's own error for it ("interrupted") says nothing
+    // a person can be told, so what it throws is named for what happened — the call ran too long (#76).
+    let interrupted = false;
+    this.vm.runtime.setInterruptHandler(() => {
+      interrupted = Date.now() > deadline;
+      if (interrupted) this.cutShort = true;
+      return interrupted;
+    });
     try {
       run();
       this.vm.runtime.executePendingJobs();
+    } catch (e) {
+      if (interrupted) throw this.tooSlow();
+      throw e;
     } finally {
       this.vm.runtime.removeInterruptHandler?.();
     }
@@ -698,6 +714,7 @@ class IsolateLoadedApp implements LoadedApp {
     const code = `globalThis.__potyro.call(${JSON.stringify(serialize(payload))})`;
     let handle: QuickJSHandle | null = null;
     let settled!: Promise<{ error?: QuickJSHandle; value?: QuickJSHandle }>;
+    this.cutShort = false;
     this.enter(() => {
       handle = this.vm.unwrapResult(this.vm.evalCode(code));
       settled = this.vm.resolvePromise(handle);
@@ -709,7 +726,7 @@ class IsolateLoadedApp implements LoadedApp {
     const timedOut = new Promise<never>((_, reject) => {
       const check = (): void => {
         const used = Date.now() - started - (this.waitedOnPeople() - waitedBefore);
-        if (used >= this.timeoutMs) reject(new HostFault(`isolate call timed out after ${this.timeoutMs} ms`));
+        if (used >= this.timeoutMs) reject(new HostFault(`isolate call timed out after ${this.timeoutMs} ms`, "slow"));
         else timer = setTimeout(check, Math.max(10, this.timeoutMs - used));
       };
       timer = setTimeout(check, this.timeoutMs);
@@ -724,6 +741,10 @@ class IsolateLoadedApp implements LoadedApp {
       // What the app's code threw, as it said it: no prefix naming the box (#76).
       if (!parsed.ok) throw new AppCodeError(thrownFrom(parsed));
       return parsed.value ?? null;
+    } catch (e) {
+      // An async function cut short surfaces as its promise rejected with the engine's "interrupted".
+      if (this.cutShort && !(e instanceof AppCodeError) && !(e instanceof HostFault)) throw this.tooSlow();
+      throw e;
     } finally {
       clearTimeout(timer);
       if (!this.disposed) (handle as QuickJSHandle | null)?.dispose();
