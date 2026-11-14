@@ -41,6 +41,11 @@
 // a check, run or lookup naming something Potyro lacks), and after a give-up that followed such
 // evidence it asks once whether that is what stood in the way (platform-request.ts, docs/19 F5/F7).
 //
+// #72, #73: a change that passes every gate but came without a word is not handed over as it is. Once
+// in the loop the model is asked — the change already accepted, nothing to resend — what is different
+// and where to find it, and which parts of the request it left out (`Not done:`). Whatever comes back,
+// the accepted change stands: the answer can add words to it, never take it away.
+//
 // Shares the fix loop's vocabulary (tool calls, ASK, the marker-at-the-head rule, the "edit the app
 // as first shown" retry) and the modify contract's ladder (`buildModifyMessage`), so a model that has
 // learned one has learned the other.
@@ -50,7 +55,7 @@ import { structuralLoss } from "@potyro/runtime";
 import type { ChatEngine, ChatMessage } from "../chat-backend.js";
 import { readEditsOrFile, retryInstruction } from "../guarded-modify.js";
 import { describeEditFailures } from "../edits.js";
-import { NOT_IN_APP, buildModifyMessage, buildModifyOpener, type ModifyContext } from "../prompt.js";
+import { NOT_DONE, NOT_IN_APP, buildModifyMessage, buildModifyOpener, withNotDone, type ModifyContext } from "../prompt.js";
 import { primeCorpus, type Corpus } from "../corpus.js";
 import { appLanguage, type Language } from "../language.js";
 import { describeRun, type GatedRun, type RunGate } from "../run-report.js";
@@ -160,6 +165,14 @@ const DISCOVERY = new Set(["lookup", "check", "example", "search_corpus", "read"
 
 type Accepted = Extract<ModifyLoopOutcome, { kind: "source" }>;
 
+/** What a change that passed, sent with no explanation, is answered with — once (#72, #73). Exported for the tests and the eval. */
+export const EXPLAIN_NOTE = [
+  "Your change passed every check and is accepted as it is. Do NOT send the edits again.",
+  "You sent it without a word of explanation, and the person who asked does not read code. Reply now with prose only,",
+  "in their language: what is new or different in the app, and where to find it (which page, which button).",
+  `If any part of what they asked was not done, list it under "${NOT_DONE}" as the request says — one bullet per part.`,
+].join("\n");
+
 /** Why a reply is the model repeating itself, or null when it is not. */
 export function repeatsItself(text: string, previous: string | null): string | null {
   const now = text.trim();
@@ -255,6 +268,9 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
   /** Every candidate the gate turned back, with why: sent again — in this chain or a later one — it is a repeat. */
   const refused = new Map<string, TurnedBack>();
   const turnedBack: TurnedBack[] = [];
+  /** A change that passed every gate but came without a word: the next reply is its explanation (#72, #73). */
+  let unexplained: Accepted | null = null;
+  let askedToExplain = false;
   /** The next model call thinks hard: the loop just rolled a repeat back or started afresh. */
   let stuck = false;
   /** What, in a failure, named something Potyro lacks (#263); the marker is offered beside the first. */
@@ -363,6 +379,20 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     }
     toolStreak = null;
 
+    // The answer to "what did you change?" (#72, #73). The change it is about already passed: words
+    // are added to it, and nothing said here takes it back. Only a DIFFERENT change goes on to the gate.
+    if (unexplained) {
+      const pending = unexplained;
+      unexplained = null;
+      const again = readEditsOrFile(deps.draft?.source ?? deps.source, text);
+      const resent = again.kind === "edits" || again.kind === "whole-file";
+      if (!resent || again.source === pending.source) {
+        const opening = text.trimStart();
+        const prose = resent ? again.rationale : again.kind === "unusable" && !opening.startsWith(ASK) && !opening.startsWith(NOT_IN_APP) ? text.trim() : "";
+        return finish(prose ? withNotDone({ ...pending, rationale: prose }) : pending, prose ?? "");
+      }
+    }
+
     // The markers first: a question ends the turn, and a refusal said again after it was sent to the
     // tools is the model's answer — neither is a repeat to roll back.
     const head = text.trimStart();
@@ -464,7 +494,23 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
       ? `compiles, validates, keeps the app's shape, and runs without breaking anything (${gated.report.ran || "nothing to run"})`
       : "compiles, validates, keeps the app's shape";
     deps.onStep?.({ kind: "candidate", passed: problem === null, n: candidates, detail: problem ?? passed });
-    if (problem === null) return finish(accepted, read.rationale ?? text);
+    if (problem === null) {
+      // Sent again unchanged to say "that is meant": what was said with it the first time still holds.
+      const before = held && held !== accepted && held.source === candidate && held.rationale ? held : null;
+      if (before && !accepted.rationale) return finish({ ...accepted, rationale: before.rationale, ...(before.notDone?.length ? { notDone: before.notDone } : {}) }, before.rationale ?? "");
+      if (!accepted.rationale && !askedToExplain && step < maxSteps - 1) {
+        askedToExplain = true;
+        unexplained = accepted;
+        // Kept whatever happens next: a give-up from here on hands this change over.
+        held = accepted;
+        heldOn = candidates;
+        messages.push({ role: "assistant", content: text });
+        messages.push({ role: "user", content: EXPLAIN_NOTE });
+        previousAnswer = "it passed, and was asked for its explanation";
+        continue;
+      }
+      return finish(accepted, read.rationale ?? text);
+    }
     failedCandidates += 1;
     if (!warning) {
       const back = { tried, reason: oneLine(problem, 240) };

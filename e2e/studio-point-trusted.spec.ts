@@ -125,7 +125,7 @@ test.describe("with a mouse, beside the conversation", () => {
     await expect(studio.getByRole("textbox", { name: "Describe the app" })).toBeFocused();
 
     await ask(studio, "call it Every night");
-    await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Applied 1 edit/, { timeout: 60_000 });
+    await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Renaming that list\./, { timeout: 60_000 });
 
     // The message keeps what it was about.
     await expect(studio.locator(".k-thread-mine").last().locator(".k-point-chip")).toContainText("“Nights” list");

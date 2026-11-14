@@ -45,6 +45,7 @@ import { shellDialogs } from "./dialog.js";
 import { followChat, syncChat } from "./chat-sync.js";
 import { adoptDraft, appendMessage, briefSince, clearChat, earlierConversation, isDraftId, listMessages, newDraftId, threadItems, type ChatItem, type NewMessage } from "./studio-chat.js";
 import { shapeOrEmpty, studioEngine, type Outcome } from "./studio-engine.js";
+import { draftIsSaved } from "./studio-draft.js";
 import { buildPreview, PreviewScreen, type Preview } from "./studio-preview.js";
 import { PointGlyph } from "./point-mode.js";
 import { pointContext, type Pointed } from "./point-target.js";
@@ -762,6 +763,12 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   };
 
   const saveDraft = async (): Promise<void> => {
+    // Nothing was changed (#77): there is no version to record, and nothing to say. The code view closes.
+    if (draftIsSaved(draftSource, source, changedModules.size)) {
+      setToolsError(null);
+      setTools(null);
+      return;
+    }
     setToolsBusy(true);
     const own = await editedModules();
     const libraries = await librariesForDraft(own?.have);

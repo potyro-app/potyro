@@ -74,7 +74,7 @@ test.use({ viewport: { width: 1280, height: 800 } });
 test("a change to an app whose library needs a full web page is accepted on the first try", async ({ page }) => {
   await addAsMine(page);
   const { studio, requests } = await changeInStudio(page, () => RENAME, "call the page Screen widths");
-  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Applied 1 edit/, { timeout: 90_000 });
+  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Renaming the page\./, { timeout: 90_000 });
   // One model call: the change passed the check the first time it was sent.
   expect(requests).toHaveLength(1);
   const tools = await openSource(page, studio);

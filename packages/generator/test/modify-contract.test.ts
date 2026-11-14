@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { NOT_IN_APP, buildModifyMessage, parseModifyReply, parseNotDone, buildRepairInstruction } from "../src/prompt.js";
+import { NOT_IN_APP, buildModifyMessage, parseModifyReply, parseNotDone, withoutNotDone, buildRepairInstruction } from "../src/prompt.js";
 
 // The Edit-mode contract. Its job is to make "this isn't the app's to fix" a REPRESENTABLE answer:
 // when the only legal reply is updated source, a request the module cannot express comes back as a
@@ -220,5 +220,17 @@ describe("buildRepairInstruction", () => {
     expect(text).toMatch(/fix exactly these problems/i);
     expect(text).toMatch(/nothing else/i);
     expect(text).not.toMatch(/whole file/i);
+  });
+});
+
+describe("withoutNotDone (#72)", () => {
+  test("takes the heading and its bullets out, and keeps what is said around them", () => {
+    expect(withoutNotDone("I added the chip.\n\n**Not done:**\n\n- centre the map, needs `camera`\n* a current trip, needs `ctx.scope`\n\nIt is on the Places page.")).toBe(
+      "I added the chip.\n\nIt is on the Places page.",
+    );
+  });
+
+  test("leaves prose with no heading as it is", () => {
+    expect(withoutNotDone("I added the chip. Not done: nothing.")).toBe("I added the chip. Not done: nothing.");
   });
 });

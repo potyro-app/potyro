@@ -37,7 +37,7 @@ test("modify runs on the loop: an unlooked refusal is sent to lookup, then edits
   await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 60_000 });
 
   await ask(studio, "add a 5-star rating field");
-  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Applied 1 edit/, { timeout: 60_000 });
+  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Adding the rating\. New in “Book”: a “Rating” field\./, { timeout: 60_000 });
 
   // The exchange the loop guarantees: nudge after the blind refusal, then the tool's answer.
   expect(requests).toHaveLength(4);

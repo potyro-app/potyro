@@ -237,7 +237,7 @@ Design: docs/00 §The Studio and the generator; docs/23 (AI in apps).
   `webllm-backend.ts`, `gemini-nano-backend.ts`, `hybrid-backend.ts`, `backend.ts` (`FixtureBackend`).
 - Evals: `packages/generator/src/*-eval.ts` run by `packages/generator/scripts/run-*-eval.ts`
   (the `eval:*` scripts; paid — never without being asked). `packages/generator/scripts/i18n-app.ts` is `pnpm i18n:app`.
-- The Studio in the shell: `studio.tsx` `Studio`; `studio-engine.ts`; `studio-preview.tsx`
+- The Studio in the shell: `studio.tsx` `Studio`; `studio-engine.ts`; `studio-summary.ts` (what a version's card says changed); `studio-preview.tsx`
   `buildPreview`; `studio-tools.tsx`; `studio-thread-view.tsx`, `studio-thread.ts`, `studio-chat.ts`;
   `start-create.ts`, `start-modify.ts`, `start-ask.ts`, `start-fix.ts`; `generate-client.ts`.
 - Chat between people: `chat-panel.tsx`, `chat-sync.ts`, `share-chat.ts`. Requests to the team:

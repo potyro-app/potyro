@@ -522,6 +522,24 @@ export function parseNotDone(prose: string): string[] {
 }
 
 /**
+ * The prose without its `Not done:` heading and the bullets under it: what a person is shown as the
+ * explanation, when the parts not done are said on their own (#72). The prose as it is when there is
+ * no heading.
+ */
+export function withoutNotDone(prose: string): string {
+  const heading = new RegExp(`^[\\s*_\`#]*${NOT_DONE}[\\s*_\`]*$`, "im").exec(prose);
+  if (!heading) return prose;
+  const rest = prose.slice(heading.index + heading[0].length).split("\n");
+  let i = 0;
+  let bullets = 0;
+  for (; i < rest.length; i += 1) {
+    if (/^\s*(?:[-*•]|\d+[.)])\s+\S/.test(rest[i]!)) bullets += 1;
+    else if (!(bullets === 0 && rest[i]!.trim() === "")) break;
+  }
+  return `${prose.slice(0, heading.index)}${rest.slice(i).join("\n")}`.trim();
+}
+
+/**
  * The Edit-mode prompt.
  *
  * Its job is to make "this isn't the app's to fix" a REPRESENTABLE answer. When updated source is

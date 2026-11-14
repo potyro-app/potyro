@@ -41,7 +41,7 @@ test("the level chosen in Model settings reaches create and modify, with the bud
   const preview = await openFromCard(studio);
   await expect(preview.locator("h1").first()).toHaveText("Reader", { timeout: 60_000 });
   await ask(studio, "add a 5-star rating field");
-  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Applied 1 edit/, { timeout: 60_000 });
+  await expect(currentCard(studio).locator(".k-card-what")).toHaveText(/Adding the rating\. New in “Book”: a “Rating” field\./, { timeout: 60_000 });
 
   expect(bodies.length).toBeGreaterThanOrEqual(2);
   for (const b of bodies) {

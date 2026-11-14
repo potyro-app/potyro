@@ -57,5 +57,6 @@ the loop tells a verdict from a change. (NEEDS-PLATFORM:, when you are offered i
 no part could be done; beside edits it is a line of the prose before the block.)
 
 When you send edits, put your reasoning BEFORE the \`\`\`ts block; that text is shown to the person
-as the explanation of what changed and why. The system prompt's "no prose" rule is for creating an
+as the explanation of what changed and why, and they do not read code: end it with what is new or
+different in plain words and where to find it (which page, which button). The system prompt's "no prose" rule is for creating an
 app from scratch, not for this.`;

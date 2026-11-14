@@ -5,7 +5,7 @@
 
 export type { GenPrompt, ModelBackend } from "./backend.js";
 export { FixtureBackend } from "./backend.js";
-export { SYSTEM_PROMPT, SYSTEM_PROMPT_COMPACT, buildUserMessage, buildRepairMessage, buildRepairInstruction, buildModifyMessage, extractSource, looksLikeApp, questionIn, parseModifyReply, NOT_IN_APP } from "./prompt.js";
+export { SYSTEM_PROMPT, SYSTEM_PROMPT_COMPACT, buildUserMessage, buildRepairMessage, buildRepairInstruction, buildModifyMessage, extractSource, looksLikeApp, questionIn, parseModifyReply, withoutNotDone, NOT_IN_APP } from "./prompt.js";
 export type { ModifyContext, ModifyReply } from "./prompt.js";
 export { joinAppFiles, splitAppFiles, canJoinAppFiles, joinedModules, isJoinedApp, appFilesNote, FILE_MARK, ENTRY_FILE, type SplitResult } from "./app-files.js";
 export { ClaudeBackend, createClaudeBackend, type MessagesClient } from "./claude-backend.js";

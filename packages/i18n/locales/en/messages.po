@@ -176,6 +176,11 @@ msgstr "\"{url}\" does not name an exact version, so it could change under the a
 msgid "\"{url}\" is not an https address, so it cannot be fetched safely."
 msgstr "\"{url}\" is not an https address, so it cannot be fetched safely."
 
+#. A word of the person's app quoted in a sentence of Potyro's: use this language's quotation marks
+#: ../shell/src/studio-summary.ts
+msgid "“{word}”"
+msgstr "“{word}”"
+
 #: ../shell/src/platform-request-card.tsx
 msgid "(nothing could be read from the app)"
 msgstr "(nothing could be read from the app)"
@@ -279,6 +284,11 @@ msgstr "{0, plural, one {and # more} other {and # more}}"
 msgid "{0, plural, one {Bring this app in?} other {Bring these # apps in?}}"
 msgstr "{0, plural, one {Bring this app in?} other {Bring these # apps in?}}"
 
+#. placeholder {0}: d.changed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Changed in {entity}: the {names} field.} other {Changed in {entity}: the fields {names}.}}"
+msgstr "{0, plural, one {Changed in {entity}: the {names} field.} other {Changed in {entity}: the fields {names}.}}"
+
 #. placeholder {0}: models.length
 #: ../shell/src/endpoint-check.ts
 msgid "{0, plural, one {Connected. The server lists # model.} other {Connected. The server lists # models.}}"
@@ -293,6 +303,11 @@ msgstr "{0, plural, one {Fetch the library this version uses?} other {Fetch the 
 #: ../shell/src/add-app-dialog.tsx
 msgid "{0, plural, one {In the sealed box, the parts of it that use it will not work.} other {In the sealed box, the parts of it that use them will not work.}}"
 msgstr "{0, plural, one {In the sealed box, the parts of it that use it will not work.} other {In the sealed box, the parts of it that use them will not work.}}"
+
+#. placeholder {0}: pages.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {It has one page: {names}.} other {It has # pages: {names}.}}"
+msgstr "{0, plural, one {It has one page: {names}.} other {It has # pages: {names}.}}"
 
 #. placeholder {0}: features.length
 #: ../shell/src/missing-features.ts
@@ -314,6 +329,31 @@ msgstr "{0, plural, one {Load # app} other {Load # apps}}"
 msgid "{0, plural, one {Moved # app} other {Moved # apps}}"
 msgstr "{0, plural, one {Moved # app} other {Moved # apps}}"
 
+#. placeholder {0}: d.added.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {New in {entity}: a {names} field.} other {New in {entity}: the fields {names}.}}"
+msgstr "{0, plural, one {New in {entity}: a {names} field.} other {New in {entity}: the fields {names}.}}"
+
+#. placeholder {0}: d.added.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {New on each record of {entity}: a {names} button.} other {New on each record of {entity}: the buttons {names}.}}"
+msgstr "{0, plural, one {New on each record of {entity}: a {names} button.} other {New on each record of {entity}: the buttons {names}.}}"
+
+#. placeholder {0}: d.added.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {New on the {page} page: a {names} button.} other {New on the {page} page: the buttons {names}.}}"
+msgstr "{0, plural, one {New on the {page} page: a {names} button.} other {New on the {page} page: the buttons {names}.}}"
+
+#. placeholder {0}: d.added.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {New on the {page} page: a {names} filter.} other {New on the {page} page: the filters {names}.}}"
+msgstr "{0, plural, one {New on the {page} page: a {names} filter.} other {New on the {page} page: the filters {names}.}}"
+
+#. placeholder {0}: pages.added.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {New page: {names}.} other {New pages: {names}.}}"
+msgstr "{0, plural, one {New page: {names}.} other {New pages: {names}.}}"
+
 #. placeholder {0}: lines.length
 #: ../shell/src/studio.tsx
 msgid "{0, plural, one {Not saved: it uses {names}, which was not fetched.} other {Not saved: it uses {names}, which were not fetched.}}"
@@ -328,6 +368,31 @@ msgstr "{0, plural, one {Read # back} other {Read # back}}"
 #: ../shell/src/ask-panel.tsx
 msgid "{0, plural, one {Read from # address} other {Read from # addresses}}"
 msgstr "{0, plural, one {Read from # address} other {Read from # addresses}}"
+
+#. placeholder {0}: d.removed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Removed from {entity}: the {names} field.} other {Removed from {entity}: the fields {names}.}}"
+msgstr "{0, plural, one {Removed from {entity}: the {names} field.} other {Removed from {entity}: the fields {names}.}}"
+
+#. placeholder {0}: d.removed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Removed from the {page} page: the {names} button.} other {Removed from the {page} page: the buttons {names}.}}"
+msgstr "{0, plural, one {Removed from the {page} page: the {names} button.} other {Removed from the {page} page: the buttons {names}.}}"
+
+#. placeholder {0}: d.removed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Removed from the {page} page: the {names} filter.} other {Removed from the {page} page: the filters {names}.}}"
+msgstr "{0, plural, one {Removed from the {page} page: the {names} filter.} other {Removed from the {page} page: the filters {names}.}}"
+
+#. placeholder {0}: d.removed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Removed from the records of {entity}: the {names} button.} other {Removed from the records of {entity}: the buttons {names}.}}"
+msgstr "{0, plural, one {Removed from the records of {entity}: the {names} button.} other {Removed from the records of {entity}: the buttons {names}.}}"
+
+#. placeholder {0}: pages.removed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Removed the page {names}.} other {Removed the pages {names}.}}"
+msgstr "{0, plural, one {Removed the page {names}.} other {Removed the pages {names}.}}"
 
 #. placeholder {0}: result.applied
 #: ../shell/src/studio-engine.ts
@@ -1598,6 +1663,10 @@ msgstr "Always dark"
 #: ../shell/src/look-panel.tsx
 msgid "Always light"
 msgstr "Always light"
+
+#: ../shell/src/studio-summary.ts
+msgid "Among the app’s main buttons, {was} is now called {now}."
+msgstr "Among the app’s main buttons, {was} is now called {now}."
 
 #: ../shell/src/move-archive.ts
 msgid "An app in this file is damaged."
@@ -3784,6 +3853,11 @@ msgstr "imported"
 msgid "Imported data into {name}."
 msgstr "Imported data into {name}."
 
+#: ../shell/src/studio-summary.ts
+#: ../shell/src/studio-summary.ts
+msgid "In {entity}, {was} is now called {to}."
+msgstr "In {entity}, {was} is now called {to}."
+
 #. Added to the question about a device on the home network when Potyro runs as a website: an https page cannot open plain ws:// connections
 #: ../shell/src/app-sockets.ts
 msgid "In a browser it connects only if the device offers a secure (wss://) connection; the Potyro app for Android connects either way."
@@ -4389,6 +4463,7 @@ msgstr "Look up places on the map"
 msgid "Low"
 msgstr "Low"
 
+#: ../shell/src/studio-summary.ts
 #: ../shell/src/studio.tsx
 msgid "Made “{name}”."
 msgstr "Made “{name}”."
@@ -4695,6 +4770,10 @@ msgstr "New"
 #: ../shell/src/scope-switcher.tsx
 msgid "New {kind}"
 msgstr "New {kind}"
+
+#: ../shell/src/studio-summary.ts
+msgid "New among the app’s main buttons: {names}."
+msgstr "New among the app’s main buttons: {names}."
 
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
@@ -5274,6 +5353,11 @@ msgstr "On {where}, about \"{text}\": "
 #: ../shell/src/inline-edit.tsx
 msgid "On {where}: "
 msgstr "On {where}: "
+
+#: ../shell/src/studio-summary.ts
+#: ../shell/src/studio-summary.ts
+msgid "On the {page} page, {was} is now called {to}."
+msgstr "On the {page} page, {was} is now called {to}."
 
 #. The row of cards along the bottom of a map: the records in view
 #: ../views/src/map.tsx
@@ -5920,6 +6004,10 @@ msgstr "Remove: {noun}"
 #: ../shell/src/people-panel.tsx
 msgid "Removed {name}"
 msgstr "Removed {name}"
+
+#: ../shell/src/studio-summary.ts
+msgid "Removed from the app’s main buttons: {names}."
+msgstr "Removed from the app’s main buttons: {names}."
 
 #. Menu: rename a guest
 #: ../shell/src/files-panel.tsx
@@ -7013,6 +7101,14 @@ msgstr "the app changed since this text was read — try again"
 msgid "The app could not be fetched. Check the connection and try again."
 msgstr "The app could not be fetched. Check the connection and try again."
 
+#: ../shell/src/studio-summary.ts
+msgid "The app is now called {now}."
+msgstr "The app is now called {now}."
+
+#: ../shell/src/studio-summary.ts
+msgid "The app now also keeps: {names}."
+msgstr "The app now also keeps: {names}."
+
 #. A toast: the person left an app while one of its buttons was still working
 #: ../shell/src/failure-words.ts
 msgid "The app was closed before this finished."
@@ -7223,6 +7319,10 @@ msgstr "The old version stays in History. Files you changed are kept."
 #: ../shell/src/history.tsx
 msgid "the only version kept — nothing to compare against"
 msgstr "the only version kept — nothing to compare against"
+
+#: ../shell/src/studio-summary.ts
+msgid "The page {was} is now called {now}."
+msgstr "The page {was} is now called {now}."
 
 #. Link: the paid plan this person once asked for now exists; the link opens its page
 #: ../shell/src/free-panel.tsx
@@ -7793,6 +7893,18 @@ msgstr "timers"
 #: ../shell/src/history.tsx
 msgid "Times the agent was asked for a change this app cannot express, and said so instead of editing something that would not have helped. No version was written for these."
 msgstr "Times the agent was asked for a change this app cannot express, and said so instead of editing something that would not have helped. No version was written for these."
+
+#: ../shell/src/studio-summary.ts
+msgid "To start, add your first entry on the {page} page."
+msgstr "To start, add your first entry on the {page} page."
+
+#: ../shell/src/studio-summary.ts
+msgid "To start, tap {button} on the {page} page."
+msgstr "To start, tap {button} on the {page} page."
+
+#: ../shell/src/studio-summary.ts
+msgid "To start, tap {button}."
+msgstr "To start, tap {button}."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "To the app’s source or its package"

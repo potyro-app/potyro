@@ -176,6 +176,11 @@ msgstr "„{url}“ nennt keine genaue Version und könnte sich daher unter der 
 msgid "\"{url}\" is not an https address, so it cannot be fetched safely."
 msgstr "„{url}“ ist keine https-Adresse und kann daher nicht sicher geladen werden."
 
+#. A word of the person's app quoted in a sentence of Potyro's: use this language's quotation marks
+#: ../shell/src/studio-summary.ts
+msgid "“{word}”"
+msgstr "„{word}“"
+
 #: ../shell/src/platform-request-card.tsx
 msgid "(nothing could be read from the app)"
 msgstr "(aus der App ließ sich nichts lesen)"
@@ -279,6 +284,11 @@ msgstr "{0, plural, one {und # weitere} other {und # weitere}}"
 msgid "{0, plural, one {Bring this app in?} other {Bring these # apps in?}}"
 msgstr "{0, plural, one {Diese App übernehmen?} other {Diese # Apps übernehmen?}}"
 
+#. placeholder {0}: d.changed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Changed in {entity}: the {names} field.} other {Changed in {entity}: the fields {names}.}}"
+msgstr "{0, plural, one {Geändert in {entity}: das Feld {names}.} other {Geändert in {entity}: die Felder {names}.}}"
+
 #. placeholder {0}: models.length
 #: ../shell/src/endpoint-check.ts
 msgid "{0, plural, one {Connected. The server lists # model.} other {Connected. The server lists # models.}}"
@@ -293,6 +303,11 @@ msgstr "{0, plural, one {Die Bibliothek laden, die diese Version nutzt?} other {
 #: ../shell/src/add-app-dialog.tsx
 msgid "{0, plural, one {In the sealed box, the parts of it that use it will not work.} other {In the sealed box, the parts of it that use them will not work.}}"
 msgstr "{0, plural, one {In der versiegelten Box funktionieren die Teile nicht, die sie nutzen.} other {In der versiegelten Box funktionieren die Teile nicht, die sie nutzen.}}"
+
+#. placeholder {0}: pages.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {It has one page: {names}.} other {It has # pages: {names}.}}"
+msgstr "{0, plural, one {Sie hat eine Seite: {names}.} other {Sie hat # Seiten: {names}.}}"
 
 #. placeholder {0}: features.length
 #: ../shell/src/missing-features.ts
@@ -314,6 +329,31 @@ msgstr "{0, plural, one {# App laden} other {# Apps laden}}"
 msgid "{0, plural, one {Moved # app} other {Moved # apps}}"
 msgstr "{0, plural, one {# App verschoben} other {# Apps verschoben}}"
 
+#. placeholder {0}: d.added.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {New in {entity}: a {names} field.} other {New in {entity}: the fields {names}.}}"
+msgstr "{0, plural, one {Neu in {entity}: das Feld {names}.} other {Neu in {entity}: die Felder {names}.}}"
+
+#. placeholder {0}: d.added.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {New on each record of {entity}: a {names} button.} other {New on each record of {entity}: the buttons {names}.}}"
+msgstr "{0, plural, one {Neu bei jedem Eintrag in {entity}: die Schaltfläche {names}.} other {Neu bei jedem Eintrag in {entity}: die Schaltflächen {names}.}}"
+
+#. placeholder {0}: d.added.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {New on the {page} page: a {names} button.} other {New on the {page} page: the buttons {names}.}}"
+msgstr "{0, plural, one {Neu auf der Seite {page}: die Schaltfläche {names}.} other {Neu auf der Seite {page}: die Schaltflächen {names}.}}"
+
+#. placeholder {0}: d.added.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {New on the {page} page: a {names} filter.} other {New on the {page} page: the filters {names}.}}"
+msgstr "{0, plural, one {Neu auf der Seite {page}: der Filter {names}.} other {Neu auf der Seite {page}: die Filter {names}.}}"
+
+#. placeholder {0}: pages.added.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {New page: {names}.} other {New pages: {names}.}}"
+msgstr "{0, plural, one {Neue Seite: {names}.} other {Neue Seiten: {names}.}}"
+
 #. placeholder {0}: lines.length
 #: ../shell/src/studio.tsx
 msgid "{0, plural, one {Not saved: it uses {names}, which was not fetched.} other {Not saved: it uses {names}, which were not fetched.}}"
@@ -328,6 +368,31 @@ msgstr "{0, plural, one {# zurückgelesen} other {# zurückgelesen}}"
 #: ../shell/src/ask-panel.tsx
 msgid "{0, plural, one {Read from # address} other {Read from # addresses}}"
 msgstr "{0, plural, one {Von # Adresse gelesen} other {Von # Adressen gelesen}}"
+
+#. placeholder {0}: d.removed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Removed from {entity}: the {names} field.} other {Removed from {entity}: the fields {names}.}}"
+msgstr "{0, plural, one {Entfernt aus {entity}: das Feld {names}.} other {Entfernt aus {entity}: die Felder {names}.}}"
+
+#. placeholder {0}: d.removed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Removed from the {page} page: the {names} button.} other {Removed from the {page} page: the buttons {names}.}}"
+msgstr "{0, plural, one {Entfernt von der Seite {page}: die Schaltfläche {names}.} other {Entfernt von der Seite {page}: die Schaltflächen {names}.}}"
+
+#. placeholder {0}: d.removed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Removed from the {page} page: the {names} filter.} other {Removed from the {page} page: the filters {names}.}}"
+msgstr "{0, plural, one {Entfernt von der Seite {page}: der Filter {names}.} other {Entfernt von der Seite {page}: die Filter {names}.}}"
+
+#. placeholder {0}: d.removed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Removed from the records of {entity}: the {names} button.} other {Removed from the records of {entity}: the buttons {names}.}}"
+msgstr "{0, plural, one {Entfernt bei den Einträgen in {entity}: die Schaltfläche {names}.} other {Entfernt bei den Einträgen in {entity}: die Schaltflächen {names}.}}"
+
+#. placeholder {0}: pages.removed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Removed the page {names}.} other {Removed the pages {names}.}}"
+msgstr "{0, plural, one {Die Seite {names} wurde entfernt.} other {Die Seiten {names} wurden entfernt.}}"
 
 #. placeholder {0}: result.applied
 #: ../shell/src/studio-engine.ts
@@ -1598,6 +1663,10 @@ msgstr "Immer dunkel"
 #: ../shell/src/look-panel.tsx
 msgid "Always light"
 msgstr "Immer hell"
+
+#: ../shell/src/studio-summary.ts
+msgid "Among the app’s main buttons, {was} is now called {now}."
+msgstr "Bei den Hauptschaltflächen der App heißt {was} jetzt {now}."
 
 #: ../shell/src/move-archive.ts
 msgid "An app in this file is damaged."
@@ -3784,6 +3853,11 @@ msgstr "importiert"
 msgid "Imported data into {name}."
 msgstr "Daten in {name} importiert."
 
+#: ../shell/src/studio-summary.ts
+#: ../shell/src/studio-summary.ts
+msgid "In {entity}, {was} is now called {to}."
+msgstr "In {entity} heißt {was} jetzt {to}."
+
 #. Added to the question about a device on the home network when Potyro runs as a website: an https page cannot open plain ws:// connections
 #: ../shell/src/app-sockets.ts
 msgid "In a browser it connects only if the device offers a secure (wss://) connection; the Potyro app for Android connects either way."
@@ -4389,6 +4463,7 @@ msgstr "Orte auf der Karte nachschlagen"
 msgid "Low"
 msgstr "Niedrig"
 
+#: ../shell/src/studio-summary.ts
 #: ../shell/src/studio.tsx
 msgid "Made “{name}”."
 msgstr "„{name}“ erstellt."
@@ -4695,6 +4770,10 @@ msgstr "Neu"
 #: ../shell/src/scope-switcher.tsx
 msgid "New {kind}"
 msgstr "{kind} anlegen"
+
+#: ../shell/src/studio-summary.ts
+msgid "New among the app’s main buttons: {names}."
+msgstr "Neu bei den Hauptschaltflächen der App: {names}."
 
 #: ../shell/src/launcher-metro.tsx
 #: ../shell/src/launcher.tsx
@@ -5274,6 +5353,11 @@ msgstr "Auf {where}, zu „{text}“: "
 #: ../shell/src/inline-edit.tsx
 msgid "On {where}: "
 msgstr "Auf {where}: "
+
+#: ../shell/src/studio-summary.ts
+#: ../shell/src/studio-summary.ts
+msgid "On the {page} page, {was} is now called {to}."
+msgstr "Auf der Seite {page} heißt {was} jetzt {to}."
 
 #. The row of cards along the bottom of a map: the records in view
 #: ../views/src/map.tsx
@@ -5920,6 +6004,10 @@ msgstr "Entfernen: {noun}"
 #: ../shell/src/people-panel.tsx
 msgid "Removed {name}"
 msgstr "{name} entfernt"
+
+#: ../shell/src/studio-summary.ts
+msgid "Removed from the app’s main buttons: {names}."
+msgstr "Entfernt aus den Hauptschaltflächen der App: {names}."
 
 #. Menu: rename a guest
 #: ../shell/src/files-panel.tsx
@@ -7013,6 +7101,14 @@ msgstr "die App hat sich geändert, seit dieser Text gelesen wurde — versuch e
 msgid "The app could not be fetched. Check the connection and try again."
 msgstr "Die App konnte nicht geladen werden. Prüf die Verbindung und versuch es noch einmal."
 
+#: ../shell/src/studio-summary.ts
+msgid "The app is now called {now}."
+msgstr "Die App heißt jetzt {now}."
+
+#: ../shell/src/studio-summary.ts
+msgid "The app now also keeps: {names}."
+msgstr "Die App führt jetzt auch: {names}."
+
 #. A toast: the person left an app while one of its buttons was still working
 #: ../shell/src/failure-words.ts
 msgid "The app was closed before this finished."
@@ -7223,6 +7319,10 @@ msgstr "Die alte Version bleibt im Verlauf. Dateien, die du geändert hast, blei
 #: ../shell/src/history.tsx
 msgid "the only version kept — nothing to compare against"
 msgstr "die einzige gespeicherte Version — nichts zum Vergleichen"
+
+#: ../shell/src/studio-summary.ts
+msgid "The page {was} is now called {now}."
+msgstr "Die Seite {was} heißt jetzt {now}."
 
 #. Link: the paid plan this person once asked for now exists; the link opens its page
 #: ../shell/src/free-panel.tsx
@@ -7793,6 +7893,18 @@ msgstr "Timer"
 #: ../shell/src/history.tsx
 msgid "Times the agent was asked for a change this app cannot express, and said so instead of editing something that would not have helped. No version was written for these."
 msgstr "Wann der Agent um eine Änderung gebeten wurde, die diese App nicht ausdrücken kann, und das gesagt hat, statt etwas zu bearbeiten, das nicht geholfen hätte. Dafür wurde keine Version geschrieben."
+
+#: ../shell/src/studio-summary.ts
+msgid "To start, add your first entry on the {page} page."
+msgstr "Zum Start: Füge auf der Seite {page} deinen ersten Eintrag hinzu."
+
+#: ../shell/src/studio-summary.ts
+msgid "To start, tap {button} on the {page} page."
+msgstr "Zum Start: Tippe auf der Seite {page} auf {button}."
+
+#: ../shell/src/studio-summary.ts
+msgid "To start, tap {button}."
+msgstr "Zum Start: Tippe auf {button}."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "To the app’s source or its package"
