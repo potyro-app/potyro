@@ -32,6 +32,14 @@ function checkFieldRelations(
       }
     } else if (field.type === "list") {
       checkFieldRelations(entityName, field.of, entityNames, issues, here);
+    } else if (field.type === "text" && field.suggest && (field.multiline || field.collaborative)) {
+      // A discriminated union cannot carry a rule across two of a member's own options, so it is
+      // checked here, with the other rules that look at more than one thing (#82).
+      const other = field.multiline ? "multiline" : "collaborative";
+      issues.push(
+        `entity "${entityName}" field "${here}" has both \`suggest\` and \`${other}: true\`: \`suggest\` offers one-line values to pick from, ` +
+          `so it works only on a one-line text field — remove \`suggest\` to keep the ${other} text, or remove \`${other}\` to keep the suggestions`,
+      );
     }
   }
 }

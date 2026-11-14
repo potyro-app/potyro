@@ -1279,6 +1279,11 @@ msgstr "adicionar"
 msgid "Add"
 msgstr "Adicionar"
 
+#. In a text field that offers the values used before: keep what was typed as a new value
+#: ../views/src/suggest-input.tsx
+msgid "Add “{typed}”"
+msgstr "Adicionar “{typed}”"
+
 #. Picker: add the chosen items; the number is how many
 #: ../shell/src/picker.tsx
 msgid "Add {count}"

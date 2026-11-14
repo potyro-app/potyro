@@ -1,8 +1,6 @@
-// Field types — the declarative, closed set (docs/03 "Field types").
-//
-// `text · richtext · number · boolean · enum · tags · datetime · duration · url · geo ·
-//  media · relation · list`. There is intentionally no `computed` field *type* — computed is
-// a function block on the entity, which cleanly separates shape (data) from logic (code).
+// Field types — the declarative, closed set (docs/03 "Field types"; the list is `Field`, below).
+// There is intentionally no `computed` field *type* — computed is a function block on the entity,
+// which cleanly separates shape (data) from logic (code).
 
 import type { Ctx } from "./ctx.js";
 import type { Words } from "./words.js";
@@ -21,7 +19,7 @@ export interface FieldCommon {
   placeholder?: Words;
   /** `"half"` lets two short neighbours share a row on a wide form; they stack on a phone. */
   width?: "full" | "half";
-  /** Literal default, or `(ctx) => value`. Not validated (may be a function). */
+  /** Not validated (may be a function). */
   default?: DefaultValue;
 }
 
@@ -30,6 +28,8 @@ export interface TextField extends FieldCommon {
   multiline?: boolean;
   /** Several type at once (`ctx.text`). */
   collaborative?: boolean;
+  /** A list that grows (a shop, a brand): the form offers the values already used and keeps a new one as typed; an array adds starting ones. */
+  suggest?: true | string[];
 }
 
 export interface RichTextField extends FieldCommon {
@@ -163,7 +163,6 @@ export interface ListField extends FieldCommon {
   lines?: string[];
 }
 
-/** The discriminated union of all field variants. */
 export type Field =
   | TextField
   | RichTextField

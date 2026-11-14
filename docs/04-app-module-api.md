@@ -132,6 +132,25 @@ sets none still gets its content first — above a page's view there is only its
 ("11 to buy · 2 in the basket") — rows led by their photo or a tinted initial, and a cover on every
 record page (docs/03 §How a page looks). Additive: no app bumps `schemaVersion` for them.
 
+### A list of choices that grows (`suggest` on a `text` field, #82)
+
+```ts
+fields: {
+  status: { type: "enum", options: ["cellar", "drunk"] },      // a closed set: anything else is refused
+  region: { type: "text", suggest: true },                      // the person's own, growing list
+  colour: { type: "text", suggest: ["Red", "White", "Rosé"] },  // … with values to start from
+}
+```
+
+When the person should pick from what they typed before and still be free to type something new —
+a region, a shop, a brand, a room — the field is `text` with `suggest`, not an `enum`. The form
+offers the values the records already hold (and the starting ones), narrows them as the person
+types, and keeps a new value as typed; the record stores plain text, so `filter`, `group`, `sort`
+and a filter chip `from` the field work as on any text field, and the chip offers exactly the values
+in the records. "Add it to the list when it is not there" needs no code and no change to the app:
+saving the record is what adds it. Details: docs/03 "A list that grows". Additive: no
+`schemaVersion` bump, in either direction.
+
 ### Related records, tappable rows, a remembering checklist (all optional)
 
 A detail section may be `related: { entity, via, view: "list" | "timeline" | "chart", … }` instead of

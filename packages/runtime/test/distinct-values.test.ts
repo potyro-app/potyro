@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { distinctValues, offersRecordValues, DISTINCT_VALUES_CAP } from "../src/distinct-values.js";
+import { distinctValues, offersRecordValues, suggestedValues, valueKey, DISTINCT_VALUES_CAP } from "../src/distinct-values.js";
 
 describe("offersRecordValues", () => {
   it("is true for fields that declare no options of their own", () => {
@@ -70,5 +70,48 @@ describe("distinctValues", () => {
     const values = distinctValues(rows, "city", 3);
     expect(values).toEqual(["City 000", "City 098", "City 099"]);
     expect(distinctValues(rows, "city")).toHaveLength(DISTINCT_VALUES_CAP);
+  });
+});
+
+describe("suggestedValues (#82)", () => {
+  it("offers what the records hold, once each, sorted", () => {
+    const rows = [{ region: "Piemonte" }, { region: "Douro" }, { region: "Piemonte" }, { region: "" }, { region: null }, {}];
+    expect(suggestedValues(rows, "region")).toEqual(["Douro", "Piemonte"]);
+  });
+
+  it("adds the declared starting values no record uses yet", () => {
+    const rows = [{ colour: "Orange" }, { colour: "Red" }];
+    expect(suggestedValues(rows, "colour", ["Red", "White", "Rosé"])).toEqual(["Orange", "Red", "Rosé", "White"]);
+    expect(suggestedValues([], "colour", ["White", "Red", "White", " "])).toEqual(["Red", "White"]);
+  });
+
+  it("treats case and surrounding space as the same choice, keeping the most used spelling, the earliest among equals", () => {
+    const rows = [{ r: "barolo" }, { r: "Barolo " }, { r: "Barolo" }, { r: "etna" }, { r: "Etna" }];
+    expect(suggestedValues(rows, "r")).toEqual(["Barolo", "etna"]);
+  });
+
+  it("keeps a record's spelling over a declared one, so a pick writes what a filter already shows", () => {
+    expect(suggestedValues([{ c: "red" }], "c", ["Red", "White"])).toEqual(["red", "White"]);
+  });
+
+  it("is not capped, and leaves prose and non-text out", () => {
+    const rows = Array.from({ length: DISTINCT_VALUES_CAP + 10 }, (_, i) => ({ v: `value ${i}` }));
+    expect(suggestedValues(rows, "v")).toHaveLength(DISTINCT_VALUES_CAP + 10);
+    expect(suggestedValues([{ v: "x".repeat(81) }, { v: 7 }, { v: ["a"] }], "v")).toEqual([]);
+  });
+});
+
+describe("a filter on a field with suggest", () => {
+  it("shows what is in the data, never the declared starting values", () => {
+    const field = { type: "text", suggest: ["Red", "White"] };
+    expect(offersRecordValues(field)).toBe(true);
+    expect(distinctValues([{ colour: "Red" }], "colour")).toEqual(["Red"]);
+  });
+});
+
+describe("valueKey", () => {
+  it("folds case and surrounding space", () => {
+    expect(valueKey("  Rosé ")).toBe(valueKey("rosé"));
+    expect(valueKey("Red")).not.toBe(valueKey("Reds"));
   });
 });

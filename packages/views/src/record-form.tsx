@@ -11,6 +11,7 @@ import type { ShownField as Field } from "./shown.js";
 import { FN_SENTINEL, type PotyroRuntime } from "@potyro/runtime";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { FieldInput } from "./field-input.js";
+import type { SuggestSource } from "./suggest-input.js";
 import { fieldLabel, humanizeKey } from "./format.js";
 import { FormSheet } from "./form-sheet.js";
 import { resolveGroups, type ResolvedGroup } from "./groups.js";
@@ -207,6 +208,21 @@ function FormField({
   );
 }
 
+/** A one-line text field that offers the values used before (`suggest`, #82). */
+function suggests(field: Field): boolean {
+  return field.type === "text" && Boolean(field.suggest) && !field.multiline && !field.collaborative;
+}
+
+/** What a form saves: a `suggest` field's text without the space around it, so " Barolo" is not a second Barolo. */
+function tidied(fields: Record<string, Field>, form: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...form };
+  for (const [key, v] of Object.entries(form)) {
+    const field = fields[key];
+    if (field && suggests(field) && typeof v === "string") out[key] = v.trim();
+  }
+  return out;
+}
+
 /** A field's row with the control its type asks for — shared by the record form and `ctx.ui.form` (#112). */
 function FieldRow({
   runtime,
@@ -217,6 +233,7 @@ function FieldRow({
   error,
   focusToken,
   tag,
+  source,
 }: {
   runtime: PotyroRuntime;
   field: Field;
@@ -226,8 +243,11 @@ function FieldRow({
   error?: string;
   focusToken: number;
   tag?: string;
+  /** The record field this row edits: where a `suggest` field reads the values in use (#82). */
+  source?: SuggestSource;
 }) {
   const hints = field as Hints;
+
   const common = { label, hints, error, focusToken, tag };
   if (field.type === "boolean") {
     // A boolean is a switch row (#97): the label and the toggle are one hit target, not a grey
@@ -246,7 +266,8 @@ function FieldRow({
     field.type === "media" ||
     field.type === "file" ||
     field.type === "list" ||
-    field.type === "relation"
+    field.type === "relation" ||
+    suggests(field)
   ) {
     // Several controls — an input and its stepper, a date and its chips, a row of options, a
     // strip of tiles, a stack of row cards — so no <label> around them (#99, #103, #98, #102,
@@ -258,7 +279,7 @@ function FieldRow({
           {label}
           {hints.required ? <em aria-hidden> *</em> : null}
         </span>
-        <FieldInput runtime={runtime} field={field} value={value} onChange={onChange} label={label} />
+        <FieldInput runtime={runtime} field={field} value={value} onChange={onChange} label={label} source={source} />
       </FormField>
     );
   }
@@ -333,10 +354,11 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
     // Records only the app writes (`editableBy: "app"`) are never saved from a form; nothing offers
     // one for them, and this holds even if something did.
     if (!byPeople(runtime, entity)) return onCancel();
+    const values = tidied(fields, form);
     const missing: Record<string, string> = {};
     for (const group of groups) {
       for (const key of group.fields) {
-        if ((fields[key] as Hints | undefined)?.required && isEmpty(form[key]))
+        if ((fields[key] as Hints | undefined)?.required && isEmpty(values[key]))
           missing[key] = t({ message: "Required", comment: "Under a form field that was left empty but must be filled" });
       }
     }
@@ -350,10 +372,10 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
     setSaveError(null);
     try {
       if (isEdit && recordId) {
-        await runtime.patch(entity, recordId, form);
+        await runtime.patch(entity, recordId, values);
         onDone(recordId);
       } else {
-        const created = await runtime.create(entity, form);
+        const created = await runtime.create(entity, values);
         onDone(created.id);
       }
     } catch (err) {
@@ -372,6 +394,7 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
       field={fields[key]!}
       label={fieldLabel(runtime, entity, key)}
       tag={`${entity}.${key}`}
+      source={{ entity, field: key }}
       value={form[key]}
       onChange={(v) => set(key, v)}
       error={errors[key]}

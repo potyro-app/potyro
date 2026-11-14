@@ -65,3 +65,53 @@ export function distinctValues(
   const kept = [...values].sort((a, b) => counts.get(b)! - counts.get(a)!).slice(0, Math.max(0, cap));
   return kept.sort(inOrder);
 }
+
+/** How two typed values are told to be the same choice: surrounding space and letter case apart. */
+export function valueKey(value: string): string {
+  return value.trim().normalize("NFC").toLowerCase();
+}
+
+/**
+ * The choices a `text` field with `suggest` offers in its form (#82): what the records hold in
+ * `field`, then the app's declared starting values that no record uses yet. Sorted as a filter's
+ * chips are.
+ *
+ * "barolo", "Barolo" and " Barolo " are one choice. The spelling offered is the one the most records
+ * use (the earliest record's among equals), and a record's spelling wins over a declared one, so
+ * picking a choice writes exactly what a filter on the field already shows. Not capped: the control
+ * narrows as the person types, and shows as many as it has room for.
+ */
+export function suggestedValues(
+  rows: readonly Readonly<Record<string, unknown>>[],
+  field: string,
+  declared: readonly string[] = [],
+): string[] {
+  const choices = new Map<string, Map<string, number>>();
+  for (const row of rows) {
+    const held = row[field];
+    if (!offered(held) || typeof held !== "string") continue;
+    const spelling = held.trim();
+    const key = valueKey(spelling);
+    const spellings = choices.get(key) ?? new Map<string, number>();
+    spellings.set(spelling, (spellings.get(spelling) ?? 0) + 1);
+    choices.set(key, spellings);
+  }
+  const out: string[] = [];
+  for (const spellings of choices.values()) {
+    // Map order is first-seen order, and `>` keeps the earlier of two equally used spellings.
+    let best = "";
+    let most = 0;
+    for (const [spelling, n] of spellings) {
+      if (n > most) [best, most] = [spelling, n];
+    }
+    out.push(best);
+  }
+  for (const value of declared) {
+    if (!offered(value) || typeof value !== "string") continue;
+    const key = valueKey(value);
+    if (choices.has(key)) continue;
+    choices.set(key, new Map());
+    out.push(value.trim());
+  }
+  return out.sort(inOrder);
+}

@@ -6496,6 +6496,47 @@ button.k-file-name:focus-visible {
   flex: none;
   min-height: 2.75rem;
 }
+/* A text field that offers the values used before (`suggest`, #82): the input it always was, and
+   the long picker's rows under it. The list is laid over what follows, never a sheet of its own:
+   the keyboard stays in the field. */
+.k-suggest {
+  position: relative;
+}
+.k-suggest-list {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  /* Five rows and the edge of a sixth, which says there is more to scroll to. */
+  max-height: min(15rem, 40vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  animation: k-fade var(--dur-fast) var(--ease);
+}
+.k-suggest-option {
+  flex: none;
+}
+/* The row the arrow keys are on: the focus itself never leaves the input. */
+.k-suggest-option[data-active] {
+  background: var(--surface-sunken);
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: -2px;
+}
+.k-suggest-new {
+  font-weight: 600;
+}
+.k-suggest-option + .k-suggest-new {
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
 /* A tag you typed yourself, with a way to take it off again. */
 .k-tags {
   display: flex;
