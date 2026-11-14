@@ -112,6 +112,21 @@ describe("what changed, from the app before and after", () => {
   });
 });
 
+describe("the app's guide, when a change touches it (#80)", () => {
+  const guide = ["Tap “Scan label”.", "Check what it filled in."];
+  it("says in one sentence that it changed, and where it is read", () => {
+    expect(texts(cellar({ guide }), cellar({ guide: [guide[0]!, "Check the details, then save."] }))).toEqual(["Its guide (“How to use it”, in the app’s menu) is updated to match."]);
+    expect(texts(cellar(), cellar({ guide }))).toEqual(["The app now has a guide: “How to use it”, in its menu."]);
+    expect(texts(cellar({ guide }), cellar())).toEqual(["The app no longer has a guide."]);
+  });
+  it("says nothing when it is the same, and is left out only when the model's words name it", () => {
+    expect(texts(cellar({ guide }), cellar({ guide: [...guide] }))).toEqual([]);
+    const lines = describeChange(cellar(), cellar({ guide }));
+    expect(explainChange("Added a rating.", lines)).toBe("Added a rating. The app now has a guide: “How to use it”, in its menu.");
+    expect(explainChange("Added a rating; “How to use it” says so.", lines)).toBe("Added a rating; “How to use it” says so.");
+  });
+});
+
 describe("a new app: what it is and the first thing to do in it", () => {
   it("names its pages and the main button to start with", () => {
     const app = cellar({ quickActions: [{ id: "add", label: "Add a bottle", entity: "bottle" }] } as Partial<Described>);
@@ -130,6 +145,17 @@ describe("a new app: what it is and the first thing to do in it", () => {
   it("with no button of its own, the first page is where to add; an app that adds nothing by hand is not told to", () => {
     expect(describeNewApp(cellar())).toBe("Made “Wine Cellar”. To start, add your first entry on the “Bottles” page.");
     expect(describeNewApp(cellar({ quickActions: [] }))).toBe("Made “Wine Cellar”.");
+  });
+
+  it("with a guide of its own, the app's steps stand in for the host's guess at a first tap (#80)", () => {
+    const app = cellar({
+      quickActions: [{ id: "add", label: "Add a bottle", entity: "bottle" }],
+      guide: ["Tap “Scan label” on the Bottles page and photograph a bottle.", "Check what it filled in, then save."],
+    } as Partial<Described>);
+    expect(describeNewApp(app)).toBe("Made “Wine Cellar”. How to use it: 1. Tap “Scan label” on the Bottles page and photograph a bottle. 2. Check what it filled in, then save.");
+    // What is drawn is what the shell would draw: text, clamped; a guide with nothing in it is no guide.
+    expect(describeNewApp(cellar({ guide: ["x".repeat(900)] } as Partial<Described>)).length).toBeLessThan(400);
+    expect(describeNewApp(cellar({ guide: [] } as Partial<Described>))).toBe("Made “Wine Cellar”. To start, add your first entry on the “Bottles” page.");
   });
 
   it("is said in the person's language when the app carries it", () => {

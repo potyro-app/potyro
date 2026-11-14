@@ -37,6 +37,7 @@ describe("erasing an app's data", () => {
       "potyro:jazz:group:user:notes",
       "potyro:jazz:root:user:notes",
       "potyro:jazz:db:user:notes",
+      "potyro:guide-seen:user:notes",
     ]);
   });
 

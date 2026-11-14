@@ -73,6 +73,21 @@ describe("runCandidate", () => {
     expect(report).not.toHaveProperty("seed");
   });
 
+  it("warns when the app's guide names something the app does not have, and passes one that is true (#80)", async () => {
+    const withGuide = (guide: string[]): PotyroApp => defineApp({ ...notes(), guide } as never);
+    const truthful = await runCandidate("", { compose: direct(withGuide(["Open “All” and add a note."])), settleMs: 400 });
+    expect(truthful.warnings).toEqual([]);
+    const stale = await runCandidate("", { compose: direct(withGuide(["Open “All”.", "Tap “Archive” on a note."])), settleMs: 400 });
+    expect(stale.errors).toEqual([]);
+    expect(stale.warnings).toEqual([
+      "the guide's step 2 names “Archive”, which no page, button or field of the app is called — a step quotes only what the app shows, as it is written there: use the real name, or say it without quotes",
+    ]);
+    // A change that leaves the guide as stale as it was is not held back for it; one that makes it stale is told.
+    const run = (source: string) => runCandidate(source, { compose: direct(withGuide(source === "stale" ? ["Tap “Archive”."] : ["Open “All”."])), settleMs: 400 });
+    expect((await regressionGate(run, "stale")("stale")).report.warnings).toEqual([]);
+    expect((await regressionGate(run, "fine")("stale")).report.warnings).toHaveLength(1);
+  });
+
   it("passes an app whose logic runs and whose pages show their records", async () => {
     const report = await runCandidate("", { compose: direct(notes()), settleMs: 400 });
     expect(report.errors).toEqual([]);

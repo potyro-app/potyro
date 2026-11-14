@@ -33,6 +33,7 @@ import { ChatPanel, ChatPeek, RecordThread, chatSupported, unreadCount, useThrea
 import { ROOM_THREAD } from "@potyro/store";
 import { getUserApp, saveUserApp, setUserAppTrusted } from "./user-apps.js";
 import { TrustDialog } from "./trust-dialog.js";
+import { GuideCard, GuideSheet, guideSeen, markGuideSeen } from "./app-guide.js";
 import type { Resolved } from "potyro";
 import { InlineEdit } from "./inline-edit.js";
 import { describePoint, type Pointed, type PointRef } from "./point-target.js";
@@ -60,7 +61,7 @@ import { LockBanner, WRITE_CONTROLS, useAppLock, type AppLock } from "./app-lock
 import { isRtl, languageName, languageNote, shownName } from "./app-words.js";
 import { languagePrefs } from "./locale.js";
 import { optionLabel } from "@potyro/views";
-import { acceptLinkParams } from "potyro";
+import { acceptLinkParams, guideSteps } from "potyro";
 import type { Arrival } from "./app-link.js";
 import { tracoStyle, hueOf } from "./app-colour.js";
 import { addsByHand, quickActionsOf, type QuickActionDef } from "./quick-actions.js";
@@ -254,6 +255,16 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
     Object.keys(opening.params).length ? { [opening.page]: opening.params } : {},
   );
   const [editor, setEditor] = useState<EditorState | null>(null);
+  // How to use it (#80): the app's own steps, in the person's language, clamped to what is drawn. A
+  // card on the page the first time an app on this device is opened (never a demo or the Studio's
+  // preview, which have no app here to remember it for), and a dialog from the app's menu, always.
+  const guide = useMemo(() => guideSteps(def.guide), [def]);
+  const [guideCard, setGuideCard] = useState(() => Boolean(appId) && currentKind === "user" && !guideSeen(appId!));
+  const [guideOpen, setGuideOpen] = useState(false);
+  const closeGuideCard = (): void => {
+    if (appId) markGuideSeen(appId);
+    setGuideCard(false);
+  };
   const [genOpen, setGenOpen] = useState(false);
   // This app's saved source as the Studio opened. The app below the Studio runs the module it booted
   // with, so a save (or a restore) made in there is invisible until a reload — closing the Studio
@@ -1070,6 +1081,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
             },
           ]
         : []),
+    // The app's own guide (#80), wherever the app runs; absent when it carries none.
+    ...(guide.length ? [{ key: "guide", label: t({ message: "How to use it", comment: "App menu: the app's own short guide, the steps to use it" }), icon: I.guide, onSelect: () => setGuideOpen(true) }] : []),
   ];
   const chromeReport: ChromeTool[] = appId
     ? recording
@@ -1232,6 +1245,9 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
         fullscreen={fullscreen ? { onExit: exitFullscreen } : undefined}
       >
       {locked ? <LockBanner state={locked} /> : null}
+      {/* In the page's flow, so it never covers a question (trust, a permission) and takes no tap
+          meant for the page. Not over a map that fills the page; a full-screen page has no chrome at all. */}
+      {guideCard && guide.length > 0 && !fullscreen && !(pageView?.type === "map" && !currentPage?.layout) ? <GuideCard steps={guide} onClose={closeGuideCard} /> : null}
       {pageId === HOME ? (
         <main className="k-main k-home">
           {/* The app's front door: its name, big, on its own colour — then what it holds, then every
@@ -1393,6 +1409,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
           onRevoke={() => setTrust(false)}
         />
       ) : null}
+
+      {guideOpen ? <GuideSheet name={appLabel} steps={guide} onClose={() => setGuideOpen(false)} /> : null}
 
       {editMode && editSource ? (
         <InlineEdit

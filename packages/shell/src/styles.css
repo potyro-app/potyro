@@ -4818,6 +4818,78 @@ button.k-prov:focus-visible {
     animation: none;
   }
 }
+/* An app's own guide (#80): how to use it, in the app's words. The first-open card is part of the
+   page (a filled block, no border and no shadow: DESIGN.md §3.4), in graphite like the rest of the
+   chrome; from the menu the same steps are a dialog. The numbers are the list's own. */
+.k-guide-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 40rem;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--ink);
+}
+.k-guide-sheet {
+  width: min(30rem, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.k-guide-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+.k-guide-app {
+  margin: calc(-1 * var(--space-2)) 0 0;
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+.k-guide-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: k-guide;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.k-guide-step {
+  counter-increment: k-guide;
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+.k-guide-step::before {
+  content: counter(k-guide);
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-pill);
+  background: var(--bg);
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.k-guide-sheet .k-guide-step::before {
+  background: var(--surface);
+}
+.k-guide-step-text {
+  padding-top: 0.15rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.k-guide-actions {
+  display: flex;
+  justify-content: flex-end;
+}
 /* tokens-only: end — app chrome */
 
 /* tokens-only: start — page layouts */

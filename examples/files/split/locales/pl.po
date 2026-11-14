@@ -9,6 +9,22 @@ msgstr ""
 msgid "Split"
 msgstr "Podział"
 
+#: guide.0
+msgid "Tap “Add expense”: what it cost, who paid, and who it was for."
+msgstr "Dotknij „Dodaj wydatek”: ile kosztowało, kto zapłacił i za kogo."
+
+#: guide.1
+msgid "For a bill with many lines, tap “Split a receipt”: photograph it, check the lines it read, and say who had what."
+msgstr "Przy rachunku z wieloma pozycjami dotknij „Podziel paragon”: zrób zdjęcie, sprawdź odczytane pozycje i zaznacz, kto co wziął."
+
+#: guide.2
+msgid "“To settle up” lists the fewest payments that make everyone even. Tap “Settle” on one once it is paid."
+msgstr "„Do rozliczenia” pokazuje najmniejszą liczbę płatności, po których wszyscy są kwita. Dotknij „Rozlicz” przy tej, która została zapłacona."
+
+#: guide.3
+msgid "Tap “Invite” to name who is in the group, or to send them a link."
+msgstr "Dotknij „Zaproś”, aby wpisać, kto jest w grupie, albo wysłać im link."
+
 #: scope.label
 #: entities.group.label
 #: entities.expense.fields.group.label

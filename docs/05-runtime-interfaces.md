@@ -537,6 +537,14 @@ key's heading (`fieldLabel`: a detail row, a table column) is the field's `label
 badge, a group heading) is an option's `labels` entry, a computed's `labels` entry, or a computed's
 `format` message formatted with `runtime.ctx.t` over the value's properties — else the value.
 
+**The app's guide (#80).** `definition.guide` is data the shell reads, never a view's and never the
+app's code: `guideSteps(definition.guide)` (packages/schema) gives the steps to draw — strings only,
+at most six, each cut at 320 characters — and the shell renders them as text in its own chrome
+(`packages/shell/src/app-guide.tsx`: the first-open card, and the dialog behind the app menu's "How to
+use it"). Because it comes from `runtime.definition`, it is already in the person's language, and it
+is the same for a trusted app and one read out of the sealed box. `guideProblems(definition, source?)`
+is the check the Studio's candidate run adds to its warnings (docs/04 §Guide).
+
 ## View contract (packages/views)
 
 ```ts

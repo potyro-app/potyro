@@ -41,6 +41,21 @@ describe("extractMessages", () => {
     expect(x.messages.find((m) => m.id === "Today")!.references).toHaveLength(2);
   });
 
+  it("takes the guide's steps as messages, each with where it sits (#80)", async () => {
+    const source = `import { defineApp } from "potyro";
+export default defineApp({
+  id: "cellar", name: "Cellar", version: "1.0.0", schemaVersion: 1, language: "en",
+  guide: ["Tap “Scan label” and photograph a bottle.", "Check what it filled in."],
+  entities: { bottle: { fields: { name: { type: "text" } } } },
+  pages: [{ id: "bottles", title: "Bottles", view: { type: "list", entity: "bottle" } }],
+});`;
+    const out = await extractMessages(source);
+    expect(out?.messages.filter((m) => m.references.some((r) => r.startsWith("guide.")))).toEqual([
+      { id: "Tap “Scan label” and photograph a bottle.", references: ["guide.0"] },
+      { id: "Check what it filled in.", references: ["guide.1"] },
+    ]);
+  });
+
   it("says which words it cannot take: a computed ctx.t argument", async () => {
     const x = (await extractMessages(SOURCE))!;
     expect(x.problems).toEqual([expect.objectContaining({ why: "not-literal", text: "ctx.t(p.name)" })]);

@@ -65,6 +65,25 @@ describe("translate", () => {
     expect(draft.source).toBe(SOURCE); // listing writes nothing
   });
 
+  it("the guide's steps are words like the rest: listed, and written in when translated (#80)", async () => {
+    const source = SOURCE.replace('language: "en",', 'language: "en",\n  guide: ["Tap “Add: Item” and name it.", "Tick it off in the shop."],');
+    expect(source).not.toBe(SOURCE);
+    const draft = createDraft(source);
+    const tools = buildDiscoveryTools({ check: async () => [], source, draft });
+    const listed = await runTool(tools, { id: "1", name: "translate", args: { language: "de" } });
+    expect(listed.detail).toContain('- guide.0: "Tap “Add: Item” and name it."');
+    expect(listed.detail).toContain('- guide.1: "Tick it off in the shop."');
+
+    const written = await runTool(tools, {
+      id: "2",
+      name: "translate",
+      args: { language: "de", words: { ...WORDS, "guide.0": "Tippe auf „Hinzufügen: Artikel“ und gib ihm einen Namen.", "guide.1": "Hake es im Laden ab." } },
+    });
+    expect(written.ok).toBe(true);
+    expect(draft.source).toContain('{ en: "Tap “Add: Item” and name it.", de: "Tippe auf „Hinzufügen: Artikel“ und gib ihm einen Namen." }');
+    expect(draft.source).toContain('{ en: "Tick it off in the shop.", de: "Hake es im Laden ab." }');
+  });
+
   it("lists a computed's label as a slot to translate (#310)", async () => {
     const source = SOURCE.replace("computed: { line: (r) => `Buy ${r.name}` },", 'computed: { total: { label: "Total", value: (r) => 1 } },');
     expect(source).not.toBe(SOURCE);

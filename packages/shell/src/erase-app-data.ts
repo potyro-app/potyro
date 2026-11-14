@@ -41,6 +41,7 @@ export function appStorageKeys(namespace: string): string[] {
     `potyro:jazz:group:${namespace}`, // the space this app synced through
     `potyro:jazz:root:${namespace}`,
     `potyro:jazz:db:${namespace}`,
+    `potyro:guide-seen:${namespace}`, // its guide was closed here (app-guide.tsx)
   ];
 }
 

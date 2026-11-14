@@ -26,7 +26,7 @@
 // optional missing, and text that is in no list. Before this an action that began with a capture or an
 // extraction stopped at its first line, so nothing it did with the answer was ever run.
 
-import type { AppDefinition } from "potyro";
+import { guideProblems, type AppDefinition } from "potyro";
 import { MemoryStore } from "@potyro/store";
 import { FakeCapabilities, StandInAi, standInPicture, type Capabilities } from "@potyro/capabilities";
 import type { PotyroRuntime } from "@potyro/runtime";
@@ -124,7 +124,9 @@ async function run(source: string, deps: RunCandidateDeps): Promise<CandidateRun
     const screens = await renderPages(runtime, pages, deps.settleMs);
     // After the pages: these runs write to the sample records, and a page is judged on them as seeded.
     const awkward = await answers.run(def, runtime);
-    const report = mergeRuns(mergeRuns(logic, screens), { errors: awkward.errors, warnings: [], ran: "" });
+    // The app's guide (#80), kept true: a step that names, in quotes, something the app does not have.
+    const guide = guideProblems(runtime.core.app.definition, source);
+    const report = mergeRuns(mergeRuns(logic, screens), { errors: awkward.errors, warnings: guide, ran: "" });
     const notes = [
       awkward.note,
       sealed ? `${sealed} custom view${sealed === 1 ? " was" : "s were"} not run here — custom views run only as the person's own app` : null,

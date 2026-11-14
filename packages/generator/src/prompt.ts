@@ -166,7 +166,8 @@ function assembleSystemPrompt(reference: string): string {
 
 CONTRACT
 - The file default-exports \`defineApp({ ... })\` imported from "potyro".
-- Top-level: \`id\` (kebab-case), \`name\`, \`version\` ("1.0.0"), \`schemaVersion\` (1), \`language\`, \`entities\`, \`pages\`.
+- Top-level: \`id\` (kebab-case), \`name\`, \`version\` ("1.0.0"), \`schemaVersion\` (1), \`language\`, \`entities\`, \`pages\`,
+  and \`guide\`: how to use the app, in 2–4 steps.
 - An entity has \`label\`, \`displayField\`, \`fields\`, and optional \`computed\` / \`actions\`.
 - Field \`type\` is one of the \`Field\` union in the REFERENCE below. There is NO "object" type.
 - To REFERENCE another object type, use a \`relation\` field: \`{ type: "relation", to: "<entity>" }\` (add

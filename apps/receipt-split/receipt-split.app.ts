@@ -50,6 +50,12 @@ export default defineApp({
   language: "en",
   permissions: { ai: true },
   category: "ai",
+  // How to use it: shown the first time the app is opened, and from its menu.
+  guide: [
+    "Tap “Read a receipt” and choose a photo of one: each line becomes an item with its price.",
+    "Check what it read. Tap an item to correct its name or its price.",
+    "Fill in “Who pays” on an item, and the list shows the name beside the price.",
+  ],
   entities: {
     item: {
       label: "Item",

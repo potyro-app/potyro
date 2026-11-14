@@ -17,6 +17,9 @@ export type { Language, Words, WordsMap, ContextWords } from "./types/words.js";
 export type { Catalog } from "./words.js";
 export type { Localized } from "./types/localized.js";
 export { zWords, zWordsNonEmpty, zLanguage, LANGUAGE_TAG, isWordsMap, isContextWords, plainWords } from "./words-schema.js";
+// ---- how to use the app, said by the app (#80) ----
+export { GUIDE_LIMITS, guideSchema, guideSteps } from "./guide.js";
+export { guideProblems } from "./guide-check.js";
 export {
   walkWords,
   wordSlots,
