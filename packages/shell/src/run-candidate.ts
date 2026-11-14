@@ -19,9 +19,16 @@
 // they stand in as inert values (`withLibrariesStoodIn`), identically for the original and the
 // candidate, and the run says which ones, so a model does not chase an error a stand-in caused.
 
+//
+// What an action commonly starts with stands in too (#74): the camera hands over a small picture, and
+// `ctx.caps.ai` is a stand-in that answers whatever shape an action asks for — no model is called.
+// An action that reads such an answer is run again on the awkward ones (run-ai-answers.ts): everything
+// optional missing, and text that is in no list. Before this an action that began with a capture or an
+// extraction stopped at its first line, so nothing it did with the answer was ever run.
+
 import type { AppDefinition } from "potyro";
 import { MemoryStore } from "@potyro/store";
-import { FakeCapabilities } from "@potyro/capabilities";
+import { FakeCapabilities, StandInAi, standInPicture, type Capabilities } from "@potyro/capabilities";
 import type { PotyroRuntime } from "@potyro/runtime";
 import { mergeRuns, paramsForPage, smokeReport, smokeRuntime, type RunReport } from "@potyro/generator/backends";
 import { createAppBundler } from "./app-bundler.js";
@@ -30,6 +37,7 @@ import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose, type Composed } from "./compose.js";
 import { createNavBridge } from "./ui-bridge.js";
 import { renderPages, type PageToRender } from "./render-pages.js";
+import { createAnswerPasses, listedValues } from "./run-ai-answers.js";
 
 const RUN_TIMEOUT_MS = 5_000;
 const RUN_MEMORY_BYTES = 64 * 1024 * 1024;
@@ -44,22 +52,27 @@ export const RUN_WALL_CLOCK_MS = 30_000;
 export type CandidateRun = RunReport & { entities?: AppDefinition["entities"] };
 
 export interface RunCandidateDeps {
-  /** Test seam: compose the candidate on the given store. Defaults to the isolate, with a budget. */
-  compose?: (source: string, store: MemoryStore) => Promise<Composed>;
+  /**
+   * Test seam: compose the candidate on the given store, with the run's capabilities (the stand-in
+   * camera and AI). Defaults to the isolate, with a budget.
+   */
+  compose?: (source: string, store: MemoryStore, caps: Capabilities) => Promise<Composed>;
   /** How long a page may take to settle. Defaults to observe-render's SETTLE_MS. */
   settleMs?: number;
+  /** How long one run of an action under an AI answer may take (#74). Defaults to run-ai-answers' ACTION_MS. */
+  answerMs?: number;
   /** The app's libraries and own modules (#266, #258), when it has any. Its libraries stand in as
    *  inert values here (`withLibrariesStoodIn`): the run judges the app's own code, not theirs. */
   modules?: ModuleSource;
 }
 
-async function composeIsolated(source: string, store: MemoryStore, modules?: ModuleSource): Promise<Composed> {
+async function composeIsolated(source: string, store: MemoryStore, caps: Capabilities, modules?: ModuleSource): Promise<Composed> {
   const bundle = await createAppBundler();
   return compose({
     provenance: "untrusted",
     bundleCode: await bundle(source, modules),
     store,
-    caps: new FakeCapabilities(),
+    caps,
     // Sample records in a throwaway store: confirming is safe and lets the code behind a confirm run.
     ui: { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null },
     nav: createNavBridge(() => {}),
@@ -96,16 +109,24 @@ async function run(source: string, deps: RunCandidateDeps): Promise<CandidateRun
   let composed: Composed | undefined;
   try {
     const modules = withLibrariesStoodIn(deps.modules);
-    composed = deps.compose ? await deps.compose(source, store) : await composeIsolated(source, store, modules);
+    // Stand-ins for what an action starts with (#74): a camera with a picture, an AI that answers.
+    const ai = new StandInAi();
+    const caps = new FakeCapabilities({ ai, blob: standInPicture() });
+    const answers = createAnswerPasses(ai, deps.answerMs === undefined ? {} : { actionMs: deps.answerMs });
+    composed = deps.compose ? await deps.compose(source, store, caps) : await composeIsolated(source, store, caps, modules);
     const runtime = composed.runtime;
     const def = runtime.definition as AppDefinition & { id: string };
+    ai.listed = listedValues(def);
     // Custom views are mounted below with the real views, effects and all; the smoke run's
     // first-paint render of them would only say the same thing twice.
-    const logic = smokeReport(await smokeRuntime(def, runtime, { customViews: false }));
+    const logic = smokeReport(await smokeRuntime(def, runtime, { customViews: false, aroundAction: answers.aroundAction }));
     const { pages, sealed } = await pagesToRender(def, runtime);
     const screens = await renderPages(runtime, pages, deps.settleMs);
-    const report = mergeRuns(logic, screens);
+    // After the pages: these runs write to the sample records, and a page is judged on them as seeded.
+    const awkward = await answers.run(def, runtime);
+    const report = mergeRuns(mergeRuns(logic, screens), { errors: awkward.errors, warnings: [], ran: "" });
     const notes = [
+      awkward.note,
       sealed ? `${sealed} custom view${sealed === 1 ? " was" : "s were"} not run here — custom views run only as the person's own app` : null,
       standInNote(modules),
     ].filter((n): n is string => n !== null);

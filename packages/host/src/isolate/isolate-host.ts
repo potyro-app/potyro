@@ -345,6 +345,19 @@ class IsolateLoadedApp implements LoadedApp {
         return nul;
       case "cap.geo.current":
         return serialize((await this.ctxHost?.caps.geo?.current()) ?? null);
+      // The camera: present only when `mediateCaps` granted it (the manifest, the person's consent).
+      // The picture crosses as base64 — there is no Blob in QuickJS — and the wait is the person's.
+      case "cap.camera.capture": {
+        const camera = this.ctxHost?.caps.camera;
+        if (!camera) throw new Error("Permission denied: camera");
+        this.openQuestion();
+        try {
+          const shot = await camera.capture(op.source === "camera" || op.source === "library" ? { source: op.source } : undefined);
+          return serialize({ b: base64OfBytes(new Uint8Array(await shot.arrayBuffer())), mime: shot.type || null });
+        } finally {
+          this.closeQuestion();
+        }
+      }
       case "cap.notifications.schedule": {
         const n = op.n as { id: string; at: string; title: string; body?: string };
         await this.ctxHost?.caps.notifications?.schedule({ id: n.id, at: new Date(n.at), title: n.title, body: n.body });
@@ -361,7 +374,13 @@ class IsolateLoadedApp implements LoadedApp {
         const ai = this.ctxHost?.caps.ai;
         if (!ai) throw new Error("Permission denied: AI");
         const images = (v: unknown): unknown => {
-          const one = (i: unknown) => (i && typeof i === "object" && typeof (i as { __bytes?: unknown }).__bytes === "string" ? bytesOfBase64((i as { __bytes: string }).__bytes) : i ?? undefined);
+          const one = (i: unknown) => {
+            if (!i || typeof i !== "object" || typeof (i as { __bytes?: unknown }).__bytes !== "string") return i ?? undefined;
+            const bytes = bytesOfBase64((i as { __bytes: string }).__bytes);
+            // A capture keeps the type the camera gave it; plain bytes are told apart by their first ones.
+            const mime = (i as { mime?: unknown }).mime;
+            return typeof mime === "string" && mime ? new Blob([bytes as BlobPart], { type: mime }) : bytes;
+          };
           return v == null ? undefined : Array.isArray(v) ? v.map(one) : one(v);
         };
         this.openQuestion();
@@ -418,6 +437,14 @@ class IsolateLoadedApp implements LoadedApp {
       }
       case "media.url":
         return serialize((await this.ctxHost?.media.url(op.ref as { key: string; mime: string })) ?? "");
+      // A picture the app holds (a capture, or bytes it made) into its own store, as in the realm.
+      case "media.put": {
+        const media = this.ctxHost?.media;
+        if (!media) throw new Error("no call is running");
+        const p = (op.bytes ?? {}) as { b?: unknown; mime?: unknown };
+        if (typeof p.b !== "string") throw new Error("ctx.media.put takes a picture");
+        return serialize({ ...(await media.put(new Blob([bytesOfBase64(p.b) as BlobPart], { type: typeof p.mime === "string" ? p.mime : "" }))) } as unknown as Value);
+      }
       // The app's own folder (#252). No permission gate: the folder is this app's alone, and import /
       // export go through a dialog the person answers, which is the consent. Bytes travel as base64.
       case "files.list":

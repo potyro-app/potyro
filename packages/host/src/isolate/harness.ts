@@ -86,6 +86,16 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
     }
     return bytes;
   }
+  // A picture in the box: QuickJS has no Blob, so a capture is its bytes with a type — what
+  // ctx.media.put and ctx.caps.ai take, with the few members of a Blob an action reads.
+  function Picture(u8, type){ this.__u8 = u8; this.size = u8.length; this.type = type || ""; }
+  Picture.prototype.arrayBuffer = async function(){ return this.__u8.buffer.slice(this.__u8.byteOffset, this.__u8.byteOffset + this.__u8.length); };
+  Picture.prototype.bytes = async function(){ return this.__u8; };
+  function pictureArg(x, who){
+    if (x instanceof Picture) return { b: toBase64(x.__u8), mime: x.type || null };
+    if (x instanceof Uint8Array) return { b: toBase64(x), mime: null };
+    throw new Error(who + " takes a picture: what ctx.caps.camera.capture() gave, or a Uint8Array");
+  }
   function fileArg(f){ return typeof f === "string" ? f : (f && typeof f === "object" ? {id:f.id, path:f.path, name:f.name, mime:f.mime} : f); }
 
   // A page ref may name a layout item ("today#1", #105): the same rule as resolveView in the schema.
@@ -204,7 +214,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         keys: async function(prefix){ return bridge({op:"storage.keys", prefix:prefix||null}); }
       },
       media: {
-        put: async function(){ throw new Error("ctx.media.put is not available to untrusted apps in v1"); },
+        put: async function(x){ return bridge({op:"media.put", bytes: pictureArg(x, "ctx.media.put")}); },
         url: async function(ref){ return bridge({op:"media.url", ref:ref}); }
       },
       // The app's own folder (#252): the same surface as a trusted app's, answered by the host.
@@ -287,7 +297,10 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
     };
     var capNames = capsAvailable || [];
     function has(n){ return capNames.indexOf(n) >= 0; }
-    if (has("camera")) ctx.caps.camera = { capture: async function(){ throw new Error("camera capture is not marshalable in isolate v1"); } };
+    if (has("camera")) ctx.caps.camera = { capture: async function(o){
+      var shot = await bridge({op:"cap.camera.capture", source: (o && o.source) || null});
+      return new Picture(fromBase64(shot.b), shot.mime);
+    } };
     if (has("geo")) ctx.caps.geo = { current: async function(){ return bridge({op:"cap.geo.current"}); } };
     if (has("notifications")) ctx.caps.notifications = {
       supportsExactScheduling: false,
@@ -298,6 +311,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
     // AI (docs/23): plain data out, the validated answer back. Bytes cross as base64; there is no Blob here.
     function aiImg(img){
       if (img instanceof Uint8Array) return { __bytes: toBase64(img) };
+      if (img instanceof Picture) return { __bytes: toBase64(img.__u8), mime: img.type || null };
       if (typeof img === "string") return img;
       if (img && typeof img === "object") return img.key !== undefined ? { key: img.key, mime: img.mime } : { id: img.id, path: img.path, name: img.name, mime: img.mime };
       throw new Error("ctx.caps.ai: an image is bytes, a file or a photo field's value in a shared app");
