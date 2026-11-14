@@ -5,7 +5,7 @@ import { actionInfo, actionInputProblem, appLanguages, FieldValueError, isContex
 // through the Host so trusted (direct) and untrusted (isolate) execution are uniform.
 
 import type { AppDefinition, Ctx, CtxText, Id, Language, Words, Localized, PotyroRecord, Person, Resolved, Space, TextEdit, Value, View } from "potyro";
-import type { BindingRef, Host, LoadedApp, MakeCtxBase, NavBridge, UiBridge } from "@potyro/host";
+import type { ActionFailure, BindingRef, Host, LoadedApp, MakeCtxBase, NavBridge, UiBridge } from "@potyro/host";
 import { formatLocaleFor, GuestBook } from "@potyro/host";
 import type { Capabilities } from "@potyro/capabilities";
 import type { Store } from "@potyro/store";
@@ -52,6 +52,12 @@ export interface RuntimeDeps {
    * later through `setLanguages`. Absent = English.
    */
   languages?: readonly string[];
+  /**
+   * How a failed action is said to the person (#76): the shell's words, in its language, naming the
+   * field by the app's own label. The runtime has no catalogs, so it is handed in; absent (tests,
+   * the generator's headless runs), `plainFailure` says it in English.
+   */
+  failureWords?: (failure: ActionFailure, definition: Localized<AppDefinition>) => string;
 }
 
 /** Which of the app's languages it is shown in (docs/05 `Runtime.language`). */

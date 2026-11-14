@@ -472,8 +472,9 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
       delete calls[id];
       if (!c) return;
       if (ok) return c.resolve(__deserialize(json));
-      // An error with a code (a socket's "denied") arrives as {"__err", "code"}; anything else is the message.
-      if (json.indexOf('{"__err":') === 0) { try { var pe = JSON.parse(json); var err = new Error(pe.__err); err.code = pe.code; return c.reject(err); } catch (x) {} }
+      // An error with more than a message (a socket's "denied" code, its class name, a refused write as
+      // data) arrives as {"__err", …}; anything else is the message.
+      if (json.indexOf('{"__err":') === 0) { try { var pe = JSON.parse(json); var err = new Error(pe.__err); if (pe.code !== undefined) err.code = pe.code; if (pe.name) err.name = pe.name; if (pe.refusal) err.refusal = pe.refusal; return c.reject(err); } catch (x) {} }
       c.reject(new Error(json));
     },
     speech: function(json){
@@ -551,7 +552,12 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
         }
         return __serialize({ ok:true, value: result });
       } catch(e){
-        return __serialize({ ok:false, error: String((e && e.message) || e) });
+        // What was thrown, as data: the host sorts it into what a person may be told (app-error.ts).
+        var thrown = { ok:false, error: String((e && e.message) || e) };
+        if (e && typeof e.name === "string") thrown.name = e.name;
+        if (e && typeof e.code === "string") thrown.code = e.code;
+        if (e && e.refusal) thrown.refusal = e.refusal;
+        return __serialize(thrown);
       }
     }
   };

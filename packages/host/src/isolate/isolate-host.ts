@@ -5,6 +5,7 @@
 
 import type { AppDefinition, Ctx, KeepWhileHidden, PotyroRecord, PermissionManifest, Resolved, UiProgress, UiTimer, Value, Words } from "potyro";
 import type { TimerData } from "../timers.js";
+import { AppCodeError, HostFault, thrownFrom, thrownOf } from "../app-error.js";
 import { catalogFor, localize } from "potyro";
 import { hostPure, PURE_ERROR } from "../format.js";
 import type { Store } from "@potyro/store";
@@ -625,13 +626,29 @@ class IsolateLoadedApp implements LoadedApp {
     return this.questionMs + (this.questionsOpen ? Date.now() - this.questionSince : 0);
   }
 
+  /** An entry into the VM was cut short since the running call began (see `enter`, `invoke`). */
+  private cutShort = false;
+  private tooSlow(): HostFault {
+    return new HostFault(`interrupted: the call did not finish within ${this.timeoutMs} ms`, "slow");
+  }
+
   /** One synchronous entry into the VM, under the per-entry CPU budget, then the jobs it queued. */
   private enter(run: () => void): void {
     const deadline = Date.now() + this.timeoutMs;
-    this.vm.runtime.setInterruptHandler(() => Date.now() > deadline);
+    // Whether THIS entry was cut short: the engine's own error for it ("interrupted") says nothing
+    // a person can be told, so what it throws is named for what happened — the call ran too long (#76).
+    let interrupted = false;
+    this.vm.runtime.setInterruptHandler(() => {
+      interrupted = Date.now() > deadline;
+      if (interrupted) this.cutShort = true;
+      return interrupted;
+    });
     try {
       run();
       this.vm.runtime.executePendingJobs();
+    } catch (e) {
+      if (interrupted) throw this.tooSlow();
+      throw e;
     } finally {
       this.vm.runtime.removeInterruptHandler?.();
     }
@@ -697,6 +714,7 @@ class IsolateLoadedApp implements LoadedApp {
     const code = `globalThis.__potyro.call(${JSON.stringify(serialize(payload))})`;
     let handle: QuickJSHandle | null = null;
     let settled!: Promise<{ error?: QuickJSHandle; value?: QuickJSHandle }>;
+    this.cutShort = false;
     this.enter(() => {
       handle = this.vm.unwrapResult(this.vm.evalCode(code));
       settled = this.vm.resolvePromise(handle);
@@ -708,7 +726,7 @@ class IsolateLoadedApp implements LoadedApp {
     const timedOut = new Promise<never>((_, reject) => {
       const check = (): void => {
         const used = Date.now() - started - (this.waitedOnPeople() - waitedBefore);
-        if (used >= this.timeoutMs) reject(new Error(`isolate call timed out after ${this.timeoutMs} ms`));
+        if (used >= this.timeoutMs) reject(new HostFault(`isolate call timed out after ${this.timeoutMs} ms`, "slow"));
         else timer = setTimeout(check, Math.max(10, this.timeoutMs - used));
       };
       timer = setTimeout(check, this.timeoutMs);
@@ -719,9 +737,14 @@ class IsolateLoadedApp implements LoadedApp {
       const valueHandle = this.vm.unwrapResult(resolved);
       const out = this.vm.getString(valueHandle);
       valueHandle.dispose();
-      const parsed = deserialize<{ ok: boolean; value?: Value; error?: string }>(out);
-      if (!parsed.ok) throw new Error(`isolate app error: ${parsed.error}`);
+      const parsed = deserialize<{ ok: boolean; value?: Value; error?: string; name?: unknown; code?: unknown; refusal?: unknown }>(out);
+      // What the app's code threw, as it said it: no prefix naming the box (#76).
+      if (!parsed.ok) throw new AppCodeError(thrownFrom(parsed));
       return parsed.value ?? null;
+    } catch (e) {
+      // An async function cut short surfaces as its promise rejected with the engine's "interrupted".
+      if (this.cutShort && !(e instanceof AppCodeError) && !(e instanceof HostFault)) throw this.tooSlow();
+      throw e;
     } finally {
       clearTimeout(timer);
       if (!this.disposed) (handle as QuickJSHandle | null)?.dispose();
@@ -823,11 +846,15 @@ class IsolateLoadedApp implements LoadedApp {
   }
 }
 
-/** An error for the box: its message, and its `code` when it has one (a socket's "denied"), which the harness restores. */
+/**
+ * An error for the box: its message — and, when it has them, its class name, its `code` (a socket's
+ * "denied") and a refused write as data (#76), which the harness restores.
+ */
 function errorForBox(e: unknown): string {
   const message = e instanceof Error ? e.message : String(e);
-  const code = (e as { code?: unknown } | null)?.code;
-  return typeof code === "string" ? JSON.stringify({ __err: message, code }) : message;
+  const { name, code, refusal } = thrownOf(e);
+  if (code === undefined && !refusal && name === "Error") return message;
+  return JSON.stringify({ __err: message, ...(code !== undefined ? { code } : {}), ...(name !== "Error" ? { name } : {}), ...(refusal ? { refusal } : {}) });
 }
 
 /** Build the untrusted loader. Each loaded app gets its own isolate. */

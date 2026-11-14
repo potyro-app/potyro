@@ -7,7 +7,7 @@
 // authorship inside. The worker runtime needs no integrity: app code shares its realm and can forge
 // any message it could send, so it is given nothing worth forging.
 
-import type { Resolved } from "potyro";
+import type { FieldRefusal, Resolved } from "potyro";
 import type { RealmSocketEvent } from "./realm-sockets.js";
 import type { RealmSpeechEvent } from "./realm-speech.js";
 
@@ -160,7 +160,7 @@ export interface ViewInit {
 export type HostToView =
   | ViewInit
   | { t: "ping"; n: number }
-  | { t: "reply"; id: number; ok: boolean; value?: unknown; error?: string; code?: string }
+  | { t: "reply"; id: number; ok: boolean; value?: unknown; error?: string; code?: string; name?: string; refusal?: FieldRefusal }
   /** A watched query or record changed (`runtime.watchQuery` / `runtime.watchRecord`). */
   | { t: "watch"; wid: number; state: unknown }
   | { t: "tokens"; tokens: Record<string, string> }
@@ -187,8 +187,11 @@ export type HostToRealm =
   /** `catalogs`: the app's translations by language (docs/30), for `ctx.t` in the box. Data, not code. */
   | { t: "load"; code: string; catalogs?: Readonly<Record<string, Readonly<Record<string, string>>>> }
   | { t: "call"; id: number; kind: CallKind; args: unknown[]; base: CtxBase }
-  /** `code`: an Error's own code (a socket's "denied", AI's "offline"…), so the app reads the same as a trusted one. */
-  | { t: "reply"; id: number; ok: boolean; value?: unknown; error?: string; code?: string }
+  /**
+   * `code`: an Error's own code (a socket's "denied", AI's "offline"…), so the app reads the same as a
+   * trusted one. `name` and `refusal` likewise (#76): the error's class, and a refused write as data.
+   */
+  | { t: "reply"; id: number; ok: boolean; value?: unknown; error?: string; code?: string; name?: string; refusal?: FieldRefusal }
   /** Something happened on a live connection (docs/28). */
   | { t: "sock"; ev: RealmSocketEvent }
   /** A listening heard something, or ended (docs/29). */
@@ -200,7 +203,8 @@ export type RealmToHost =
   | { t: "up" }
   /** `error` with `start: true` is the realm failing to start (the frame could not make a Worker), not the app. */
   | { t: "ready"; definition?: string; error?: string; start?: boolean }
-  | { t: "result"; id: number; ok: boolean; value?: unknown; error?: string }
+  /** A failed call says what was thrown as data (app-error.ts `Thrown`): message, class name, code, a refused write. */
+  | { t: "result"; id: number; ok: boolean; value?: unknown; error?: string; name?: string; code?: string; refusal?: unknown }
   | { t: "op"; id: number; ctxId: number; op: string; args: unknown[] }
   /** `n` socket events (of `bytes`) were handed to the app's callbacks: the host may send more. */
   | { t: "sockack"; sid: number; n: number; bytes: number }

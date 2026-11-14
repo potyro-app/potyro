@@ -54,56 +54,75 @@ function isMemberRef(v: unknown): boolean {
 }
 
 /**
- * Why `value` does not fit `field`, in words for a person — or `null` when it fits.
+ * Which rule a value broke, as data (#76).
  *
- * `label` names the field in the message; pass the key when there is no declared label.
+ * The sentence below (`describeValueIssue`) is English and is what app code and the console read.
+ * What a PERSON reads is said by the shell from this, in their language and the app's own labels —
+ * so the rule travels as data from where the write is refused to where it is shown, across the
+ * sealed box too, and nobody parses a sentence.
  */
-export function fieldValueProblem(field: Field, value: unknown, mode: ValueCheck, label = "This field"): string | null {
+export type ValueIssue =
+  | { rule: "text" | "number" | "whole" | "amount" | "yesNo" | "tags" | "date" | "place" | "media" | "file" | "list" }
+  | { rule: "record" | "person" | "member"; many: boolean }
+  | { rule: "min" | "max"; bound: number; currency?: string }
+  | { rule: "options"; options: string[] }
+  /** A row of a `list` field: `key` is the sub-field, `issue` what is wrong with its value. */
+  | { rule: "row"; key: string; issue: ValueIssue };
+
+/** A write that was refused: the entity and field it was for, and the rule the value broke. */
+export interface FieldRefusal {
+  entity: string;
+  field: string;
+  issue: ValueIssue;
+}
+
+/** Which rule `value` breaks for `field` — or `null` when it fits. */
+export function fieldValueIssue(field: Field, value: unknown, mode: ValueCheck): ValueIssue | null {
   if (value == null) return null;
 
   switch (field.type) {
     case "text":
     case "richtext":
     case "url":
-      return typeof value === "string" ? null : `${label} must be text.`;
+      return typeof value === "string" ? null : { rule: "text" };
 
     case "number": {
-      if (!isFiniteNumber(value)) return `${label} must be a number.`;
+      if (!isFiniteNumber(value)) return { rule: "number" };
       if (mode === "read") return null;
-      if (field.integer && !Number.isInteger(value)) return `${label} must be a whole number.`;
-      if (field.min != null && value < field.min) return `${label} must be at least ${field.min}.`;
-      if (field.max != null && value > field.max) return `${label} must be at most ${field.max}.`;
+      if (field.integer && !Number.isInteger(value)) return { rule: "whole" };
+      if (field.min != null && value < field.min) return { rule: "min", bound: field.min };
+      if (field.max != null && value > field.max) return { rule: "max", bound: field.max };
       return null;
     }
 
     case "duration":
-      return isFiniteNumber(value) ? null : `${label} must be a number.`;
+      return isFiniteNumber(value) ? null : { rule: "number" };
 
     case "money": {
       // Whole minor units (KA-26). A fraction of a cent is how two copies of a shared ledger drift.
-      if (!isFiniteNumber(value) || !Number.isInteger(value)) return `${label} must be an amount of money.`;
+      if (!isFiniteNumber(value) || !Number.isInteger(value)) return { rule: "amount" };
       if (mode === "read") return null;
-      if (field.min != null && value < field.min) return `${label} must be at least ${formatMoney(field.min, field.currency)}.`;
-      if (field.max != null && value > field.max) return `${label} must be at most ${formatMoney(field.max, field.currency)}.`;
+      if (field.min != null && value < field.min) return { rule: "min", bound: field.min, currency: field.currency };
+      if (field.max != null && value > field.max) return { rule: "max", bound: field.max, currency: field.currency };
       return null;
     }
 
     case "boolean":
-      return typeof value === "boolean" ? null : `${label} must be yes or no.`;
+      return typeof value === "boolean" ? null : { rule: "yesNo" };
 
     case "enum": {
-      if (typeof value !== "string") return `${label} must be one of: ${field.options.join(", ")}.`;
-      if (mode === "write" && !field.options.includes(value)) return `${label} must be one of: ${field.options.join(", ")}.`;
+      if (typeof value !== "string") return { rule: "options", options: [...field.options] };
+      if (mode === "write" && !field.options.includes(value)) return { rule: "options", options: [...field.options] };
       return null;
     }
 
     case "tags": {
-      if (!Array.isArray(value) || !value.every((t) => typeof t === "string")) return `${label} must be a list of tags.`;
+      if (!Array.isArray(value) || !value.every((t) => typeof t === "string")) return { rule: "tags" };
       return null;
     }
 
     case "datetime":
-      return isDate(value) ? null : `${label} must be a date.`;
+      return isDate(value) ? null : { rule: "date" };
 
     case "geo": {
       const ok =
@@ -113,34 +132,34 @@ export function fieldValueProblem(field: Field, value: unknown, mode: ValueCheck
         Math.abs(value.lat) <= 90 &&
         Math.abs(value.lng) <= 180 &&
         (value.label == null || typeof value.label === "string");
-      return ok ? null : `${label} must be a place.`;
+      return ok ? null : { rule: "place" };
     }
 
     case "media": {
       const ok = Array.isArray(value) ? value.every(isMediaRef) : isMediaRef(value);
-      return ok ? null : `${label} must be a photo or file.`;
+      return ok ? null : { rule: "media" };
     }
 
     case "file":
-      return isFileRef(value) ? null : `${label} must be a file in this app.`;
+      return isFileRef(value) ? null : { rule: "file" };
 
     case "relation": {
       const ok = field.many ? Array.isArray(value) && value.every(isRelationRef) : isRelationRef(value);
-      return ok ? null : `${label} must point at ${field.many ? "records" : "a record"}.`;
+      return ok ? null : { rule: "record", many: Boolean(field.many) };
     }
 
     case "member": {
       const ok = field.many ? Array.isArray(value) && value.every(isMemberRef) : isMemberRef(value);
-      return ok ? null : `${label} must be ${field.many ? "people" : "a person"} in this app.`;
+      return ok ? null : { rule: "person", many: Boolean(field.many) };
     }
 
     case "list": {
-      if (!Array.isArray(value) || !value.every(isObject)) return `${label} must be a list.`;
+      if (!Array.isArray(value) || !value.every(isObject)) return { rule: "list" };
       if (mode === "read") return null; // rows are sanitised one sub-value at a time instead (sanitiseListRows)
       for (const row of value) {
         for (const [key, sub] of Object.entries(field.of)) {
-          const problem = fieldValueProblem(sub, row[key], mode, `${label} › ${sub.label ?? humanizeKey(key)}`);
-          if (problem) return problem;
+          const issue = fieldValueIssue(sub, row[key], mode);
+          if (issue) return { rule: "row", key, issue };
         }
       }
       return null;
@@ -152,19 +171,87 @@ export function fieldValueProblem(field: Field, value: unknown, mode: ValueCheck
 }
 
 /**
+ * A broken rule as an English sentence naming the field by `label` — what `FieldValueError.message`
+ * says. `field` is the field the issue is about (a `row` issue needs it for its sub-field's label).
+ */
+export function describeValueIssue(issue: ValueIssue, label: string, field?: Field): string {
+  switch (issue.rule) {
+    case "text":
+      return `${label} must be text.`;
+    case "number":
+      return `${label} must be a number.`;
+    case "whole":
+      return `${label} must be a whole number.`;
+    case "amount":
+      return `${label} must be an amount of money.`;
+    case "min":
+      return `${label} must be at least ${issue.currency === undefined ? issue.bound : formatMoney(issue.bound, issue.currency)}.`;
+    case "max":
+      return `${label} must be at most ${issue.currency === undefined ? issue.bound : formatMoney(issue.bound, issue.currency)}.`;
+    case "yesNo":
+      return `${label} must be yes or no.`;
+    case "options":
+      return `${label} must be one of: ${issue.options.join(", ")}.`;
+    case "tags":
+      return `${label} must be a list of tags.`;
+    case "date":
+      return `${label} must be a date.`;
+    case "place":
+      return `${label} must be a place.`;
+    case "media":
+      return `${label} must be a photo or file.`;
+    case "file":
+      return `${label} must be a file in this app.`;
+    case "record":
+      return `${label} must point at ${issue.many ? "records" : "a record"}.`;
+    case "person":
+      return `${label} must be ${issue.many ? "people" : "a person"} in this app.`;
+    case "member":
+      return `${label} must be ${issue.many ? "people" : "someone"} in this app.`;
+    case "list":
+      return `${label} must be a list.`;
+    case "row": {
+      const sub = field?.type === "list" ? field.of[issue.key] : undefined;
+      return describeValueIssue(issue.issue, `${label} › ${sub?.label === undefined ? humanizeKey(issue.key) : plainWords(sub.label)}`, sub);
+    }
+  }
+}
+
+/**
+ * Why `value` does not fit `field`, in words for a person — or `null` when it fits.
+ *
+ * `label` names the field in the message; pass the key when there is no declared label.
+ */
+export function fieldValueProblem(field: Field, value: unknown, mode: ValueCheck, label = "This field"): string | null {
+  const issue = fieldValueIssue(field, value, mode);
+  return issue ? describeValueIssue(issue, label, field) : null;
+}
+
+/** How a field is named in a message: its label, or its key made readable. */
+const labelOf = (field: Field, key: string): string => (field.label === undefined ? humanizeKey(key) : plainWords(field.label));
+
+/** The first value in `data` that does not fit its declared field, as its key and the rule — or `null`. */
+export function recordValueIssue(fields: Record<string, Field>, data: Record<string, unknown>, mode: ValueCheck): { field: string; issue: ValueIssue } | null {
+  for (const [key, value] of Object.entries(data)) {
+    const field = fields[key];
+    if (!field) continue;
+    const issue = fieldValueIssue(field, value, mode);
+    if (issue) return { field: key, issue };
+  }
+  return null;
+}
+
+/**
  * The first value in `data` that does not fit its declared field, as a message — or `null`.
  *
  * Keys the entity does not declare are not judged: there is no rule to judge them by, and
  * bookkeeping such as `createdBy` lives there.
  */
 export function recordValueProblem(fields: Record<string, Field>, data: Record<string, unknown>, mode: ValueCheck): string | null {
-  for (const [key, value] of Object.entries(data)) {
-    const field = fields[key];
-    if (!field) continue;
-    const problem = fieldValueProblem(field, value, mode, field.label === undefined ? humanizeKey(key) : plainWords(field.label));
-    if (problem) return problem;
-  }
-  return null;
+  const found = recordValueIssue(fields, data, mode);
+  if (!found) return null;
+  const field = fields[found.field]!;
+  return describeValueIssue(found.issue, labelOf(field, found.field), field);
 }
 
 /**
@@ -185,10 +272,17 @@ export function sanitiseListRows(of: Record<string, Field>, rows: Record<string,
   });
 }
 
-/** Thrown when app code tries to store a value that does not fit its field. */
+/**
+ * Thrown when app code tries to store a value that does not fit its field.
+ *
+ * `message` is the English sentence; `refusal` is the same thing as data (which entity, which
+ * field, which rule), for whoever says it to a person in their language (#76).
+ */
 export class FieldValueError extends Error {
-  constructor(message: string) {
+  readonly refusal?: FieldRefusal;
+  constructor(message: string, refusal?: FieldRefusal) {
     super(message);
     this.name = "FieldValueError";
+    if (refusal) this.refusal = refusal;
   }
 }

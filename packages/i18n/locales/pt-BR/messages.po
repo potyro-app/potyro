@@ -555,6 +555,11 @@ msgstr "{entityName} por {byWhat}"
 msgid "{fetches, plural, one {It is fetched once, when you add the app, and kept with it: after that the app works without the internet.} other {They are fetched once, when you add the app, and kept with it: after that the app works without the internet.}}"
 msgstr "{fetches, plural, one {A gente baixa ela uma vez, quando você adiciona o app, e guarda junto: depois disso o app funciona sem internet.} other {A gente baixa elas uma vez, quando você adiciona o app, e guarda junto: depois disso o app funciona sem internet.}}"
 
+#. How a field is named when something could not be saved: the field's name, then the kind of thing it belongs to, e.g. “Grape (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} ({entity})"
+msgstr "{field} ({entity})"
+
 #. Board: the column for cards with no value in the field
 #: ../views/src/board.tsx
 msgid "{fieldLabel}: none"
@@ -4954,6 +4959,101 @@ msgstr "ainda não aberto"
 msgid "not saved"
 msgstr "não salvo"
 
+#. {field} is a field's name in the app; {bound} is the largest number or amount it accepts
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes {bound} or less."
+msgstr "Não salvou: {field} aceita {bound} ou menos."
+
+#. {field} is a field's name in the app; {bound} is the smallest number or amount it accepts
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes {bound} or more."
+msgstr "Não salvou: {field} aceita {bound} ou mais."
+
+#. {field} is a field's name in the app, e.g. “Grape (Wine)”; {list} is its choices, already joined: “Malbec, Merlot or Syrah”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes {list}."
+msgstr "Não salvou: {field} aceita {list}."
+
+#. {field} is a field's name in the app, e.g. “Bought (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a date."
+msgstr "Não salvou: {field} aceita uma data."
+
+#. {field} is a field's name in the app, e.g. “Sheet (Song)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a file of this app."
+msgstr "Não salvou: {field} aceita um arquivo deste app."
+
+#. {field} is a field's name in the app, e.g. “Tags (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a list of tags."
+msgstr "Não salvou: {field} aceita uma lista de tags."
+
+#. {field} is a field's name in the app, e.g. “Tastings (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a list."
+msgstr "Não salvou: {field} aceita uma lista."
+
+#. {field} is a field's name in the app, e.g. “Year (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a number."
+msgstr "Não salvou: {field} aceita um número."
+
+#. {field} is a field's name in the app, e.g. “Label (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a photo or a file."
+msgstr "Não salvou: {field} aceita uma foto ou um arquivo."
+
+#. {field} is a field's name in the app, e.g. “Vineyard (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a place."
+msgstr "Não salvou: {field} aceita um lugar."
+
+#. {field} is a field's name in the app, e.g. “Bottles (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a whole number."
+msgstr "Não salvou: {field} aceita um número inteiro."
+
+#. {field} is a field's name in the app, e.g. “Price (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes an amount of money."
+msgstr "Não salvou: {field} aceita um valor em dinheiro."
+
+#. {field} is a field's name in the app that links to one other entry, e.g. “Cellar (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes an entry of this app."
+msgstr "Não salvou: {field} aceita um registro deste app."
+
+#. {field} is a field's name in the app that links to several other entries, e.g. “Pairings (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes entries of this app."
+msgstr "Não salvou: {field} aceita registros deste app."
+
+#. An app's button tried to save a value its field does not accept. {field} is the field's name in the app, e.g. “Grape (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes one of its listed choices."
+msgstr "Não salvou: {field} aceita uma das opções dele."
+
+#. {field} is a field's name in the app that names several people the app is shared with, e.g. “Tasters (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes people in this app."
+msgstr "Não salvou: {field} aceita pessoas deste app."
+
+#. {field} is a field's name in the app that names one person the app is shared with, e.g. “Bought by (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes someone in this app."
+msgstr "Não salvou: {field} aceita alguém deste app."
+
+#. {field} is a field's name in the app, e.g. “Notes (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes text."
+msgstr "Não salvou: {field} aceita texto."
+
+#. {field} is a field's name in the app, e.g. “Opened (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes yes or no."
+msgstr "Não salvou: {field} aceita sim ou não."
+
 #: ../shell/src/studio.tsx
 msgid "Not saved: {issue}"
 msgstr "Não salvou. {issue}"
@@ -6818,6 +6918,8 @@ msgstr "essa mudança teria gerado um código que não pode ser lido"
 msgid "That could not be sent."
 msgstr "Não deu pra mandar."
 
+#: ../shell/src/failure-words.ts
+#: ../shell/src/failure-words.ts
 #: ../shell/src/scope-switcher.tsx
 msgid "That did not work"
 msgstr "Não deu certo"
@@ -6905,6 +7007,16 @@ msgstr "o app mudou desde que este texto foi lido. Tenta de novo"
 #: ../shell/src/demo.tsx
 msgid "The app could not be fetched. Check the connection and try again."
 msgstr "Não deu pra baixar o app. Confere a internet e tenta de novo."
+
+#. A toast: the person left an app while one of its buttons was still working
+#: ../shell/src/failure-words.ts
+msgid "The app was closed before this finished."
+msgstr "O app foi fechado antes de isso terminar."
+
+#. A toast: Potyro had to stop an app while one of its buttons was still working
+#: ../shell/src/failure-words.ts
+msgid "The app was stopped before this finished."
+msgstr "O app foi parado antes de isso terminar."
 
 #: ../shell/src/live-connections-setting.tsx
 msgid "The app will ask for the address again."
@@ -7603,6 +7715,11 @@ msgstr "não deu pra ler este código"
 #: ../shell/src/add-app.ts
 msgid "This source does not define an app (no `defineApp` with an id)"
 msgstr "Esse código não define um app (falta um `defineApp` com id)"
+
+#. A toast: a button in an app ran for too long and Potyro ended it
+#: ../shell/src/failure-words.ts
+msgid "This took too long, so it was stopped."
+msgstr "Isso demorou demais e foi interrompido."
 
 #: ../shell/src/version-gate.ts
 msgid "This version changes how “{name}” stores its data."

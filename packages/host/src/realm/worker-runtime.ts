@@ -10,6 +10,7 @@
 import type { AppDefinition } from "potyro";
 import { DirectLoadedApp } from "../direct-host.js";
 import { loadMessageFormat } from "../format.js";
+import { thrownOf } from "../app-error.js";
 import { makeRealmCtx } from "./ctx-proxy.js";
 import { portTransport } from "./port-transport.js";
 import { dispatchSocketEvent } from "./realm-sockets.js";
@@ -75,7 +76,11 @@ function boot(port: MessagePort): void {
           port.postMessage({ t: "result", id: msg.id, ok: false, error: `the app returned a value that cannot leave it: ${cloneErr instanceof Error ? cloneErr.message : String(cloneErr)}` });
         }
       },
-      (err: unknown) => port.postMessage({ t: "result", id: msg.id, ok: false, error: err instanceof Error ? err.message : String(err) }),
+      (err: unknown) => {
+        // What was thrown, as data: the host sorts it into what a person may be told (app-error.ts).
+        const { message, name, code, refusal } = thrownOf(err);
+        port.postMessage({ t: "result", id: msg.id, ok: false, error: message, name, ...(code ? { code } : {}), ...(refusal ? { refusal } : {}) });
+      },
     );
   };
 }

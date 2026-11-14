@@ -9,6 +9,7 @@ import { createRuntime, type PotyroRuntime } from "@potyro/runtime";
 import type { LoadIsolated } from "./isolate-bridge.js";
 import { languagePrefs } from "./locale.js";
 import { readCatalogs } from "./app-catalogs.js";
+import { failureWords } from "./failure-words.js";
 
 export interface ComposeOptions {
   /** Required for the trusted (direct) path; the untrusted (isolate) path loads from `bundleCode`. */
@@ -58,6 +59,7 @@ export async function compose(opts: ComposeOptions): Promise<Composed> {
     me: opts.me,
     space: opts.space,
     languages: opts.languages ?? languagePrefs(),
+    failureWords,
   });
   return { runtime, loaded };
 }

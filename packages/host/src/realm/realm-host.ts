@@ -11,8 +11,9 @@
 // silent heartbeat kills the realm — the frame and its worker — and rejects what was waiting. The
 // next call starts a fresh realm (40–60 ms measured).
 
-import type { AppDefinition, Ctx, PermissionManifest, Resolved, UiProgress, UiTimer, Value } from "potyro";
+import type { AppDefinition, Ctx, FieldRefusal, PermissionManifest, Resolved, UiProgress, UiTimer, Value } from "potyro";
 import type { TimerData } from "../timers.js";
+import { AppCodeError, HostFault, thrownFrom, thrownOf, type FaultWhy } from "../app-error.js";
 import type { BindingRef, LoadedApp, Provenance, SealedView } from "../types.js";
 import { OPS, VIEW_OPS, type CallKind, type CtxBase, type FetchAnswer, type Op, type RealmToHost, type ViewOp } from "./protocol.js";
 import { SocketBridge, type BoxSocketInfo } from "../socket-bridge.js";
@@ -27,7 +28,7 @@ import type { ViewWatchdogOptions } from "./view-watchdog.js";
  * Worker — as opposed to the app failing in it. The shell falls back to QuickJS on this (still
  * sealed); an app's own failure is never a reason to change boxes.
  */
-export class RealmStartError extends Error {
+export class RealmStartError extends HostFault {
   override name = "RealmStartError";
 }
 
@@ -244,7 +245,7 @@ export class RealmLoadedApp implements LoadedApp {
 
   /** Start (or restart, after a kill) the realm and load the app into it. */
   start(): Promise<void> {
-    if (this.disposed) return Promise.reject(new Error("this app was closed"));
+    if (this.disposed) return Promise.reject(new HostFault("this app was closed", "closed"));
     this.starting ??= this.spawn().finally(() => (this.starting = null));
     return this.starting;
   }
@@ -254,7 +255,7 @@ export class RealmLoadedApp implements LoadedApp {
     let up = false;
     const late = new Promise<never>((_, reject) => {
       timer = setTimeout(
-        () => reject(up ? new Error(`the app did not load within ${this.o.loadTimeoutMs} ms`) : new RealmStartError(`the sealed box did not start within ${this.o.loadTimeoutMs} ms`)),
+        () => reject(up ? new HostFault(`the app did not load within ${this.o.loadTimeoutMs} ms`) : new RealmStartError(`the sealed box did not start within ${this.o.loadTimeoutMs} ms`)),
         this.o.loadTimeoutMs,
       );
     });
@@ -273,7 +274,7 @@ export class RealmLoadedApp implements LoadedApp {
       });
       port.postMessage({ t: "load", code: this.code, ...(this.catalogs ? { catalogs: this.catalogs } : {}) });
       const raw = JSON.parse(await Promise.race([ready, late])) as AppDefinition;
-      if (this.disposed) throw new Error("this app was closed");
+      if (this.disposed) throw new HostFault("this app was closed", "closed");
       // The same normalisation the isolate does after reading the definition out (#105).
       this.definition = { ...raw, pages: (raw.pages ?? []).map((p) => (p.view ? p : { ...p, view: p.layout!.items[0]!.view })) };
       this.permissions = this.definition.permissions ?? {};
@@ -295,14 +296,14 @@ export class RealmLoadedApp implements LoadedApp {
   }
 
   /** Stop the realm now; what was waiting on it is rejected. The next call starts a fresh one. */
-  kill(reason: string): void {
+  kill(reason: string, why: FaultWhy = "stopped"): void {
     if (!this.realm) return;
     this.o.onKill?.(reason);
     // The new realm will not know these connections' numbers: they end with the old one.
     this.sockets.endAll("stopped", "the app was stopped");
     this.speech.endAll();
     this.teardown();
-    for (const [, p] of this.pending) p.reject(new Error(`stopped: ${reason}`));
+    for (const [, p] of this.pending) p.reject(new HostFault(`stopped: ${reason}`, why));
     this.pending.clear();
   }
 
@@ -356,7 +357,7 @@ export class RealmLoadedApp implements LoadedApp {
     this.sockets.endAll("left", "the app was closed");
     this.speech.endAll();
     this.teardown();
-    for (const [, p] of this.pending) p.reject(new Error("this app was closed"));
+    for (const [, p] of this.pending) p.reject(new HostFault("this app was closed", "closed"));
     this.pending.clear();
     this.ctxById.clear();
   }
@@ -381,11 +382,11 @@ export class RealmLoadedApp implements LoadedApp {
       return;
     }
     const silent = t - this.lastBeat - (this.stalledMs - this.stalledAtBeat);
-    if (silent > this.o.heartbeatTimeoutMs) return this.kill(`its logic stopped answering for ${Math.round(silent)} ms`);
+    if (silent > this.o.heartbeatTimeoutMs) return this.kill(`its logic stopped answering for ${Math.round(silent)} ms`, "slow");
     const waited = this.waitedOnPeople();
     for (const [, p] of this.pending) {
       const used = t - p.started - (waited - p.waitedBefore) - (this.stalledMs - p.stalledBefore);
-      if (used > this.o.timeoutMs) return this.kill(`a ${p.label} did not finish within ${this.o.timeoutMs} ms`);
+      if (used > this.o.timeoutMs) return this.kill(`a ${p.label} did not finish within ${this.o.timeoutMs} ms`, "slow");
     }
   }
 
@@ -411,7 +412,8 @@ export class RealmLoadedApp implements LoadedApp {
       if (!p) return;
       this.pending.delete(m.id);
       if (m.ok) p.resolve(m.value);
-      else p.reject(new Error(`realm app error: ${String(m.error)}`));
+      // What the app's code threw, as it said it: no prefix naming the box (#76). Never trusted to be well-formed.
+      else p.reject(new AppCodeError(thrownFrom(m)));
       return;
     }
     if (m.t === "op" && this.logic) void this.answer(m, this.logic);
@@ -424,10 +426,10 @@ export class RealmLoadedApp implements LoadedApp {
    */
   private async answer(m: { id: number; ctxId: number; op: string; args: unknown[] }, ch: Channel): Promise<void> {
     const id = Number(m.id) || 0;
-    const reply = (ok: boolean, value?: unknown, error?: string, code?: string) => {
+    const reply = (ok: boolean, value?: unknown, error?: string, more?: { code?: string; name?: string; refusal?: FieldRefusal }) => {
       if (!id || !ch.alive()) return; // fire-and-forget, or the port is gone
       try {
-        ch.post({ t: "reply", id, ok, value, error, ...(code ? { code } : {}) });
+        ch.post({ t: "reply", id, ok, value, error, ...more });
       } catch (e) {
         ch.post({ t: "reply", id, ok: false, error: `the answer cannot be sent into the app: ${message(e)}` });
       }
@@ -462,8 +464,10 @@ export class RealmLoadedApp implements LoadedApp {
         else this.speech.stop(listening.lid);
       }
     } catch (e) {
-      const code = (e as { code?: unknown } | null)?.code;
-      reply(false, undefined, message(e), typeof code === "string" ? code : undefined);
+      // The error's class, its code and a refused write cross as data, so the app's code — and
+      // whoever tells the person, if the app lets it go — reads what a trusted app would (#76).
+      const { name, code, refusal } = thrownOf(e);
+      reply(false, undefined, message(e), { ...(code ? { code } : {}), ...(name !== "Error" ? { name } : {}), ...(refusal ? { refusal } : {}) });
     }
   }
 
@@ -757,7 +761,7 @@ export class RealmLoadedApp implements LoadedApp {
   }
 
   private async invoke(kind: CallKind, args: unknown[], ctx: Ctx): Promise<Value> {
-    if (this.disposed) throw new Error("this app was closed");
+    if (this.disposed) throw new HostFault("this app was closed", "closed");
     if (!this.port) await this.start();
     const port = this.port!;
     const id = ++this.seq;
@@ -768,7 +772,7 @@ export class RealmLoadedApp implements LoadedApp {
         port.postMessage({ t: "call", id, kind, args, base });
       } catch (e) {
         this.pending.delete(id);
-        reject(new Error(`a ${kind} call's arguments cannot be sent into the app: ${message(e)}`));
+        reject(new HostFault(`a ${kind} call's arguments cannot be sent into the app: ${message(e)}`));
       }
     });
   }
