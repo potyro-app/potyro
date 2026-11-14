@@ -17,7 +17,7 @@ import { mapEditsOnto } from "../text-transform.js";
 import { guestBookOf } from "../guests.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "../authorship.js";
 import { deserialize, serialize } from "./marshal.js";
-import { HARNESS_SOURCE } from "./harness.js";
+import { BOX_BYTES, HARNESS_SOURCE, PICTURE_BYTES } from "./harness.js";
 import { SocketBridge, type BoxSocketEvent, type BoxSocketInfo } from "../socket-bridge.js";
 import { SpeechBridge, type BoxSpeechEvent, type BoxSpeechInfo } from "../speech-bridge.js";
 
@@ -34,6 +34,9 @@ export interface QuickJSAsyncContextLike {
   getString(h: QuickJSHandle): string;
   setProp(target: QuickJSHandle, key: string, value: QuickJSHandle): void;
   newFunction(name: string, fn: (...args: QuickJSHandle[]) => QuickJSHandle | undefined): QuickJSHandle;
+  /** Buffers across the edge as they are (a picture's bytes). Optional: without them bytes cross as base64. */
+  newArrayBuffer?(buffer: ArrayBufferLike): QuickJSHandle;
+  getArrayBuffer?(h: QuickJSHandle): { value: Uint8Array; dispose(): void };
   newAsyncifiedFunction(name: string, fn: (...args: QuickJSHandle[]) => Promise<QuickJSHandle>): QuickJSHandle;
   evalCode(code: string): { error?: QuickJSHandle; value?: QuickJSHandle };
   evalCodeAsync(code: string): Promise<{ error?: QuickJSHandle; value?: QuickJSHandle }>;
@@ -86,8 +89,20 @@ function shareFromIsolate(opts: unknown): never {
   return { ...(opts as object), files } as never;
 }
 
+/** How many captures, and how many buffers on their way across, are held at once; the oldest is let go. */
+const SHOTS_HELD = 8;
+
+const megabytes = (n: number): string => `${Math.round(n / 104857.6) / 10} MB`;
+
 function bytesOfBase64(b64: string): Uint8Array {
-  const binary = atob(b64);
+  // Longer than the box may send is not something its own encoder made: refused before it is decoded.
+  if (b64.length > Math.ceil(BOX_BYTES / 3) * 4) throw new Error(`these bytes are more than a shared app passes at once (${megabytes(BOX_BYTES)})`);
+  let binary: string;
+  try {
+    binary = atob(b64);
+  } catch {
+    throw new Error("these bytes did not arrive whole: they are not base64");
+  }
   const out = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
   return out;
@@ -99,6 +114,11 @@ class IsolateLoadedApp implements LoadedApp {
   readonly permissions: PermissionManifest;
 
   private ctxHost: Ctx | null = null;
+  /** Captures taken by this box, kept here so their bytes never have to cross into it (see harness `Picture`). */
+  private readonly shots = new Map<string, Blob>();
+  private shotSeq = 0;
+  /** Bytes between the box and the host, by number: handed out by the box, or waiting for it to take. */
+  private readonly crossing = new Map<string, Uint8Array>();
   private progress = new Map<string, UiProgress>();
   /** Screens the box holds on and timers it draws, by its id for each (`ui.keepAwake`, `ui.drawsTimer`). */
   private awake = new Map<string, { release(): void }>();
@@ -353,7 +373,16 @@ class IsolateLoadedApp implements LoadedApp {
         this.openQuestion();
         try {
           const shot = await camera.capture(op.source === "camera" || op.source === "library" ? { source: op.source } : undefined);
-          return serialize({ b: base64OfBytes(new Uint8Array(await shot.arrayBuffer())), mime: shot.type || null });
+          if (!(shot instanceof Blob)) throw new Error("the camera gave no picture");
+          if (shot.size > PICTURE_BYTES) throw new Error(`this picture is ${megabytes(shot.size)}; a shared app takes at most ${megabytes(PICTURE_BYTES)}`);
+          // The picture stays here; the box gets its number. Handing it on then moves no bytes.
+          const id = `s${++this.shotSeq}`;
+          this.shots.set(id, shot);
+          for (const old of this.shots.keys()) {
+            if (this.shots.size <= SHOTS_HELD) break;
+            this.shots.delete(old);
+          }
+          return serialize({ shot: id, size: shot.size, mime: shot.type || null });
         } finally {
           this.closeQuestion();
         }
@@ -375,11 +404,10 @@ class IsolateLoadedApp implements LoadedApp {
         if (!ai) throw new Error("Permission denied: AI");
         const images = (v: unknown): unknown => {
           const one = (i: unknown) => {
-            if (!i || typeof i !== "object" || typeof (i as { __bytes?: unknown }).__bytes !== "string") return i ?? undefined;
-            const bytes = bytesOfBase64((i as { __bytes: string }).__bytes);
-            // A capture keeps the type the camera gave it; plain bytes are told apart by their first ones.
-            const mime = (i as { mime?: unknown }).mime;
-            return typeof mime === "string" && mime ? new Blob([bytes as BlobPart], { type: mime }) : bytes;
+            // A capture, by its number: the picture the host kept, with the type the camera gave it.
+            if (i && typeof i === "object" && (i as { __shot?: unknown }).__shot !== undefined) return this.shot((i as { __shot: unknown }).__shot);
+            if (i && typeof i === "object" && (i as { __held?: unknown }).__held !== undefined) return this.handed((i as { __held: unknown }).__held);
+            return i && typeof i === "object" && typeof (i as { __bytes?: unknown }).__bytes === "string" ? bytesOfBase64((i as { __bytes: string }).__bytes) : i ?? undefined;
           };
           return v == null ? undefined : Array.isArray(v) ? v.map(one) : one(v);
         };
@@ -440,10 +468,20 @@ class IsolateLoadedApp implements LoadedApp {
       // A picture the app holds (a capture, or bytes it made) into its own store, as in the realm.
       case "media.put": {
         const media = this.ctxHost?.media;
-        if (!media) throw new Error("no call is running");
-        const p = (op.bytes ?? {}) as { b?: unknown; mime?: unknown };
-        if (typeof p.b !== "string") throw new Error("ctx.media.put takes a picture");
-        return serialize({ ...(await media.put(new Blob([bytesOfBase64(p.b) as BlobPart], { type: typeof p.mime === "string" ? p.mime : "" }))) } as unknown as Value);
+        if (!media) throw new Error("ctx.media.put: the app is not running, so there is no store to keep the picture in");
+        const p = (op.bytes ?? {}) as { shot?: unknown; b?: unknown; mime?: unknown };
+        if (p.shot !== undefined) return serialize({ ...(await media.put(this.shot(p.shot))) });
+        if ((p as { held?: unknown }).held !== undefined) return serialize({ ...(await media.put(new Blob([this.handed((p as { held: unknown }).held) as BlobPart]))) });
+        if (typeof p.b !== "string") throw new Error("ctx.media.put takes a picture: what ctx.caps.camera.capture() gave, or a Uint8Array");
+        return serialize({ ...(await media.put(new Blob([bytesOfBase64(p.b) as BlobPart], { type: typeof p.mime === "string" ? p.mime : "" }))) });
+      }
+      // A held capture's bytes, for an app that reads them itself. Within what the box can take.
+      case "shot.bytes": {
+        const shot = this.shot(op.shot);
+        const bytes = new Uint8Array(await shot.arrayBuffer());
+        if (op.native === true && this.vm.newArrayBuffer) return serialize({ held: this.hold(bytes) });
+        if (shot.size > BOX_BYTES) throw new Error(`this picture is ${megabytes(shot.size)}; at most ${megabytes(BOX_BYTES)} can be read here`);
+        return serialize(base64OfBytes(bytes));
       }
       // The app's own folder (#252). No permission gate: the folder is this app's alone, and import /
       // export go through a dialog the person answers, which is the consent. Bytes travel as base64.
@@ -622,6 +660,38 @@ class IsolateLoadedApp implements LoadedApp {
     this.vm.setProp(this.vm.global, "__hostSync", syncFn);
     syncFn.dispose();
 
+    // A picture's bytes, as a buffer and not as text (see the harness's `bytesOut`). Synchronous and
+    // authority-free: they only move bytes this box already has, or was already given, under a number.
+    const { newArrayBuffer, getArrayBuffer } = this.vm;
+    if (newArrayBuffer && getArrayBuffer) {
+      const outFn = this.vm.newFunction("__hostBytesOut", (handle) => {
+        try {
+          const view = getArrayBuffer.call(this.vm, handle);
+          try {
+            if (view.value.byteLength > PICTURE_BYTES) return this.vm.newString(`!these bytes are ${megabytes(view.value.byteLength)}; at most ${megabytes(PICTURE_BYTES)}`);
+            // A copy: the view is the box's own memory, which moves.
+            return this.vm.newString(this.hold(view.value.slice()));
+          } finally {
+            view.dispose();
+          }
+        } catch {
+          return this.vm.newString("!these are not bytes");
+        }
+      });
+      this.vm.setProp(this.vm.global, "__hostBytesOut", outFn);
+      outFn.dispose();
+      const inFn = this.vm.newFunction("__hostBytesIn", (idHandle) => {
+        try {
+          const bytes = this.handed(this.vm.getString(idHandle));
+          return newArrayBuffer.call(this.vm, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
+        } catch (e) {
+          return this.vm.newString(e instanceof Error ? e.message : String(e));
+        }
+      });
+      this.vm.setProp(this.vm.global, "__hostBytesIn", inFn);
+      inFn.dispose();
+    }
+
     // Formatting, answered on the spot (#302): the box has no `Intl`. Pure — `Intl` and the ICU
     // formatter over the arguments, in the host's locale — so it may be synchronous; its time counts
     // against the call's deadline like everything else inside `enter()`. Validation: format.ts.
@@ -636,6 +706,32 @@ class IsolateLoadedApp implements LoadedApp {
   /** The definition as the person reads it, for messages about a value that does not fit. */
   private shown(): AppDefinition {
     return localize(this.definition, this.ctxHost?.locale);
+  }
+
+  /** A capture this box took, by the number it was given; only its own, and only while it is held. */
+  private shot(id: unknown): Blob {
+    const shot = typeof id === "string" ? this.shots.get(id) : undefined;
+    if (!shot) throw new Error("that picture is no longer held: take it again, or keep it with ctx.media.put first");
+    return shot;
+  }
+
+  /** Keep bytes on their way across under a number, a few at a time. */
+  private hold(bytes: Uint8Array): string {
+    const id = `b${++this.shotSeq}`;
+    this.crossing.set(id, bytes);
+    for (const old of this.crossing.keys()) {
+      if (this.crossing.size <= SHOTS_HELD) break;
+      this.crossing.delete(old);
+    }
+    return id;
+  }
+
+  /** Bytes the box handed over (`__hostBytesOut`), taken once. */
+  private handed(id: unknown): Uint8Array {
+    const bytes = typeof id === "string" ? this.crossing.get(id) : undefined;
+    if (!bytes) throw new Error("those bytes did not arrive: hand them over again");
+    this.crossing.delete(id as string);
+    return bytes;
   }
 
   private capsAvailable(ctx: Ctx): string[] {
@@ -868,6 +964,8 @@ class IsolateLoadedApp implements LoadedApp {
     for (const [, held] of this.awake) held.release();
     this.awake.clear();
     this.speech.endAll();
+    this.shots.clear();
+    this.crossing.clear();
     this.disposed = true;
     this.vm.dispose();
   }

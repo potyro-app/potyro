@@ -21,6 +21,23 @@
 
 import { MARSHAL_SOURCE } from "./marshal.js";
 
+/**
+ * The most bytes that cross the box's edge as base64 in one piece: a `Uint8Array` for
+ * `ctx.files.write`, `ctx.ui.share` or a socket's send. They are encoded by an interpreter, inside
+ * JSON, in a box with 64 MB of memory and a budget per call: past this the call would end as
+ * "interrupted", so it ends as a sentence instead.
+ */
+export const BOX_BYTES = 4 * 1024 * 1024;
+
+/**
+ * The largest picture a box handles: a capture the host holds for it, and bytes it hands to
+ * `ctx.media.put` or `ctx.caps.ai` or reads from a capture. The same 25 MB `ctx.caps.ai` takes as one
+ * picture in every runner (`AI_LIMITS.imageBytes`, ai.ts; the number is repeated here because the
+ * harness is source text) — the browser realm has no other limit on a picture. These cross as
+ * buffers, not text, so the size costs a copy and nothing more.
+ */
+export const PICTURE_BYTES = 25 * 1024 * 1024;
+
 export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
 (function(){
   var calls = {}, callSeq = 0;
@@ -66,34 +83,77 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
 
   // Bytes cross the bridge as base64: it carries JSON, and QuickJS has neither Blob nor atob (#252).
   var B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  // Built in pieces and looked up in a table: appending to one string per three bytes, and searching
+  // the alphabet per character, took over a minute for one megabyte — longer than any call may run.
+  var B64REV = new Uint8Array(128);
+  for (var b64i = 0; b64i < 64; b64i++) B64REV[B64.charCodeAt(b64i)] = b64i;
+  var B64CODES = new Uint8Array(64);
+  for (var b64j = 0; b64j < 64; b64j++) B64CODES[b64j] = B64.charCodeAt(b64j);
+  var BOX_BYTES = ${BOX_BYTES};
+  function mb(n){ return (Math.round(n / 104857.6) / 10) + " MB"; }
   function toBase64(u8){
-    var out = "", i = 0;
-    for (; i + 2 < u8.length; i += 3) {
-      var n = (u8[i] << 16) | (u8[i+1] << 8) | u8[i+2];
-      out += B64[(n >> 18) & 63] + B64[(n >> 12) & 63] + B64[(n >> 6) & 63] + B64[n & 63];
+    if (u8.length > BOX_BYTES) throw new Error("these bytes are " + mb(u8.length) + "; a shared app passes at most " + mb(BOX_BYTES) + " at once");
+    var parts = [], STEP = 6144, codes = new Uint8Array(STEP / 3 * 4), len = u8.length, whole = len - (len % 3);
+    for (var o = 0; o < whole; o += STEP) {
+      var end = Math.min(o + STEP, whole), j = 0;
+      for (var i = o; i < end; i += 3) {
+        var n = (u8[i] << 16) | (u8[i+1] << 8) | u8[i+2];
+        codes[j++] = B64CODES[(n >> 18) & 63]; codes[j++] = B64CODES[(n >> 12) & 63]; codes[j++] = B64CODES[(n >> 6) & 63]; codes[j++] = B64CODES[n & 63];
+      }
+      parts.push(String.fromCharCode.apply(null, j === codes.length ? codes : codes.subarray(0, j)));
     }
-    if (i < u8.length) {
-      var m = u8[i] << 16 | (i + 1 < u8.length ? u8[i+1] << 8 : 0);
-      out += B64[(m >> 18) & 63] + B64[(m >> 12) & 63] + (i + 1 < u8.length ? B64[(m >> 6) & 63] : "=") + "=";
+    if (whole < len) {
+      var m = u8[whole] << 16 | (whole + 1 < len ? u8[whole+1] << 8 : 0);
+      parts.push(B64[(m >> 18) & 63] + B64[(m >> 12) & 63] + (whole + 1 < len ? B64[(m >> 6) & 63] : "=") + "=");
     }
-    return out;
+    return parts.join("");
   }
   function fromBase64(s){
-    var clean = s.replace(/=+$/, ""), bytes = new Uint8Array(Math.floor(clean.length * 3 / 4)), j = 0, buf = 0, bits = 0;
-    for (var i = 0; i < clean.length; i++) {
-      buf = (buf << 6) | B64.indexOf(clean[i]); bits += 6;
-      if (bits >= 8) { bits -= 8; bytes[j++] = (buf >> bits) & 255; }
+    var n = s.length;
+    while (n > 0 && s.charCodeAt(n - 1) === 61) n--;
+    var bytes = new Uint8Array(Math.floor(n * 3 / 4)), j = 0, full = n - (n % 4), i = 0;
+    for (; i < full; i += 4) {
+      var v = (B64REV[s.charCodeAt(i)] << 18) | (B64REV[s.charCodeAt(i+1)] << 12) | (B64REV[s.charCodeAt(i+2)] << 6) | B64REV[s.charCodeAt(i+3)];
+      bytes[j++] = v >> 16; bytes[j++] = (v >> 8) & 255; bytes[j++] = v & 255;
+    }
+    if (n - full >= 2) {
+      var w = (B64REV[s.charCodeAt(i)] << 18) | (B64REV[s.charCodeAt(i+1)] << 12) | (n - full === 3 ? B64REV[s.charCodeAt(i+2)] << 6 : 0);
+      bytes[j++] = w >> 16;
+      if (n - full === 3) bytes[j++] = (w >> 8) & 255;
     }
     return bytes;
   }
-  // A picture in the box: QuickJS has no Blob, so a capture is its bytes with a type — what
-  // ctx.media.put and ctx.caps.ai take, with the few members of a Blob an action reads.
-  function Picture(u8, type){ this.__u8 = u8; this.size = u8.length; this.type = type || ""; }
-  Picture.prototype.arrayBuffer = async function(){ return this.__u8.buffer.slice(this.__u8.byteOffset, this.__u8.byteOffset + this.__u8.length); };
-  Picture.prototype.bytes = async function(){ return this.__u8; };
+  // A picture's bytes cross as they are, not as text: every byte encoded in here costs an
+  // interpreter's loop, and a megabyte of them took most of a second. __hostBytesOut hands the host
+  // a buffer and gets a number for it; __hostBytesIn takes a number and gets the buffer. Base64 is
+  // what is left where the host has neither (an injected context without array buffers).
+  var PICTURE_BYTES = ${PICTURE_BYTES};
+  function bytesOut(u8, who){
+    if (u8.length > PICTURE_BYTES) throw new Error(who + ": these bytes are " + mb(u8.length) + "; at most " + mb(PICTURE_BYTES));
+    if (typeof __hostBytesOut !== "function") return { b: toBase64(u8) };
+    var whole = u8.byteOffset === 0 && u8.byteLength === u8.buffer.byteLength;
+    var held = __hostBytesOut(whole ? u8.buffer : u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength));
+    if (held.charAt(0) === "!") throw new Error(who + ": " + held.slice(1));
+    return { held: held };
+  }
+  // A picture in the box: QuickJS has no Blob. A capture STAYS with the host — the box holds its
+  // number, size and type — so handing it to ctx.media.put or ctx.caps.ai moves no bytes at all. Its
+  // bytes come only when the app asks for them (arrayBuffer, bytes).
+  function Picture(shot, size, type){ this.__shot = shot; this.size = size; this.type = type || ""; }
+  Picture.prototype.bytes = async function(){
+    var got = await bridge({op:"shot.bytes", shot:this.__shot, native: typeof __hostBytesIn === "function"});
+    if (typeof got === "string") return fromBase64(got);
+    var buf = __hostBytesIn(got.held);
+    if (typeof buf === "string") throw new Error(buf);
+    return new Uint8Array(buf);
+  };
+  Picture.prototype.arrayBuffer = async function(){
+    var u8 = await this.bytes();
+    return u8.byteOffset === 0 && u8.byteLength === u8.buffer.byteLength ? u8.buffer : u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.length);
+  };
   function pictureArg(x, who){
-    if (x instanceof Picture) return { b: toBase64(x.__u8), mime: x.type || null };
-    if (x instanceof Uint8Array) return { b: toBase64(x), mime: null };
+    if (x instanceof Picture) return { shot: x.__shot };
+    if (x instanceof Uint8Array) return bytesOut(x, who);
     throw new Error(who + " takes a picture: what ctx.caps.camera.capture() gave, or a Uint8Array");
   }
   function fileArg(f){ return typeof f === "string" ? f : (f && typeof f === "object" ? {id:f.id, path:f.path, name:f.name, mime:f.mime} : f); }
@@ -299,7 +359,7 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
     function has(n){ return capNames.indexOf(n) >= 0; }
     if (has("camera")) ctx.caps.camera = { capture: async function(o){
       var shot = await bridge({op:"cap.camera.capture", source: (o && o.source) || null});
-      return new Picture(fromBase64(shot.b), shot.mime);
+      return new Picture(shot.shot, shot.size, shot.mime);
     } };
     if (has("geo")) ctx.caps.geo = { current: async function(){ return bridge({op:"cap.geo.current"}); } };
     if (has("notifications")) ctx.caps.notifications = {
@@ -310,8 +370,8 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
     if (has("haptics")) ctx.caps.haptics = { vibrate: function(pattern){ bridgeSync({op:"cap.haptics.vibrate", pattern: pattern == null ? 30 : pattern}); } };
     // AI (docs/23): plain data out, the validated answer back. Bytes cross as base64; there is no Blob here.
     function aiImg(img){
-      if (img instanceof Uint8Array) return { __bytes: toBase64(img) };
-      if (img instanceof Picture) return { __bytes: toBase64(img.__u8), mime: img.type || null };
+      if (img instanceof Uint8Array) { var out = bytesOut(img, "ctx.caps.ai"); return out.held === undefined ? { __bytes: out.b } : { __held: out.held }; }
+      if (img instanceof Picture) return { __shot: img.__shot };
       if (typeof img === "string") return img;
       if (img && typeof img === "object") return img.key !== undefined ? { key: img.key, mime: img.mime } : { id: img.id, path: img.path, name: img.name, mime: img.mime };
       throw new Error("ctx.caps.ai: an image is bytes, a file or a photo field's value in a shared app");
