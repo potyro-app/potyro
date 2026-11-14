@@ -555,6 +555,11 @@ msgstr "{entityName} by {byWhat}"
 msgid "{fetches, plural, one {It is fetched once, when you add the app, and kept with it: after that the app works without the internet.} other {They are fetched once, when you add the app, and kept with it: after that the app works without the internet.}}"
 msgstr "{fetches, plural, one {It is fetched once, when you add the app, and kept with it: after that the app works without the internet.} other {They are fetched once, when you add the app, and kept with it: after that the app works without the internet.}}"
 
+#. How a field is named when something could not be saved: the field's name, then the kind of thing it belongs to, e.g. “Grape (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} ({entity})"
+msgstr "{field} ({entity})"
+
 #. Board: the column for cards with no value in the field
 #: ../views/src/board.tsx
 msgid "{fieldLabel}: none"
@@ -4954,6 +4959,101 @@ msgstr "not opened yet"
 msgid "not saved"
 msgstr "not saved"
 
+#. {field} is a field's name in the app; {bound} is the largest number or amount it accepts
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes {bound} or less."
+msgstr "Not saved: {field} takes {bound} or less."
+
+#. {field} is a field's name in the app; {bound} is the smallest number or amount it accepts
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes {bound} or more."
+msgstr "Not saved: {field} takes {bound} or more."
+
+#. {field} is a field's name in the app, e.g. “Grape (Wine)”; {list} is its choices, already joined: “Malbec, Merlot or Syrah”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes {list}."
+msgstr "Not saved: {field} takes {list}."
+
+#. {field} is a field's name in the app, e.g. “Bought (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a date."
+msgstr "Not saved: {field} takes a date."
+
+#. {field} is a field's name in the app, e.g. “Sheet (Song)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a file of this app."
+msgstr "Not saved: {field} takes a file of this app."
+
+#. {field} is a field's name in the app, e.g. “Tags (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a list of tags."
+msgstr "Not saved: {field} takes a list of tags."
+
+#. {field} is a field's name in the app, e.g. “Tastings (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a list."
+msgstr "Not saved: {field} takes a list."
+
+#. {field} is a field's name in the app, e.g. “Year (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a number."
+msgstr "Not saved: {field} takes a number."
+
+#. {field} is a field's name in the app, e.g. “Label (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a photo or a file."
+msgstr "Not saved: {field} takes a photo or a file."
+
+#. {field} is a field's name in the app, e.g. “Vineyard (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a place."
+msgstr "Not saved: {field} takes a place."
+
+#. {field} is a field's name in the app, e.g. “Bottles (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes a whole number."
+msgstr "Not saved: {field} takes a whole number."
+
+#. {field} is a field's name in the app, e.g. “Price (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes an amount of money."
+msgstr "Not saved: {field} takes an amount of money."
+
+#. {field} is a field's name in the app that links to one other entry, e.g. “Cellar (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes an entry of this app."
+msgstr "Not saved: {field} takes an entry of this app."
+
+#. {field} is a field's name in the app that links to several other entries, e.g. “Pairings (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes entries of this app."
+msgstr "Not saved: {field} takes entries of this app."
+
+#. An app's button tried to save a value its field does not accept. {field} is the field's name in the app, e.g. “Grape (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes one of its listed choices."
+msgstr "Not saved: {field} takes one of its listed choices."
+
+#. {field} is a field's name in the app that names several people the app is shared with, e.g. “Tasters (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes people in this app."
+msgstr "Not saved: {field} takes people in this app."
+
+#. {field} is a field's name in the app that names one person the app is shared with, e.g. “Bought by (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes someone in this app."
+msgstr "Not saved: {field} takes someone in this app."
+
+#. {field} is a field's name in the app, e.g. “Notes (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes text."
+msgstr "Not saved: {field} takes text."
+
+#. {field} is a field's name in the app, e.g. “Opened (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {field} takes yes or no."
+msgstr "Not saved: {field} takes yes or no."
+
 #: ../shell/src/studio.tsx
 msgid "Not saved: {issue}"
 msgstr "Not saved: {issue}"
@@ -6818,6 +6918,8 @@ msgstr "that change would have produced source that doesn't parse"
 msgid "That could not be sent."
 msgstr "That could not be sent."
 
+#: ../shell/src/failure-words.ts
+#: ../shell/src/failure-words.ts
 #: ../shell/src/scope-switcher.tsx
 msgid "That did not work"
 msgstr "That did not work"

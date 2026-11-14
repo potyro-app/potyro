@@ -11,7 +11,10 @@ export interface AppFailure {
   app: string;
   /** What failed, in the app's own names: `computed meal.kcal`. */
   what: string;
+  /** The developer's line: the error as it was thrown. For the console and the Studio, not for the person. */
   message: string;
+  /** What the person was told when it happened (an action's toast), in their language (#76). */
+  shown?: string;
 }
 
 type Listener = (failure: AppFailure) => void;

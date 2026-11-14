@@ -91,8 +91,8 @@ async function table(r: Runner): Promise<Record<string, string>> {
     try {
       out[key] = String(await r.loaded.callComputed("plant", key, RECORD, r.ctx));
     } catch (e) {
-      // A sealed runner prefixes its errors; the words after it are what must match.
-      out[key] = `ERROR ${String(e instanceof Error ? e.message : e).replace(/^(isolate|realm) app error: /, "")}`;
+      // A sealed runner hands the app's error over as it was said (#76): the words must match.
+      out[key] = `ERROR ${String(e instanceof Error ? e.message : e)}`;
     }
   }
   return out;

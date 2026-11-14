@@ -8,7 +8,7 @@
 // Why refuse at all, when the app's own code wrote it? Because in a shared app the other copies
 // would have to survive it too, and the next reader cannot tell a bug from a tampered change.
 
-import { FieldValueError, fieldValueProblem, humanizeKey, plainWords, recordValueProblem, sanitiseListRows, type AppDefinition, type Field, type TextEdit } from "potyro";
+import { describeValueIssue, FieldValueError, fieldValueIssue, fieldValueProblem, humanizeKey, plainWords, recordValueIssue, sanitiseListRows, type AppDefinition, type Field, type TextEdit, type ValueIssue } from "potyro";
 import { isGuestId, type Store } from "@potyro/store";
 import type { GuestBook } from "./guests.js";
 import { applyEdit } from "./text-transform.js";
@@ -29,22 +29,30 @@ function memberIdsIn(field: Field, value: unknown): string[] {
   return (Array.isArray(value) ? value : [value]).map(one).filter((id): id is string => typeof id === "string");
 }
 
-/** Why a `member` value names someone outside `people`, or `null`. */
-function memberProblem(field: Field, value: unknown, people: PeopleIds, label: string): string | null {
+/** The rule a `member` value breaks by naming someone outside `people`, or `null`. */
+function memberIssue(field: Field, value: unknown, people: PeopleIds): ValueIssue | null {
   if (!people || field.type !== "member") return null;
-  return memberIdsIn(field, value).every((id) => people.has(id)) ? null : `${label} must be ${field.many ? "people" : "someone"} in this app.`;
+  return memberIdsIn(field, value).every((id) => people.has(id)) ? null : { rule: "member", many: Boolean(field.many) };
+}
+
+/**
+ * The refusal, thrown: the English sentence for app code and the console, and the same thing as
+ * data (entity, field, rule) for whoever tells the person (#76).
+ */
+function refuse(entity: string, key: string, field: Field, issue: ValueIssue): never {
+  throw new FieldValueError(describeValueIssue(issue, labelOf(field, key), field), { entity, field: key, issue });
 }
 
 /** Throw a `FieldValueError` naming the first value in `data` that does not fit `entity`'s fields. */
 export function assertValuesFit(definition: AppDefinition, entity: string, data: Record<string, unknown>, people?: PeopleIds): void {
   const fields = definition.entities[entity]?.fields;
   if (!fields) return;
-  const problem = recordValueProblem(fields, data, "write");
-  if (problem) throw new FieldValueError(problem);
+  const found = recordValueIssue(fields, data, "write");
+  if (found) refuse(entity, found.field, fields[found.field]!, found.issue);
   for (const [key, value] of Object.entries(data)) {
     const field = fields[key];
-    const member = field && memberProblem(field, value, people, labelOf(field, key));
-    if (member) throw new FieldValueError(member);
+    const member = field && memberIssue(field, value, people);
+    if (member) refuse(entity, key, field, member);
   }
 }
 
@@ -68,13 +76,10 @@ export function assertPatchFits(
     const field = fields[key];
     if (!field) continue;
     const unchanged = current != null && sameStored(current[key], value);
-    const label = labelOf(field, key);
     // Unchanged: someone who has since LEFT may still be named — a ledger entry they paid for stays
     // saveable. Changed: only someone in the app now.
-    const problem =
-      fieldValueProblem(field, value, unchanged ? "read" : "write", label) ??
-      memberProblem(field, value, unchanged ? people?.ever : people?.now, label);
-    if (problem) throw new FieldValueError(problem);
+    const issue = fieldValueIssue(field, value, unchanged ? "read" : "write") ?? memberIssue(field, value, unchanged ? people?.ever : people?.now);
+    if (issue) refuse(entity, key, field, issue);
   }
 }
 
@@ -141,7 +146,7 @@ export async function fittingValue(store: Store, entity: string, id: string, key
   // the benefit of the doubt: the first pass after opening must not blank every guest's records.
   let ever: PeopleIds = field.type === "member" && store.memberIds ? everyone(store, guests) : undefined;
   if (ever && guests && !guests.loaded) ever = new Set([...ever, ...memberIdsIn(field, value).filter(isGuestId)]);
-  const fits = (v: unknown): boolean => fieldValueProblem(field, v, "read") === null && memberProblem(field, v, ever, "") === null;
+  const fits = (v: unknown): boolean => fieldValueProblem(field, v, "read") === null && memberIssue(field, v, ever) === null;
   if (fits(value)) {
     if (field.type === "list" && Array.isArray(value)) return sanitiseListRows(field.of, value as Record<string, unknown>[]);
     return value;

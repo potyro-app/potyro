@@ -137,6 +137,11 @@ Design: docs/04 (every member, with examples); docs/05 (the interfaces).
 - `packages/host/src/make-ctx.ts` `buildCtx` — the direct ctx; `checkShare`, `checkShareFiles`,
   `filesFor`. `values-gate.ts` — every check of app input: `assertValuesFit`, `assertPatchFits`,
   `assertCountable`, the text checks. `resolve.ts` (grep -a) — relation resolution.
+- A failed action, from throw to toast: `packages/schema/src/values.ts` (`ValueIssue`,
+  `FieldRefusal`, `FieldValueError.refusal`) → `packages/host/src/app-error.ts` (`actionFailure`,
+  `AppCodeError`, `HostFault`, `thrownOf`; what crosses a box) → `packages/runtime/src/create-runtime.ts`
+  `actionFailed`, `plainFailure` → `packages/shell/src/failure-words.ts` `failureWords` (the person's
+  language). Tests: `packages/host/test/app-error.test.ts`, `packages/shell/test/failure-words.test.ts`.
 - `packages/runtime/src/core.ts` `RuntimeCore` (the WRITES proxy that refreshes the screen);
   `create-runtime.ts` `createRuntime`; `activity.ts` (the Changes feed as record events).
 - The model's view of ctx: `packages/generator/src/reference.ts` — `REFERENCE_FILES` (the CORE in

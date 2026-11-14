@@ -845,6 +845,35 @@ it and the next reader cannot tell a bug from a tampered change; a `member` valu
 someone in the space. **Authorship** (`packages/host/src/authorship.ts`) stamps `createdBy` from the
 account, never from a value the app supplied.
 
+### When an action fails
+
+An action is the app's code, so it fails for ordinary reasons, and the person who pressed the button
+is told in one toast. What that toast may say is decided by the host, which sorts whatever was thrown
+(`actionFailure` in `packages/host/src/app-error.ts`) into three kinds, the same however the app runs:
+
+- **refused**: the values gate refused a write. The refusal is data as well as a sentence — the
+  entity, the field and the rule the value broke (`FieldRefusal`, `ValueIssue` in
+  `packages/schema/src/values.ts`) — so the shell says it in the person's language with the app's own
+  labels and what the field does take: "Not saved: Grape (Wine) takes Malbec, Merlot, or Syrah."
+  (`packages/shell/src/failure-words.ts`). The English sentence on `FieldValueError.message` is what
+  the app's own `catch` and the console read.
+- **said**: the app threw an `Error` with words of its own (`throw new Error("Pick a photo first")`),
+  or let one of the host's go by whose message is for the person (AI turned off). Those words are the
+  toast, as they are.
+- **broke**: everything else — the engine's own errors (`TypeError`, `ReferenceError`…), a call out
+  of time, a box that was stopped. The toast is one plain sentence, "That did not work".
+
+Nothing a person reads names how the app is run, an error's class or a stack. A sealed box hands back
+what was thrown as data (message, class name, `code`, the refusal), the host rebuilds it as an
+`AppCodeError` with the message as it was said, and the runner's own trouble is a `HostFault`, which
+never reads as the app's words; what a box sends is checked for shape before it is believed. The
+developer's line is not dropped: the runtime logs the error itself (`[potyro] action wine.identify
+failed:`) and reports it to whoever listens to the app's failures (`runtime.onFailure`, the Studio's
+checks) as `{ what, message, shown }` — `message` the thrown error with its class, `shown` the
+sentence the person got. A runtime composed without the shell's words (the generator's headless
+runs, tests) says the same three kinds in English (`plainFailure` in
+`packages/runtime/src/create-runtime.ts`).
+
 ### The code beyond the entry file
 
 An app's own modules and its libraries are code, and code must be the code the app was installed

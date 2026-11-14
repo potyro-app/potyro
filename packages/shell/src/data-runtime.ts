@@ -22,6 +22,7 @@ import { createNavBridge, createUiBridge } from "./ui-bridge.js";
 import { shellDialogs } from "./dialog.js";
 import type { UserApp } from "./user-apps.js";
 import { languagePrefs } from "./locale.js";
+import { failureWords } from "./failure-words.js";
 
 export interface DataEntity {
   key: string;
@@ -106,6 +107,7 @@ export async function openDataSession(app: UserApp, caps: Capabilities): Promise
     ui: createUiBridge(() => {}, undefined, shellDialogs),
     nav: createNavBridge(() => {}),
     languages: languagePrefs(),
+    failureWords,
   });
 
   const entities = Object.entries(declared).map(([key, decl]) => {

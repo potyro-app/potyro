@@ -5,6 +5,7 @@
 
 import type { AppDefinition, Ctx, KeepWhileHidden, PotyroRecord, PermissionManifest, Resolved, UiProgress, UiTimer, Value, Words } from "potyro";
 import type { TimerData } from "../timers.js";
+import { AppCodeError, HostFault, thrownFrom, thrownOf } from "../app-error.js";
 import { catalogFor, localize } from "potyro";
 import { hostPure, PURE_ERROR } from "../format.js";
 import type { Store } from "@potyro/store";
@@ -708,7 +709,7 @@ class IsolateLoadedApp implements LoadedApp {
     const timedOut = new Promise<never>((_, reject) => {
       const check = (): void => {
         const used = Date.now() - started - (this.waitedOnPeople() - waitedBefore);
-        if (used >= this.timeoutMs) reject(new Error(`isolate call timed out after ${this.timeoutMs} ms`));
+        if (used >= this.timeoutMs) reject(new HostFault(`isolate call timed out after ${this.timeoutMs} ms`));
         else timer = setTimeout(check, Math.max(10, this.timeoutMs - used));
       };
       timer = setTimeout(check, this.timeoutMs);
@@ -719,8 +720,9 @@ class IsolateLoadedApp implements LoadedApp {
       const valueHandle = this.vm.unwrapResult(resolved);
       const out = this.vm.getString(valueHandle);
       valueHandle.dispose();
-      const parsed = deserialize<{ ok: boolean; value?: Value; error?: string }>(out);
-      if (!parsed.ok) throw new Error(`isolate app error: ${parsed.error}`);
+      const parsed = deserialize<{ ok: boolean; value?: Value; error?: string; name?: unknown; code?: unknown; refusal?: unknown }>(out);
+      // What the app's code threw, as it said it: no prefix naming the box (#76).
+      if (!parsed.ok) throw new AppCodeError(thrownFrom(parsed));
       return parsed.value ?? null;
     } finally {
       clearTimeout(timer);
@@ -823,11 +825,15 @@ class IsolateLoadedApp implements LoadedApp {
   }
 }
 
-/** An error for the box: its message, and its `code` when it has one (a socket's "denied"), which the harness restores. */
+/**
+ * An error for the box: its message — and, when it has them, its class name, its `code` (a socket's
+ * "denied") and a refused write as data (#76), which the harness restores.
+ */
 function errorForBox(e: unknown): string {
   const message = e instanceof Error ? e.message : String(e);
-  const code = (e as { code?: unknown } | null)?.code;
-  return typeof code === "string" ? JSON.stringify({ __err: message, code }) : message;
+  const { name, code, refusal } = thrownOf(e);
+  if (code === undefined && !refusal && name === "Error") return message;
+  return JSON.stringify({ __err: message, ...(code !== undefined ? { code } : {}), ...(name !== "Error" ? { name } : {}), ...(refusal ? { refusal } : {}) });
 }
 
 /** Build the untrusted loader. Each loaded app gets its own isolate. */

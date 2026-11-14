@@ -42,7 +42,13 @@ export function portTransport(port: MessagePort): Transport & { onReply(msg: Hos
       if (!p) return true;
       pending.delete(msg.id);
       if (msg.ok) p.resolve(msg.value);
-      else p.reject(Object.assign(new Error(msg.error ?? "the host refused"), typeof msg.code === "string" ? { code: msg.code } : {}));
+      else {
+        // The host's error, as a trusted app would have caught it: its class name, its code, and a
+        // refused write as data (#76).
+        const err = new Error(msg.error ?? "the host refused");
+        if (typeof msg.name === "string" && msg.name) err.name = msg.name;
+        p.reject(Object.assign(err, typeof msg.code === "string" ? { code: msg.code } : {}, msg.refusal ? { refusal: msg.refusal } : {}));
+      }
       return true;
     },
   };

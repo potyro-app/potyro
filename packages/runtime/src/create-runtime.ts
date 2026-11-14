@@ -2,7 +2,8 @@
 // few page-aware extras the shell/views use. Views consume this; never Store/Host/Caps.
 
 import type { AppDefinition, Ctx, Id, Localized, PotyroRecord, Resolved, Runtime } from "potyro";
-import { onAppFailure, reportAppFailure, type AppFailure, type BindingRef } from "@potyro/host";
+import { actionFailure, onAppFailure, reportAppFailure, type ActionFailure, type AppFailure, type BindingRef } from "@potyro/host";
+import { describeValueIssue, humanizeKey, plainWords } from "potyro";
 import { RuntimeCore, type RuntimeDeps, type RuntimeLanguage } from "./core.js";
 import { useEntityQuery, usePageQuery, useRecord, type QueryState, type RecordState } from "./hooks.js";
 import { watchEntityQuery, watchPageQuery, watchRecord } from "./watch.js";
@@ -81,8 +82,42 @@ export interface PotyroRuntime extends Runtime {
 
 const messageOf = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
+/** What a person is told when an action fails and nobody supplied the words: plain English, nothing internal. */
+export const ACTION_BROKE = "That did not work";
+
+/**
+ * A failed action in plain English (#76) — the fallback for a runtime nobody gave `failureWords`.
+ * A refused write names the field by the app's label; an app's own words are its words; anything
+ * else is one plain sentence, the detail staying in the console.
+ */
+export function plainFailure(failure: ActionFailure, definition: Localized<AppDefinition>): string {
+  if (failure.kind === "said") return failure.message;
+  if (failure.kind === "broke") return ACTION_BROKE;
+  const field = definition.entities[failure.refusal.entity]?.fields?.[failure.refusal.field];
+  const label = field?.label === undefined ? humanizeKey(failure.refusal.field) : plainWords(field.label);
+  return describeValueIssue(failure.refusal.issue, label, field);
+}
+
 export function createRuntime(deps: RuntimeDeps): PotyroRuntime {
   const core = new RuntimeCore(deps);
+
+  /**
+   * An action failed: tell the person in words meant for them, and keep the developer's line for
+   * the console and for whoever listens to this app's failures (the Studio). Nothing about how the
+   * app is run — its box, an error's class, a stack — is ever in what the person reads (#76).
+   */
+  const actionFailed = (what: string, e: unknown): void => {
+    const failure = actionFailure(e);
+    let shown: string;
+    try {
+      shown = (deps.failureWords ?? plainFailure)(failure, core.definition) || ACTION_BROKE;
+    } catch {
+      shown = ACTION_BROKE; // the words failing must not hide the failure
+    }
+    deps.ui.toast(shown);
+    reportAppFailure({ app: core.definition.id, what, message: failure.detail, shown });
+    console.warn(`[potyro] ${what} failed:`, e);
+  };
 
   // Tell the store what the app declared (KA-38).
   //
@@ -119,10 +154,7 @@ export function createRuntime(deps: RuntimeDeps): PotyroRuntime {
       try {
         await core.runPageAction(pageId, index, params);
       } catch (e) {
-        const message = messageOf(e);
-        deps.ui.toast(message);
-        reportAppFailure({ app: core.definition.id, what: `page action ${pageId}[${index}]`, message });
-        console.warn(`[potyro] page action ${pageId}[${index}] failed:`, e);
+        actionFailed(`page action ${pageId}[${index}]`, e);
       }
     },
     onFailure(cb) {
@@ -204,10 +236,7 @@ export function createRuntime(deps: RuntimeDeps): PotyroRuntime {
       try {
         await core.runAction(entity, key, id, input);
       } catch (e) {
-        const message = messageOf(e);
-        deps.ui.toast(message);
-        reportAppFailure({ app: core.definition.id, what: `action ${entity}.${key}`, message });
-        console.warn(`[potyro] action ${entity}.${key} failed:`, e);
+        actionFailed(`action ${entity}.${key}`, e);
       }
     },
     create(entity, data): Promise<PotyroRecord> {

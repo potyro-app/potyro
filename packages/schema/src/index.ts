@@ -7,7 +7,7 @@ export { LUCIDE_NAME, ICON_MAX, GLYPH_MAX, ICON_IMAGE_MAX, isLucideName, isImage
 export { actionInfo, actionInputProblem, actionRun, type ActionInfo } from "./actions.js";
 export { computedInfo, computedRun, type ComputedInfo } from "./computed.js";
 export { formatMoney, parseMoney, splitEvenly, splitByShares, shareOf, minorDigits } from "./money.js";
-export { fieldValueProblem, recordValueProblem, sanitiseListRows, FieldValueError, type ValueCheck } from "./values.js";
+export { fieldValueProblem, fieldValueIssue, recordValueProblem, recordValueIssue, describeValueIssue, sanitiseListRows, FieldValueError, type ValueCheck, type ValueIssue, type FieldRefusal } from "./values.js";
 export { structureSchema, checkReferences, checkFormFields, describeIssue, ValidationError, VIEW_FIELDS, VIEW_WORDS, PAGE_FIELDS } from "./validate.js";
 // What an app declares, as JSON for a package's manifest (#271): written by `potyro pack`, read by the store.
 export { FN_MARKER, declareApp, describeApp, parseDeclaration, declarationProblem, type AppDeclaration } from "./declaration.js";
