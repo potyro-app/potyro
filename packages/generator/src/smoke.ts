@@ -169,6 +169,11 @@ export interface SmokeOptions {
    * page for real anyway — the Studio does (#262), with effects, in a DOM.
    */
   customViews?: boolean;
+  /**
+   * Run around each entity action (#74), to see what it did besides throwing — the Studio's run
+   * watches which ones asked its stand-in AI. It must call `run` once and let what it throws through.
+   */
+  aroundAction?: (action: { entity: string; key: string; id: Id }, run: () => Promise<void>) => Promise<void>;
 }
 
 /**
@@ -308,7 +313,8 @@ async function smokeSteps(app: AppDefinition & { id: string }, runtime: PotyroRu
         const input = seededInput(entity, key, created);
         // `core`, not `runtime.runAction`: the latter turns a failure into a toast (right for a button,
         // wrong here) and this bridge drops toasts, so a hallucinated ctx method passed silently.
-        await runtime.core.runAction(name, key, id, input);
+        const call = () => runtime.core.runAction(name, key, id, input);
+        await (opts.aroundAction ? opts.aroundAction({ entity: name, key, id }, call) : call());
         ran.actions++;
       } catch (e) {
         actionsOk = false;

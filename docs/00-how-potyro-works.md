@@ -1135,7 +1135,20 @@ an entity or a page is sent back with the loss named (`packages/generator/src/gu
 a whole-file reply is still accepted but labelled, so the Studio says so. A candidate that passes
 is then run (`packages/shell/src/run-candidate.ts`): on a throwaway store seeded with sample
 records, in the isolate with a budget, every computed value, filter, action and reminder runs and
-every page is mounted; what threw comes back as errors and a page that shows nothing as a warning;
+every page is mounted; what threw comes back as errors and a page that shows nothing as a warning,
+as does a filter chip that can never offer a choice (`deadFilters` in `packages/shell/src/render-pages.tsx`).
+What an action commonly starts with stands in, so the rest of it runs: the camera hands over a small
+picture and `ctx.caps.ai` answers whatever shape is asked for, from the shape alone — no model is
+called (`StandInAi` in `packages/capabilities/src/stand-in-ai.ts`). An action that read such an
+answer, a page's own button included, is run again on the answers a real model gives and its author
+did not imagine — everything optional missing, then every free text a string no list holds
+(`packages/shell/src/run-ai-answers.ts`) — and a throw or a refused write comes back naming the
+action, the answer and the cause, sorted as the host sorts a failure (`actionFailure`): a refused
+write says the field and what it takes from the refusal's own data — `the "Scan label" action
+(bottle.scanLabel) fails when the AI answers grape with text that is in no list (…): its write to
+bottle.grape is refused — grape takes one of "merlot", "syrah"` — and a call the runner cut short is
+one that "does not finish". Only the actions that asked
+get the extra runs, inside a budget of their own. In every case
 the candidate is judged against the original's own run, so failures the app already had are context
 and never a reason to refuse the change. A model that repeats itself has stopped reasoning: the
 repeated turns are rolled back and one note says what was tried and the ways out; a second repeat
@@ -1254,7 +1267,7 @@ The evals cost real money per call and are never started without being asked.
 - `packages/generator/src/reference.ts`, `packages/generator/src/corpus.ts` — what the model is given
 - `packages/generator/src/agent/create-loop.ts`, `packages/generator/src/agent/modify-loop.ts`, `packages/generator/src/agent/loop.ts`, `packages/generator/src/agent/tools.ts`, `packages/generator/src/agent/discovery-tools.ts`, `packages/generator/src/agent/app-tools.ts`, `packages/generator/src/agent/loop-recovery.ts`, `packages/generator/src/agent/platform-request.ts` — the loops
 - `packages/generator/src/edits.ts`, `packages/generator/src/guarded-modify.ts`, `packages/generator/src/data-safety.ts` — edits and what they must keep
-- `packages/shell/src/run-candidate.ts`, `packages/shell/src/verify-candidate.ts`, `packages/runtime/src/case.ts`, `packages/runtime/src/replay.ts` — the gates
+- `packages/shell/src/run-candidate.ts`, `packages/shell/src/run-ai-answers.ts`, `packages/shell/src/verify-candidate.ts`, `packages/runtime/src/case.ts`, `packages/runtime/src/replay.ts` — the gates
 - `packages/shell/src/app-history.ts`, `packages/shell/src/studio-chat.ts`, `packages/shell/src/code-files.ts`, `packages/shell/src/studio-libraries.ts` — versions, the conversation, files
 - `packages/shell/src/point-mode.tsx`, `packages/shell/src/point-target.ts`, `packages/shell/src/inline-edit.tsx`, `packages/shell/src/inline-targets.ts`, `packages/shell/src/studio-voice.ts` — pointing, edit mode, voice
 - `packages/generator/src/agent/ask.ts`, `packages/generator/src/agent/evidence.ts`, `packages/generator/src/agent/verify-claims.ts` — Ask

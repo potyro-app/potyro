@@ -1,6 +1,7 @@
 // @potyro/capabilities — native-feature seam.
 export type { Capabilities, CameraCap, NotificationCap, GeoCap, FileCap, NetworkCap, HapticsCap, AiCap, AiCall, AiReply, AiConsentWords, PrivacyTopic, ShareCap, SharePayload } from "./types.js";
 export { FakeCapabilities, FakeNotifications, FakeAi, type FakeOptions } from "./fake.js";
+export { StandInAi, answerSchema, standInPicture, AI_ANSWER_PASSES, UNLISTED_TEXT, type AiAnswer, type AiAnswerPass, type ListedValues } from "./stand-in-ai.js";
 export { WebCapabilities, createWebCapabilities, pickFilesFromInput, webShare } from "./web.js";
 export {
   createLiveCamera,

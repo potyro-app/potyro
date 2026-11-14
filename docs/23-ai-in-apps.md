@@ -270,7 +270,8 @@ environment variable.
 | `AiCap` (send one request) | `@potyro/capabilities` | the platform seam (docs/05); optional, composed by the shell |
 | shape check, JSON Schema, prompt, validation, retry, image resolving | `@potyro/host` `ai.ts` | the same for every runner; mediation in `mediate.ts` |
 | realm op `caps.ai.extract` / `caps.ai.ask` | `@potyro/host` realm | allow-listed in `OPS`; a `Blob` crosses by structured clone |
-| QuickJS ops `cap.ai.*` | `@potyro/host` isolate | bytes cross as base64; a `FileRef` / `MediaRef` as itself |
+| QuickJS ops `cap.ai.*` | `@potyro/host` isolate | bytes cross as base64; a `FileRef` / `MediaRef` as itself; a capture (`cap.camera.capture`) stays with the host and the box holds its number, so `ctx.media.put` and `image` move no bytes; bytes the app reads or hands over cross as buffers, at most 25 MB each and 50 MB on their way at once, dropped when its calls end |
+| the stand-in the Studio's run answers with (`StandInAi`) | `@potyro/capabilities` `stand-in-ai.ts`, `@potyro/shell` `run-ai-answers.ts` | a candidate's AI actions run on plausible, missing and unlisted answers; no model is called (docs/00) |
 | free first, own key, resize, offline, timeouts, guards, spend, on/off | `@potyro/shell` `app-ai.ts` | holds the key and the person's choices |
 | wire format, OpenRouter body, relay, server | `@potyro/ai-relay` | browser-safe format + Node relay, no Potyro dependencies |
 | the Studio's and Ask's chat route, its dollar allowance, the demand counts | `@potyro/ai-relay` `chat.ts`, `counts.ts`, `ledger.ts` | the same key, the same cap, the same ledger |
