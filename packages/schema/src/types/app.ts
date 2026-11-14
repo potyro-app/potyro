@@ -230,8 +230,9 @@ export interface CalendarView {
  *  - `from` naming an ENTITY → record chips: one chip per record of that entity (its `displayField`),
  *    param = the selected record ids (string[]). This is how a list or map is narrowed to "the
  *    trip / the project / the person" chosen by the user.
- *  - otherwise `from` names an enum/tags field whose options become selectable chips (single, or
- *    multi when `multi` is set). */
+ *  - otherwise `from` names a field: an enum/tags field's options — or, for a field with none
+ *    (text, number, free tags), the distinct values its records hold — become selectable chips
+ *    (single, or multi when `multi` is set). */
 export interface FilterChip {
   label: Words;
   param: string;

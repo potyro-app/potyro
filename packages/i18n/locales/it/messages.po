@@ -5081,6 +5081,7 @@ msgid "Nothing to load"
 msgstr "Niente da caricare"
 
 #: ../shell/src/filter-chrome.tsx
+#: ../shell/src/filter-chrome.tsx
 msgid "Nothing to pick yet."
 msgstr "Ancora niente da scegliere."
 

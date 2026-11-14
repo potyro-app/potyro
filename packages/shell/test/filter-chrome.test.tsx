@@ -193,3 +193,157 @@ describe("FilterChrome shows what was chosen", () => {
     expect(setParam).toHaveBeenCalledWith("kind", undefined);
   });
 });
+
+// A field with no declared options (#79): the choices are the values the records hold. A generated
+// list declared `from: "country"` on a text field and its Filter sheet opened on nothing.
+const booksApp = defineApp({
+  id: "books-fixture",
+  name: "Books Fixture",
+  version: "1.0.0",
+  schemaVersion: 1,
+  entities: {
+    book: {
+      label: "Book",
+      displayField: "title",
+      fields: {
+        title: { type: "text", required: true },
+        country: { type: "text" },
+        year: { type: "number" },
+        shelf: { type: "tags" },
+        cover: { type: "file" },
+      },
+    },
+  },
+  pages: [
+    {
+      id: "books",
+      title: "Books",
+      view: {
+        type: "list",
+        entity: "book",
+        filters: [
+          { label: "Country", param: "country", from: "country", multi: true },
+          { label: "Year", param: "year", from: "year" },
+          { label: "Shelf", param: "shelf", from: "shelf" },
+        ],
+        display: { primary: "title" },
+      },
+    },
+    {
+      id: "covers",
+      title: "Covers",
+      view: {
+        type: "list",
+        entity: "book",
+        filters: [
+          { label: "Cover", param: "cover", from: "cover" },
+          { label: "Gone", param: "gone", from: "noSuchField" },
+        ],
+        display: { primary: "title" },
+      },
+    },
+  ],
+});
+
+async function booksRuntime(books: Record<string, unknown>[]): Promise<PotyroRuntime> {
+  const store = new MemoryStore();
+  await store.open("books-fixture");
+  for (const book of books) await store.insert("book", book);
+  const ui: UiBridge = { toast: () => {}, confirm: async () => true, prompt: async () => null, pick: async () => null };
+  const host = createHost();
+  const loaded = await host.load({ kind: "module", app: booksApp });
+  return createRuntime({ app: loaded, host, store, caps: new FakeCapabilities(), ui, nav: { navigate: () => {} } });
+}
+
+describe("FilterChrome offers the values the records hold (#79)", () => {
+  const books = [
+    { title: "Solaris", country: "Poland", year: 1961, shelf: ["sci-fi", "classics"] },
+    { title: "Ferdydurke", country: "Poland", year: 1937, shelf: ["classics"] },
+    { title: "Il nome della rosa", country: "Italy", year: 1980 },
+    { title: "Untitled", country: "" },
+  ];
+
+  it("lists a text field's distinct values, sorted, without the empty one", async () => {
+    const runtime = await booksRuntime(books);
+    const setParam = vi.fn();
+    render(<FilterChrome runtime={runtime} pageId="books" params={{}} setParam={setParam} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Filter/ }));
+    const group = await screen.findByRole("group", { name: "Country" });
+    await waitFor(() => expect(group.querySelectorAll(".k-chip")).toHaveLength(2));
+    expect([...group.querySelectorAll(".k-chip")].map((c) => c.textContent)).toEqual(["Italy", "Poland"]);
+    expect(group.textContent).not.toContain("Nothing to pick yet.");
+  });
+
+  it("writes the same param an enum would: an array when multi, the value itself when not", async () => {
+    const runtime = await booksRuntime(books);
+    const setParam = vi.fn();
+    const { rerender } = render(<FilterChrome runtime={runtime} pageId="books" params={{}} setParam={setParam} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Filter/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Poland" }));
+    expect(setParam).toHaveBeenCalledWith("country", ["Poland"]);
+
+    // A second choice joins the first; choosing one again takes it off.
+    rerender(<FilterChrome runtime={runtime} pageId="books" params={{ country: ["Poland"] }} setParam={setParam} />);
+    expect(screen.getByRole("button", { name: "Poland" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Italy" }));
+    expect(setParam).toHaveBeenCalledWith("country", ["Poland", "Italy"]);
+    fireEvent.click(screen.getByRole("button", { name: "Poland" }));
+    expect(setParam).toHaveBeenLastCalledWith("country", undefined);
+
+    // Free tags: each entry is a choice. Single-select → the bare value.
+    fireEvent.click(screen.getByRole("button", { name: "sci-fi" }));
+    expect(setParam).toHaveBeenLastCalledWith("shelf", "sci-fi");
+  });
+
+  it("keeps a number a number, so the app's filter can compare it to the field", async () => {
+    const runtime = await booksRuntime(books);
+    const setParam = vi.fn();
+    const { rerender } = render(<FilterChrome runtime={runtime} pageId="books" params={{}} setParam={setParam} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Filter/ }));
+    const group = await screen.findByRole("group", { name: "Year" });
+    await waitFor(() => expect([...group.querySelectorAll(".k-chip")].map((c) => c.textContent)).toEqual(["1937", "1961", "1980"]));
+    fireEvent.click(screen.getByRole("button", { name: "1961" }));
+    expect(setParam).toHaveBeenCalledWith("year", 1961);
+
+    // Chosen, it shows beside the button and comes off with a tap.
+    rerender(<FilterChrome runtime={runtime} pageId="books" params={{ year: 1961 }} setParam={setParam} />);
+    expect(screen.getByRole("button", { name: "1961" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: /Year: 1961/ }));
+    expect(setParam).toHaveBeenLastCalledWith("year", undefined);
+  });
+
+  it("takes one of several chosen values off without touching the others", async () => {
+    const runtime = await booksRuntime(books);
+    const setParam = vi.fn();
+    render(<FilterChrome runtime={runtime} pageId="books" params={{ country: ["Poland", "Italy"] }} setParam={setParam} />);
+    fireEvent.click(screen.getByRole("button", { name: /Country: Italy/ }));
+    expect(setParam).toHaveBeenCalledWith("country", ["Poland"]);
+  });
+
+  it("still offers a chosen value whose last record is gone, so it can be taken off", async () => {
+    const runtime = await booksRuntime(books);
+    const setParam = vi.fn();
+    render(<FilterChrome runtime={runtime} pageId="books" params={{ country: ["Brazil"] }} setParam={setParam} />);
+    fireEvent.click(screen.getByRole("button", { name: /Filter/ }));
+    const group = await screen.findByRole("group", { name: "Country" });
+    await waitFor(() => expect([...group.querySelectorAll(".k-chip")].map((c) => c.textContent)).toEqual(["Italy", "Poland", "Brazil"]));
+  });
+
+  it("says there is nothing to pick while there are no records, rather than an empty sheet", async () => {
+    const runtime = await booksRuntime([]);
+    render(<FilterChrome runtime={runtime} pageId="books" params={{}} setParam={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Filter/ }));
+    const group = await screen.findByRole("group", { name: "Country" });
+    await waitFor(() => expect(group.textContent).toContain("Nothing to pick yet."));
+    expect(group.querySelectorAll(".k-chip")).toHaveLength(0);
+  });
+
+  it("offers no Filter button when no chip could ever have a choice", async () => {
+    const runtime = await booksRuntime(books);
+    render(<FilterChrome runtime={runtime} pageId="covers" params={{}} setParam={() => {}} />);
+    expect(screen.queryByRole("button", { name: /Filter/ })).toBeNull();
+  });
+});
