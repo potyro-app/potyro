@@ -75,7 +75,7 @@ const fieldOf = (chip: FilterChip, entity: string, runtime: PotyroRuntime): Choi
  * file) — is left out, and the Filter button with it when it was the only one: a sheet that opens on
  * nothing reads as the app being broken (#79).
  */
-function canOffer(chip: FilterChip, entity: string, runtime: PotyroRuntime): boolean {
+export function chipCanOffer(chip: FilterChip, entity: string, runtime: PotyroRuntime): boolean {
   if (!chip.from) return false;
   if (runtime.definition.entities[chip.from]) return true;
   const field = fieldOf(chip, entity, runtime);
@@ -148,7 +148,7 @@ export function FilterChrome({ runtime, pageId, params, setParam }: ChromeProps)
   }
 
   const entity = view!.entity ?? "";
-  const options = filters.filter((c) => isOptionChip(c) && canOffer(c, entity, runtime));
+  const options = filters.filter((c) => isOptionChip(c) && chipCanOffer(c, entity, runtime));
   // A box to type in gets a line of its own, the width of the screen: it is what someone with three
   // hundred rows came for. Everything else is one row of chips under it, scrolling sideways on a
   // phone rather than stacking three rows of choices above the content.
