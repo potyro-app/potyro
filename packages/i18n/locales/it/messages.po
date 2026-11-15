@@ -334,6 +334,11 @@ msgstr "{0, plural, one {Spostata # app} other {Spostate # app}}"
 msgid "{0, plural, one {New in {entity}: a {names} field.} other {New in {entity}: the fields {names}.}}"
 msgstr "{0, plural, one {Novità in {entity}: il campo {names}.} other {Novità in {entity}: i campi {names}.}}"
 
+#. placeholder {0}: fills.added.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {New in the {entity} form: a {names} button.} other {New in the {entity} form: the buttons {names}.}}"
+msgstr "{0, plural, one {Novità nel modulo {entity}: il pulsante {names}.} other {Novità nel modulo {entity}: i pulsanti {names}.}}"
+
 #. placeholder {0}: d.added.length
 #: ../shell/src/studio-summary.ts
 msgid "{0, plural, one {New on each record of {entity}: a {names} button.} other {New on each record of {entity}: the buttons {names}.}}"
@@ -373,6 +378,11 @@ msgstr "{0, plural, one {Letto da # indirizzo} other {Letto da # indirizzi}}"
 #: ../shell/src/studio-summary.ts
 msgid "{0, plural, one {Removed from {entity}: the {names} field.} other {Removed from {entity}: the fields {names}.}}"
 msgstr "{0, plural, one {Rimosso da {entity}: il campo {names}.} other {Rimossi da {entity}: i campi {names}.}}"
+
+#. placeholder {0}: fills.removed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Removed from the {entity} form: the {names} button.} other {Removed from the {entity} form: the buttons {names}.}}"
+msgstr "{0, plural, one {Tolto dal modulo {entity}: il pulsante {names}.} other {Tolti dal modulo {entity}: i pulsanti {names}.}}"
 
 #. placeholder {0}: d.removed.length
 #: ../shell/src/studio-summary.ts

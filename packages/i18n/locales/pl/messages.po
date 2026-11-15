@@ -334,6 +334,11 @@ msgstr "{0, plural, one {Przeniesiono # aplikację} few {Przeniesiono # aplikacj
 msgid "{0, plural, one {New in {entity}: a {names} field.} other {New in {entity}: the fields {names}.}}"
 msgstr "{0, plural, one {Nowe w {entity}: pole {names}.} few {Nowe w {entity}: pola {names}.} many {Nowe w {entity}: pola {names}.} other {Nowe w {entity}: pola {names}.}}"
 
+#. placeholder {0}: fills.added.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {New in the {entity} form: a {names} button.} other {New in the {entity} form: the buttons {names}.}}"
+msgstr "{0, plural, one {Nowe w formularzu {entity}: przycisk {names}.} few {Nowe w formularzu {entity}: przyciski {names}.} many {Nowe w formularzu {entity}: przyciski {names}.} other {Nowe w formularzu {entity}: przyciski {names}.}}"
+
 #. placeholder {0}: d.added.length
 #: ../shell/src/studio-summary.ts
 msgid "{0, plural, one {New on each record of {entity}: a {names} button.} other {New on each record of {entity}: the buttons {names}.}}"
@@ -373,6 +378,11 @@ msgstr "{0, plural, one {Odczytano z # adresu} few {Odczytano z # adresów} many
 #: ../shell/src/studio-summary.ts
 msgid "{0, plural, one {Removed from {entity}: the {names} field.} other {Removed from {entity}: the fields {names}.}}"
 msgstr "{0, plural, one {Usunięto z {entity}: pole {names}.} few {Usunięto z {entity}: pola {names}.} many {Usunięto z {entity}: pola {names}.} other {Usunięto z {entity}: pola {names}.}}"
+
+#. placeholder {0}: fills.removed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Removed from the {entity} form: the {names} button.} other {Removed from the {entity} form: the buttons {names}.}}"
+msgstr "{0, plural, one {Usunięto z formularza {entity}: przycisk {names}.} few {Usunięto z formularza {entity}: przyciski {names}.} many {Usunięto z formularza {entity}: przyciski {names}.} other {Usunięto z formularza {entity}: przyciski {names}.}}"
 
 #. placeholder {0}: d.removed.length
 #: ../shell/src/studio-summary.ts
