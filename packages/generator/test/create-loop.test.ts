@@ -54,7 +54,7 @@ describe("runCreateLoop", () => {
     expect(seen).toHaveLength(1);
     // The create turn, with the tools offered, at the single-shot create's temperature.
     expect(seen[0]!.messages[1]!.content).toContain('Create a Potyro app for this request:\n\n"a reading tracker"');
-    expect(seen[0]!.tools?.map((t) => t.function.name)).toEqual(["lookup"]);
+    expect(seen[0]!.tools?.map((t) => t.function.name)).toEqual(["lookup", "ask_person"]);
     expect(seen[0]!.temperature).toBe(0.2);
   });
 
@@ -136,10 +136,11 @@ describe("runCreateLoop", () => {
 
   it("a question before building ends the loop, with no second draft (#261); ASK: reads the same", async () => {
     const { engine, seen } = scripted([{ content: "QUESTION: Do you want to rate the books?" }]);
-    expect(await runCreateLoop(base({ engine }))).toEqual({ kind: "question", text: "Do you want to rate the books?" });
+    // The question, and the run it paused (#75): its conversation, one question asked, one call spent.
+    expect(await runCreateLoop(base({ engine }))).toMatchObject({ kind: "question", text: "Do you want to rate the books?", asked: 1, steps: 1 });
     expect(seen).toHaveLength(1);
     const asked = scripted([{ content: "ASK: Paper books, or e-books too?" }]);
-    expect(await runCreateLoop(base({ engine: asked.engine }))).toEqual({ kind: "question", text: "Paper books, or e-books too?" });
+    expect(await runCreateLoop(base({ engine: asked.engine }))).toMatchObject({ kind: "question", text: "Paper books, or e-books too?" });
   });
 
   it("NEEDS-PLATFORM is sent to the tools once, then written up with the tools off (#263)", async () => {

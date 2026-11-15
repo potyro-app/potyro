@@ -1184,6 +1184,41 @@ which parts of the request it left out; what it lists under `Not done:` follows 
 count of edits is said only when neither the model nor the app has anything to show. Code saved by
 hand with nothing changed records no version.
 
+**A session, not one shot** (#75). A request used to end in a version or a failure, with nothing in
+between. Three things now sit in between, and none of them is a second model call made to look
+careful.
+
+*It asks, with answers to tap.* The create and modify loops have a tool, `ask_person`
+(`packages/generator/src/agent/tools.ts`): one question, two to four likely answers, and whether an
+answer in the person's own words is welcome. Calling it does not end the run, it **pauses** it: the
+outcome carries the conversation so far and the call that waits (`PausedRun`), the Studio shows the
+choices as buttons, and the answer goes back in as that call's result, so everything the model had
+looked up is still in front of it. A model that calls no tools asks with the marker instead, its
+choices on lines starting `- `. The loop allows two questions for one request
+(`MAX_QUESTIONS`); a third is answered with "decide, and say what you guessed". The paused run is
+held in memory (`packages/shell/src/studio-paused.ts`) and is dropped when the app's source has
+changed since it asked; the question and its choices are kept with the conversation, so after a
+reload the buttons are still there and the answer starts a run from the conversation, as every
+answer did before.
+
+*It says what it guessed.* The prompts tell the model to ask only when the answer changes what gets
+built, and otherwise to decide and list each guess under `Assumed:` (at most four are kept,
+`MAX_ASSUMED` in `packages/generator/src/prompt.ts`). The guesses ride on the outcome and the
+version's card lists them as buttons: a tap puts the guess in the box for the person to correct, and
+sends nothing. The next run is told what the last version guessed.
+
+*It shows a change that is not small before saving it* (`packages/shell/src/studio-plan.ts`). The
+change is made and passes every gate first; then the host, never the model, decides from the app
+before and after and the records on the device whether it is small. It is not small when a kind of
+record that has records is removed, when a field that records hold something in is removed (a
+migration that renames it keeps the records, and the plan says so), when a field changes kind, when
+a page is removed, or when more than four pages and kinds of record are added or changed at once
+(`PLAN_MAX_PARTS`). Then the card says what will change and what happens to what the person has
+entered, counted from their records ("2 records of “Bottle” will lose what is in “Grape”"), with
+**Go** and **Change something**. Go saves exactly the candidate that was checked and asks no model
+again; a message typed instead refines that candidate. A new app is never planned. The candidate
+waits in memory only: closed before Go, the conversation keeps its words and says it was not saved.
+
 **Fix** (`packages/generator/src/agent/loop.ts`, `packages/shell/src/verify-candidate.ts`) is for
 "this does not work". The person records a **case**: what they did, as the app's own navigation
 vocabulary rather than a DOM recording, and what they expected. The case is replayed first against
@@ -1197,9 +1232,10 @@ about itself: a question, a diagnosis that the fault is not the app's, exhaustio
 The tools (`packages/generator/src/agent/tools.ts`): `lookup` a declaration, `example` and
 `search_corpus` and `read` the corpus, `check` a candidate, `inspect_app`, `query_data` and
 `replay_case` against the running app, `read_conversation` for what was said about earlier
-versions, and `translate` for an app's catalogs. Every failure, a hallucinated tool name included,
+versions, and `translate` for an app's catalogs, and `ask_person` to put a question to the person (above). Every failure, a hallucinated tool name included,
 comes back as a result the model can act on, never as a thrown error that ends the loop. Two
-markers end a turn honestly: `ASK:` (`QUESTION:` in the create loop) before building, and
+markers end a turn honestly: `ASK:` (`QUESTION:` in the create loop) before building, which is what
+`ask_person` is for a model without tools, and
 `NOT-IN-APP:` for a request that is not the app's to change, accepted only after the model has
 actually looked. A third, `NEEDS-PLATFORM:`, is offered by
 the harness where the loop has evidence that Potyro itself lacks something, and the Studio then
@@ -1290,6 +1326,7 @@ The evals cost real money per call and are never started without being asked.
 - `packages/generator/src/edits.ts`, `packages/generator/src/guarded-modify.ts`, `packages/generator/src/data-safety.ts` — edits and what they must keep
 - `packages/shell/src/run-candidate.ts`, `packages/shell/src/run-ai-answers.ts`, `packages/shell/src/verify-candidate.ts`, `packages/runtime/src/case.ts`, `packages/runtime/src/replay.ts` — the gates
 - `packages/shell/src/app-history.ts`, `packages/shell/src/studio-chat.ts`, `packages/shell/src/code-files.ts`, `packages/shell/src/studio-libraries.ts` — versions, the conversation, files
+- `packages/shell/src/studio-paused.ts`, `packages/shell/src/studio-plan.ts`, `packages/shell/src/studio-summary.ts`, `packages/shell/src/studio-thread-view.tsx` — a question that waits, a plan before a change that is not small, what the cards say
 - `packages/shell/src/point-mode.tsx`, `packages/shell/src/point-target.ts`, `packages/shell/src/inline-edit.tsx`, `packages/shell/src/inline-targets.ts`, `packages/shell/src/studio-voice.ts` — pointing, edit mode, voice
 - `packages/generator/src/agent/ask.ts`, `packages/generator/src/agent/evidence.ts`, `packages/generator/src/agent/verify-claims.ts` — Ask
 - `packages/generator/scripts` — the evals

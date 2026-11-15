@@ -334,6 +334,11 @@ msgstr "{0, plural, one {A gente moveu # app} other {A gente moveu # apps}}"
 msgid "{0, plural, one {New in {entity}: a {names} field.} other {New in {entity}: the fields {names}.}}"
 msgstr "{0, plural, one {Novidade em {entity}: o campo {names}.} other {Novidade em {entity}: os campos {names}.}}"
 
+#. placeholder {0}: fills.added.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {New in the {entity} form: a {names} button.} other {New in the {entity} form: the buttons {names}.}}"
+msgstr "{0, plural, one {Novidade no formulário de {entity}: o botão {names}.} other {Novidade no formulário de {entity}: os botões {names}.}}"
+
 #. placeholder {0}: d.added.length
 #: ../shell/src/studio-summary.ts
 msgid "{0, plural, one {New on each record of {entity}: a {names} button.} other {New on each record of {entity}: the buttons {names}.}}"
@@ -373,6 +378,11 @@ msgstr "{0, plural, one {Lido de # endereço} other {Lido de # endereços}}"
 #: ../shell/src/studio-summary.ts
 msgid "{0, plural, one {Removed from {entity}: the {names} field.} other {Removed from {entity}: the fields {names}.}}"
 msgstr "{0, plural, one {Saiu de {entity}: o campo {names}.} other {Saíram de {entity}: os campos {names}.}}"
+
+#. placeholder {0}: fills.removed.length
+#: ../shell/src/studio-summary.ts
+msgid "{0, plural, one {Removed from the {entity} form: the {names} button.} other {Removed from the {entity} form: the buttons {names}.}}"
+msgstr "{0, plural, one {Removido do formulário de {entity}: o botão {names}.} other {Removidos do formulário de {entity}: os botões {names}.}}"
 
 #. placeholder {0}: d.removed.length
 #: ../shell/src/studio-summary.ts
@@ -425,6 +435,12 @@ msgstr "{0, plural, one {A versão nova não vem mais com {removedFiles}, então
 #: ../shell/src/realm-probe-screen.tsx
 msgid "{0} ms"
 msgstr "{0} ms"
+
+#. A Studio card for a change that waits for the person's Go before it is saved
+#. placeholder {0}: plan.name
+#: ../shell/src/studio-thread-view.tsx
+msgid "{0}, a change not saved yet"
+msgstr "{0}, uma mudança ainda não salva"
 
 #. A Studio card for a version that was made but not saved
 #. placeholder {0}: held.name
@@ -904,9 +920,29 @@ msgstr "{more, plural, one {Encontrado em {sites} e em mais #} other {Encontrado
 msgid "{n, plural, one {{chartName}: # bar. The values are in the table that follows.} other {{chartName}: # bars. The values are in the table that follows.}}"
 msgstr "{n, plural, one {{chartName}: # barra. Os valores estão na tabela a seguir.} other {{chartName}: # barras. Os valores estão na tabela a seguir.}}"
 
+#: ../shell/src/studio-plan.ts
+msgid "{n, plural, one {# record of {kind} has something in {field}, which becomes a different kind of field: it may not read the same.} other {# records of {kind} have something in {field}, which becomes a different kind of field: it may not read the same.}}"
+msgstr "{n, plural, one {# registro de {kind} tem algo em {field}, que passa a ser outro tipo de campo: pode não aparecer do mesmo jeito.} other {# registros de {kind} têm algo em {field}, que passa a ser outro tipo de campo: pode não aparecer do mesmo jeito.}}"
+
+#: ../shell/src/studio-plan.ts
+msgid "{n, plural, one {# record of {kind} is kept, as {to}.} other {# records of {kind} are kept, as {to}.}}"
+msgstr "{n, plural, one {# registro de {kind} é mantido, como {to}.} other {# registros de {kind} são mantidos, como {to}.}}"
+
+#: ../shell/src/studio-plan.ts
+msgid "{n, plural, one {# record of {kind} will lose what is in {field}.} other {# records of {kind} will lose what is in {field}.}}"
+msgstr "{n, plural, one {# registro de {kind} vai perder o que está em {field}.} other {# registros de {kind} vão perder o que está em {field}.}}"
+
+#: ../shell/src/studio-plan.ts
+msgid "{n, plural, one {# record of {kind} will no longer be in the app.} other {# records of {kind} will no longer be in the app.}}"
+msgstr "{n, plural, one {# registro de {kind} não estará mais no app.} other {# registros de {kind} não estarão mais no app.}}"
+
 #: ../shell/src/studio-engine.ts
 msgid "{n, plural, one {Applied # edit.} other {Applied # edits.}}"
 msgstr "{n, plural, one {A gente fez # mudança.} other {A gente fez # mudanças.}}"
+
+#: ../shell/src/studio-plan.ts
+msgid "{n, plural, one {What # record of {kind} has in {field} is kept, under {to}.} other {What # records of {kind} have in {field} is kept, under {to}.}}"
+msgstr "{n, plural, one {O que # registro de {kind} tem em {field} é mantido, em {to}.} other {O que # registros de {kind} têm em {field} é mantido, em {to}.}}"
 
 #. A size in bytes
 #. A size in bytes
@@ -1366,6 +1402,11 @@ msgstr "Uma URL de websocket: wss://… em uma página segura, já que o navegad
 msgid "A–Z"
 msgstr "A–Z"
 
+#. Put in the Studio's box when a guess on a version's card is tapped; the person finishes the sentence
+#: ../shell/src/studio.tsx
+msgid "About “{guess}”: "
+msgstr "Sobre “{guess}”: "
+
 #. The part of the app a message is about
 #. The part of the app a message is about
 #. placeholder {0}: item.point.label
@@ -1774,6 +1815,11 @@ msgstr "Um app entra nos seus apps. Qualquer outro arquivo vai pro app que você
 #: ../shell/src/free-panel.tsx
 msgid "Anonymous counts are off in You, so nothing was sent."
 msgstr "As contagens anônimas estão desligadas em Você, então nada foi enviado."
+
+#. The buttons under a question the Studio asked: each is one answer
+#: ../shell/src/studio-thread-view.tsx
+msgid "Answers to choose from"
+msgstr "Respostas para escolher"
 
 #. Company name; keep as is
 #: ../shell/src/engines.ts
@@ -2297,6 +2343,11 @@ msgstr "Mudar nome da página"
 #: ../shell/src/identity-panel.tsx
 msgid "Change relay"
 msgstr "Trocar servidor"
+
+#. Studio plan card: do not save it; say what should be different
+#: ../shell/src/studio-thread-view.tsx
+msgid "Change something"
+msgstr "Mudar algo"
 
 #: ../shell/src/inline-edit.tsx
 msgid "Change text"
@@ -3676,6 +3727,11 @@ msgstr "Dá um nome pra ela."
 msgid "Give the server’s address first."
 msgstr "Coloca o endereço do servidor primeiro."
 
+#. Studio plan card: keep the change exactly as it was made
+#: ../shell/src/studio-thread-view.tsx
+msgid "Go"
+msgstr "Seguir"
+
 #: ../shell/src/studio.tsx
 msgid "Go back"
 msgstr "Voltar"
@@ -3926,6 +3982,16 @@ msgstr "Não mudei o app: o que você pediu precisa de algo que o Potyro ainda n
 #: ../shell/src/studio-engine.ts
 msgid "I didn't make the app: what you asked for needs something Potyro can't do yet."
 msgstr "Não fiz o app: o que você pediu precisa de algo que o Potyro ainda não sabe fazer."
+
+#. Above the list of guesses on a version's card, when they cannot be tapped
+#: ../shell/src/studio-thread-view.tsx
+msgid "I guessed these."
+msgstr "Isto eu supus."
+
+#. Above the list of guesses on a version's card; each guess is a button
+#: ../shell/src/studio-thread-view.tsx
+msgid "I guessed these. Tap one to change it."
+msgstr "Isto eu supus. Toque em uma para mudá-la."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "I wrote this. Run it as mine."
@@ -4577,6 +4643,7 @@ msgid "Look — appearance and colour"
 msgstr "Aparência: tema e cor"
 
 #: ../shell/src/studio-thread-view.tsx
+#: ../shell/src/studio-thread-view.tsx
 msgid "Look at it"
 msgstr "Ver o app"
 
@@ -5181,6 +5248,11 @@ msgstr "ainda não aberto"
 msgid "not saved"
 msgstr "não salvo"
 
+#. Studio plan card: the change was made and waits for Go
+#: ../shell/src/studio-thread-view.tsx
+msgid "not saved yet"
+msgstr "ainda não salva"
+
 #: ../shell/src/studio.tsx
 msgid "Not saved: {issue}"
 msgstr "Não salvou. {issue}"
@@ -5596,6 +5668,11 @@ msgstr "Chave de API do OpenRouter"
 #: ../shell/src/engine-settings.tsx
 msgid "OpenRouter model"
 msgstr "Modelo do OpenRouter"
+
+#. Under the answer buttons of a question the Studio asked
+#: ../shell/src/studio-thread-view.tsx
+msgid "Or answer in your own words below."
+msgstr "Ou responda abaixo com suas palavras."
 
 #. After the key links: a server of the person's own that speaks the OpenAI API also works
 #: ../shell/src/free-panel.tsx
@@ -6384,6 +6461,10 @@ msgstr "Salvo. O app mostra as palavras novas quando abrir de novo."
 #: ../shell/src/inline-edit.tsx
 #: ../views/src/record-form.tsx
 msgid "Saving"
+msgstr "Salvando"
+
+#: ../shell/src/studio.tsx
+msgid "Saving it"
 msgstr "Salvando"
 
 #: ../shell/src/share-sheet.tsx
@@ -7682,6 +7763,16 @@ msgstr "Não dá pra desfazer."
 msgid "This change rewrote your app rather than editing it — it {lost}. Nothing was saved; try a smaller, more specific change."
 msgstr "Esta mudança reescreveu seu app em vez de mudar ({lost}). A gente não salvou nada. Tenta uma mudança menor e mais certa."
 
+#. Under a planned change that was never saved
+#: ../shell/src/studio-thread-view.tsx
+msgid "This change was not saved."
+msgstr "Esta mudança não foi salva."
+
+#. Under a planned change that was never saved, when it is the last thing in the conversation
+#: ../shell/src/studio-thread-view.tsx
+msgid "This change was not saved. Ask again and I’ll make it."
+msgstr "Esta mudança não foi salva. Peça de novo e eu faço."
+
 #: ../views/src/chart.tsx
 msgid "This chart could not be worked out: {error}"
 msgstr "Não deu pra montar este gráfico. {error}"
@@ -8115,6 +8206,11 @@ msgstr "Escreve as palavras do seu primeiro aparelho pra trazer os apps dele pra
 msgid "Type these words into Potyro on the other device. They are the only copy — write them down somewhere safe."
 msgstr "Escreve estas palavras no Potyro do outro aparelho. Elas são a única cópia: anota num lugar seguro."
 
+#. Studio box while a question the Studio asked waits for the person's answer
+#: ../shell/src/studio.tsx
+msgid "Type your answer"
+msgstr "Digite sua resposta"
+
 #. Ask's cost: less than one US cent
 #: ../shell/src/ask-spend.ts
 msgid "under 1¢"
@@ -8390,6 +8486,11 @@ msgstr "O que você esperava?"
 msgid "What happened"
 msgstr "O que aconteceu"
 
+#. Studio plan card: the list of what a change does to the records already in the app
+#: ../shell/src/studio-thread-view.tsx
+msgid "What happens to what you have entered"
+msgstr "O que acontece com o que você já registrou"
+
 #: ../shell/src/backup-switch.tsx
 msgid "What is in your apps is encrypted on this device, so Potyro’s server cannot read it. Your name and who you share with can be seen there."
 msgstr "O que está nos seus apps é criptografado neste aparelho, então o servidor do Potyro não consegue ler. Seu nome e com quem você compartilha aparecem lá."
@@ -8445,6 +8546,11 @@ msgstr "Com que nome quem compartilha com você te vê?"
 #: ../shell/src/ask-panel.tsx
 msgid "What to add"
 msgstr "O que adicionar"
+
+#. The list of guesses on a version's card
+#: ../shell/src/studio-thread-view.tsx
+msgid "What was guessed"
+msgstr "O que foi suposto"
 
 #. Share dialog: the files an app hands over
 #. Share dialog: the words an app hands over, read-only

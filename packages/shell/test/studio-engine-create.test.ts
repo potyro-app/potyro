@@ -35,7 +35,9 @@ describe("the Studio's create goes through the loop (#262 phase 3)", () => {
   });
 
   it("a question before building is the question (#261)", async () => {
-    expect(await create({ kind: "question", text: "Paper books, or e-books too?" })).toEqual({ kind: "question", text: "Paper books, or e-books too?" });
+    // The question, and the run that waits on its answer (#75).
+    const paused = { transcript: [{ role: "assistant" as const, content: "QUESTION: Paper books, or e-books too?" }], asked: 1, steps: 1 };
+    expect(await create({ kind: "question", text: "Paper books, or e-books too?", ...paused })).toEqual({ kind: "question", text: "Paper books, or e-books too?", paused });
   });
 
   it("nothing could be built: said plainly, with the request (#263)", async () => {

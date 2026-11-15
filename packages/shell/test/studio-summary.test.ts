@@ -85,6 +85,14 @@ describe("what changed, from the app before and after", () => {
     ]);
   });
 
+  it("says a new button in a form, and one taken out", () => {
+    const before = cellar();
+    const bottle = before.entities.bottle!;
+    const withFill = cellar({ entities: { bottle: { ...bottle, fill: [{ label: "Scan label", run: () => ({}) }] } } } as Partial<Described>);
+    expect(texts(before, withFill)).toEqual(["New in the “Bottle” form: a “Scan label” button."]);
+    expect(texts(withFill, before)).toEqual(["Removed from the “Bottle” form: the “Scan label” button."]);
+  });
+
   it("a record's buttons, the app's main buttons, filters and a new kind of record", () => {
     const before = cellar();
     const bottle = before.entities.bottle!;

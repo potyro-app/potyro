@@ -46,6 +46,14 @@
 // and where to find it, and which parts of the request it left out (`Not done:`). Whatever comes back,
 // the accepted change stands: the answer can add words to it, never take it away.
 //
+// #75: a question is a tool with choices, and the run WAITS for the answer. `ask_person` pauses the
+// loop: the `question` outcome holds the transcript and the call's id, and the answer comes back as
+// that call's result in a run resumed from it (`resumeFrom`, tools.ts `resumeWith`) — inside the same
+// step budget, with what was looked up before asking still in the conversation. `ASK:` stays for a
+// model that writes the marker, and may carry choices as `- ` lines. Two questions a request; one
+// more is answered with "go on, and say what you guessed". What it guessed (`Assumed:`) rides on the
+// accepted change beside `Not done:`.
+//
 // Shares the fix loop's vocabulary (tool calls, ASK, the marker-at-the-head rule, the "edit the app
 // as first shown" retry) and the modify contract's ladder (`buildModifyMessage`), so a model that has
 // learned one has learned the other.
@@ -55,11 +63,11 @@ import { structuralLoss } from "@potyro/runtime";
 import type { ChatEngine, ChatMessage } from "../chat-backend.js";
 import { readEditsOrFile, retryInstruction } from "../guarded-modify.js";
 import { describeEditFailures } from "../edits.js";
-import { NOT_DONE, NOT_IN_APP, buildModifyMessage, buildModifyOpener, withNotDone, type ModifyContext } from "../prompt.js";
+import { NOT_DONE, NOT_IN_APP, buildModifyMessage, buildModifyOpener, splitQuestion, withNotDone, type ModifyContext } from "../prompt.js";
 import { primeCorpus, type Corpus } from "../corpus.js";
 import { appLanguage, type Language } from "../language.js";
 import { describeRun, type GatedRun, type RunGate } from "../run-report.js";
-import { runTool, toolSpecs, type AgentTool } from "./tools.js";
+import { ASK_LIMIT_NOTE, ASK_PERSON, MAX_QUESTIONS, ONE_QUESTION_NOTE, answerIn, askPersonTool, readAsk, runTool, toolSpecs, type AgentTool, type PausedRun, type PersonQuestion } from "./tools.js";
 import type { LoopStep } from "./loop.js";
 import { describeToolTurn, freshStartNote, oneLine, rollbackNote, toolTurnSignature, type TurnedBack } from "./loop-recovery.js";
 import type { TranslationDraft } from "./translate-tool.js";
@@ -76,13 +84,21 @@ export type ModifyLoopOutcome =
       rationale?: string;
       /** The parts of the request the model said it did not do (the ladder's third rung). */
       notDone?: string[];
+      /** What the model said it guessed (#75), each a short sentence in the person's words. */
+      assumed?: string[];
       /** What Potyro itself would need for the rest, written for the Potyro team (#263). */
       platformRequest?: PlatformRequest;
     }
   | { kind: "diagnosis"; text: string }
   /** Nothing could be done: it needs something Potyro itself lacks (#263). `said` is the model's marker line. */
   | { kind: "platform"; request: PlatformRequest; said: string }
-  | { kind: "question"; text: string; transcript: ChatMessage[] }
+  /**
+   * It asked, and waits (#75). `options`: the answers to tap, when it gave any; `allowOther`: whether
+   * the person's own words are welcome too. The rest is the paused run (`PausedRun`): hand it back
+   * with the answer (`resumeWith`) as `resumeFrom`, `asked` and `stepsSpent`, and the same
+   * conversation goes on. `pending` is the `ask_person` call the answer is the result of.
+   */
+  | ({ kind: "question"; text: string; options?: string[]; allowOther?: boolean } & PausedRun)
   /**
    * It gave up. `reason` is for a developer (the step log, a transcript); `cause` is which way it
    * gave up, so the person can be told in their own words (studio-engine.ts).
@@ -131,7 +147,18 @@ export interface ModifyLoopDeps {
   maxCandidates?: number;
   onStep?: (step: LoopStep) => void;
   signal?: AbortSignal;
+  /**
+   * Go on from a run that stopped to ask (#75): its `transcript` with the answer in it (`resumeWith`).
+   * It seeds the conversation in place of the opening pair, so what was looked up before the question
+   * is still there. The gates are untouched: a resumed run's candidate passes them like any other.
+   */
   resumeFrom?: ChatMessage[];
+  /** Questions this request has already asked (#75) — a paused run's `asked`, or the conversation's count. */
+  asked?: number;
+  /** Model calls a paused run had spent (#75): a resumed one goes on inside the same budget. */
+  stepsSpent?: number;
+  /** Offer `ask_person` (default). Off where nobody is there to answer — an eval, a batch. */
+  askPerson?: boolean;
   /**
    * The app the edits apply to once `translate` has written a language into it (#302) — the same
    * object the tool was built with. Without it, edits apply to `source` as first shown, as before.
@@ -160,6 +187,8 @@ const DEFAULT_MAX_CANDIDATES = 4;
 /** A line said this often is the reply going in circles. */
 const REPEAT_LINES = 5;
 const ASK = "ASK:";
+/** Model calls a resumed run always has left, however late the question came. */
+const RESUME_STEPS = 2;
 /** The tools whose use makes a refusal informed. */
 const DISCOVERY = new Set(["lookup", "check", "example", "search_corpus", "read", "translate"]);
 
@@ -172,6 +201,16 @@ export const EXPLAIN_NOTE = [
   "in their language: what is new or different in the app, and where to find it (which page, which button).",
   `If any part of what they asked was not done, list it under "${NOT_DONE}" as the request says — one bullet per part.`,
 ].join("\n");
+
+/** A tool call's arguments as the model wrote them; nothing when they are not JSON. */
+function argsOf(raw: string): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(raw || "{}");
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
 
 /** Why a reply is the model repeating itself, or null when it is not. */
 export function repeatsItself(text: string, previous: string | null): string | null {
@@ -234,8 +273,15 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
   const maxCandidates = deps.maxCandidates ?? DEFAULT_MAX_CANDIDATES;
   // The first message of a chain: the app, the request, the corpus passages. A fresh chain (F2)
   // starts from it again, with what was turned back added at the end.
-  const tools = [...deps.tools, ...conversationTools(deps)];
-  const opening = deps.resumeFrom ? (deps.resumeFrom.find((m) => m.role === "user")?.content ?? null) : await firstMessage(deps, tools.length > deps.tools.length);
+  const history = conversationTools(deps);
+  const tools = [...deps.tools, ...(deps.askPerson === false ? [] : [askPersonTool]), ...history];
+  // A resumed run's chain may still be started afresh (F2): the answer it was resumed with goes along.
+  const resumedOpening = (from: ChatMessage[]): string | null => {
+    const first = from.find((m) => m.role === "user")?.content ?? null;
+    const answer = answerIn(from);
+    return first !== null && answer ? `${first}\n\nYou asked the person about this request. ${answer}` : first;
+  };
+  const opening = deps.resumeFrom ? resumedOpening(deps.resumeFrom) : await firstMessage(deps, history.length > 0);
   let messages: ChatMessage[] = deps.resumeFrom
     ? [...deps.resumeFrom]
     : [
@@ -276,6 +322,24 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
   /** What, in a failure, named something Potyro lacks (#263); the marker is offered beside the first. */
   let platformSeen: string | null = null;
   let offered = false;
+  /** Questions this request has asked (#75), over every run of it. */
+  let asked = Math.max(0, deps.asked ?? 0);
+  /** A marker question past the limit was sent back once; said again, it is the model's answer. */
+  let limitSaid = false;
+  const firstStep = deps.resumeFrom ? Math.max(0, Math.min(deps.stepsSpent ?? 0, maxSteps - RESUME_STEPS)) : 0;
+  /** The run stops here and waits: everything a resumed run needs is in the outcome. */
+  const pause = (q: PersonQuestion, step: number, pending?: string): ModifyLoopOutcome => {
+    asked += 1;
+    return {
+      kind: "question",
+      text: q.question,
+      ...(q.options.length ? { options: q.options, allowOther: q.allowOther } : {}),
+      transcript: [...messages],
+      ...(pending ? { pending } : {}),
+      asked,
+      steps: step + 1,
+    };
+  };
   /** The offer to append beside a failure that names something Potyro lacks — once in the loop. */
   const offerFor = (text: string): string => {
     const signal = platformSignal(text);
@@ -327,7 +391,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     return null;
   };
 
-  for (let step = 0; step < maxSteps; step += 1) {
+  for (let step = firstStep; step < maxSteps; step += 1) {
     if (deps.signal?.aborted) return { kind: "stopped" };
     deps.onStep?.({ kind: "thinking" });
     const escalated = Boolean(deps.escalate && stuck);
@@ -345,10 +409,14 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     const text = choice?.content ?? "";
 
     if (calls.length) {
+      // A question that will be put to the person (#75) is not the model going round: the turn pauses
+      // the run, and counts as the one step it took. Past the limit it is a tool turn like any other.
+      const asks = asked < MAX_QUESTIONS && calls.some((c) => c.function.name === ASK_PERSON && readAsk(argsOf(c.function.arguments)) !== null);
       const sig = toolTurnSignature(calls);
-      if (toolStreak?.sig === sig) toolStreak.count += 1;
+      if (asks) toolStreak = null;
+      else if (toolStreak?.sig === sig) toolStreak.count += 1;
       else toolStreak = { sig, count: 1, at: messages.length, tried: describeToolTurn(calls), answer: "" };
-      if (toolStreak.count >= TOOL_REPEAT) {
+      if (toolStreak && toolStreak.count >= TOOL_REPEAT) {
         const s = toolStreak;
         const end = await repeat(
           `the same tool call ${TOOL_REPEAT} times in a row (${s.tried})`,
@@ -360,21 +428,33 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
       }
       const streak = toolStreak;
       messages.push({ role: "assistant", content: text, tool_calls: calls });
+      let waiting: { id: string; question: PersonQuestion } | null = null;
       for (const c of calls) {
-        let args: Record<string, unknown> = {};
-        try {
-          args = JSON.parse(c.function.arguments || "{}") as Record<string, unknown>;
-        } catch {
-          args = {};
+        const args = argsOf(c.function.arguments);
+        if (c.function.name === ASK_PERSON) {
+          const question = readAsk(args);
+          // Its result is the person's answer, which only they can give: every other answer is said now.
+          const refusal = !question ? "ask_person needs a `question`: one sentence, in plain words." : asked >= MAX_QUESTIONS ? ASK_LIMIT_NOTE : waiting ? ONE_QUESTION_NOTE : null;
+          if (question && refusal === null) {
+            waiting = { id: c.id, question };
+            deps.onStep?.({ kind: "tool", name: ASK_PERSON, ok: true, detail: question.question });
+            continue;
+          }
+          deps.onStep?.({ kind: "tool", name: ASK_PERSON, ok: false, detail: refusal ?? "" });
+          if (streak?.count === 1) streak.answer = oneLine(`${streak.answer} ${refusal}`, 200);
+          messages.push({ role: "tool", tool_call_id: c.id, content: refusal ?? "" });
+          continue;
         }
         const result = await runTool(tools, { id: c.id, name: c.function.name, args });
         if (DISCOVERY.has(result.name)) looked = true;
-        if (streak.count === 1) streak.answer = oneLine(`${streak.answer} ${result.detail}`, 200);
+        if (streak?.count === 1) streak.answer = oneLine(`${streak.answer} ${result.detail}`, 200);
         deps.onStep?.({ kind: "tool", name: result.name, ok: result.ok, detail: result.detail });
         // A lookup, check or run that names something Potyro lacks carries the offer (#263).
         messages.push({ role: "tool", tool_call_id: c.id, content: `${result.detail}${offerFor(result.detail)}` });
         if (deps.signal?.aborted) return { kind: "stopped" };
       }
+      // Every other call of the turn has its result; the question's is the answer, when it comes.
+      if (waiting) return pause(waiting.question, step, waiting.id);
       continue;
     }
     toolStreak = null;
@@ -398,7 +478,16 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     const head = text.trimStart();
     if (head.startsWith(ASK)) {
       messages.push({ role: "assistant", content: text });
-      return { kind: "question", text: head.slice(ASK.length).split(/^```/m)[0]!.trim(), transcript: [...messages] };
+      // Past the limit (#75) it is sent back once; said again, the question is the model's answer.
+      if (asked >= MAX_QUESTIONS && !limitSaid) {
+        limitSaid = true;
+        deps.onStep?.({ kind: "unusable", detail: `asked a question past the limit of ${MAX_QUESTIONS}` });
+        messages.push({ role: "user", content: ASK_LIMIT_NOTE });
+        continue;
+      }
+      // The choices, when it gave any: the `- ` lines under the question.
+      const { text: question, options } = splitQuestion(head.slice(ASK.length).split(/^```/m)[0]!);
+      return pause({ question, options, allowOther: true }, step);
     }
     const platform = head.startsWith(NEEDS_PLATFORM);
     if (head.startsWith(NOT_IN_APP) || platform) {
@@ -483,6 +572,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
       applied: read.kind === "edits" ? read.applied : 0,
       ...(read.rationale ? { rationale: read.rationale } : {}),
       ...(read.notDone?.length ? { notDone: read.notDone } : {}),
+      ...(read.assumed?.length ? { assumed: read.assumed } : {}),
     };
     const { problem, warning, gated } = await gate(deps, candidate, warned);
     if (warning) {
@@ -497,7 +587,10 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     if (problem === null) {
       // Sent again unchanged to say "that is meant": what was said with it the first time still holds.
       const before = held && held !== accepted && held.source === candidate && held.rationale ? held : null;
-      if (before && !accepted.rationale) return finish({ ...accepted, rationale: before.rationale, ...(before.notDone?.length ? { notDone: before.notDone } : {}) }, before.rationale ?? "");
+      if (before && !accepted.rationale) {
+        const said = { ...(before.notDone?.length ? { notDone: before.notDone } : {}), ...(before.assumed?.length ? { assumed: before.assumed } : {}) };
+        return finish({ ...accepted, rationale: before.rationale, ...said }, before.rationale ?? "");
+      }
       if (!accepted.rationale && !askedToExplain && step < maxSteps - 1) {
         askedToExplain = true;
         unexplained = accepted;

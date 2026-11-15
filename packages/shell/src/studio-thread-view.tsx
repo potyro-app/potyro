@@ -5,6 +5,11 @@
 // The newest card opens the app; an older one offers to go back to it. A version that was made but
 // held back (it has problems, or it rewrote the app) is a card too, marked as not saved, with what
 // can be done about it.
+//
+// #75 adds three things to it. A QUESTION that waits on the person shows its answers as buttons — one
+// tap answers it. A version's card lists what was GUESSED while making it, each guess a button that
+// starts the sentence that corrects it. And a change that is not small is a PLAN first: what it does,
+// what happens to the records already there, and Go — it is saved only then.
 
 import { Mascot } from "@potyro/views";
 import { msg } from "@lingui/core/macro";
@@ -25,6 +30,15 @@ export interface HeldCard {
   canFix: boolean;
 }
 
+/** A change that was made and waits for Go — see `Planned` in studio-plan.ts. */
+export interface PlanCard {
+  name: string;
+  /** What the change does: the sentences its version card would say. */
+  summary: string;
+  /** What happens to the records already there, a sentence each. */
+  consequences: readonly string[];
+}
+
 export interface ThreadViewProps {
   items: readonly ChatItem[];
   /** The app the cards are of — its id gives the mark its colour. */
@@ -42,6 +56,15 @@ export interface ThreadViewProps {
    * panel stands in its place, #488): then no suggestions are offered, since a tap would show nothing.
    */
   onSuggest?: (text: string) => void;
+  /** A question's choice tapped (#75): it is the person's answer, sent as said. Absent, the choices are not offered. */
+  onAnswer?: (text: string) => void;
+  /** A guess on the current version's card tapped (#75): the box starts the sentence that corrects it. */
+  onAssumption?: (text: string) => void;
+  /** A change that is not small, made and not saved until Go (#75). */
+  plan?: PlanCard | null;
+  onGo?: () => void;
+  /** "Change something": nothing is saved, and the box takes what should be different. */
+  onChangePlan?: () => void;
   /** Nothing has been said yet in a conversation that is about an app that already exists. */
   existing: boolean;
   /**
@@ -103,8 +126,62 @@ function Mark({ app, name }: { app: { id: string } | null; name: string }) {
   );
 }
 
-export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix, onKeep, onLook, onSuggest, existing, remix, requests }: ThreadViewProps) {
+export function ThreadView({
+  items,
+  app,
+  working,
+  held,
+  onOpen,
+  onGoBack,
+  onFix,
+  onKeep,
+  onLook,
+  onSuggest,
+  onAnswer,
+  onAssumption,
+  plan = null,
+  onGo,
+  onChangePlan,
+  existing,
+  remix,
+  requests,
+}: ThreadViewProps) {
   const { t } = useLingui();
+  const busy = working !== null;
+  // The plan that waits is the newest thing said as one; an older one was not kept, and says so.
+  const livePlanAt = plan ? items.reduce((at, item, i) => (item.type === "agent" && item.plan && item.text === plan.summary ? i : at), -1) : -1;
+  const planCard = plan ? (
+    <article className="k-card k-card-plan" aria-label={t({ message: `${plan.name}, a change not saved yet`, comment: "A Studio card for a change that waits for the person's Go before it is saved" })}>
+      <Mark app={app} name={plan.name} />
+      <div className="k-card-body">
+        <p className="k-card-name">
+          {plan.name}
+          <span className="k-card-flag k-plan-flag">
+            <Trans comment="Studio plan card: the change was made and waits for Go">not saved yet</Trans>
+          </span>
+        </p>
+        <p className="k-card-what k-plan-what">{plan.summary}</p>
+        {plan.consequences.length ? (
+          <ul className="k-plan-consequences" aria-label={t({ message: "What happens to what you have entered", comment: "Studio plan card: the list of what a change does to the records already in the app" })}>
+            {plan.consequences.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
+        ) : null}
+        <div className="k-card-actions">
+          <button type="button" className="k-card-open k-plan-go" disabled={busy} onClick={onGo}>
+            <Trans comment="Studio plan card: keep the change exactly as it was made">Go</Trans>
+          </button>
+          <button type="button" className="k-card-back k-plan-change" disabled={busy} onClick={onChangePlan}>
+            <Trans comment="Studio plan card: do not save it; say what should be different">Change something</Trans>
+          </button>
+          <button type="button" className="k-card-back" onClick={onLook}>
+            <Trans>Look at it</Trans>
+          </button>
+        </div>
+      </div>
+    </article>
+  ) : null;
   // What came of each request sent from here — the latest word on it wins (saved, then sent).
   const sent = new Map<string, SentRequest>();
   for (const item of items) if (item.type === "event" && item.request) sent.set(item.request.id, item.request);
@@ -112,7 +189,7 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
     ask && requests ? <PlatformRequestCard ask={ask} sent={sent.get(ask.id)} review={() => requests.review(ask)} onSend={(payload) => requests.send(ask, payload)} /> : null;
   // Greeted until the person first asks for something; after that the conversation speaks for itself.
   const greet = remix && !items.some((i) => i.type === "ask") && !working ? remix : null;
-  if (!items.length && !working && !held && !greet) {
+  if (!items.length && !working && !held && !greet && !plan) {
     return existing ? (
       <div className="k-studio-empty">
         <p className="k-studio-eyebrow">{app ? <Trans comment="Studio, empty conversation about an existing app; name is the app's">Change {app.name}</Trans> : <Trans>Change this app</Trans>}</p>
@@ -154,7 +231,7 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
 
   return (
     <ol className="k-thread" aria-label={t`The conversation about this app`}>
-      {items.map((item) => {
+      {items.map((item, at) => {
         if (item.type === "ask") {
           return (
             <li key={item.id} className="k-thread-turn k-thread-mine">
@@ -177,13 +254,60 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
             </li>
           );
         }
-        if (item.type === "agent") {
+        if (item.type === "agent" && item.plan) {
+          // The plan that waits is its card. One the person said Go to became the version under it:
+          // said once, by that card. Any other was not kept — the Studio closed, or it was changed.
+          if (at === livePlanAt) {
+            return (
+              <li key={item.id} className="k-thread-turn k-thread-theirs">
+                {planCard}
+              </li>
+            );
+          }
+          if (items[at + 1]?.type === "version") return null;
           return (
             <li key={item.id} className="k-thread-turn k-thread-theirs">
+              <p className="k-thread-answer" data-tone="answer">
+                {item.text}
+              </p>
+              <p className="k-plan-gone">
+                {at === items.length - 1 && !busy && !held ? (
+                  <Trans comment="Under a planned change that was never saved, when it is the last thing in the conversation">This change was not saved. Ask again and I’ll make it.</Trans>
+                ) : (
+                  <Trans comment="Under a planned change that was never saved">This change was not saved.</Trans>
+                )}
+              </p>
+            </li>
+          );
+        }
+        if (item.type === "agent") {
+          // A question waits on the person while it is the last thing said: then its answers are buttons.
+          const waits = item.tone === "question" && at === items.length - 1 && !busy;
+          const choices = waits && onAnswer ? (item.options ?? []) : [];
+          return (
+            <li key={item.id} className="k-thread-turn k-thread-theirs" data-waits={waits || undefined}>
               <p className="k-thread-answer" data-tone={item.tone} data-refused={item.tone !== "answer" || undefined}>
                 {item.tone === "question" ? <span className="k-thread-q" aria-hidden>?</span> : null}
                 {item.text}
               </p>
+              {choices.length ? (
+                <div className="k-question">
+                  <ul className="k-question-options" aria-label={t({ message: "Answers to choose from", comment: "The buttons under a question the Studio asked: each is one answer" })}>
+                    {choices.map((choice) => (
+                      <li key={choice}>
+                        <button type="button" className="k-question-option" onClick={() => onAnswer?.(choice)}>
+                          {choice}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {item.allowOther !== false ? (
+                    <p className="k-question-other">
+                      <Trans comment="Under the answer buttons of a question the Studio asked">Or answer in your own words below.</Trans>
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {item.detail ? (
                 // The developer's words behind the plain ones, folded away: a person never needs them,
                 // and whoever reports the problem can still copy them.
@@ -212,6 +336,31 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
                   {item.seq ? <span className="k-thread-seq k-card-seq">v{item.seq}</span> : null}
                 </p>
                 <p className="k-card-what k-thread-answer">{item.text}</p>
+                {item.current && item.assumed?.length ? (
+                  // What was guessed while making it (#75): a wrong guess is one tap from the sentence that fixes it.
+                  <div className="k-assumed">
+                    <p className="k-assumed-label">
+                      {onAssumption ? (
+                        <Trans comment="Above the list of guesses on a version's card; each guess is a button">I guessed these. Tap one to change it.</Trans>
+                      ) : (
+                        <Trans comment="Above the list of guesses on a version's card, when they cannot be tapped">I guessed these.</Trans>
+                      )}
+                    </p>
+                    <ul className="k-assumed-list" aria-label={t({ message: "What was guessed", comment: "The list of guesses on a version's card" })}>
+                      {item.assumed.map((guess) => (
+                        <li key={guess}>
+                          {onAssumption ? (
+                            <button type="button" className="k-assumed-item" onClick={() => onAssumption(guess)}>
+                              {guess}
+                            </button>
+                          ) : (
+                            <span className="k-assumed-item">{guess}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
               {item.current ? (
                 <button type="button" className="k-card-open" onClick={onOpen}>
@@ -228,6 +377,8 @@ export function ThreadView({ items, app, working, held, onOpen, onGoBack, onFix,
         );
       })}
       {greet ? <RemixHello remix={greet} onSuggest={onSuggest} /> : null}
+      {/* A plan whose words are not in the conversation (it could not be kept there) still waits, here. */}
+      {planCard && livePlanAt < 0 ? <li className="k-thread-turn k-thread-theirs">{planCard}</li> : null}
       {held ? (
         <li className="k-thread-turn k-thread-theirs">
           <article className="k-card k-card-held" aria-label={t({ message: `${held.name}, not saved`, comment: "A Studio card for a version that was made but not saved" })}>

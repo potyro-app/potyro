@@ -13,7 +13,7 @@
 import { plural, t } from "@lingui/core/macro";
 import { fmt } from "@potyro/i18n";
 import { guideSteps, humanizeKey, localize, pickLanguage, type AppDefinition, type Language, type Localized } from "potyro";
-import { NEEDS_PLATFORM } from "@potyro/generator/agent";
+import { NEEDS_PLATFORM, withoutAssumed } from "@potyro/generator/agent";
 import { withoutNotDone } from "@potyro/generator/backends";
 
 /** The parts of an app a card speaks of, its words already in the person's language. */
@@ -67,6 +67,9 @@ const entityLabel = (key: string, e: DescribedEntity | undefined): string => e?.
 const recordButtons = (e: DescribedEntity): Named[] =>
   Object.entries(e.actions ?? {}).map(([key, a]) => ({ key, label: (typeof a === "object" && a.label) || humanizeKey(key) }));
 
+/** The buttons at the top of a record's form that fill it in (#81). */
+const fillButtons = (e: DescribedEntity): Named[] => (e.fill ?? []).map((f) => ({ key: f.label, label: f.label }));
+
 const fieldsOf = (e: DescribedEntity): Named[] =>
   Object.entries(e.fields ?? {}).map(([key, f]) => {
     const { label, ...rest } = f as { label?: string } & Record<string, unknown>;
@@ -95,7 +98,7 @@ function difference(before: Named[], after: Named[], byWords = false): Differenc
 }
 
 /** An app's word as the card writes it; each language has its own quotation marks. */
-const quoted = (word: string): string => t({ message: `“${word}”`, comment: "A word of the person's app quoted in a sentence of Potyro's: use this language's quotation marks" });
+export const quoted = (word: string): string => t({ message: `“${word}”`, comment: "A word of the person's app quoted in a sentence of Potyro's: use this language's quotation marks" });
 
 const listed = (things: readonly Named[]): string => fmt.list(things.map((n) => quoted(n.label)));
 
@@ -227,6 +230,18 @@ export function describeChange(before: Described, after: Described): ChangeLine[
       say(plural(d.changed.length, { one: `Changed in ${entity}: the ${names} field.`, other: `Changed in ${entity}: the fields ${names}.` }), labels(d.changed, label));
     }
     renames(d, (was, to) => t`In ${entity}, ${was} is now called ${to}.`, label);
+    const fills = difference(fillButtons(old), fillButtons(now));
+    if (fills.added.length) {
+      const names = listed(fills.added);
+      say(plural(fills.added.length, { one: `New in the ${entity} form: a ${names} button.`, other: `New in the ${entity} form: the buttons ${names}.` }), labels(fills.added, label));
+    }
+    if (fills.removed.length) {
+      const names = listed(fills.removed);
+      say(
+        plural(fills.removed.length, { one: `Removed from the ${entity} form: the ${names} button.`, other: `Removed from the ${entity} form: the buttons ${names}.` }),
+        labels(fills.removed, label),
+      );
+    }
   }
 
   // The app's own guide (#80): that it changed, and where it is read — never the steps again.
@@ -285,11 +300,12 @@ export function describeNewApp(app: Described): string {
 
 /**
  * The model's own explanation as a card shows it: one paragraph, without the `Not done:` list (said
- * on its own, after) and without the lines addressed to the loop.
+ * on its own, after), without the `Assumed:` list (shown under it, each guess to tap, #75) and without
+ * the lines addressed to the loop.
  */
 export function proseForCard(rationale: string | undefined): string {
   if (!rationale) return "";
-  return withoutNotDone(rationale)
+  return withoutAssumed(withoutNotDone(rationale))
     .split("\n")
     .filter((line) => !line.replace(/^[\s*`_]+/, "").startsWith(NEEDS_PLATFORM))
     .join(" ")

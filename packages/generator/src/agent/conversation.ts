@@ -28,6 +28,11 @@ export interface ConversationEntry {
   text: string;
   /** For an `ask`: the part of the app the person pointed at, in words (#284). */
   about?: string;
+  /**
+   * For a `version`: what the model said it guessed while making it (#75). The Studio hands over the
+   * last version's only — the guesses the person is looking at, and may now be correcting.
+   */
+  assumed?: readonly string[];
 }
 
 /** An earlier request with what was said about it and what came of it, written for the model. */
@@ -112,6 +117,8 @@ export function conversationRounds(entries: readonly ConversationEntry[]): Conve
     } else {
       open ??= { lines: [], hasAsk: false, asked: false };
       open.lines.push(`${OUTCOME[e.kind]} ${quoted(text)}`);
+      // What was guessed, not asked (#75): the person may be answering one of these now.
+      if (e.kind === "version" && e.assumed?.length) open.lines.push(`You guessed, without being told: ${e.assumed.map(quoted).join("; ")}`);
       close();
     }
   }

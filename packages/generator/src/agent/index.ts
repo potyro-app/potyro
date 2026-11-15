@@ -36,6 +36,10 @@
 export { runAgentLoop, type LoopOutcome, type LoopStep, type LoopDeps } from "./loop.js";
 export { AGENT_SYSTEM_PROMPT } from "./system-prompt.js";
 export { runTool, toolSpecs, type AgentTool, type ToolSpec, type ToolCall, type ToolResult } from "./tools.js";
+// ask_person (#75): a question that pauses the run, and what it takes to go on from the answer. tools.ts
+// takes only a type from ../chat-backend.js; the prose readers are ../prompt.js's (an edge already here).
+export { ASK_PERSON, MAX_QUESTIONS, ASK_LIMIT_NOTE, askPersonTool, readAsk, resumeWith, type PausedRun, type PersonQuestion } from "./tools.js";
+export { ASSUMED, MAX_ASSUMED, parseAssumed, withoutAssumed, splitQuestion, questionOptionsIn } from "../prompt.js";
 export { buildAppTools, allowsRawRecords, type InvestigationDeps, type DataAccess } from "./app-tools.js";
 export { runModifyLoop, type GiveUp, type ModifyLoopDeps, type ModifyLoopOutcome } from "./modify-loop.js";
 // The create loop (#262 phase 3): the same edges as modify-loop.ts, plus ../prompt.js (buildUserMessage).

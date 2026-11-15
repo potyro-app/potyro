@@ -10,6 +10,25 @@ import { CAPABILITY_REFERENCE, SCHEMA_REFERENCE } from "./reference.generated.js
 import { capabilityIndex, capabilityNotes } from "./reference.js";
 import { FIELD_TYPES, PAGE_FIELDS, VIEW_FIELDS } from "potyro";
 
+/** The heading a reply uses to name the parts of a request it did not do (the ladder's third rung). */
+export const NOT_DONE = "Not done:";
+/**
+ * The heading a reply uses to name what it guessed (#75): each a short sentence in the person's own
+ * terms ("Amounts are in euros."), shown on the version's card so a wrong guess is one tap from a fix.
+ */
+export const ASSUMED = "Assumed:";
+/**
+ * What a new or changed app must do first (#78) — said in the loops' system prompts. The core prompt
+ * (SYSTEM_PROMPT) has no room for it: its budget is reference.test.ts's.
+ */
+export const FIRST_ACTION_RULE =
+  "What the request names as the point of the app must be reachable as the first action on its first page (a page button or the form's own action), not only on a saved record's page.";
+/** Guesses a card shows, at most: a longer list is a reply that should have asked. */
+export const MAX_ASSUMED = 4;
+/** The choices a question may offer, at least and at most (#75). */
+export const MIN_OPTIONS = 2;
+export const MAX_OPTIONS = 4;
+
 export const EXAMPLE_TODO = `import { defineApp } from "potyro";
 
 export default defineApp({
@@ -385,7 +404,7 @@ every field they did not ask for is a form they scroll past on every single entr
 
 OUTPUT
 - Return ONLY the \`.app.ts\` source in a single \`\`\`ts code block. No prose before or after.
-- Unless one answer would change which app to build: then reply with one line \`QUESTION: <it, in plain words>\`. One question at a time; never once the request holds the answer.
+- Unless the answer would change which app or data gets built: then reply \`QUESTION: <it, in plain words>\`, likely answers under it on lines starting \`- \`. One question at a time; never once the request holds the answer.
 
 EXAMPLE 1 — a simple list:
 \`\`\`ts
@@ -497,22 +516,18 @@ export type ModifyReply =
   | { kind: "source"; source: string; rationale?: string; notDone?: string[] }
   | { kind: "diagnosis"; text: string };
 
-/** The heading a reply uses to name the parts of a request it did not do (the ladder's third rung). */
-export const NOT_DONE = "Not done:";
 
-/**
- * The bullet lines under a `Not done:` heading in the prose — the parts of the request the edits do
- * not cover, each naming what would be needed. Tolerates markdown dressing (`**Not done:**`, `*`/`•`/
- * numbered bullets) because that is how models write headings; stops at the first line that is not
- * a bullet. Empty when there is no heading.
- */
-export function parseNotDone(prose: string): string[] {
-  const heading = new RegExp(`^[\\s*_\`#]*${NOT_DONE}[\\s*_\`]*$`, "im").exec(prose);
-  if (!heading) return [];
-  const rest = prose.slice(heading.index + heading[0].length).split("\n");
+const BULLET = /^\s*(?:[-*•]|\d+[.)])\s+(.+?)\s*$/;
+const headingOf = (prose: string, heading: string): RegExpExecArray | null => new RegExp(`^[\\s*_\`#]*${heading}[\\s*_\`]*$`, "im").exec(prose);
+
+/** The bullet lines under `heading` in the prose; stops at the first line that is not a bullet. */
+function sectionItems(prose: string, heading: string): string[] {
+  const at = headingOf(prose, heading);
+  if (!at) return [];
+  const rest = prose.slice(at.index + at[0].length).split("\n");
   const items: string[] = [];
   for (const line of rest) {
-    const m = /^\s*(?:[-*•]|\d+[.)])\s+(.+?)\s*$/.exec(line);
+    const m = BULLET.exec(line);
     if (!m) {
       if (items.length === 0 && line.trim() === "") continue; // a blank line right after the heading
       break;
@@ -522,22 +537,69 @@ export function parseNotDone(prose: string): string[] {
   return items;
 }
 
-/**
- * The prose without its `Not done:` heading and the bullets under it: what a person is shown as the
- * explanation, when the parts not done are said on their own (#72). The prose as it is when there is
- * no heading.
- */
-export function withoutNotDone(prose: string): string {
-  const heading = new RegExp(`^[\\s*_\`#]*${NOT_DONE}[\\s*_\`]*$`, "im").exec(prose);
-  if (!heading) return prose;
-  const rest = prose.slice(heading.index + heading[0].length).split("\n");
+/** The prose without `heading` and the bullets under it; the prose as it is when there is no heading. */
+function withoutSection(prose: string, heading: string): string {
+  const at = headingOf(prose, heading);
+  if (!at) return prose;
+  const rest = prose.slice(at.index + at[0].length).split("\n");
   let i = 0;
   let bullets = 0;
   for (; i < rest.length; i += 1) {
     if (/^\s*(?:[-*•]|\d+[.)])\s+\S/.test(rest[i]!)) bullets += 1;
     else if (!(bullets === 0 && rest[i]!.trim() === "")) break;
   }
-  return `${prose.slice(0, heading.index)}${rest.slice(i).join("\n")}`.trim();
+  return `${prose.slice(0, at.index)}${rest.slice(i).join("\n")}`.trim();
+}
+
+/**
+ * The bullet lines under a `Not done:` heading in the prose — the parts of the request the edits do
+ * not cover, each naming what would be needed. Tolerates markdown dressing (`**Not done:**`, `*`/`•`/
+ * numbered bullets) because that is how models write headings; stops at the first line that is not
+ * a bullet. Empty when there is no heading.
+ */
+export function parseNotDone(prose: string): string[] {
+  return sectionItems(prose, NOT_DONE);
+}
+
+/**
+ * The prose without its `Not done:` heading and the bullets under it: what a person is shown as the
+ * explanation, when the parts not done are said on their own (#72). The prose as it is when there is
+ * no heading.
+ */
+export function withoutNotDone(prose: string): string {
+  return withoutSection(prose, NOT_DONE);
+}
+
+/** The guesses under an `Assumed:` heading (#75), read as `Not done:` is; at most MAX_ASSUMED of them. */
+export function parseAssumed(prose: string): string[] {
+  return sectionItems(prose, ASSUMED).slice(0, MAX_ASSUMED);
+}
+
+/** The prose without its `Assumed:` list: the guesses are shown on their own, each one to tap (#75). */
+export function withoutAssumed(prose: string): string {
+  return withoutSection(prose, ASSUMED);
+}
+
+/**
+ * A question's words and the choices under them (#75): the lines starting `- ` that end what was
+ * asked — `ASK: Which one?` then `- This` and `- That`. Two to four make choices (more are cut to
+ * four); fewer, and the whole text is the question, as it was before choices existed.
+ */
+export function splitQuestion(body: string): { text: string; options: string[] } {
+  const lines = body.trim().split("\n");
+  const options: string[] = [];
+  let end = lines.length;
+  while (end > 0) {
+    const line = lines[end - 1]!;
+    const m = /^\s*[-*•]\s+(.+?)\s*$/.exec(line);
+    if (m) options.unshift(m[1]!.replace(/^[*_`]+|[*_`]+$/g, "").trim());
+    else if (line.trim() !== "") break;
+    end -= 1;
+  }
+  const text = lines.slice(0, end).join("\n").trim();
+  const distinct = [...new Set(options.filter(Boolean))];
+  if (!text || distinct.length < MIN_OPTIONS) return { text: body.trim(), options: [] };
+  return { text, options: distinct.slice(0, MAX_OPTIONS) };
 }
 
 /**
@@ -636,9 +698,12 @@ export function buildModifyMessage(instruction: string, ctx?: ModifyContext, opt
  * precisely the failure this contract exists to prevent.
  */
 /** Attach the `Not done:` parts found in a source reply's rationale; no key at all when there are none. */
-export function withNotDone<T extends { rationale?: string }>(reply: T): T & { notDone?: string[] } {
+export function withNotDone<T extends { rationale?: string }>(reply: T): T & { notDone?: string[]; assumed?: string[] } {
   const notDone = reply.rationale ? parseNotDone(reply.rationale) : [];
-  return notDone.length ? { ...reply, notDone } : reply;
+  // The guesses it made (#75), read from the same prose; no key when there are none.
+  const assumed = reply.rationale ? parseAssumed(reply.rationale) : [];
+  if (!notDone.length && !assumed.length) return reply;
+  return { ...reply, ...(notDone.length ? { notDone } : {}), ...(assumed.length ? { assumed } : {}) };
 }
 
 export function parseModifyReply(reply: string): ModifyReply {
@@ -736,6 +801,16 @@ export function questionIn(reply: string): string | null {
   const opened = reply.trim().replace(/^```[\w-]*[ \t]*\n/, "");
   const m = /^[\s*`_]*QUESTION:[*`_]*[ \t]*([^\n]*?)[\s*`_]*(?:\n|$)/.exec(opened);
   return m && m[1]!.trim() ? m[1]!.trim() : null;
+}
+
+/**
+ * The choices a create reply's question offers (#75): the `- ` lines under its `QUESTION:` line. Empty
+ * when it built, did not ask, or offered fewer than two.
+ */
+export function questionOptionsIn(reply: string): string[] {
+  if (!questionIn(reply)) return [];
+  const opened = reply.trim().replace(/^```[\w-]*[ \t]*\n/, "").split(/^```/m)[0]!;
+  return splitQuestion(opened.replace(/^[\s*`_]*QUESTION:[*`_]*/, "")).options;
 }
 
 /** Does this look like an app module at all, or did the model just talk? */

@@ -12,6 +12,11 @@
 // that fails the gates — it does not load, its structure is wrong, or it rewrote the app instead of
 // editing it — which is held back on a card of its own, with what can be done about it.
 //
+// #75 makes the session interactive. A question shows its answers as buttons, and the answer goes back
+// into the run that asked (studio-paused.ts) instead of starting a new one. A version's card lists what
+// was guessed. And a change that is NOT SMALL — it takes something from records that exist, or touches
+// many parts at once (studio-plan.ts) — is made, shown as a plan, and saved only on Go.
+//
 // Everything here runs the person's own app trusted (CLAUDE.md rule 3); studio-preview.tsx builds it.
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
@@ -43,8 +48,25 @@ import { leaveForGallery as leaveFor } from "./gallery-link.js";
 import { forgetKeptIdea, keepIdea, keptIdea } from "./kept-idea.js";
 import { shellDialogs } from "./dialog.js";
 import { followChat, syncChat } from "./chat-sync.js";
-import { adoptDraft, appendMessage, briefSince, clearChat, earlierConversation, isDraftId, listMessages, newDraftId, threadItems, type ChatItem, type NewMessage } from "./studio-chat.js";
-import { shapeOrEmpty, studioEngine, type Outcome } from "./studio-engine.js";
+import {
+  adoptDraft,
+  appendMessage,
+  briefSince,
+  clearChat,
+  earlierConversation,
+  isDraftId,
+  listMessages,
+  newDraftId,
+  questionsAsked,
+  threadItems,
+  type ChatItem,
+  type NewMessage,
+} from "./studio-chat.js";
+import { dropPaused, holdPaused, takePaused } from "./studio-paused.js";
+import { goWith, planFor, refineInstruction, type Planned } from "./studio-plan.js";
+import { describedIn } from "./studio-summary.js";
+import { openStore } from "./open-store.js";
+import { shapeOrEmpty, studioEngine, type Outcome, type TurnRun } from "./studio-engine.js";
 import { draftIsSaved } from "./studio-draft.js";
 import { buildPreview, PreviewScreen, type Preview } from "./studio-preview.js";
 import { PointGlyph } from "./point-mode.js";
@@ -261,6 +283,14 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const [published, setPublished] = useState<string | undefined>(undefined);
   const [copied, setCopied] = useState(false);
   const [held, setHeld] = useState<Held | null>(null);
+  // A change that is not small (#75): made, checked, and waiting for Go before it is saved. A ref as
+  // well as state: a turn that refines it reads it across awaits.
+  const [plan, setPlanState] = useState<Planned<Preview | null> | null>(null);
+  const planRef = useRef(plan);
+  const setPlan = (next: Planned<Preview | null> | null): void => {
+    planRef.current = next;
+    setPlanState(next);
+  };
   const [working, setWorking] = useState<string | null>(null);
   // What was in the box when the person left for the gallery from here (#487), for this app (or a new
   // one): back in the box, unless they came with words of their own. Either way, taken.
@@ -389,7 +419,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   useEffect(() => {
     const el = scrollRef.current;
     if (el && typeof el.scrollTo === "function") el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [items, working, held]);
+  }, [items, working, held, plan]);
 
   useEffect(() => {
     if (!appId) return setCases([]);
@@ -428,9 +458,10 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   const changedModules = changedPaths(draftModules, savedModules);
   // Something here that lives only in this page: a version made and not kept (it failed a gate), or
   // code edited in the Studio's editor and not saved. Leaving the page loses it.
-  const unkept = held !== null || changedModules.size > 0 || draftSource !== (source ?? STARTER);
+  const unkept = held !== null || plan !== null || changedModules.size > 0 || draftSource !== (source ?? STARTER);
 
-  const engine = async () => studioEngine(engineCfg, (text) => setWorking(text ?? ""), await modulesOf(appRef.current ?? undefined));
+  /** `modules`: the app's files as the turn sees them — a plan being refined has its own edits to them. */
+  const engine = async (modules?: ModuleSource) => studioEngine(engineCfg, (text) => setWorking(text ?? ""), modules ?? (await modulesOf(appRef.current ?? undefined)));
 
   /**
    * Keep a version: save it, give the conversation its card, and — when this was the first — make
@@ -443,7 +474,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     note: string,
     origin?: VersionOrigin,
     libraries?: StudioLibraries | null,
-    extra: Pick<NewMessage, "platform"> = {},
+    extra: Pick<NewMessage, "platform" | "assumed"> = {},
     /** Modules edited by hand (#448): their files go on this device first, and their lock with the version. */
     own?: OwnEdit,
     /** A new app's sample records (#486): its demo records. A changed app keeps the ones it has, as they are. */
@@ -494,6 +525,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       setSavedModules(own.texts);
     }
     setHeld(null);
+    setPlan(null);
     await say({ kind: "version", text: summary || (existing ? t`Changed.` : t`Made “${name}”.`), seq, name, ...extra });
     if (wide) setPreviewOpen(true);
   };
@@ -539,7 +571,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     summary: string,
     note: string,
     loss: string | null,
-    extra: Pick<NewMessage, "platform"> = {},
+    extra: Pick<NewMessage, "platform" | "assumed"> = {},
     /** The app's own modules, when the change edited any (#448): checked and kept with it. */
     modules?: Record<string, string>,
     /** A new app's sample records (#486). */
@@ -582,15 +614,81 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         text: lost
           ? t`This change rewrote your app rather than editing it — it ${lost}. Nothing was saved; try a smaller, more specific change.`
           : t`What came back has problems, so it was not saved:\n- ${problems}`,
-        ...extra,
+        ...(extra.platform ? { platform: extra.platform } : {}),
       });
+      return;
+    }
+    // A change that is not small is shown before it is saved (#75): what it does to the records
+    // already there, and Go. A new app has nothing to lose, and is just made.
+    const planned = await planOf(built);
+    if (planned) {
+      setPlan({ source: src, built, summary: said, note, consequences: planned.consequences, libraries, ...(own ? { own } : {}), extra });
+      // Look at it shows the change itself: the person approves what was made, not a description of it.
+      setPreview(built ?? preview);
+      await say({ kind: "answer", text: said, plan: { consequences: planned.consequences } });
       return;
     }
     await keep(src, built, said, note, undefined, libraries, extra, own, made);
   };
 
-  const answer = async (outcome: Outcome, note: string): Promise<void> => {
-    if (outcome.kind === "question") return say({ kind: "question", text: outcome.text });
+  /**
+   * Whether a change to the saved app is shown first (studio-plan.ts): the app as saved against the
+   * one just built, and the records its store holds — read through the store the app already has.
+   */
+  const planOf = async (built: Preview | null): Promise<{ consequences: string[] } | null> => {
+    const id = appRef.current;
+    const saved = sourceRef.current;
+    if (!id || saved === null || !built) return null;
+    try {
+      const prefs = languagePrefs();
+      const before = describedIn(await loadTrustedModule(saved, await modulesOf(id)), prefs);
+      const now = built.composed.runtime.core.app.definition;
+      const store = await openStore(`user:${id}`);
+      return await planFor(before, { ...describedIn(now, prefs), migrations: now.migrations }, (entity) => store.all(entity));
+    } catch {
+      // The app as saved does not load: there is nothing to compare with, and the change is kept as before.
+      return null;
+    }
+  };
+
+  /** Go (#75): the change is saved exactly as it was made and shown. No model is asked again. */
+  const goPlan = async (): Promise<void> => {
+    const p = planRef.current;
+    if (!p || busy) return;
+    const go = goWith(p);
+    setWorking(t`Saving it`);
+    try {
+      await keep(go.source, go.built, go.summary, go.note, undefined, go.libraries, go.extra, go.own);
+    } finally {
+      setWorking(null);
+    }
+  };
+
+  /** "Change something" (#75): nothing is saved; the box takes what should be different, and the change stays held to be refined. */
+  const changePlan = (): void => {
+    inputRef.current?.focus();
+  };
+
+  /** A guess on the card tapped (#75): the box starts the sentence that corrects it. Never sent for the person. */
+  const assume = (guess: string): void => {
+    const start = t({ message: `About “${guess}”: `, comment: "Put in the Studio's box when a guess on a version's card is tapped; the person finishes the sentence" });
+    setDescription(start);
+    requestAnimationFrame(() => {
+      const box = inputRef.current;
+      if (!box) return;
+      box.focus();
+      box.setSelectionRange(start.length, start.length);
+    });
+  };
+
+  /** `base`: the app the turn was changing, as the model was shown it — the saved one, or a plan being refined. */
+  const answer = async (outcome: Outcome, note: string, base: string | null, refined?: Planned<Preview | null>): Promise<void> => {
+    if (outcome.kind === "question") {
+      // The run that asked waits, in memory, for the answer (#75); the question and its choices are
+      // kept with the conversation, so the card is still there after a reload.
+      if (outcome.paused) holdPaused(chatRef.current, outcome.paused, base);
+      return say({ kind: "question", text: outcome.text, ...(outcome.options?.length ? { options: outcome.options, ...(outcome.allowOther === false ? { allowOther: false } : {}) } : {}) });
+    }
     if (outcome.kind === "refusal") return say({ kind: "refusal", text: outcome.text });
     // What Potyro itself lacks (#263): the request rides on what the agent says, for the card.
     if (outcome.kind === "platform") return say({ kind: "refusal", text: outcome.text, ...platformAsk(outcome.request) });
@@ -606,8 +704,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       outcome.summary,
       note,
       outcome.kind === "loss" ? outcome.loss : null,
-      outcome.kind === "source" ? platformAsk(outcome.platformRequest) : {},
-      outcome.modules,
+      outcome.kind === "source" ? { ...platformAsk(outcome.platformRequest), ...(outcome.assumed?.length ? { assumed: outcome.assumed } : {}) } : {},
+      // A plan refined without touching its modules still carries the edits it had made to them.
+      outcome.modules ?? refined?.own?.texts,
       outcome.kind === "source" ? outcome.seed : undefined,
     );
   };
@@ -631,13 +730,27 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       const brief = briefSince(said) || asked;
       const earlier = appRef.current ? earlierConversation(said, await listVersions(appRef.current)) : [];
       setHeld(null);
-      const current = sourceRef.current;
-      const modules = await modulesOf(appRef.current ?? undefined);
+      // A plan that waits (#75) is what the person is talking about: the turn changes THAT, not the
+      // saved app, and what comes back is judged against the saved app again.
+      const refining = sourceRef.current !== null ? planRef.current : null;
+      const current = refining?.source ?? sourceRef.current;
+      const saved = await modulesOf(appRef.current ?? undefined);
+      const modules = refining?.own ? withEditedModules(saved, refining.own.code) : saved;
+      // An answer to a question goes back into the run that asked, when it still waits here (#75);
+      // otherwise the run starts again from the conversation, the question and the answer in its brief.
+      const answering = said.at(-2)?.kind === "question";
+      const paused = answering ? takePaused(chatRef.current, current) : null;
+      if (!answering) dropPaused(chatRef.current);
+      else console.debug(paused ? "[potyro] studio: the answer goes back into the paused run" : "[potyro] studio: no paused run in memory; starting again from the conversation");
+      const run: TurnRun = paused ? { resume: { paused, answer: asked } } : { asked: questionsAsked(said) };
       // What was pointed at goes beside the request: in words, and as the lines of the app that hold it.
       const context = about && current !== null ? await pointContext(current, about) : undefined;
+      const instruction = refining && !answering ? refineInstruction(asked, refining) : brief;
       const outcome =
-        current !== null ? await (await engine()).modify(current, await shapeOrEmpty(current, modules), brief, context, earlier) : await (await engine()).create(brief);
-      await answer(outcome, brief);
+        current !== null
+          ? await (await engine(modules)).modify(current, await shapeOrEmpty(current, modules), instruction, context, earlier, run)
+          : await (await engine()).create(brief, run);
+      await answer(outcome, brief, current, refining ?? undefined);
     } finally {
       setWorking(null);
     }
@@ -717,6 +830,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     setSource(restored);
     setDraftSource(restored);
     setHeld(null);
+    setPlan(null);
     setPreview((await buildPreview(restored, appRef.current)).preview);
     await refresh();
   };
@@ -814,12 +928,14 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     setPreview(null);
     setPreviewOpen(false);
     setHeld(null);
+    setPlan(null);
     setItems([]);
     setDescription("");
   };
 
   const deleteDraft = async (): Promise<void> => {
     if (!(await shellDialogs.confirm(t`Delete this conversation?`, { detail: t`Nothing was made from it yet, so there is no app to keep.`, ok: t`Delete`, destructive: true }))) return;
+    dropPaused(chatRef.current);
     await clearChat(chatRef.current);
     startOver();
   };
@@ -845,6 +961,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     setSource(copy.source);
     setDraftSource(copy.source);
     setHeld(null);
+    setPlan(null);
     setPreview((await buildPreview(copy.source, copy.id)).preview);
     await refresh();
   };
@@ -883,6 +1000,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
   ];
 
   const canOpen = preview !== null && (hasApp || held !== null);
+  // A question waits on the person (#75): the box is where an answer of their own goes.
+  const lastSaid = items.at(-1);
+  const awaitingAnswer = lastSaid?.type === "agent" && lastSaid.tone === "question" && !busy;
   useEffect(() => {
     const entry = appId ? getEntry(`user:${appId}`) : undefined;
     setHue(entry?.hue);
@@ -1034,6 +1154,11 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               onKeep={() => void keepHeld()}
               onLook={() => setPreviewOpen(true)}
               onSuggest={noWay ? undefined : (s) => setDescription(s)}
+              onAnswer={ready ? (choice) => void send(choice) : undefined}
+              onAssumption={noWay ? undefined : assume}
+              plan={plan ? { name: appName, summary: plan.summary, consequences: plan.consequences } : null}
+              onGo={() => void goPlan()}
+              onChangePlan={changePlan}
               existing={hasApp}
               remix={remix}
               requests={requests}
@@ -1063,7 +1188,15 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               className="k-composer-input"
               aria-label={t`Describe the app`}
               placeholder={
-                listening ? t({ message: "Say what you want", comment: "Studio box while the microphone listens" }) : point ? t`What should be different about it?` : hasApp ? t`Ask for a change` : t`Describe the app you want`
+                listening
+                  ? t({ message: "Say what you want", comment: "Studio box while the microphone listens" })
+                  : awaitingAnswer
+                    ? t({ message: "Type your answer", comment: "Studio box while a question the Studio asked waits for the person's answer" })
+                    : point
+                      ? t`What should be different about it?`
+                      : hasApp
+                        ? t`Ask for a change`
+                        : t`Describe the app you want`
               }
               rows={2}
               value={description}
@@ -1130,7 +1263,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
           appAccent={hue !== undefined ? hueColour(hue) : undefined}
           appearance={appearance}
           version={items.reduce<number | undefined>((v, i) => (i.type === "version" && i.current ? i.seq : v), undefined)}
-          unsaved={held !== null}
+          unsaved={held !== null || plan !== null}
           onBack={closePreview}
           onSource={() => setTools("source")}
           pointing={pointing}

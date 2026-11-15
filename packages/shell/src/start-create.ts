@@ -8,7 +8,7 @@
 // original, so the run is judged on its own — the loop holds an app back for what threw, never for a
 // page that showed nothing on sample data.
 
-import { runCreateLoop, buildCreateTools, CREATE_AGENT_SYSTEM_PROMPT, type CreateLoopOutcome, type LoopStep } from "@potyro/generator/agent";
+import { runCreateLoop, buildCreateTools, CREATE_AGENT_SYSTEM_PROMPT, type CreateLoopDeps, type CreateLoopOutcome, type LoopStep } from "@potyro/generator/agent";
 import { createOpenRouterEngine, loadCorpus, type Language } from "@potyro/generator/backends";
 import { thinkingFor, type EngineConfig } from "./engines.js";
 import { buildAndValidate } from "./validate-app.js";
@@ -26,6 +26,10 @@ export interface StartCreateOpts {
   drafts?: number;
   onStep?: (step: LoopStep) => void;
   signal?: AbortSignal;
+  /** Go on from a run that stopped to ask (#75): its conversation with the answer in it, and what it had spent. */
+  resumeFrom?: CreateLoopDeps["resumeFrom"];
+  asked?: number;
+  stepsSpent?: number;
 }
 
 /** Whether this engine can drive the create loop — the same engines that drive the modify loop. */
@@ -68,6 +72,9 @@ export async function startCreate(opts: StartCreateOpts): Promise<StudioCreateOu
     samples: (source) => passed.get(source),
     onStep: opts.onStep,
     signal: opts.signal,
+    ...(opts.resumeFrom ? { resumeFrom: opts.resumeFrom } : {}),
+    ...(opts.asked !== undefined ? { asked: opts.asked } : {}),
+    ...(opts.stepsSpent !== undefined ? { stepsSpent: opts.stepsSpent } : {}),
   });
   if (outcome.kind !== "source") return outcome;
   const { samples, ...made } = outcome;
