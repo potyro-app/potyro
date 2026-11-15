@@ -57,10 +57,10 @@ for (const mine of [true, false]) {
     await expect(fill.getByRole("button", { name: /^Read a poster/ })).toBeVisible();
     await expect(fill.getByText("Fills this in from a photo of a poster, flyer or ticket")).toBeVisible();
     // The first field still takes the focus: the button is one Shift+Tab away, not in the way.
-    await expect(form.getByLabel("What")).toBeFocused();
+    await expect(form.getByRole("textbox", { name: "What" })).toBeFocused();
 
     await readSample(page, form);
-    await expect(form.getByLabel("What")).toHaveValue("Night Tram Quartet", { timeout: 20_000 });
+    await expect(form.getByRole("textbox", { name: "What" })).toHaveValue("Night Tram Quartet", { timeout: 20_000 });
     await expect(form.getByLabel("Venue")).toHaveValue("The Lantern Room");
     await expect(form.getByLabel("Address")).toHaveValue("12 Harbour Lane");
     await expect(form.getByLabel("Doors open")).toHaveValue("19:00");
@@ -81,7 +81,7 @@ for (const mine of [true, false]) {
     await addPackage(page, packApp("poster-event", "poster-event.app.ts"), mine);
     const form = await newEvent(page);
     const fill = form.locator("[data-k-form-fill]");
-    await form.getByLabel("What").fill("My friend's gig");
+    await form.getByRole("textbox", { name: "What" }).fill("My friend's gig");
     await form.getByLabel("Venue").fill("The Lantern Room"); // what the poster says too
     await form.getByLabel("Price").fill("Free");
 
@@ -89,7 +89,7 @@ for (const mine of [true, false]) {
     const asked = review(form);
     await expect(asked).toBeVisible({ timeout: 20_000 });
     // Typed values are untouched while the question stands; the empty fields were filled meanwhile.
-    await expect(form.getByLabel("What")).toHaveValue("My friend's gig");
+    await expect(form.getByRole("textbox", { name: "What" })).toHaveValue("My friend's gig");
     await expect(form.getByLabel("Price")).toHaveValue("Free");
     await expect(form.getByLabel("Address")).toHaveValue("12 Harbour Lane");
     // Two fields differ; the venue, typed the same as the poster prints it, is not listed.
@@ -106,7 +106,7 @@ for (const mine of [true, false]) {
     await asked.getByRole("group", { name: "What" }).getByRole("radio", { name: /^New/ }).check();
     await asked.getByRole("button", { name: "Use selected" }).click();
     await expect(asked).toHaveCount(0);
-    await expect(form.getByLabel("What")).toHaveValue("Night Tram Quartet");
+    await expect(form.getByRole("textbox", { name: "What" })).toHaveValue("Night Tram Quartet");
     await expect(form.getByLabel("Price")).toHaveValue("Free");
     // The focus goes back to the button the answer came from.
     await expect(fill.getByRole("button", { name: /^Read a poster/ })).toBeFocused();
@@ -125,7 +125,7 @@ for (const mine of [true, false]) {
   test(`${how}: on the edit form a saved value is asked about, and the record changes only on Save changes`, async ({ page }) => {
     await addPackage(page, packApp("poster-event", "poster-event.app.ts"), mine);
     const add = await newEvent(page);
-    await add.getByLabel("What").fill("Placeholder night");
+    await add.getByRole("textbox", { name: "What" }).fill("Placeholder night");
     await readSample(page, add);
     await expect(review(add)).toBeVisible({ timeout: 20_000 });
     await review(add).getByRole("button", { name: "Keep mine" }).click();
@@ -144,9 +144,12 @@ for (const mine of [true, false]) {
     await readSample(page, edit);
     const asked = review(edit);
     await expect(asked).toBeVisible({ timeout: 20_000 });
-    await expect(asked.getByRole("group")).toHaveCount(1);
+    // The name saved differs, and so does the picture: the same poster read again is a new photo.
+    await expect(asked.getByRole("group")).toHaveCount(2);
+    await expect(asked.getByRole("group", { name: "What" })).toBeVisible();
+    await expect(asked.getByRole("group", { name: "Poster" })).toBeVisible();
     await asked.getByRole("button", { name: "Use all new" }).click();
-    await expect(edit.getByLabel("What")).toHaveValue("Night Tram Quartet");
+    await expect(edit.getByRole("textbox", { name: "What" })).toHaveValue("Night Tram Quartet");
     // Still the old name on the page behind: a fill never saves.
     await expect(heading).toBeVisible();
     await edit.getByRole("button", { name: "Save changes" }).click();
@@ -158,14 +161,14 @@ for (const mine of [true, false]) {
 test("closing the choice fills nothing and says nothing", async ({ page }) => {
   await addPackage(page, packApp("poster-event", "poster-event.app.ts"), false);
   const form = await newEvent(page);
-  await form.getByLabel("What").fill("Typed");
+  await form.getByRole("textbox", { name: "What" }).fill("Typed");
   await form.getByRole("button", { name: /^Read a poster/ }).click();
   await expect(page.getByRole("menu", { name: "Read a poster" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu", { name: "Read a poster" })).toHaveCount(0);
   // The form is still there, as it was, and can be saved.
   await expect(form).toBeVisible();
-  await expect(form.getByLabel("What")).toHaveValue("Typed");
+  await expect(form.getByRole("textbox", { name: "What" })).toHaveValue("Typed");
   await expect(form.locator("[data-k-form-fill]").getByRole("alert")).toHaveCount(0);
   await expect(form.getByRole("button", { name: "Create" })).toBeEnabled();
 });
