@@ -13,7 +13,7 @@
 import { plural, t } from "@lingui/core/macro";
 import { fmt } from "@potyro/i18n";
 import { guideSteps, humanizeKey, localize, pickLanguage, type AppDefinition, type Language, type Localized } from "potyro";
-import { NEEDS_PLATFORM } from "@potyro/generator/agent";
+import { NEEDS_PLATFORM, withoutAssumed } from "@potyro/generator/agent";
 import { withoutNotDone } from "@potyro/generator/backends";
 
 /** The parts of an app a card speaks of, its words already in the person's language. */
@@ -95,7 +95,7 @@ function difference(before: Named[], after: Named[], byWords = false): Differenc
 }
 
 /** An app's word as the card writes it; each language has its own quotation marks. */
-const quoted = (word: string): string => t({ message: `“${word}”`, comment: "A word of the person's app quoted in a sentence of Potyro's: use this language's quotation marks" });
+export const quoted = (word: string): string => t({ message: `“${word}”`, comment: "A word of the person's app quoted in a sentence of Potyro's: use this language's quotation marks" });
 
 const listed = (things: readonly Named[]): string => fmt.list(things.map((n) => quoted(n.label)));
 
@@ -285,11 +285,12 @@ export function describeNewApp(app: Described): string {
 
 /**
  * The model's own explanation as a card shows it: one paragraph, without the `Not done:` list (said
- * on its own, after) and without the lines addressed to the loop.
+ * on its own, after), without the `Assumed:` list (shown under it, each guess to tap, #75) and without
+ * the lines addressed to the loop.
  */
 export function proseForCard(rationale: string | undefined): string {
   if (!rationale) return "";
-  return withoutNotDone(rationale)
+  return withoutAssumed(withoutNotDone(rationale))
     .split("\n")
     .filter((line) => !line.replace(/^[\s*`_]+/, "").startsWith(NEEDS_PLATFORM))
     .join(" ")

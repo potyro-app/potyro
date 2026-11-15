@@ -22,8 +22,8 @@ import { applyEdits, describeEditFailures, DIVIDER_MARK, EDIT_PLACEHOLDER_REPLAC
 import { extractSource, looksLikeApp, parseModifyReply, withNotDone } from "./prompt.js";
 
 export type ReadReply =
-  | { kind: "edits"; source: string; applied: number; rationale?: string; notDone?: string[] }
-  | { kind: "whole-file"; source: string; rationale?: string; notDone?: string[] }
+  | { kind: "edits"; source: string; applied: number; rationale?: string; notDone?: string[]; assumed?: string[] }
+  | { kind: "whole-file"; source: string; rationale?: string; notDone?: string[]; assumed?: string[] }
   | { kind: "diagnosis"; text: string }
   | { kind: "no-match"; failures: EditFailure[] }
   | { kind: "unusable"; text: string };
@@ -179,6 +179,8 @@ export type GuardedModifyResult =
       rationale?: string;
       /** The parts of the request the model said it did not do, each naming what it would need (#132). */
       notDone?: string[];
+      /** What the model said it guessed (#75), each a short sentence in the person's words. */
+      assumed?: string[];
       trace: ModifyTrace;
     }
   | { kind: "diagnosis"; text: string; trace: ModifyTrace }
@@ -255,6 +257,7 @@ function toResult(
     ...base,
     ...(reply.rationale ? { rationale: reply.rationale } : {}),
     ...(reply.notDone?.length ? { notDone: reply.notDone } : {}),
+    ...(reply.assumed?.length ? { assumed: reply.assumed } : {}),
   };
 }
 
