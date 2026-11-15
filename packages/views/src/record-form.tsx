@@ -17,6 +17,8 @@ import { FormSheet } from "./form-sheet.js";
 import { resolveGroups, type ResolvedGroup } from "./groups.js";
 import { SwitchRow } from "./switch.js";
 import { byPeople } from "./edit-lock.js";
+import { FormFill } from "./form-fill.js";
+import { isEmpty, toRaw, valueKey } from "./form-values.js";
 
 export interface RecordFormProps {
   runtime: PotyroRuntime;
@@ -33,31 +35,6 @@ export interface RecordFormProps {
 }
 
 type Hints = { required?: boolean; help?: string; width?: "full" | "half" };
-
-function relId(value: unknown): string | null {
-  if (value == null) return null;
-  if (typeof value === "object") return (value as { id?: string }).id ?? null;
-  return String(value);
-}
-
-/** Convert a resolved value back to raw (relations → ids); recurse into list rows. */
-function toRaw(runtime: PotyroRuntime, field: Field, val: unknown): unknown {
-  if (val == null) return val;
-  if (field.type === "relation") {
-    return field.many ? (Array.isArray(val) ? val.map(relId).filter(Boolean) : []) : relId(val);
-  }
-  if (field.type === "list") {
-    if (!Array.isArray(val)) return [];
-    return val.map((row) => rawRow(runtime, field.of, row as Record<string, unknown>));
-  }
-  return val;
-}
-
-function rawRow(runtime: PotyroRuntime, of: Record<string, Field>, row: Record<string, unknown>): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const [k, sub] of Object.entries(of)) out[k] = toRaw(runtime, sub, row?.[k]);
-  return out;
-}
 
 /**
  * A field's starting value. A function default (KA-25, `(ctx) => ctx.now()`) is evaluated by the
@@ -97,14 +74,10 @@ async function initialFormState(
   const fields = runtime.definition.entities[entity]?.fields ?? {};
   const out: Record<string, unknown> = {};
   for (const [key, field] of Object.entries(fields)) {
-    if (resolved) out[key] = toRaw(runtime, field, resolved[key]);
+    if (resolved) out[key] = toRaw(field, resolved[key]);
     else out[key] = preset?.[key] ?? (await defaultFor(runtime, entity, key, field));
   }
   return out;
-}
-
-function isEmpty(v: unknown): boolean {
-  return v == null || v === "" || (Array.isArray(v) && v.length === 0);
 }
 
 /** Default-filled raw values for a NEW record of `entity`, with optional presets applied. Mirrors
@@ -301,6 +274,11 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
   const [saving, setSaving] = useState(false);
   // What the form opened with, so "has it been edited" is a comparison, not a flag to maintain.
   const opened = useRef<string>("");
+  // A fill button is working (#81): the form stays usable, but is not saved under it.
+  const [filling, setFilling] = useState(false);
+  // Values nobody typed — a new record's defaults, and what a fill put in — by field: a later fill
+  // replaces those without asking. What the person entered, or saved before, is theirs.
+  const unwritten = useRef<Record<string, string>>({});
 
   useEffect(() => {
     if (form) return;
@@ -309,6 +287,8 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
     void initialFormState(runtime, entity, isEdit ? record : null, initial).then((next) => {
       if (!live) return;
       opened.current = JSON.stringify(next);
+      const fields = runtime.definition.entities[entity]?.fields ?? {};
+      unwritten.current = isEdit ? {} : Object.fromEntries(Object.entries(next).map(([k, v]) => [k, valueKey(fields[k], v)]));
       setForm(next);
     });
     return () => {
@@ -354,6 +334,7 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
     // Records only the app writes (`editableBy: "app"`) are never saved from a form; nothing offers
     // one for them, and this holds even if something did.
     if (!byPeople(runtime, entity)) return onCancel();
+    if (saving || filling) return;
     const values = tidied(fields, form);
     const missing: Record<string, string> = {};
     for (const group of groups) {
@@ -443,6 +424,23 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
               <Trans>Couldn't save: {saveError}</Trans>
             </p>
           ) : null}
+          {byPeople(runtime, entity) ? (
+            <FormFill
+              runtime={runtime}
+              entity={entity}
+              recordId={recordId}
+              values={tidied(fields, form)}
+              shown={groups.flatMap((g) => g.fields)}
+              unwritten={(key, value) => unwritten.current[key] === valueKey(fields[key], value)}
+              onFill={(values) => {
+                for (const [key, v] of Object.entries(values)) unwritten.current[key] = valueKey(fields[key], v);
+                setForm((prev) => ({ ...(prev ?? {}), ...values }));
+                // A filled field answers its complaint, as typing into it does.
+                setErrors((prev) => Object.fromEntries(Object.entries(prev).filter(([key]) => !(key in values))));
+              }}
+              onBusy={setFilling}
+            />
+          ) : null}
           {groups.map(renderGroup)}
         </div>
         <footer className="k-form-actions">
@@ -452,7 +450,7 @@ export function RecordForm({ runtime, entity, recordId, initial, onDone, onCance
           <button
             type={nested ? "button" : "submit"}
             className="k-add k-primary-action"
-            disabled={saving}
+            disabled={saving || filling}
             onClick={nested ? () => void submit() : undefined}
           >
             {saving ? t`Saving` : isEdit ? t`Save changes` : t({ message: "Create", comment: "Form button that saves a new record" })}

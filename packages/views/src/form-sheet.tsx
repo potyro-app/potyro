@@ -56,7 +56,9 @@ export function FormSheet({ title, onClose, stacked, className, ready = true, ch
     const root = ref.current;
     if (!ready || !root) return;
     const body = root.querySelector<HTMLElement>(".k-form-body") ?? root;
-    (focusables(body)[0] ?? root).focus();
+    // The first FIELD: a form's fill button (#81) sits above it, and is not what a form opens on.
+    const all = focusables(body);
+    (all.find((el) => !el.closest("[data-k-form-fill]")) ?? all[0] ?? root).focus();
   }, [ready]);
 
   const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>): void => {

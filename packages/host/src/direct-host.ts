@@ -144,6 +144,12 @@ export class DirectLoadedApp implements LoadedApp {
     return (await (fn as Fn)(rows, ctx)) as Value;
   }
 
+  async callFill(entity: string, index: number, draft: Record<string, unknown>, ctx: unknown): Promise<unknown> {
+    const fill = this.definition.entities[entity]?.fill?.[index];
+    if (!fill || typeof fill.run !== "function") throw new Error(`fill ${entity}[${index}] not found`);
+    return fill.run(draft as never, ctx as never);
+  }
+
   async callFieldDefault(entity: string, field: string, ctx: unknown): Promise<Value> {
     const d = (this.definition.entities[entity]?.fields[field] as { default?: unknown } | undefined)?.default;
     return (typeof d === "function" ? await (d as Fn)(ctx) : (d ?? null)) as Value;

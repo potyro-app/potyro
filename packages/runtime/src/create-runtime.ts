@@ -2,7 +2,7 @@
 // few page-aware extras the shell/views use. Views consume this; never Store/Host/Caps.
 
 import type { AppDefinition, Ctx, Id, Localized, PotyroRecord, Resolved, Runtime } from "potyro";
-import { actionFailure, onAppFailure, reportAppFailure, type ActionFailure, type AppFailure, type BindingRef } from "@potyro/host";
+import { actionFailure, declined, onAppFailure, reportAppFailure, type ActionFailure, type AppFailure, type BindingRef } from "@potyro/host";
 import { describeValueIssue, humanizeKey, plainWords } from "potyro";
 import { RuntimeCore, type RuntimeDeps, type RuntimeLanguage } from "./core.js";
 import { useEntityQuery, usePageQuery, useRecord, type QueryState, type RecordState } from "./hooks.js";
@@ -49,6 +49,13 @@ export interface PotyroRuntime extends Runtime {
    * it took the call, so a page showing several views can be addressed by page id alone.
    */
   registerViewControl(pageId: string, handle: (verb: string, arg?: unknown) => boolean | Promise<boolean>): () => void;
+  /**
+   * Run a form's fill button (`EntityDef.fill[index]`, #81) on the form's current values. Never
+   * rejects and never saves: the answer is the values that fit their fields (checked by the host,
+   * whichever way the app runs), with what a field refused in words — or, when the app's code
+   * failed, the sentence for the person. The form decides what to do with the values.
+   */
+  fillForm(entity: string, index: number, draft: Readonly<Record<string, unknown>>): Promise<FillResult>;
   /** Run a page's declared button (`Page.actions[index]`), with the page's current params in ctx. */
   runPageAction(pageId: string, index: number, params?: Record<string, unknown>): Promise<void>;
   /**
@@ -80,6 +87,20 @@ export interface PotyroRuntime extends Runtime {
   onLanguageChange(cb: () => void): () => void;
 }
 
+/** What a form's fill came to, as the form shows it. */
+export type FillResult =
+  | {
+      ok: true;
+      /** Values that fit their field, by key: raw, as a save takes them. */
+      values: Record<string, unknown>;
+      /** Values a field refused: the field's key and the sentence saying why, for the person. */
+      skipped: Array<{ field: string; why: string }>;
+      /** The person said no on the way (closed the camera, "Not now" to a question), or the app returned
+       *  nothing at all: there is nothing to say. */
+      declined?: true;
+    }
+  | { ok: false; message: string };
+
 const messageOf = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
 /** What a person is told when an action fails and nobody supplied the words: plain English, nothing internal. */
@@ -97,13 +118,14 @@ export const ACTION_STOPPED = {
  * A refused write names the field by the app's label; an app's own words are its words; anything
  * else is one plain sentence, the detail staying in the console.
  */
-export function plainFailure(failure: ActionFailure, definition: Localized<AppDefinition>): string {
+export function plainFailure(failure: ActionFailure, definition: Localized<AppDefinition>, during?: "fill"): string {
   if (failure.kind === "said") return failure.message;
   if (failure.kind === "broke") return ACTION_BROKE;
   if (failure.kind === "stopped") return ACTION_STOPPED[failure.why];
   const field = definition.entities[failure.refusal.entity]?.fields?.[failure.refusal.field];
   const label = field?.label === undefined ? humanizeKey(failure.refusal.field) : plainWords(field.label);
-  return describeValueIssue(failure.refusal.issue, label, field);
+  const said = describeValueIssue(failure.refusal.issue, label, field);
+  return during === "fill" ? `Not filled: ${said}` : said;
 }
 
 export function createRuntime(deps: RuntimeDeps): PotyroRuntime {
@@ -114,14 +136,16 @@ export function createRuntime(deps: RuntimeDeps): PotyroRuntime {
    * the console and for whoever listens to this app's failures (the Studio). Nothing about how the
    * app is run — its box, an error's class, a stack — is ever in what the person reads (#76).
    */
+  const wordsFor = (failure: ActionFailure, during?: "fill"): string => {
+    try {
+      return (deps.failureWords ?? plainFailure)(failure, core.definition, during) || ACTION_BROKE;
+    } catch {
+      return ACTION_BROKE; // the words failing must not hide the failure
+    }
+  };
   const actionFailed = (what: string, e: unknown): void => {
     const failure = actionFailure(e);
-    let shown: string;
-    try {
-      shown = (deps.failureWords ?? plainFailure)(failure, core.definition) || ACTION_BROKE;
-    } catch {
-      shown = ACTION_BROKE; // the words failing must not hide the failure
-    }
+    const shown = wordsFor(failure);
     deps.ui.toast(shown);
     reportAppFailure({ app: core.definition.id, what, message: failure.detail, shown });
     console.warn(`[potyro] ${what} failed:`, e);
@@ -156,6 +180,33 @@ export function createRuntime(deps: RuntimeDeps): PotyroRuntime {
     registerViewControl: (pageId, handle) => core.registerViewControl(pageId, handle),
     settle: () => core.settle(),
     close: () => core.close(),
+    async fillForm(entity, index, draft) {
+      const what = `fill ${entity}[${index}]`;
+      try {
+        const outcome = await core.runFill(entity, index, draft);
+        const fields = core.definition.entities[entity]?.fields ?? {};
+        const skipped = outcome.refused.map((refusal) => {
+          const field = fields[refusal.field];
+          const detail = describeValueIssue(refusal.issue, field?.label === undefined ? humanizeKey(refusal.field) : plainWords(field.label), field);
+          const why = wordsFor({ kind: "refused", refusal, detail }, "fill");
+          // Heard like a refused write is: the Studio fixes the app from this, the person reads `why`.
+          reportAppFailure({ app: core.definition.id, what, message: `the value for ${entity}.${refusal.field} was not filled: ${detail}`, shown: why });
+          return { field: refusal.field, why };
+        });
+        if (outcome.unknown.length) console.warn(`[potyro] ${what} returned keys that are no field of ${entity}:`, outcome.unknown.join(", "));
+        // An answer of nothing at all is the app standing down (its own list closed): said as silence.
+        return { ok: true, values: outcome.values, skipped, ...(outcome.nothing ? { declined: true as const } : {}) };
+      } catch (e) {
+        // "Not now" to the camera or to the AI question is an answer: the form stays as it was.
+        if (declined(e)) return { ok: true, values: {}, skipped: [], declined: true };
+        // The same sorting as a failed action (#76), said at the button instead of in a toast.
+        const failure = actionFailure(e);
+        const message = wordsFor(failure, "fill");
+        reportAppFailure({ app: core.definition.id, what, message: failure.detail, shown: message });
+        console.warn(`[potyro] ${what} failed:`, e);
+        return { ok: false, message };
+      }
+    },
     async runPageAction(pageId, index, params) {
       // The same catch `runAction` needs, for the same reason: a button fires this from a click
       // handler, so an escaping rejection would be invisible to the person who pressed it.

@@ -1150,8 +1150,12 @@ action, the answer and the cause, sorted as the host sorts a failure (`actionFai
 write says the field and what it takes from the refusal's own data — `the "Scan label" action
 (bottle.scanLabel) fails when the AI answers grape with text that is in no list (…): its write to
 bottle.grape is refused — grape takes one of "merlot", "syrah"` — and a call the runner cut short is
-one that "does not finish". Only the actions that asked
-get the extra runs, inside a budget of their own. In every case
+one that "does not finish". A form's fill button (`EntityDef.fill`, docs/04) is run the same way —
+on the draft of a new record, and on a saved record's when there is one — and what it RETURNS is
+checked as the form will check it: `the "Scan label" fill button of the bottle form fails when the AI
+answers grape with text that is in no list (…): the value it returns for bottle.grape is refused —
+grape takes one of "merlot", "syrah"`, or `it returns "vintage", which is no field of bottle`. Only the
+actions and fills that asked get the extra runs, inside a budget of their own. In every case
 the candidate is judged against the original's own run, so failures the app already had are context
 and never a reason to refuse the change. A model that repeats itself has stopped reasoning: the
 repeated turns are rolled back and one note says what was tried and the ways out; a second repeat

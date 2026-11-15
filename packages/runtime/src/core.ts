@@ -6,7 +6,7 @@ import { actionInfo, actionInputProblem, appLanguages, FieldValueError, isContex
 
 import type { AppDefinition, Ctx, CtxText, Id, Language, Words, Localized, PotyroRecord, Person, Resolved, Space, TextEdit, Value, View } from "potyro";
 import type { ActionFailure, BindingRef, Host, LoadedApp, MakeCtxBase, NavBridge, UiBridge } from "@potyro/host";
-import { formatLocaleFor, GuestBook } from "@potyro/host";
+import { formatLocaleFor, GuestBook, runFill, type FillOutcome } from "@potyro/host";
 import type { Capabilities } from "@potyro/capabilities";
 import type { Store } from "@potyro/store";
 import { asyncSort } from "./async-sort.js";
@@ -55,9 +55,10 @@ export interface RuntimeDeps {
   /**
    * How a failed action is said to the person (#76): the shell's words, in its language, naming the
    * field by the app's own label. The runtime has no catalogs, so it is handed in; absent (tests,
-   * the generator's headless runs), `plainFailure` says it in English.
+   * the generator's headless runs), `plainFailure` says it in English. `during: "fill"` is a form's
+   * fill button (#81): nothing was being saved, so a refused value is "not filled", not "not saved".
    */
-  failureWords?: (failure: ActionFailure, definition: Localized<AppDefinition>) => string;
+  failureWords?: (failure: ActionFailure, definition: Localized<AppDefinition>, during?: "fill") => string;
 }
 
 /** Which of the app's languages it is shown in (docs/05 `Runtime.language`). */
@@ -387,6 +388,19 @@ export class RuntimeCore {
     // The whole action, not only its ctx writes: an untrusted app writes from inside its isolate.
     await this.track(this.app.callPageAction(pageId, index, this.ctxFor(params)));
     this.invalidate();
+  }
+
+  /**
+   * Run a form's fill button (#81) on the form's values and hand back what the host checked. The
+   * app's function runs where the app runs; nothing it returns reaches the caller unchecked
+   * (`runFill`). Tracked like an action: a sealed app may write from inside its box meanwhile.
+   */
+  async runFill(entity: string, index: number, draft: Readonly<Record<string, unknown>>, params?: Record<string, unknown>): Promise<FillOutcome> {
+    try {
+      return await this.track(runFill(this.app, entity, index, draft, this.ctxFor(params)));
+    } finally {
+      this.invalidate();
+    }
   }
 
   entityForPage(pageId: string): string {

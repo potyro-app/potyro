@@ -132,6 +132,23 @@ is kept on this device (like AI's) and forgotten when the app is deleted. Not no
 The connection is the shell's, opened in its realm — never from the sealed frame, whose CSP connects
 nowhere — and ends with the app.
 
+### A form's fill
+
+A form's fill button (`EntityDef.fill`, docs/04) is the one place where a sealed app hands the shell
+values that go straight in front of the person, into a form the shell draws. So the crossing is
+narrow in both directions. In: the app's function gets a plain COPY of the form's values (the
+record's own fields, which its `ctx` could read anyway) and the same mediated `ctx` as an action —
+no handle on the form, no more authority than it had. Out: only data crosses the port (structured
+clone from the realm's Worker, JSON from the isolate), and `checkFill` on the host's side
+(`packages/host/src/fill.ts`) is the single point every runner's answer passes: it must be a plain
+object; each value is deep-copied as plain data and held to its field's write rule; what does not fit
+is left out and named; keys that are no field are dropped; the size is bounded (`FILL_LIMITS`). The
+form then puts values in fields, as values: a string is shown as text, a `MediaRef` resolves only in
+the app's own media area, a relation id only among the app's own records. Nothing is saved by the
+fill — the person saves, through the same validated write as any form — and a value they entered is
+replaced only by their own choice in the review. The watchdog stops a fill that does not end, as it
+does an action; the form says so and stays usable.
+
 Data isolation: an untrusted app can never read another app's records — the `Store` is opened
 per app id, and the realm (or the isolate) only receives a `ctx` bound to that app's store.
 

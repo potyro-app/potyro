@@ -4089,6 +4089,195 @@ details.k-form-group > summary:focus-visible {
   box-shadow: 0 0 0 3px var(--danger-tint);
 }
 /* tokens-only: end — form groups */
+/* tokens-only: start — form fill */
+/* A form's fill buttons (#81): the app's own way to start the record — "Scan label" — at the head of
+   the form, above its first field. It wears the app's colour as a wash, so it reads as the app's
+   tool and not as one more of the form's controls; what it did, and what it could not do, is said in
+   the lines right under it. */
+.k-form-fill {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.k-form-fill-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.k-form-fill-item {
+  flex: 1 1 13rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.k-form-fill-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 3rem;
+  padding: var(--space-2) var(--space-4);
+  border: var(--stroke) solid var(--tinta);
+  border-radius: var(--radius-md);
+  background: var(--aguada);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.k-form-fill-button .k-glyph {
+  color: var(--tinta);
+  flex: none;
+}
+.k-form-fill-button:hover {
+  background: color-mix(in oklab, var(--aguada) 82%, var(--tinta));
+}
+.k-form-fill-button:active {
+  transform: scale(0.98);
+}
+.k-form-fill-button:focus-visible {
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
+}
+/* Another button of the form is working: this one waits, and says so by stepping back. */
+.k-form-fill-button[aria-disabled="true"]:not([data-busy]) {
+  opacity: 0.55;
+  cursor: default;
+}
+.k-form-fill-button[data-busy] {
+  cursor: progress;
+}
+.k-form-fill-about {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  text-align: center;
+}
+.k-form-fill-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.k-form-fill-status:empty {
+  display: none;
+}
+.k-form-fill-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.k-form-fill-note[data-kind="filled"] {
+  color: var(--ink);
+}
+.k-form-fill-note[data-kind="skipped"],
+.k-form-fill-note[data-kind="error"] {
+  color: var(--danger);
+}
+/* The review: what the person entered beside what was just read, a pair per field. Inside the form's
+   own sheet — a second dialog over a form would be a dialog too many. */
+.k-form-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding: var(--space-4);
+  border: var(--stroke) solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.k-form-review:focus {
+  outline: none;
+}
+.k-form-review:focus-visible {
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
+}
+.k-form-review-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.k-form-review-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.k-form-review-item {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.k-form-review-item > legend {
+  padding: 0;
+  margin-bottom: var(--space-1);
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.k-form-review-choice {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-6) var(--space-2) var(--space-3);
+  border: var(--stroke) solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.k-form-review-choice[data-chosen] {
+  border-color: var(--tinta);
+  background: var(--aguada);
+}
+.k-form-review-choice:focus-within {
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
+}
+.k-form-review-choice > input {
+  position: absolute;
+  top: var(--space-2);
+  inset-inline-end: var(--space-2);
+  margin: 0;
+  accent-color: var(--accent);
+}
+.k-form-review-caption {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.k-form-review-value {
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.k-form-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.k-form-review-actions > button {
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-form-fill-button,
+  .k-form-review-choice {
+    transition: none;
+  }
+}
+/* tokens-only: end — form fill */
 /* An input (DESIGN.md §6): the page's own ground inside a 2px outline that reads on its own, 12px
    corners; in focus the outline takes the app's colour. 16px at least, or iOS zooms into it. */
 .k-input {

@@ -619,6 +619,13 @@ export const HARNESS_SOURCE = `${MARSHAL_SOURCE}
             result = typeof fd.default === "function" ? await fd.default(ctx) : (fd.default === undefined ? null : fd.default);
             break;
           }
+          case "fill": {
+            var fe = app.entities[p.entity], ff = (fe && Array.isArray(fe.fill)) ? fe.fill[p.index] : null;
+            if (!ff || typeof ff.run !== "function") throw new Error("fill " + p.entity + "[" + p.index + "] not found");
+            result = await ff.run(p.draft || {}, ctx);
+            if (result === undefined) result = null;
+            break;
+          }
           case "tile": result = typeof app.tile === "function" ? await app.tile(ctx) : null; break;
           case "demo": if (typeof app.demo === "function") await app.demo(ctx); result = null; break;
           case "reminderWhen": { var rem = (app.reminders||[]).find(function(r){ return r.id === p.id; }); result = rem ? await rem.when(record, ctx) : null; break; }

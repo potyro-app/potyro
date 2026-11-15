@@ -17,8 +17,11 @@ import type { TileContent } from "./tile.js";
 
 export type Computed = (record: Resolved, ctx: Ctx) => Value | Promise<Value>;
 export type ActionFn = (record: Resolved, ctx: Ctx, input?: unknown) => void | Promise<void>;
+/** What a form's fill button answers with: values by field key, or nothing. */
+export type FillFn = (draft: Resolved, ctx: Ctx) => FillValues | Promise<FillValues>;
+export type FillValues = Record<string, unknown> | null | void;
 export type FilterFn = (record: Resolved, ctx: Ctx) => boolean;
-/** Orders two rows. `ctx` (#133) lets a sort read the selection, the page's chips or the user's
+/** Orders two rows. `ctx` lets a sort read the selection, the page's chips or the user's
  *  position: `(a, b, ctx) => distance(a, ctx.params.me) - distance(b, ctx.params.me)`. */
 export type SortFn = (a: Resolved, b: Resolved, ctx: Ctx) => number;
 export type BindingFn<T = Value> = (record: Resolved, ctx: Ctx) => T;
@@ -31,7 +34,7 @@ export type Binding<T = Value> = string | BindingFn<T>;
 // Entities
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** A titled run of fields (#100). The form and the detail page both read it: the form shows the
+/** A titled run of fields. The form and the detail page both read it: the form shows the
  *  editable fields of each group under its title, the detail page every listed field or computed. */
 export interface FieldGroup {
   title?: Words;
@@ -39,11 +42,11 @@ export interface FieldGroup {
   fields: string[];
   /** Start folded. The first group is never folded, whatever this says. */
   collapsed?: boolean;
-  /** The heading folds it on the record page, remembered per device (#108). */
+  /** The heading folds it on the record page, remembered per device. */
   collapsible?: boolean;
 }
 
-/** An action that says what it takes (#213). A button opens a form of `input`; Ask can fill it. The
+/** An action that says what it takes. A button opens a form of `input`; Ask can fill it. The
  *  values reach `run` as its third argument, checked. A bare function is an action taking nothing. */
 export interface ActionDef {
   run: ActionFn;
@@ -56,9 +59,23 @@ export interface ActionDef {
   input?: Record<string, Field>;
 }
 
-/** A computed value that says what it is called (#310). A page that shows it — a detail section, a
- *  table column — heads it with `label`; a bare function is headed by its key, humanised, in every
- *  language. */
+/** A button at the top of a record's form — adding and editing — that fills it: from a photo, a scan,
+ *  a lookup. `run` gets the form's values as they are (`draft`; nothing is saved yet) and RETURNS
+ *  values by field key, as a write takes them (a picture: `await ctx.media.put(blob)`); it does not
+ *  save. The form fills its empty fields and asks before replacing what the person entered; a value
+ *  its field does not take is left out and said. Return nothing when there is nothing (cancelled).
+ *  `fill: [{ label: "Scan label", icon: "camera", run: async (draft, ctx) => ({ name, year }) }]` */
+export interface FormFill {
+  label: Words;
+  /** A Lucide name (`"camera"`). */
+  icon?: string;
+  /** A line under the button: what it does, what it sends ("Reads the label with AI"). */
+  description?: Words;
+  run: FillFn;
+}
+
+/** A computed value that says what it is called. A page that shows it — a detail section, a
+ *  table column — heads it with `label`; a bare function is headed by its key, humanised. */
 export interface ComputedDef {
   value: Computed;
   /** What the value is called where a page shows it; default: the key, humanised. */
@@ -81,7 +98,9 @@ export interface EntityDef {
   /** Values worked out from the record. A function, or `{ value, label }` when a page shows it. */
   computed?: Record<string, Computed | ComputedDef>;
   actions?: Record<string, ActionFn | ActionDef>;
-  /** Who may change or delete a record (KA-21). `"creator"`: only the person who added it — anyone
+  /** Buttons on its form that fill it before it is saved ("Scan label"): see `FormFill`. */
+  fill?: FormFill[];
+  /** Who may change or delete a record. `"creator"`: only the person who added it — anyone
    *  else's edit does not take; `"app"`: only app code (docs/03). Default `"anyone"`. */
   editableBy?: "anyone" | "creator" | "app";
   /** `"record"`: each record shared by its own link (docs/24 §12). */
@@ -94,7 +113,6 @@ export interface EntityDef {
 // Pages & views (docs/03). Any binding, filter, or sort may be a function.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Where tapping a row navigates. `param` maps target-param → source field key. */
 /** A tap on a row, card or pin: a page (params read off the record), or the app's own function. */
 export type OnOpen = { page: string; param?: Record<string, string> } | ((record: Resolved, ctx: Ctx) => void | Promise<void>);
 

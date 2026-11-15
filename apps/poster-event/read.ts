@@ -264,6 +264,66 @@ async function offerWithoutAi(ctx: Ctx): Promise<void> {
 
 type Kind = "photo" | "sample" | "manual";
 
+/** One event to fill the form from, when a poster carries several. Null when the person closed the list. */
+async function pickOne(ctx: Ctx, drafts: Draft[]): Promise<Draft | null> {
+  if (drafts.length === 1) return drafts[0]!;
+  const today = ctx.now();
+  const pick = await ctx.ui.sheet<number>({
+    title: ctx.t(W.several, { n: drafts.length }),
+    items: drafts.map((d, i) => ({ id: i, label: d.title || "—", detail: whenText(d, ctx, today) || ctx.t(W.noDateYet), icon: "🎟️" })),
+  });
+  return pick === null ? null : drafts[pick]!;
+}
+
+/**
+ * The event form's own button (docs/04 §A button that fills the form): the person is already typing
+ * an event in — or correcting one — and has the poster at hand. A photo is read the same way as on
+ * the page's button, and what it says comes back as values for the form: nothing is saved here, and
+ * what the person has typed is theirs until they say otherwise (the form asks before replacing it).
+ * A failure is said in the app's words, at the button; closing the camera is "not now", and nothing.
+ */
+export async function fillFromPoster(_draft: Resolved, ctx: Ctx): Promise<Record<string, unknown> | null> {
+  const from = await ctx.ui.sheet<Source | "sample">({
+    title: W.sheetTitle,
+    items: [
+      { id: "camera", label: W.camera, detail: W.cameraDetail, icon: "📷" },
+      { id: "library", label: W.library, detail: W.libraryDetail, icon: "🖼️" },
+      { id: "sample", label: W.sample, detail: W.sampleDetail, icon: "✨" },
+    ],
+  });
+  if (!from) return null;
+  const now = ctx.now();
+  let answer: PosterAnswer;
+  let photo: Blob;
+  if (from === "sample") {
+    photo = new Blob([samplePosterSvg(now, ctx)], { type: "image/svg+xml" });
+    answer = { legible: true, events: [sampleReading(now, ctx)] };
+  } else {
+    const ai = ctx.caps.ai;
+    if (!ai) throw new Error(ctx.t(W.noAi));
+    const taken = await takePhoto(ctx, from);
+    if (!taken) return null;
+    photo = taken;
+    const bar = ctx.ui.progress(W.reading);
+    try {
+      answer = await ai.extract({ image: photo, instructions: instructions(now), schema: POSTER });
+    } finally {
+      bar.done();
+    }
+  }
+  const events = (answer.events as PosterReading[]).filter((e) => (e.title ?? "").trim() || e.date);
+  if (!events.length) throw new Error(ctx.t(answer.legible ? W.noEvent : W.blurry));
+  const d = await pickOne(ctx, events.map((e) => toDraft(e, now)));
+  if (!d) return null;
+  // Only what the poster says: a field it is silent on keeps what the form has.
+  const values: Record<string, unknown> = { poster: await ctx.media.put(photo) };
+  if (d.start) values.allDay = d.allDay;
+  for (const k of ["title", "start", "end", "doors", "venue", "address", "price", "link", "description"] as const) {
+    if (d[k] !== null && d[k] !== "") values[k] = d[k];
+  }
+  return values;
+}
+
 /** What the reading found, as events the person checks — or, when it found none, why, and what next. */
 export async function fromAnswer(ctx: Ctx, answer: PosterAnswer, photo: Blob, kind: Kind): Promise<void> {
   const events = (answer.events as PosterReading[]).filter((e) => (e.title ?? "").trim() || e.date);

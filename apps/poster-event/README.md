@@ -38,6 +38,15 @@ test/                 dates, calendar, and every path through the app against a 
 4. The person checks it in a form — the record's own fields, filled — and **Save event** makes it.
    A model reads; a person decides.
 
+## From inside the form
+
+The event's own form — *Type one in*, or *Edit* on an event — carries the same reading as a button
+at its head (`fill`, docs/04): **Read a poster** takes a photo and fills the fields the poster speaks
+to, the photo included. Nothing is saved until the person saves; a field they had already filled is
+never replaced without asking (the form lists theirs beside the new one). A blurry photo, no event,
+no AI: said under the button, in the same words. Several events on the poster: pick the one this
+form is for.
+
 ## When it cannot
 
 - **Blurry** (`legible: false`): *"The photo is too blurry to read"* — *Closer, flat on, with more

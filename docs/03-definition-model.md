@@ -144,6 +144,13 @@ entities: {
   form of them. Ask can fill `input` from what the person said ("feed the monstera 12 g"). An action
   that asks for things with its own `ctx.ui.form` still works from a button, but Ask cannot fill that
   form; declare `input` to make it something Ask can do.
+- **`fill`** are buttons on the entity's own form, for adding and for editing:
+  `fill: [{ label, icon?, description?, run: (draft, ctx) => ({ field: value }) }]` (#81). `run` gets
+  the form's values as they are and returns values to put in it — from a photo, a scan, a lookup —
+  and never saves. An action needs a saved record; this is what works before there is one ("scan the
+  label while adding a bottle"). The form fills what is empty, asks before replacing what the person
+  entered, and leaves out, by name, a value its field does not take. Up to three per entity. docs/04
+  §A button that fills the form.
 
 ## Field types (declarative, closed set)
 

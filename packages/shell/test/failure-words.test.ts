@@ -161,6 +161,15 @@ describe("each rule a field can refuse by", () => {
     expect(say("tastings", { rule: "row", key: "score", issue: { rule: "max", bound: 100 } })).toBe("Not saved: Tastings › Score (Wine) takes 100 or less.");
   });
 
+  it("in a form's fill (#81) nothing was being saved: the value was not filled, and the form's own title names the kind", () => {
+    const filling = (field: string, issue: unknown): string =>
+      failureWords({ kind: "refused", refusal: { entity: "wine", field, issue } as never, detail: "" }, def as never, "fill");
+    expect(filling("year", { rule: "whole" })).toBe("Not filled: Year takes a whole number.");
+    expect(filling("grape", { rule: "options", options: ["malbec", "merlot", "syrah"] })).toBe("Not filled: Grape takes Malbec, Merlot, or Syrah.");
+    expect(failureWords({ kind: "said", message: "Hold the label flat", detail: "" }, def as never, "fill")).toBe("Hold the label flat");
+    expect(failureWords({ kind: "broke", detail: "TypeError: x" }, def as never, "fill")).toBe("That did not work");
+  });
+
   it("does not read out a long list of choices", () => {
     expect(say("region", { rule: "options", options: ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"] })).toBe("Not saved: Region (Wine) takes one of its listed choices.");
   });

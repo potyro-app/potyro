@@ -1089,6 +1089,11 @@ class IsolateLoadedApp implements LoadedApp {
     return this.invoke({ kind: "fieldDefault", entity, key: field, ...this.base(ctx) }, ctx);
   }
 
+  /** The draft crosses as JSON and the answer comes back as JSON: unchecked here (see `runFill`). */
+  async callFill(entity: string, index: number, draft: Record<string, unknown>, ctx: Ctx): Promise<unknown> {
+    return this.invoke({ kind: "fill", entity, index, draft, ...this.base(ctx) }, ctx);
+  }
+
   async callTile(ctx: Ctx): Promise<Value> {
     return this.invoke({ kind: "tile", ...this.base(ctx) }, ctx);
   }
