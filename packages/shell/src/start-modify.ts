@@ -37,7 +37,10 @@ export interface StartModifyOpts {
   engine: EngineConfig;
   onStep?: (step: LoopStep) => void;
   signal?: AbortSignal;
+  /** Go on from a run that stopped to ask (#75): its conversation with the answer in it, and what it had spent. */
   resumeFrom?: ModifyLoopDeps["resumeFrom"];
+  asked?: number;
+  stepsSpent?: number;
   /** The app's libraries and own modules (#266, #258): a candidate is checked with them. */
   modules?: ModuleSource;
   /**
@@ -122,6 +125,8 @@ export async function startModify(opts: StartModifyOpts): Promise<ModifyLoopOutc
     onStep: opts.onStep,
     signal: opts.signal,
     resumeFrom: opts.resumeFrom,
+    ...(opts.asked !== undefined ? { asked: opts.asked } : {}),
+    ...(opts.stepsSpent !== undefined ? { stepsSpent: opts.stepsSpent } : {}),
     draft,
   });
 }

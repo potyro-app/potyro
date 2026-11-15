@@ -426,6 +426,12 @@ msgstr "{0, plural, one {Nowa wersja nie zawiera już {removedFiles}, więc ten 
 msgid "{0} ms"
 msgstr "{0} ms"
 
+#. A Studio card for a change that waits for the person's Go before it is saved
+#. placeholder {0}: plan.name
+#: ../shell/src/studio-thread-view.tsx
+msgid "{0}, a change not saved yet"
+msgstr "{0}, zmiana jeszcze niezapisana"
+
 #. A Studio card for a version that was made but not saved
 #. placeholder {0}: held.name
 #: ../shell/src/studio-thread-view.tsx
@@ -904,9 +910,29 @@ msgstr "{more, plural, one {Znaleziono na {sites} i # innej} few {Znaleziono na 
 msgid "{n, plural, one {{chartName}: # bar. The values are in the table that follows.} other {{chartName}: # bars. The values are in the table that follows.}}"
 msgstr "{n, plural, one {{chartName}: # słupek. Wartości są w tabeli poniżej.} few {{chartName}: # słupki. Wartości są w tabeli poniżej.} many {{chartName}: # słupków. Wartości są w tabeli poniżej.} other {{chartName}: # słupka. Wartości są w tabeli poniżej.}}"
 
+#: ../shell/src/studio-plan.ts
+msgid "{n, plural, one {# record of {kind} has something in {field}, which becomes a different kind of field: it may not read the same.} other {# records of {kind} have something in {field}, which becomes a different kind of field: it may not read the same.}}"
+msgstr "{n, plural, one {# wpis w {kind} ma coś w polu {field}, które staje się polem innego rodzaju: może wyglądać inaczej.} few {# wpisy w {kind} mają coś w polu {field}, które staje się polem innego rodzaju: może wyglądać inaczej.} many {# wpisów w {kind} ma coś w polu {field}, które staje się polem innego rodzaju: może wyglądać inaczej.} other {# wpisów w {kind} ma coś w polu {field}, które staje się polem innego rodzaju: może wyglądać inaczej.}}"
+
+#: ../shell/src/studio-plan.ts
+msgid "{n, plural, one {# record of {kind} is kept, as {to}.} other {# records of {kind} are kept, as {to}.}}"
+msgstr "{n, plural, one {# wpis z {kind} zostaje, jako {to}.} few {# wpisy z {kind} zostają, jako {to}.} many {# wpisów z {kind} zostaje, jako {to}.} other {# wpisów z {kind} zostaje, jako {to}.}}"
+
+#: ../shell/src/studio-plan.ts
+msgid "{n, plural, one {# record of {kind} will lose what is in {field}.} other {# records of {kind} will lose what is in {field}.}}"
+msgstr "{n, plural, one {# wpis w {kind} straci to, co jest w polu {field}.} few {# wpisy w {kind} stracą to, co jest w polu {field}.} many {# wpisów w {kind} straci to, co jest w polu {field}.} other {# wpisów w {kind} straci to, co jest w polu {field}.}}"
+
+#: ../shell/src/studio-plan.ts
+msgid "{n, plural, one {# record of {kind} will no longer be in the app.} other {# records of {kind} will no longer be in the app.}}"
+msgstr "{n, plural, one {# wpisu z {kind} nie będzie już w aplikacji.} few {# wpisów z {kind} nie będzie już w aplikacji.} many {# wpisów z {kind} nie będzie już w aplikacji.} other {# wpisów z {kind} nie będzie już w aplikacji.}}"
+
 #: ../shell/src/studio-engine.ts
 msgid "{n, plural, one {Applied # edit.} other {Applied # edits.}}"
 msgstr "{n, plural, one {Zastosowano # zmianę.} few {Zastosowano # zmiany.} many {Zastosowano # zmian.} other {Zastosowano # zmiany.}}"
+
+#: ../shell/src/studio-plan.ts
+msgid "{n, plural, one {What # record of {kind} has in {field} is kept, under {to}.} other {What # records of {kind} have in {field} is kept, under {to}.}}"
+msgstr "{n, plural, one {To, co # wpis w {kind} ma w polu {field}, zostaje, w polu {to}.} few {To, co # wpisy w {kind} mają w polu {field}, zostaje, w polu {to}.} many {To, co # wpisów w {kind} ma w polu {field}, zostaje, w polu {to}.} other {To, co # wpisów w {kind} ma w polu {field}, zostaje, w polu {to}.}}"
 
 #. A size in bytes
 #. A size in bytes
@@ -1366,6 +1392,11 @@ msgstr "Adres websocket — wss://… na bezpiecznej stronie, bo przeglądarka o
 msgid "A–Z"
 msgstr "A–Ż"
 
+#. Put in the Studio's box when a guess on a version's card is tapped; the person finishes the sentence
+#: ../shell/src/studio.tsx
+msgid "About “{guess}”: "
+msgstr "O „{guess}”: "
+
 #. The part of the app a message is about
 #. The part of the app a message is about
 #. placeholder {0}: item.point.label
@@ -1774,6 +1805,11 @@ msgstr "Aplikacja trafia do twoich aplikacji. Każdy inny plik trafia do aplikac
 #: ../shell/src/free-panel.tsx
 msgid "Anonymous counts are off in You, so nothing was sent."
 msgstr "Anonimowe liczenie jest wyłączone w sekcji Ty, więc nic nie wysłano."
+
+#. The buttons under a question the Studio asked: each is one answer
+#: ../shell/src/studio-thread-view.tsx
+msgid "Answers to choose from"
+msgstr "Odpowiedzi do wyboru"
 
 #. Company name; keep as is
 #: ../shell/src/engines.ts
@@ -2297,6 +2333,11 @@ msgstr "Zmień nazwę strony"
 #: ../shell/src/identity-panel.tsx
 msgid "Change relay"
 msgstr "Zmień przekaźnik"
+
+#. Studio plan card: do not save it; say what should be different
+#: ../shell/src/studio-thread-view.tsx
+msgid "Change something"
+msgstr "Zmień coś"
 
 #: ../shell/src/inline-edit.tsx
 msgid "Change text"
@@ -3676,6 +3717,11 @@ msgstr "Nadaj mu nazwę."
 msgid "Give the server’s address first."
 msgstr "Najpierw podaj adres serwera."
 
+#. Studio plan card: keep the change exactly as it was made
+#: ../shell/src/studio-thread-view.tsx
+msgid "Go"
+msgstr "Dalej"
+
 #: ../shell/src/studio.tsx
 msgid "Go back"
 msgstr "Wróć"
@@ -3926,6 +3972,16 @@ msgstr "Aplikacja nie została zmieniona: to, o co prosisz, wymaga czegoś, czeg
 #: ../shell/src/studio-engine.ts
 msgid "I didn't make the app: what you asked for needs something Potyro can't do yet."
 msgstr "Aplikacja nie powstała: to, o co prosisz, wymaga czegoś, czego Potyro jeszcze nie potrafi."
+
+#. Above the list of guesses on a version's card, when they cannot be tapped
+#: ../shell/src/studio-thread-view.tsx
+msgid "I guessed these."
+msgstr "To założyłem sam."
+
+#. Above the list of guesses on a version's card; each guess is a button
+#: ../shell/src/studio-thread-view.tsx
+msgid "I guessed these. Tap one to change it."
+msgstr "To założyłem sam. Dotknij jednego, aby je zmienić."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "I wrote this. Run it as mine."
@@ -4577,6 +4633,7 @@ msgid "Look — appearance and colour"
 msgstr "Wygląd — motyw i kolor"
 
 #: ../shell/src/studio-thread-view.tsx
+#: ../shell/src/studio-thread-view.tsx
 msgid "Look at it"
 msgstr "Zobacz"
 
@@ -5181,6 +5238,11 @@ msgstr "jeszcze nie otwarta"
 msgid "not saved"
 msgstr "nie zapisano"
 
+#. Studio plan card: the change was made and waits for Go
+#: ../shell/src/studio-thread-view.tsx
+msgid "not saved yet"
+msgstr "jeszcze niezapisana"
+
 #: ../shell/src/studio.tsx
 msgid "Not saved: {issue}"
 msgstr "Nie zapisano: {issue}"
@@ -5596,6 +5658,11 @@ msgstr "Klucz API OpenRouter"
 #: ../shell/src/engine-settings.tsx
 msgid "OpenRouter model"
 msgstr "Model OpenRouter"
+
+#. Under the answer buttons of a question the Studio asked
+#: ../shell/src/studio-thread-view.tsx
+msgid "Or answer in your own words below."
+msgstr "Albo odpowiedz poniżej własnymi słowami."
 
 #. After the key links: a server of the person's own that speaks the OpenAI API also works
 #: ../shell/src/free-panel.tsx
@@ -6384,6 +6451,10 @@ msgstr "Zapisano. Aplikacja pokaże nowe słowa, gdy otworzysz ją ponownie."
 #: ../shell/src/inline-edit.tsx
 #: ../views/src/record-form.tsx
 msgid "Saving"
+msgstr "Zapisywanie"
+
+#: ../shell/src/studio.tsx
+msgid "Saving it"
 msgstr "Zapisywanie"
 
 #: ../shell/src/share-sheet.tsx
@@ -7682,6 +7753,16 @@ msgstr "Tego nie da się cofnąć."
 msgid "This change rewrote your app rather than editing it — it {lost}. Nothing was saved; try a smaller, more specific change."
 msgstr "Ta zmiana napisała twoją aplikację od nowa zamiast ją edytować — {lost}. Nic nie zapisano; spróbuj mniejszej, bardziej konkretnej zmiany."
 
+#. Under a planned change that was never saved
+#: ../shell/src/studio-thread-view.tsx
+msgid "This change was not saved."
+msgstr "Ta zmiana nie została zapisana."
+
+#. Under a planned change that was never saved, when it is the last thing in the conversation
+#: ../shell/src/studio-thread-view.tsx
+msgid "This change was not saved. Ask again and I’ll make it."
+msgstr "Ta zmiana nie została zapisana. Poproś jeszcze raz, a ją zrobię."
+
 #: ../views/src/chart.tsx
 msgid "This chart could not be worked out: {error}"
 msgstr "Nie udało się obliczyć tego wykresu: {error}"
@@ -8115,6 +8196,11 @@ msgstr "Wpisz słowa z pierwszego urządzenia, aby przenieść tu jego aplikacje
 msgid "Type these words into Potyro on the other device. They are the only copy — write them down somewhere safe."
 msgstr "Wpisz te słowa w Potyro na drugim urządzeniu. To jedyna kopia — zapisz je w bezpiecznym miejscu."
 
+#. Studio box while a question the Studio asked waits for the person's answer
+#: ../shell/src/studio.tsx
+msgid "Type your answer"
+msgstr "Wpisz odpowiedź"
+
 #. Ask's cost: less than one US cent
 #: ../shell/src/ask-spend.ts
 msgid "under 1¢"
@@ -8390,6 +8476,11 @@ msgstr "Co miało się stać?"
 msgid "What happened"
 msgstr "Co się stało"
 
+#. Studio plan card: the list of what a change does to the records already in the app
+#: ../shell/src/studio-thread-view.tsx
+msgid "What happens to what you have entered"
+msgstr "Co stanie się z tym, co masz wpisane"
+
 #: ../shell/src/backup-switch.tsx
 msgid "What is in your apps is encrypted on this device, so Potyro’s server cannot read it. Your name and who you share with can be seen there."
 msgstr "To, co jest w twoich aplikacjach, jest szyfrowane na tym urządzeniu, więc serwer Potyro nie może tego przeczytać. Twoje imię i to, z kim się dzielisz, są tam widoczne."
@@ -8445,6 +8536,11 @@ msgstr "Jak mają cię widzieć osoby, z którymi udostępniasz?"
 #: ../shell/src/ask-panel.tsx
 msgid "What to add"
 msgstr "Co dodać"
+
+#. The list of guesses on a version's card
+#: ../shell/src/studio-thread-view.tsx
+msgid "What was guessed"
+msgstr "Co zostało założone"
 
 #. Share dialog: the files an app hands over
 #. Share dialog: the words an app hands over, read-only

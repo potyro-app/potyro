@@ -8277,6 +8277,160 @@ body:has(.k-tabbar) .k-toasts {
 }
 /* tokens-only: end */
 
+/* tokens-only: start — the interactive session (#75): answers to tap, guesses, a plan */
+/* A question that waits: its answers, one under the other so a thumb finds each — wide enough to
+   read a short sentence, never a row of chips that wraps unevenly. Filled, not outlined (§3.3). */
+.k-question {
+  width: min(30rem, calc(100% - var(--space-3)));
+  margin-top: var(--space-3);
+  margin-inline-start: var(--space-3);
+  box-sizing: border-box;
+}
+.k-question-options {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.k-question-option {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--aguada);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-body);
+  font-weight: 600;
+  text-align: start;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.k-question-option:hover {
+  transform: translateX(2px);
+}
+.k-question-option:focus-visible {
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
+}
+.k-question-option:active {
+  transform: none;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.k-question-other {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+
+/* What was guessed, on the version's card: quieter than what changed, each guess a row to tap. The
+   dotted rule under a guess says "this can be different" without shouting it. */
+.k-assumed {
+  margin-top: var(--space-3);
+}
+.k-assumed-label {
+  margin: 0 0 var(--space-1);
+  color: var(--muted);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.k-assumed-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.k-assumed-item {
+  display: inline-block;
+  max-width: 100%;
+  padding: var(--space-1) 0;
+  border: 0;
+  border-bottom: 1px dotted var(--line-strong);
+  border-radius: 0;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--text-small);
+  line-height: 1.35;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+button.k-assumed-item {
+  min-height: 32px;
+  cursor: pointer;
+}
+button.k-assumed-item:hover {
+  color: var(--ink);
+  border-bottom-color: var(--tinta);
+  border-bottom-style: solid;
+}
+button.k-assumed-item:focus-visible {
+  outline: var(--stroke) solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* A plan: the change is made and waits for Go. On the app's wash, so it reads as the app's own
+   proposal and not as a version (surface) or a problem (the held card). */
+.k-studio .k-card-plan {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  background: var(--aguada);
+}
+.k-card-flag.k-plan-flag {
+  background: var(--bg);
+  color: var(--ink-soft);
+}
+.k-studio .k-card-plan .k-plan-what {
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* What happens to the records already there: the one part of a plan nobody should read past. */
+.k-plan-consequences {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  list-style: none;
+  border-inline-start: 3px solid var(--warning);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: var(--text-small);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.k-card-plan .k-card-open:disabled,
+.k-card-plan .k-card-back:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+.k-studio .k-thread-theirs > .k-plan-gone {
+  margin: var(--space-1) 0 0;
+  padding-inline-start: var(--space-3);
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-question-option {
+    transition: none;
+  }
+  .k-question-option:hover {
+    transform: none;
+  }
+}
+/* tokens-only: end */
+
 /* The box at the bottom: one rounded field with its send button inside it, and the model named
    under it — a request is never anonymous. */
 .k-composer {

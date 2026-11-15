@@ -10,7 +10,7 @@ import { ownModuleCode, withEditedModules } from "./app-modules.js";
 import { plural, t } from "@lingui/core/macro";
 import type { AppShape } from "@potyro/runtime";
 import { fmt } from "@potyro/i18n";
-import type { ConversationEntry, GiveUp, PlatformRequest } from "@potyro/generator/agent";
+import { questionOptionsIn, resumeWith, type ConversationEntry, type GiveUp, type PausedRun, type PlatformRequest } from "@potyro/generator/agent";
 import {
   SYSTEM_PROMPT,
   appLanguage,
@@ -42,10 +42,15 @@ import { describeChange, describeNewApp, describedIn, explainChange, proseForCar
 export type Outcome =
   /** `platformRequest`: the rest needs something Potyro itself lacks — a request the person may send (#263). */
   /** `modules`: the app's own modules, every one, when the change edited any of them (#448). `seed`: a new app's demo records, the sample records the create loop asked for (#486). */
-  | { kind: "source"; source: string; summary: string; notDone?: string[]; platformRequest?: PlatformRequest; modules?: Record<string, string>; seed?: AppSeed }
+  /** `assumed`: what the model said it guessed (#75), each a short sentence the card offers to change. */
+  | { kind: "source"; source: string; summary: string; notDone?: string[]; assumed?: string[]; platformRequest?: PlatformRequest; modules?: Record<string, string>; seed?: AppSeed }
   /** It was rewritten rather than edited, and lost what `loss` names. Never saved without asking. */
   | { kind: "loss"; source: string; summary: string; loss: string; modules?: Record<string, string> }
-  | { kind: "question"; text: string }
+  /**
+   * It asked, and waits (#75). `options`: the answers to tap. `paused`: the run itself, when a loop
+   * asked — handed back with the answer (`TurnRun.resume`), the same run goes on instead of a new one.
+   */
+  | { kind: "question"; text: string; options?: string[]; allowOther?: boolean; paused?: PausedRun }
   /** Not the app's to change — an answer, not a failure. */
   | { kind: "refusal"; text: string }
   /** Nothing could be done: it needs something Potyro itself lacks. The request is in the person's words (#263). */
@@ -102,13 +107,40 @@ export function notMade(result: { kind: "failed"; reason: string; cause: GiveUp 
 /** A request that is not the app's to change — an answer, said as one. */
 const notTheApps = (text: string): Extract<Outcome, { kind: "refusal" }> => ({ kind: "refusal", text: t`I didn't change the app: this isn't something it can change. ${text}` });
 
+/** How a turn is run when it is not a fresh one (#75). */
+export interface TurnRun {
+  /** The run that stopped to ask, and the person's answer: it goes on from there, in the same conversation. */
+  resume?: { paused: PausedRun; answer: string };
+  /** Questions this request has already asked, when there is no paused run to say. The loops stop at two. */
+  asked?: number;
+}
+
+/** What a loop is handed to go on from an answer, or to know how much was already asked. */
+const runOptions = (run: TurnRun | undefined): { resumeFrom?: PausedRun["transcript"]; asked?: number; stepsSpent?: number } =>
+  run?.resume
+    ? { resumeFrom: resumeWith(run.resume.paused, run.resume.answer), asked: run.resume.paused.asked, stepsSpent: run.resume.paused.steps }
+    : run?.asked
+      ? { asked: run.asked }
+      : {};
+
+/** A loop's question as the conversation's: its words, its choices, and the run that waits on the answer. */
+const asQuestion = (result: { text: string; options?: string[]; allowOther?: boolean } & PausedRun): Extract<Outcome, { kind: "question" }> => ({
+  kind: "question",
+  text: result.text,
+  ...(result.options?.length ? { options: result.options, ...(result.allowOther === false ? { allowOther: false } : {}) } : {}),
+  // A run with nothing said in it has nothing to go on with: the answer then starts one from the conversation.
+  ...(result.transcript?.length
+    ? { paused: { transcript: result.transcript, ...(result.pending ? { pending: result.pending } : {}), asked: result.asked ?? 0, steps: result.steps ?? 0 } }
+    : {}),
+});
+
 export interface StudioEngine {
-  create(brief: string): Promise<Outcome>;
+  create(brief: string, run?: TurnRun): Promise<Outcome>;
   /**
    * `context`: where the change was aimed — the part of the app the person pointed at (#284).
    * `earlier`: what was said before this request (#279) — the loop's recap and `read_conversation`.
    */
-  modify(source: string, before: AppShape, instruction: string, context?: ModifyContext, earlier?: readonly ConversationEntry[]): Promise<Outcome>;
+  modify(source: string, before: AppShape, instruction: string, context?: ModifyContext, earlier?: readonly ConversationEntry[], run?: TurnRun): Promise<Outcome>;
   /**
    * Repair from the validator's own words, through the same gate as a modify. `modules`: the app's
    * own modules as the version being landed has them, when it edited any (#448) — the repair sees
@@ -125,15 +157,28 @@ const seconds = (n: number): string => fmt.number(n, { style: "unit", unit: "sec
 
 /** A turn that came back as a question — thrown past the edit guard, caught as an outcome. */
 class Asked extends Error {
-  constructor(readonly question: string) {
+  constructor(
+    readonly question: string,
+    readonly options: string[] = [],
+  ) {
     super(question);
   }
 }
 
 /** The modify loop says `ASK:`, a create says `QUESTION:`; either, at the head of a reply that is not an app. */
-function askedIn(reply: string): string | null {
-  return questionIn(reply.replace(/^([\s*`_]*)ASK:/, "$1QUESTION:"));
+function askedIn(reply: string): { text: string; options: string[] } | null {
+  const marked = reply.replace(/^([\s*`_]*)ASK:/, "$1QUESTION:");
+  const text = questionIn(marked);
+  // The choices, when it gave any (#75): the `- ` lines under the question.
+  return text ? { text, options: questionOptionsIn(marked) } : null;
 }
+
+/** A question read from one plain turn: no run waits on it — the answer starts the next turn, with the question beside it. */
+const plainQuestion = (asked: { text: string; options: string[] }): Extract<Outcome, { kind: "question" }> => ({
+  kind: "question",
+  text: asked.text,
+  ...(asked.options.length ? { options: asked.options } : {}),
+});
 
 /** The shape a repair is judged against. A source that does not load has no shape to lose. */
 export async function shapeOrEmpty(src: string, modules?: ModuleSource): Promise<AppShape> {
@@ -198,7 +243,7 @@ export function studioEngine(
       },
     });
     const question = askedIn(reply);
-    if (question) throw new Asked(question);
+    if (question) throw new Asked(question.text, question.options);
     return reply;
   };
 
@@ -255,7 +300,7 @@ export function studioEngine(
   const loops = (refused: string | undefined): boolean => !refused && !knownNoTools(engine);
 
   /** The create loop's outcome, or null when the endpoint's model takes no tools and one plain turn should make it. */
-  const createInLoop = async (brief: string): Promise<Outcome | null> => {
+  const createInLoop = async (brief: string, run?: TurnRun): Promise<Outcome | null> => {
     try {
       // A first draft is one long call that says nothing until it is done, so the heartbeat runs
       // while the model writes; what the loop does in between (a tool, a check) is said instead.
@@ -267,6 +312,7 @@ export function studioEngine(
             brief,
             engine,
             language,
+            ...runOptions(run),
             onStep: (step) => {
               if (step.kind === "thinking") {
                 doing = null;
@@ -280,7 +326,7 @@ export function studioEngine(
             },
           }),
       );
-      if (result.kind === "question") return { kind: "question", text: result.text };
+      if (result.kind === "question") return asQuestion(result);
       if (result.kind === "platform") {
         return { kind: "platform", text: t`I didn't make the app: what you asked for needs something Potyro can't do yet.`, request: result.request };
       }
@@ -289,7 +335,10 @@ export function studioEngine(
       return {
         kind: "source",
         source: result.source,
-        summary: await made(result.source),
+        // What it said it could not do as asked follows what it made, as on a change (#75).
+        summary: describeNotDone(await made(result.source), result.notDone),
+        ...(result.notDone?.length ? { notDone: result.notDone } : {}),
+        ...(result.assumed?.length ? { assumed: result.assumed } : {}),
         ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}),
         ...("seed" in result && result.seed ? { seed: result.seed } : {}),
       };
@@ -302,12 +351,12 @@ export function studioEngine(
     }
   };
 
-  const create = async (brief: string): Promise<Outcome> => {
+  const create = async (brief: string, run?: TurnRun): Promise<Outcome> => {
     // A chat engine drives the create LOOP (#262 phase 3): the corpus in the first message, tools,
     // and every candidate checked and run — up to two independent first drafts, the better kept.
     // Other engines, and an endpoint whose model takes no tools, keep the one call below.
     if (loops(createLoopRefusal(engine))) {
-      const looped = await createInLoop(brief);
+      const looped = await createInLoop(brief, run);
       if (looped) return looped;
     }
     try {
@@ -325,8 +374,8 @@ export function studioEngine(
         }
         return (await backendFor(engine, progress)).generate({ id: "studio", description: brief, language });
       });
-      const question = questionIn(reply);
-      if (question) return { kind: "question", text: question };
+      const question = askedIn(reply);
+      if (question) return plainQuestion(question);
       // A reply that is not an app says so here; passed to the bundler, prose reads as a syntax
       // error in the middle of an English sentence.
       if (!looksLikeApp(reply)) return { kind: "failed", text: t`The model answered with an explanation instead of an app. Try again, or say it another way.` };
@@ -339,7 +388,7 @@ export function studioEngine(
     }
   };
 
-  const modify = async (source: string, before: AppShape, instruction: string, context?: ModifyContext, earlier?: readonly ConversationEntry[]): Promise<Outcome> => {
+  const modify = async (source: string, before: AppShape, instruction: string, context?: ModifyContext, earlier?: readonly ConversationEntry[], run?: TurnRun): Promise<Outcome> => {
     try {
       // An app with modules of its own is shown as its files, one text (#448); what comes back is split
       // into them again. Lines pointed at are counted in the entry, one line below its marker there.
@@ -391,7 +440,7 @@ export function studioEngine(
         const { got, have } = unpacked;
         const summary = await explain({ source: got.source, have }, result, t`The model sent the whole file back instead of edits. Check that nothing else changed.`);
         if (result.loss !== null) return { kind: "loss", ...got, summary, loss: result.loss };
-        return { kind: "source", ...got, summary, notDone: result.notDone };
+        return { kind: "source", ...got, summary, notDone: result.notDone, ...(result.assumed?.length ? { assumed: result.assumed } : {}) };
       };
       // A chat engine drives the modify LOOP (#131): the model looks declarations up and checks a
       // candidate before sending it, and every candidate must compile, validate and keep the app's
@@ -409,6 +458,7 @@ export function studioEngine(
             engine,
             language,
             ...(earlier?.length ? { conversation: earlier } : {}),
+            ...runOptions(run),
             onStep: (step) => {
               if (step.kind === "thinking") return progress(t`Thinking via ${label}`);
               // The tool's own name and arguments are code, not words: they stay as the loop wrote them.
@@ -423,7 +473,7 @@ export function studioEngine(
           throw e;
         }
         if (result.kind === "diagnosis") return notTheApps(result.text);
-        if (result.kind === "question") return { kind: "question", text: result.text };
+        if (result.kind === "question") return asQuestion(result);
         if (result.kind === "platform") {
           return { kind: "platform", text: t`I didn't change the app: what you asked for needs something Potyro can't do yet.`, request: result.request };
         }
@@ -437,12 +487,13 @@ export function studioEngine(
           ...got,
           summary: await explain({ source: got.source, have }, result, t`The model sent the whole file back instead of edits.`),
           notDone: result.notDone,
+          ...(result.assumed?.length ? { assumed: result.assumed } : {}),
           ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}),
         };
       }
       return await oneTurn();
     } catch (e) {
-      if (e instanceof Asked) return { kind: "question", text: e.question };
+      if (e instanceof Asked) return plainQuestion({ text: e.question, options: e.options });
       return unreachable(e) ?? notChanged({ kind: "error", error: e });
     }
   };

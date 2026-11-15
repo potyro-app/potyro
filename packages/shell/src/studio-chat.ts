@@ -65,6 +65,22 @@ export interface ChatMessage {
   platform?: PlatformAsk;
   /** For an `event`: what came of sending that request — the hook #288's "this now exists" looks for. */
   request?: SentRequest;
+  /** For a `question` (#75): the answers to tap, two to four of them. Absent, the question is open. */
+  options?: string[];
+  /** For a `question` with options: whether the person's own words are welcome too (the default). */
+  allowOther?: boolean;
+  /** For a `version` (#75): what the model said it guessed while making it, each a sentence to tap. */
+  assumed?: string[];
+  /**
+   * For an `answer` (#75): it is a PLAN — a change that was made and is not saved until the person says
+   * Go. The candidate itself lives only in the open Studio; this is what was said of it.
+   */
+  plan?: PlanNote;
+}
+
+/** What a plan said besides its words: what the change does to the records already there. */
+export interface PlanNote {
+  consequences: string[];
 }
 
 /** A request to the Potyro team, as the agent wrote it in the person's words (#263). */
@@ -87,7 +103,8 @@ export interface MessagePoint {
   words: string;
 }
 
-export type NewMessage = Pick<ChatMessage, "kind" | "text"> & Partial<Pick<ChatMessage, "seq" | "name" | "detail" | "point" | "platform" | "request">>;
+export type NewMessage = Pick<ChatMessage, "kind" | "text"> &
+  Partial<Pick<ChatMessage, "seq" | "name" | "detail" | "point" | "platform" | "request" | "options" | "allowOther" | "assumed" | "plan">>;
 
 export interface DraftChat {
   id: string;
@@ -118,7 +135,7 @@ function announce(): void {
 
 /** A stored record — or one that arrived from your account (#283) — as a message, or null when it is not one. */
 export function readChatMessage(record: Record<string, unknown>): ChatMessage | null {
-  const { id, chatId, n, at, kind, text, seq, name, detail, point, platform, request } = record as Partial<ChatMessage>;
+  const { id, chatId, n, at, kind, text, seq, name, detail, point, platform, request, options, allowOther, assumed, plan } = record as Partial<ChatMessage>;
   if (typeof id !== "string" || typeof chatId !== "string" || typeof n !== "number" || typeof text !== "string") return null;
   if (typeof kind !== "string" || !KINDS.has(kind)) return null;
   return {
@@ -134,8 +151,15 @@ export function readChatMessage(record: Record<string, unknown>): ChatMessage | 
     ...(isPoint(point) ? { point: { label: point.label, words: point.words } } : {}),
     ...(isPlatform(platform) ? { platform: { id: platform.id, title: platform.title, body: platform.body } } : {}),
     ...(isSent(request) ? { request: { id: request.id, state: request.state, ...(typeof request.url === "string" ? { url: request.url } : {}) } } : {}),
+    // #75. A conversation kept before these existed has none of them, and reads as it always did.
+    ...(kind === "question" && strings(options).length >= 2 ? { options: strings(options), ...(allowOther === false ? { allowOther: false } : {}) } : {}),
+    ...(kind === "version" && strings(assumed).length ? { assumed: strings(assumed) } : {}),
+    ...(kind === "answer" && plan && typeof plan === "object" ? { plan: { consequences: strings((plan as PlanNote).consequences) } } : {}),
   };
 }
+
+/** A stored list of words, read as data: only its non-empty strings. */
+const strings = (list: unknown): string[] => (Array.isArray(list) ? list.filter((x): x is string => typeof x === "string" && x.trim() !== "") : []);
 
 const isPlatform = (p: unknown): p is PlatformAsk =>
   !!p && typeof p === "object" && ["id", "title", "body"].every((k) => typeof (p as Record<string, unknown>)[k] === "string");
@@ -191,6 +215,10 @@ export async function appendMessage(chatId: string, message: NewMessage, now: st
     ...(message.point !== undefined ? { point: message.point } : {}),
     ...(message.platform !== undefined ? { platform: message.platform } : {}),
     ...(message.request !== undefined ? { request: message.request } : {}),
+    ...(message.options?.length ? { options: message.options } : {}),
+    ...(message.allowOther !== undefined ? { allowOther: message.allowOther } : {}),
+    ...(message.assumed?.length ? { assumed: message.assumed } : {}),
+    ...(message.plan !== undefined ? { plan: message.plan } : {}),
   });
   if (isDraftId(chatId) && mine.length === 0) announce();
   const stored = readChatMessage(written as Record<string, unknown>);
@@ -271,8 +299,20 @@ export async function clearChat(chatId: string): Promise<void> {
 /** One thing on screen in the Studio's conversation. */
 export type ChatItem =
   | { type: "ask"; id: string; text: string; point?: MessagePoint }
-  | { type: "agent"; id: string; text: string; tone: "answer" | "question" | "refusal" | "failure"; detail?: string; platform?: PlatformAsk }
-  | { type: "version"; id: string; text: string; seq?: number; name?: string; current: boolean; platform?: PlatformAsk }
+  | {
+      type: "agent";
+      id: string;
+      text: string;
+      tone: "answer" | "question" | "refusal" | "failure";
+      detail?: string;
+      platform?: PlatformAsk;
+      /** A question's answers to tap (#75), and whether the person's own words are welcome too. */
+      options?: string[];
+      allowOther?: boolean;
+      /** A plan (#75): a change made and not saved until the person says Go. */
+      plan?: PlanNote;
+    }
+  | { type: "version"; id: string; text: string; seq?: number; name?: string; current: boolean; platform?: PlatformAsk; assumed?: string[] }
   | { type: "event"; id: string; text: string; seq?: number; request?: SentRequest };
 
 type Timed = { at: string; order: number; items: ChatItem[] };
@@ -280,9 +320,18 @@ type Timed = { at: string; order: number; items: ChatItem[] };
 function fromMessage(m: ChatMessage): ChatItem {
   if (m.kind === "ask") return { type: "ask", id: m.id, text: m.text, ...(m.point ? { point: m.point } : {}) };
   const platform = m.platform ? { platform: m.platform } : {};
-  if (m.kind === "version") return { type: "version", id: m.id, text: m.text, seq: m.seq, name: m.name, current: false, ...platform };
+  if (m.kind === "version") return { type: "version", id: m.id, text: m.text, seq: m.seq, name: m.name, current: false, ...platform, ...(m.assumed?.length ? { assumed: m.assumed } : {}) };
   if (m.kind === "event") return { type: "event", id: m.id, text: m.text, seq: m.seq, ...(m.request ? { request: m.request } : {}) };
-  return { type: "agent", id: m.id, text: m.text, tone: m.kind, ...(m.detail ? { detail: m.detail } : {}), ...platform };
+  return {
+    type: "agent",
+    id: m.id,
+    text: m.text,
+    tone: m.kind,
+    ...(m.detail ? { detail: m.detail } : {}),
+    ...platform,
+    ...(m.options?.length ? { options: m.options, ...(m.allowOther === false ? { allowOther: false } : {}) } : {}),
+    ...(m.plan ? { plan: m.plan } : {}),
+  };
 }
 
 function fromVersion(v: AppVersion): ChatItem[] {
@@ -351,6 +400,19 @@ export function briefSince(messages: ReadonlyArray<Pick<ChatMessage, "kind" | "t
 }
 
 /**
+ * How many questions the agent has asked about the request now open (#75): the questions since the
+ * app last changed, or since the agent last said anything else. The loops stop asking at two.
+ */
+export function questionsAsked(messages: ReadonlyArray<Pick<ChatMessage, "kind">>): number {
+  let asked = 0;
+  for (const m of messages) {
+    if (m.kind === "question") asked += 1;
+    else if (m.kind !== "ask" && m.kind !== "event") asked = 0;
+  }
+  return asked;
+}
+
+/**
  * What was said BEFORE the current request, oldest first, for the modify loop's recap (#279): the
  * conversation as it reads (`threadItems`) — so a rollback or a change made outside the Studio is
  * there where it happened — up to the first message `briefSince` hands over as the request itself.
@@ -367,10 +429,17 @@ export function earlierConversation(messages: readonly ChatMessage[], versions: 
   const current = new Set(messages.slice(start).map((m) => m.id));
   const items = threadItems(messages, versions);
   const cut = items.findIndex((i) => current.has(i.id));
-  return (cut < 0 ? items : items.slice(0, cut)).flatMap((i): ConversationEntry[] => {
+  const earlier = cut < 0 ? items : items.slice(0, cut);
+  // What the LAST version guessed goes along (#75): those are the guesses the person is looking at.
+  const lastVersion = earlier.reduce((at, i, n) => (i.type === "version" ? n : at), -1);
+  return earlier.flatMap((i, n): ConversationEntry[] => {
     if (i.type === "ask") return [{ kind: "ask", text: i.text, ...(i.point ? { about: i.point.words } : {}) }];
-    if (i.type === "agent") return [{ kind: i.tone, text: i.text }];
-    if (i.type === "version") return [{ kind: "version", text: i.text }];
+    if (i.type === "agent") {
+      // A plan the person said Go to became the version after it: said once, by the version.
+      if (i.plan && earlier[n + 1]?.type === "version") return [];
+      return [{ kind: i.tone, text: i.plan ? `${i.text} (Shown as a plan; it was not saved.)` : i.text }];
+    }
+    if (i.type === "version") return [{ kind: "version", text: i.text, ...(n === lastVersion && i.assumed?.length ? { assumed: i.assumed } : {}) }];
     return SYSTEM_NOTES.some((re) => re.test(i.text)) ? [] : [{ kind: "event", text: i.text }];
   });
 }

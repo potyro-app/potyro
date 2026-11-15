@@ -5,7 +5,8 @@
 // depends on: what the tools are for, and that a refusal is only accepted after they were used.
 // #262 added the corpus tools and the run behind `check`.
 
-import { SYSTEM_PROMPT } from "../prompt.js";
+import { ASSUMED, FIRST_ACTION_RULE, NOT_DONE, SYSTEM_PROMPT } from "../prompt.js";
+import { ASK_PERSON, MAX_QUESTIONS } from "./tools.js";
 
 export const MODIFY_AGENT_SYSTEM_PROMPT = `${SYSTEM_PROMPT}
 
@@ -41,6 +42,19 @@ YOU HAVE TOOLS. Use them instead of guessing:
   inside functions that it lists in \`ctx.t\` with SEARCH/REPLACE edits — those apply to the translated
   app — or, when nothing is left, reply with no edits. Changing ONE language of a map makes the others
   stale: if you were asked to leave them, say so under \`Not done:\`.
+- \`${ASK_PERSON}\` — ask the person ONE question and wait: { question, options: 2 to 4 short answers,
+  shown as buttons }. Their answer comes back as the call's result and you go on from there.
+
+${FIRST_ACTION_RULE}
+
+ASK ONLY WHEN THE ANSWER CHANGES WHAT GETS BUILT: the possible answers lead to different apps or
+different data, and neither the request nor the conversation settles it. Then call \`${ASK_PERSON}\` (or
+start the reply with \`ASK: <question>\`, each choice under it on a line starting with \`- \`) — at most
+${MAX_QUESTIONS} questions a request. Otherwise decide, make the change, and list each guess the person might have
+wanted different under \`${ASSUMED}\` in the prose before the block, like \`${NOT_DONE}\`: one bullet each, a
+short sentence in their words ("Amounts are in euros."). When the request cannot be built as asked but
+something close can, never build the close thing silently: ask which of the possible things they want,
+with the choices, or build the closest and say under \`${NOT_DONE}\` what was asked and is not possible.
 
 A NOT-IN-APP reply without a \`lookup\`, \`search_corpus\` or \`check\` before it is not accepted:
 you will be asked to look first. Refusing a request you could mostly do is worse than any edit — do the parts that can
