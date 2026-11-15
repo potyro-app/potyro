@@ -208,6 +208,13 @@ export interface LoadedApp {
    * one-payload call as `callAggregate`, generalised so a new fold-shaped option needs no new call.
    */
   callFold(pageId: string, path: string, rows: Resolved[], ctx: Ctx): Promise<Value>;
+  /**
+   * Run a form's fill button (`EntityDef.fill[index].run`, #81) on a copy of the form's values, where
+   * the app's functions run. What comes back is what the app returned, UNCHECKED — for a sealed app,
+   * untrusted data. Nothing but `runFill` (fill.ts) calls this: it checks the answer against the
+   * entity's fields before a form sees any of it.
+   */
+  callFill(entity: string, index: number, draft: Record<string, unknown>, ctx: Ctx): Promise<unknown>;
   /** A field's `default` when it is a function of ctx (KA-25), evaluated where the function lives. */
   callFieldDefault(entity: string, field: string, ctx: Ctx): Promise<Value>;
   /**

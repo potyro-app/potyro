@@ -17,7 +17,7 @@ import { defineApp, type Ctx, type Resolved } from "potyro";
 import { buildIcs, icsName, remindAt } from "./calendar.js";
 import { toDate } from "./dates.js";
 import { FIELDS } from "./fields.js";
-import { readPoster, demo } from "./read.js";
+import { readPoster, fillFromPoster, demo } from "./read.js";
 import { bucket, doorsText, endTime, over, pastBucket, reminderText, rowText, shareText, startTime, whenText } from "./words.js";
 
 const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
@@ -100,6 +100,22 @@ export default defineApp({
         { title: { en: "When", "pt-BR": "Quando", de: "Wann", es: "Cuándo", pl: "Kiedy", it: "Quando" }, fields: ["start", "end", "allDay", "doors", "remind"] },
         { title: { en: "Where", "pt-BR": "Onde", de: "Wo", es: "Dónde", pl: "Gdzie", it: "Dove" }, fields: ["venue", "address"] },
         { title: { en: "More", "pt-BR": "Mais", de: "Mehr", es: "Más", pl: "Więcej", it: "Altro" }, fields: ["price", "link", "description", "poster"] },
+      ],
+      // The same reading from inside the form: for an event being typed in, or one being corrected.
+      fill: [
+        {
+          label: { en: "Read a poster", "pt-BR": "Ler um cartaz", de: "Plakat lesen", es: "Leer un cartel", pl: "Odczytaj plakat", it: "Leggi una locandina" },
+          icon: "camera",
+          description: {
+            en: "Fills this in from a photo of a poster, flyer or ticket",
+            "pt-BR": "Preenche isto com a foto de um cartaz, folheto ou ingresso",
+            de: "Füllt das hier aus einem Foto von Plakat, Flyer oder Ticket aus",
+            es: "Rellena esto con la foto de un cartel, folleto o entrada",
+            pl: "Wypełnia formularz ze zdjęcia plakatu, ulotki albo biletu",
+            it: "Compila questo dalla foto di una locandina, un volantino o un biglietto",
+          },
+          run: fillFromPoster,
+        },
       ],
       computed: {
         when: { value: (r, ctx) => whenText(r, ctx, ctx.now()), label: { en: "Date and time", "pt-BR": "Data e hora", de: "Datum und Uhrzeit", es: "Fecha y hora", pl: "Data i godzina", it: "Data e ora" } },

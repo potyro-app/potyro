@@ -813,6 +813,10 @@ export class RealmLoadedApp implements LoadedApp {
   callFieldDefault(entity: string, field: string, ctx: Ctx): Promise<Value> {
     return this.invoke("fieldDefault", [entity, field], ctx);
   }
+  /** The draft crosses as plain data and the answer comes back as data: unchecked here (see `runFill`). */
+  callFill(entity: string, index: number, draft: Record<string, unknown>, ctx: Ctx): Promise<unknown> {
+    return this.invoke("fill", [entity, index, draft], ctx);
+  }
   callTile(ctx: Ctx): Promise<Value> {
     return this.invoke("tile", [], ctx);
   }

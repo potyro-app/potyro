@@ -247,6 +247,10 @@ export interface LoadedApp {
   // invoke app-provided functions, in the correct runner (direct, or sealed: the realm / the isolate):
   callComputed(entity: string, key: string, record: Resolved, ctx: Ctx): Promise<Value>;
   callAction(entity: string, key: string, record: Resolved, ctx: Ctx, input?: unknown): Promise<void>;
+  // A form's fill button (docs/04 §A button that fills the form): `entities[entity].fill[index].run`
+  // on a COPY of the form's values. Resolves to whatever the app returned, unchecked — callers go
+  // through `runFill`, which checks it (below). Nothing is saved.
+  callFill(entity: string, index: number, draft: Record<string, unknown>, ctx: Ctx): Promise<unknown>;
   callFilter(viewId: string, record: Resolved, ctx: Ctx): Promise<boolean>;
   callBinding(ref: BindingRef, record: Resolved, ctx: Ctx): Promise<Value>;
   // Page summary aggregates (docs/03 `Page.summary`). The only call taking the whole row set:
@@ -497,6 +501,30 @@ only that part. Each is reported under a name in the app's own terms:
 A library that throws while it loads takes the module with it: the bundle is one script, so there is
 no smaller part to fail. The Add-an-app card's test load is what catches that, before install.
 
+### A form's fill: one check for every runner
+
+```ts
+export interface FillOutcome {
+  values: Record<string, unknown>;   // fits its field, by the rule a write is held to; plain data, copied
+  refused: FieldRefusal[];           // a field did not take it: the same data a refused write carries (#76)
+  unknown: string[];                 // keys that are no field of the entity (a record's own id and dates not counted)
+}
+export function runFill(app: LoadedApp, entity: string, index: number, draft: Record<string, unknown>, ctx: Ctx): Promise<FillOutcome>;
+export function checkFill(entity: string, fields: Record<string, Field>, returned: unknown): FillOutcome;
+export const FILL_LIMITS: { keys: 500; chars: 2_000_000; depth: 12 };
+```
+
+`runFill` hands the app a plain copy of the draft (`draftCopy`), calls `callFill` in the app's own
+runner, and sorts the answer with `checkFill` on the host side — the one place, whichever way the
+app runs. Nothing or `null` is an empty outcome. Each value is deep-copied as plain data (text,
+numbers, booleans, dates, lists and plain objects of them) and held to `fieldValueIssue(field, value,
+"write")`; anything that is not data (a function, a Blob, a class instance, a cycle, deeper than
+`FILL_LIMITS.depth`) is refused by its field's base rule. A bad value never fails the fill: the form
+fills what fits. Only an answer that is not a set of values at all (a string, a list), or one past
+`FILL_LIMITS`, throws — a `TypeError`, the app's bug, never words for a person. What the app throws
+rejects as it does for an action and is sorted by `actionFailure`; `declined(e)` tells a person's
+"not now" (a cap denied, the camera closed) from a failure.
+
 ## Runtime API (packages/runtime) — what views consume
 
 ```ts
@@ -508,6 +536,10 @@ export interface Runtime {
     { rows: Resolved[]; loading: boolean };
   useRecord(entity: string, id: Id): { record: Resolved | null; loading: boolean };
   runAction(entity: string, key: string, id: Id, input?: unknown): Promise<void>;
+  // A form's fill button (#81). Never rejects: values that fit, `skipped` with a sentence per value a
+  // field refused ("Not filled: Grape takes one of …"), `declined` when the person said not now —
+  // or `{ ok: false, message }`, the app's failure in words for the button's own line (no toast).
+  fillForm(entity: string, index: number, draft: Record<string, unknown>): Promise<FillResult>;
   create(entity: string, data: Partial<Record>): Promise<Record>;
   patch(entity: string, id: Id, data: Partial<Record>): Promise<void>;
   remove(entity: string, id: Id): Promise<void>;

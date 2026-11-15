@@ -625,6 +625,101 @@ msgstr "{fetches, plural, one {Viene scaricata una volta, quando aggiungi l’ap
 msgid "{field} ({entity})"
 msgstr "{field} ({entity})"
 
+#. {field} is a field's name in the app; {bound} is the largest number or amount it accepts
+#: ../shell/src/failure-words.ts
+msgid "{field} takes {bound} or less."
+msgstr "{field} accetta {bound} o meno."
+
+#. {field} is a field's name in the app; {bound} is the smallest number or amount it accepts
+#: ../shell/src/failure-words.ts
+msgid "{field} takes {bound} or more."
+msgstr "{field} accetta {bound} o più."
+
+#. {field} is a field's name in the app, e.g. “Grape (Wine)”; {list} is its choices, already joined: “Malbec, Merlot or Syrah”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes {list}."
+msgstr "{field} accetta {list}."
+
+#. {field} is a field's name in the app, e.g. “Bought (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes a date."
+msgstr "{field} accetta una data."
+
+#. {field} is a field's name in the app, e.g. “Sheet (Song)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes a file of this app."
+msgstr "{field} accetta un file di quest’app."
+
+#. {field} is a field's name in the app, e.g. “Tags (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes a list of tags."
+msgstr "{field} accetta un elenco di tag."
+
+#. {field} is a field's name in the app, e.g. “Tastings (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes a list."
+msgstr "{field} accetta un elenco."
+
+#. {field} is a field's name in the app, e.g. “Year (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes a number."
+msgstr "{field} accetta un numero."
+
+#. {field} is a field's name in the app, e.g. “Label (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes a photo or a file."
+msgstr "{field} accetta una foto o un file."
+
+#. {field} is a field's name in the app, e.g. “Vineyard (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes a place."
+msgstr "{field} accetta un luogo."
+
+#. {field} is a field's name in the app, e.g. “Bottles (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes a whole number."
+msgstr "{field} accetta un numero intero."
+
+#. {field} is a field's name in the app, e.g. “Price (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes an amount of money."
+msgstr "{field} accetta un importo."
+
+#. {field} is a field's name in the app that links to one other entry, e.g. “Cellar (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes an entry of this app."
+msgstr "{field} accetta una voce di quest’app."
+
+#. {field} is a field's name in the app that links to several other entries, e.g. “Pairings (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes entries of this app."
+msgstr "{field} accetta voci di quest’app."
+
+#. Said after “Not saved:” — an app's button tried to save a value its field does not accept. {field} is the field's name in the app, e.g. “Grape (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes one of its listed choices."
+msgstr "{field} accetta una delle sue scelte."
+
+#. {field} is a field's name in the app that names several people the app is shared with, e.g. “Tasters (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes people in this app."
+msgstr "{field} accetta persone di quest’app."
+
+#. {field} is a field's name in the app that names one person the app is shared with, e.g. “Bought by (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes someone in this app."
+msgstr "{field} accetta qualcuno di quest’app."
+
+#. {field} is a field's name in the app, e.g. “Notes (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes text."
+msgstr "{field} accetta testo."
+
+#. {field} is a field's name in the app, e.g. “Opened (Wine)”
+#: ../shell/src/failure-words.ts
+msgid "{field} takes yes or no."
+msgstr "{field} accetta sì o no."
+
 #. Board: the column for cards with no value in the field
 #: ../views/src/board.tsx
 msgid "{fieldLabel}: none"
@@ -3322,6 +3417,11 @@ msgstr "file fuori dall’app"
 msgid "Files you add, files {appName} makes and files it came with all show up here. Drop files on this page, or add them from this device."
 msgstr "Qui compaiono i file che aggiungi, quelli che crea {appName} e quelli arrivati con l’app. Trascina dei file su questa pagina, o aggiungili da questo dispositivo."
 
+#. Under a button in a form that filled some of its fields; {filledList} is the fields' names, already joined: “Name, Year and Grape”
+#: ../views/src/form-fill.tsx
+msgid "Filled in: {filledList}"
+msgstr "Compilato: {filledList}"
+
 #. Button that opens the filter options of a page
 #. Title of the sheet with a page's filter options
 #. Title of the sheet with a page's filter options
@@ -4182,6 +4282,11 @@ msgstr "Tenerla comunque? Questa versione: {loss}."
 msgid "Keep it on this device only"
 msgstr "Tienilo solo su questo dispositivo"
 
+#. Button in a form's review: keep every value the person entered, take none of the new ones
+#: ../views/src/form-fill.tsx
+msgid "Keep mine"
+msgstr "Tieni i miei"
+
 #. Button: download the rest of Potyro so every app works without a connection. MB is megabytes
 #: ../shell/src/install-row.tsx
 msgid "Keep Potyro ready offline (about 40 MB)"
@@ -4786,7 +4891,9 @@ msgid "new"
 msgstr "nuova"
 
 #. Ask review: a proposed record, not checked against anything
+#. In a form's review, above the value a button just read (beside “Yours”)
 #: ../shell/src/ask-verdicts.ts
+#: ../views/src/form-fill.tsx
 msgid "New"
 msgstr "Nuova"
 
@@ -5010,6 +5117,11 @@ msgstr "Non scaricato: tocca per ottenerlo"
 msgid "Not everything downloaded. Try again when you have a good connection."
 msgstr "Non è stato scaricato tutto. Riprova quando hai una buona connessione."
 
+#. Under a button in a form that fills it in (from a photo, a scan): one value was left out. {takes} is a whole sentence saying what the field accepts, e.g. “Grape takes Malbec, Merlot or Syrah.”
+#: ../shell/src/failure-words.ts
+msgid "Not filled: {takes}"
+msgstr "Non compilato: {takes}"
+
 #: ../views/src/detail.tsx
 #: ../views/src/steps.tsx
 msgid "Not found."
@@ -5069,101 +5181,6 @@ msgstr "non ancora aperta"
 msgid "not saved"
 msgstr "non salvata"
 
-#. {field} is a field's name in the app; {bound} is the largest number or amount it accepts
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes {bound} or less."
-msgstr "Non salvato: {field} accetta {bound} o meno."
-
-#. {field} is a field's name in the app; {bound} is the smallest number or amount it accepts
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes {bound} or more."
-msgstr "Non salvato: {field} accetta {bound} o più."
-
-#. {field} is a field's name in the app, e.g. “Grape (Wine)”; {list} is its choices, already joined: “Malbec, Merlot or Syrah”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes {list}."
-msgstr "Non salvato: {field} accetta {list}."
-
-#. {field} is a field's name in the app, e.g. “Bought (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes a date."
-msgstr "Non salvato: {field} accetta una data."
-
-#. {field} is a field's name in the app, e.g. “Sheet (Song)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes a file of this app."
-msgstr "Non salvato: {field} accetta un file di quest’app."
-
-#. {field} is a field's name in the app, e.g. “Tags (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes a list of tags."
-msgstr "Non salvato: {field} accetta un elenco di tag."
-
-#. {field} is a field's name in the app, e.g. “Tastings (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes a list."
-msgstr "Non salvato: {field} accetta un elenco."
-
-#. {field} is a field's name in the app, e.g. “Year (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes a number."
-msgstr "Non salvato: {field} accetta un numero."
-
-#. {field} is a field's name in the app, e.g. “Label (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes a photo or a file."
-msgstr "Non salvato: {field} accetta una foto o un file."
-
-#. {field} is a field's name in the app, e.g. “Vineyard (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes a place."
-msgstr "Non salvato: {field} accetta un luogo."
-
-#. {field} is a field's name in the app, e.g. “Bottles (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes a whole number."
-msgstr "Non salvato: {field} accetta un numero intero."
-
-#. {field} is a field's name in the app, e.g. “Price (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes an amount of money."
-msgstr "Non salvato: {field} accetta un importo."
-
-#. {field} is a field's name in the app that links to one other entry, e.g. “Cellar (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes an entry of this app."
-msgstr "Non salvato: {field} accetta una voce di quest’app."
-
-#. {field} is a field's name in the app that links to several other entries, e.g. “Pairings (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes entries of this app."
-msgstr "Non salvato: {field} accetta voci di quest’app."
-
-#. An app's button tried to save a value its field does not accept. {field} is the field's name in the app, e.g. “Grape (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes one of its listed choices."
-msgstr "Non salvato: {field} accetta una delle sue scelte."
-
-#. {field} is a field's name in the app that names several people the app is shared with, e.g. “Tasters (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes people in this app."
-msgstr "Non salvato: {field} accetta persone di quest’app."
-
-#. {field} is a field's name in the app that names one person the app is shared with, e.g. “Bought by (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes someone in this app."
-msgstr "Non salvato: {field} accetta qualcuno di quest’app."
-
-#. {field} is a field's name in the app, e.g. “Notes (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes text."
-msgstr "Non salvato: {field} accetta testo."
-
-#. {field} is a field's name in the app, e.g. “Opened (Wine)”
-#: ../shell/src/failure-words.ts
-msgid "Not saved: {field} takes yes or no."
-msgstr "Non salvato: {field} accetta sì o no."
-
 #: ../shell/src/studio.tsx
 msgid "Not saved: {issue}"
 msgstr "Non salvata: {issue}"
@@ -5171,6 +5188,11 @@ msgstr "Non salvata: {issue}"
 #: ../shell/src/studio.tsx
 msgid "Not saved: {reason}"
 msgstr "Non salvata: {reason}"
+
+#. A toast: an app's button tried to save a value its field does not accept. {takes} is a whole sentence saying what the field accepts, e.g. “Grape (Wine) takes Malbec, Merlot or Syrah.”
+#: ../shell/src/failure-words.ts
+msgid "Not saved: {takes}"
+msgstr "Non salvato: {takes}"
 
 #. Fix agent step: the model's reply could not be used
 #: ../shell/src/fix-panel.tsx
@@ -5235,6 +5257,11 @@ msgstr "Niente corrisponde a “{query}”."
 #: ../shell/src/data-table.tsx
 msgid "Nothing matches."
 msgstr "Niente corrisponde."
+
+#. Under a button in a form that fills it in: it ran and had nothing to add or change
+#: ../views/src/form-fill.tsx
+msgid "Nothing new to fill in."
+msgstr "Niente di nuovo da compilare."
 
 #: ../shell/src/add-app-dialog.tsx
 msgid "nothing of its own"
@@ -6085,6 +6112,11 @@ msgstr "Sostituisci"
 #: ../shell/src/add-app-dialog.tsx
 msgid "Replace it, keep its data"
 msgstr "Sostituiscila, tieni i suoi dati"
+
+#. Heading of a short review inside a form: a button read new values for fields the person had already filled in
+#: ../views/src/form-fill.tsx
+msgid "Replace what you entered?"
+msgstr "Sostituire quello che hai inserito?"
 
 #: ../shell/src/move-page.tsx
 msgid "replaces the untouched example here"
@@ -8173,6 +8205,11 @@ msgstr "aggiornata da un collaboratore"
 msgid "Updated your data from {was} to {to}."
 msgstr "I tuoi dati sono stati aggiornati da {was} a {to}."
 
+#. Button in a form's review: replace every listed value with the new one
+#: ../views/src/form-fill.tsx
+msgid "Use all new"
+msgstr "Usa tutti i nuovi"
+
 #: ../shell/src/storage-elsewhere.tsx
 msgid "Use it here"
 msgstr "Usalo qui"
@@ -8185,6 +8222,11 @@ msgstr "Usarla insieme"
 #: ../shell/src/studio-voice.ts
 msgid "Use my voice"
 msgstr "Usa la mia voce"
+
+#. Button in a form's review: replace only the values where the person picked “New”
+#: ../views/src/form-fill.tsx
+msgid "Use selected"
+msgstr "Usa i selezionati"
 
 #. Button: use the key already in Model settings; {keyName} is the service, e.g. OpenRouter
 #: ../shell/src/free-panel.tsx
@@ -8516,6 +8558,11 @@ msgstr "Al lavoro"
 msgid "Working on it"
 msgstr "Ci sto lavorando"
 
+#. Under a button in a form that fills it in (e.g. “Scan label”), while it works
+#: ../views/src/form-fill.tsx
+msgid "Working on it…"
+msgstr "Ci sto lavorando…"
+
 #: ../shell/src/chat-panel.tsx
 msgid "Write a message"
 msgstr "Scrivi un messaggio"
@@ -8807,3 +8854,8 @@ msgstr "Le tue parole diventano testo su questo dispositivo; all’app arriva so
 #: ../shell/src/ask-sources-panel.tsx
 msgid "yours"
 msgstr "tua"
+
+#. In a form's review, above the value the person entered themselves (beside “New”)
+#: ../views/src/form-fill.tsx
+msgid "Yours"
+msgstr "Il tuo"

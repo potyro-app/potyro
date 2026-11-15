@@ -12,12 +12,17 @@
 //
 // No model is called and nothing leaves the device: the answers are made from the schema alone.
 //
+// A form's fill buttons (#81) are run here too, each once on a new record's draft and once on a
+// sample record's: what one throws, a value it returns that its field refuses, and a key it returns
+// that is no field all come back naming the button — and one that reads a structured answer gets the
+// same awkward answers an action does. A fill saves nothing, so nothing else would ever run it.
+//
 // Budget: only an action that asked for a structured answer on its first run gets more runs, and
 // only the passes whose answer would differ. A page's own buttons are not part of the smoke run, so
 // each is tried once here; one that never asks the AI is left unjudged, as it was before.
 
 import { actionInfo, plainWords, type AppDefinition, type FieldRefusal, type Id, type ValueIssue } from "potyro";
-import { actionFailure } from "@potyro/host";
+import { actionFailure, type FillOutcome } from "@potyro/host";
 import { AI_ANSWER_PASSES, UNLISTED_TEXT, answerSchema, type AiAnswer, type AiAnswerPass, type StandInAi } from "@potyro/capabilities";
 import type { PotyroRuntime } from "@potyro/runtime";
 import { paramsForPage, seededInput, type SmokeOptions } from "@potyro/generator/backends";
@@ -90,6 +95,43 @@ function takes(issue: ValueIssue): string {
 }
 
 const refused = (r: FieldRefusal): string => `its write to ${r.entity}.${r.field} is refused — ${r.field} takes ${takes(r.issue)}`;
+
+/**
+ * What is wrong with what a form's fill returned (#81), or null: a value its field does not take —
+ * the form leaves it out and the person reads why — and a key that is no field, which the form drops.
+ */
+export function fillProblem(entity: string, outcome: FillOutcome): string | null {
+  const said = [
+    ...outcome.refused.map((r) => `the value it returns for ${r.entity}.${r.field} is refused — ${r.field} takes ${takes(r.issue)}`),
+    ...(outcome.unknown.length
+      ? [`it returns ${outcome.unknown.slice(0, MAX_KEYS).map((k) => JSON.stringify(k)).join(", ")}${outcome.unknown.length > MAX_KEYS ? ` and ${outcome.unknown.length - MAX_KEYS} more` : ""}, which ${outcome.unknown.length === 1 ? "is no field" : "are no fields"} of ${entity} — a fill returns values by field key, and the rest is dropped`]
+      : []),
+  ];
+  return said.length ? said.join("; ") : null;
+}
+
+/** A new record's form, as a fill finds it: every field empty but for what the form starts with. */
+function blankDraft(fields: Record<string, { type?: string; default?: unknown }> | undefined): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, field] of Object.entries(fields ?? {})) {
+    const d = field.default;
+    if (d !== undefined && typeof d !== "function" && d !== "__potyro_fn__") out[key] = d;
+    else if (field.type === "list" || field.type === "tags") out[key] = [];
+    else if (field.type === "boolean") out[key] = false;
+  }
+  return out;
+}
+
+/** A record as its edit form holds it: its relations as ids. */
+function editDraft(fields: Record<string, { type?: string }> | undefined, record: Record<string, unknown>): Record<string, unknown> {
+  const id = (v: unknown): unknown => (v && typeof v === "object" ? (v as { id?: unknown }).id : v);
+  const out: Record<string, unknown> = { id: record.id };
+  for (const [key, field] of Object.entries(fields ?? {})) {
+    const v = record[key];
+    out[key] = field.type === "relation" ? (Array.isArray(v) ? v.map(id) : id(v)) : v;
+  }
+  return out;
+}
 
 /**
  * Why a run failed, sorted the way the host sorts it (`actionFailure`, #76): a refused write names
@@ -267,8 +309,50 @@ export function createAnswerPasses(ai: StandInAi, opts: { actionMs?: number } = 
         }
       }
 
-      if (!read) return { errors, note: null };
-      const what = `the AI was a stand-in — ${read} action${read === 1 ? "" : "s"} read an answer from it`;
+      // ---- a form's fill buttons (#81): nothing else runs them ----
+      let fills = 0;
+      for (const [entityKey, entity] of Object.entries(def.entities ?? {})) {
+        for (const [index, fill] of (entity.fill ?? []).entries()) {
+          if (gaveUp) break;
+          await refresh();
+          const fields = entity.fields as Record<string, { type?: string; default?: unknown }>;
+          const name = `the "${plainWords(fill.label) || `#${index + 1}`}" fill button of the ${entityKey} form`;
+          const sample = first[entityKey];
+          /** One run: on a new record's draft, or (odd `n`, when there is a record) on a sample record's. */
+          const call = async (n: number): Promise<void> => {
+            const draft = n % 2 === 1 && sample ? editDraft(fields, sample) : blankDraft(fields);
+            const problem = fillProblem(entityKey, await runtime.core.runFill(entityKey, index, draft));
+            if (problem) throw new Error(problem);
+          };
+          fills++;
+          const schemas: Array<Record<string, unknown>> = [];
+          const causes = new Set<string>();
+          // Both forms it sits on: adding (every field empty) and editing (a record's values).
+          for (const n of sample ? [0, 1] : [0]) {
+            const left = deadline - Date.now();
+            if (left <= 0) {
+              gaveUp = true;
+              break;
+            }
+            const outcome = await attempt("plausible", () => call(n), left);
+            if (!schemas.length) schemas.push(...ai.schemas);
+            if (outcome.kind === "ok") continue;
+            const asked = ai.answers.length ? ` ${when("plausible", ai.answers)}` : "";
+            if (outcome.kind === "stuck") {
+              gaveUp = true;
+              errors.push(`${name} does not finish${asked}: ${outcome.cause}`);
+              break;
+            }
+            if (!causes.has(outcome.cause)) errors.push(`${name} fails${asked}${n === 1 ? " on the edit form" : ""}: ${outcome.cause}`);
+            causes.add(outcome.cause);
+          }
+          if (gaveUp || !schemas.length) continue;
+          await extra(name, schemas, [...causes][0], () => call(0));
+        }
+      }
+
+      if (!read) return { errors, note: fills ? `${fills} form fill button${fills === 1 ? " was" : "s were"} run on a new and a sample record` : null };
+      const what = `the AI was a stand-in — ${read} action${read === 1 ? "" : "s"} read an answer from it${fills ? ` (${fills} form fill button${fills === 1 ? "" : "s"} among what ran)` : ""}`;
       const more = again ? `${what}, and ran again with everything optional missing and with text in no list (${again} more run${again === 1 ? "" : "s"})` : what;
       return { errors, note: gaveUp ? `${more}; not every answer was tried: time ran out` : more };
     },

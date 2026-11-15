@@ -196,6 +196,20 @@ const actionDefSchema = z
   })
   .strict();
 
+// A form's fill button (#81): a label and a real function (hard rule #1) that returns values. `run`
+// takes the sandbox's placeholder for the reason an action's does.
+export const FILL_MAX = 3;
+const formFillSchema = z
+  .object({
+    label: zWordsNonEmpty,
+    icon: zIcon,
+    description: zWords.optional(),
+    run: z.union([zFn, z.literal("__potyro_fn__")], {
+      errorMap: () => ({ message: "a form's fill button needs `run`: a function `(draft, ctx) => ({ field: value })` that returns the values to fill" }),
+    }),
+  })
+  .strict();
+
 // A computed that says what it is called (#310). `value` takes the sandbox's placeholder for the same
 // reason an action's `run` does.
 const computedDefSchema = z
@@ -215,6 +229,10 @@ const entitySchema = z.object({
   groups: z.array(fieldGroupSchema).optional(),
   computed: z.record(z.union([zFn, computedDefSchema])).optional(),
   actions: z.record(z.union([zFn, actionDefSchema])).optional(),
+  fill: z
+    .array(formFillSchema, { invalid_type_error: "`fill` is a list of buttons: [{ label, run: (draft, ctx) => ({ field: value }) }]" })
+    .max(FILL_MAX, `a form takes at most ${FILL_MAX} fill buttons — one button can offer a choice with ctx.ui.sheet`)
+    .optional(),
   editableBy: z.enum(["anyone", "creator", "app"]).optional(),
   share: z.literal("record").optional(),
   hidden: z.boolean().optional(),

@@ -125,6 +125,16 @@ export function thrownFrom(m: { error?: unknown; name?: unknown; code?: unknown;
   };
 }
 
+/**
+ * The person said no — closed the camera or the file picker ("Cancelled: …", what the capabilities
+ * reject with), or answered "Not now" to a question (`code: "denied"`). Where a button can simply do
+ * nothing (a form's fill), that is an answer, not a failure to report.
+ */
+export function declined(e: unknown): boolean {
+  const thrown = e instanceof AppCodeError ? e.thrown : e instanceof HostFault ? null : thrownOf(e);
+  return thrown !== null && (thrown.code === "denied" || /^Cancell?ed\b/i.test(thrown.message));
+}
+
 /** The errors the engine itself makes: a bug's trace, never words an app chose for a person. */
 const ENGINE_ERRORS = new Set(["TypeError", "ReferenceError", "RangeError", "SyntaxError", "EvalError", "URIError", "AggregateError", "InternalError", "DOMException"]);
 

@@ -73,7 +73,8 @@ function boot(port: MessagePort): void {
         try {
           port.postMessage({ t: "result", id: msg.id, ok: true, value });
         } catch (cloneErr) {
-          port.postMessage({ t: "result", id: msg.id, ok: false, error: `the app returned a value that cannot leave it: ${cloneErr instanceof Error ? cloneErr.message : String(cloneErr)}` });
+          // The engine's error, by name: never words the app chose for a person (app-error.ts).
+          port.postMessage({ t: "result", id: msg.id, ok: false, name: "DOMException", error: `the app returned a value that cannot leave it: ${cloneErr instanceof Error ? cloneErr.message : String(cloneErr)}` });
         }
       },
       (err: unknown) => {
@@ -127,6 +128,8 @@ function run(app: DirectLoadedApp, kind: CallKind, a: unknown[], ctx: never): Pr
       return app.callFold(s(0), s(1), v(2), ctx);
     case "fieldDefault":
       return app.callFieldDefault(s(0), s(1), ctx);
+    case "fill":
+      return app.callFill(s(0), Number(a[1]), v(2), ctx);
     case "tile":
       return app.callTile(ctx);
     case "demo":

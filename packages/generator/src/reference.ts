@@ -527,6 +527,25 @@ export const CAPABILITIES: readonly Capability[] = [
     uses: /^\s*demo\s*:/m,
   },
   {
+    key: "fill",
+    summary:
+      "a button IN a record's form that fills it (scan a label): `fill: [{ label, run: async (draft, ctx) => ({ name }) }]`",
+    declarations: ["FillFn", "FillValues", "FormFill"],
+    members: [{ of: "EntityDef", name: "fill" }],
+    notes: [
+      "`run` RETURNS the values, by field key; it never saves and never opens a form of its own — the person is already in one.",
+      "Return only what was found (a field left out keeps what it has); `null` when the person closed the camera. A field the",
+      "person already filled is not replaced silently: the form asks. A value its field does not take (an option that is not",
+      "listed) is left out and named to the person, so map what was read onto the field's own options. To say why nothing was",
+      "filled, `throw new Error(\"The label is too blurry to read\")`: the words appear under the button. At most 3 per entity;",
+      "a choice (camera or library) is one button with `ctx.ui.sheet`. Works on the add form and the edit form alike (`draft.id`",
+      "is set when editing). NOT for a button on a page or a saved record: that is a page action or an entity action.",
+    ].join("\n"),
+    also: ["FormFill", "EntityDef.fill"],
+    cues: /\bfill\s*:|\b(fill (?:in |out )?(?:the |this |my )?form|pre-?fill\w*|auto-?fill\w*|fill (?:it|them|the fields|the rest) (?:in )?(?:from|with|using)|scan (?:the |a )?(?:label|barcode|card|receipt)|while (?:adding|creating)|when (?:adding|creating) (?:a|an|the)|in the (?:add|create|new|edit) form|wypełni\w*|preench\w*|ausfüll\w*|rellen\w*|compil\w*)\b/i,
+    uses: /^\s*fill\s*:\s*\[/m,
+  },
+  {
     key: "ctx.ui.form",
     summary:
       "`await ctx.ui.form({ title, fields: { kg: { type: \"number\", unit: \"kg\" } }, initial, submit })` for several values at once (null = cancelled); `sheet`/`menu({ title, items: [{ id, label, detail, destructive }] })` for a short choice; `progress(label)` → `{ update(0..1), done() }`",

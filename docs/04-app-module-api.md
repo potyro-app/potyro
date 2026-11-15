@@ -201,6 +201,69 @@ in the records. "Add it to the list when it is not there" needs no code and no c
 saving the record is what adds it. Details: docs/03 "A list that grows". Additive: no
 `schemaVersion` bump, in either direction.
 
+### A button that fills the form (`fill` on an entity, #81)
+
+```ts
+entities: {
+  bottle: {
+    fields: { name: { type: "text", required: true }, vintage: { type: "number", integer: true }, grape: { type: "enum", options: GRAPES }, label: { type: "media", accept: "image" } },
+    fill: [
+      {
+        label: "Scan label",
+        icon: "camera",
+        description: "Reads the label with AI",            // one line under the button
+        run: async (draft, ctx) => {
+          if (!ctx.caps.ai || !ctx.caps.camera) throw new Error("Scanning needs the camera and AI");
+          const photo = await ctx.caps.camera.capture();
+          const read = await ctx.caps.ai.extract({ image: photo, instructions: "A wine label.", schema: { name: "text?", vintage: "number?", grape: "text?" } });
+          return { name: read.name, vintage: read.vintage, grape: toGrape(read.grape), label: await ctx.media.put(photo) };
+        },
+      },
+    ],
+  },
+}
+```
+
+"Read the label and fill the form" is asked for while a record is being ADDED: there is no record
+yet, so no entity action can do it (an action takes a saved record), and a page button would have to
+build a form of its own. `fill` is the button for that moment. It sits at the head of the entity's
+form — the same form for adding and for editing — and its `run` is an ordinary function with the full
+`ctx`:
+
+```ts
+type FillFn = (draft: Resolved, ctx: Ctx) => Record<string, unknown> | null | void | Promise<…>;
+```
+
+- **`draft`** is a copy of the form's values as they are now, by field key, as a save would take
+  them (a relation is an id, a date a `Date`); `draft.id` is set when the form edits a record.
+  Changing it changes nothing.
+- **It returns values, by field key**, in the shapes a write takes (a picture: `await
+  ctx.media.put(blob)`). It does not save: the person is in a form, and saving is theirs. Leave a
+  field out (or return it `null`/`undefined`) and it keeps what it has; return `null` or nothing at
+  all when there is nothing to fill.
+- **What the form does with them** is the platform's, the same for every app: an empty field is
+  filled; a field still holding its default, or what an earlier fill put there, takes the new value;
+  a field the person filled, where the new value is different, is **never replaced silently** — the
+  form lists each one, theirs beside the new one, and they keep theirs, take all, or choose field by
+  field. A value equal to what is there is not mentioned. A line under the button says what was
+  filled.
+- **A value its field does not take** — an option that is not listed, text for a number — is left
+  out, the rest is filled, and the person is told which field and what it takes, by the same rule and
+  in the same words as a refused write (#76). So map what was read onto the field's own options
+  (`toGrape` above) rather than returning it raw. Keys that are no field of the entity are dropped.
+- **Saying why nothing was filled** is a thrown `Error` with words for the person (`throw new
+  Error(ctx.t(W.blurry))`): they appear under the button and stay there. "Not now" — the camera
+  closed, a permission or the AI question refused — is not a failure and says nothing; `ctx.ui.sheet`
+  answering `null` is the function's to turn into `return null`, and an answer of nothing shows nothing.
+- **While it runs** the button shows it and the form cannot be saved; the fields stay usable, and
+  what the person types meanwhile is what the answer is compared with.
+
+At most three per entity; a choice between ways (camera or library) is one button that opens
+`ctx.ui.sheet`. `label` and `description` are `Words`. The values are checked on the host
+(`checkFill`, docs/05), so a sealed app's answer reaches the form only as plain data that fits its
+fields — docs/07 §A form's fill. `apps/poster-event` has one ("Read a poster", on the event form).
+Additive and optional: no `schemaVersion` bump.
+
 ### Related records, tappable rows, a remembering checklist (all optional)
 
 A detail section may be `related: { entity, via, view: "list" | "timeline" | "chart", … }` instead of
@@ -235,6 +298,7 @@ request like "tapping a card should select its pin" is one line in the app, neve
 ```ts
 type Computed<E>   = (record: Resolved<E>, ctx: Ctx) => Value | Promise<Value>;
 type ActionFn<E>   = (record: Resolved<E>, ctx: Ctx, input?: unknown) => void | Promise<void>;
+type FillFn<E>     = (draft: Resolved<E>, ctx: Ctx) => Record<string, unknown> | null | void | Promise<…>;  // §A button that fills the form
 type FilterFn<E>   = (record: Resolved<E>, ctx: Ctx) => boolean;
 type SortFn<E>     = (a: Resolved<E>, b: Resolved<E>) => number;
 type BindingFn<E,T>= (record: Resolved<E>, ctx: Ctx) => T;

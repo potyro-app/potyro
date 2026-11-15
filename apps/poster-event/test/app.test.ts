@@ -162,6 +162,78 @@ describe("Poster to Calendar — the app", () => {
   });
 });
 
+describe("Read a poster, from inside the event form", () => {
+  const fill = app.entities.event!.fill![0]!.run;
+  const typed = { title: "My own title", remind: "3 hours before" } as unknown as Resolved;
+
+  it("is one button on the form, named like the page's, in all six languages", () => {
+    expect(app.entities.event!.fill).toHaveLength(1);
+    expect(app.entities.event!.fill![0]!.label).toMatchObject({ en: "Read a poster", it: "Leggi una locandina" });
+  });
+
+  it("returns what the poster says as values, with the photo, and saves nothing", async () => {
+    const { ctx, log, photo } = fakeCtx({ sheets: ["camera"] });
+    const values = await fill(typed, ctx);
+    expect(log.asked[0]!.image).toBe(photo);
+    // The draft never goes to the AI: the photo and the app's instructions, nothing the person typed.
+    expect(Object.keys(log.asked[0]!).sort()).toEqual(["image", "instructions", "schema"]);
+    expect(values).toMatchObject({
+      title: "Night Tram Quartet",
+      start: new Date(2026, 10, 20, 20, 0),
+      doors: "19:00",
+      venue: "The Lantern Room",
+      allDay: false,
+      poster: { key: "m1", mime: "image/jpeg" },
+    });
+    // The reminder is the person's choice, never the poster's: the form keeps what it has.
+    expect(values).not.toHaveProperty("remind");
+    expect(log.created).toEqual([]);
+    expect(log.forms).toEqual([]);
+    expect(log.navigated).toEqual([]);
+  });
+
+  it("a field the poster is silent on is not returned, so the form keeps what was typed", async () => {
+    const { ctx } = fakeCtx({ answer: { legible: true, events: [ev({ venue: null, price: null, date: null, dateText: null })] }, sheets: ["library"] });
+    const values = (await fill(typed, ctx))!;
+    for (const k of ["venue", "price", "start", "allDay"]) expect(values, k).not.toHaveProperty(k);
+  });
+
+  it("closing the list or the camera fills nothing and says nothing", async () => {
+    const closed = fakeCtx({ sheets: [] });
+    expect(await fill(typed, closed.ctx)).toBeNull();
+    expect(closed.log.asked).toEqual([]);
+  });
+
+  it("several events: the person picks the one this form is for", async () => {
+    const answer = { legible: true, events: [ev({ title: "Night one" }), ev({ title: "Night two", date: "2026-11-21" })] };
+    const { ctx, log } = fakeCtx({ answer, sheets: ["camera", 1] });
+    expect((await fill(typed, ctx))!.title).toBe("Night two");
+    expect(log.sheetItems[1]!.map((i) => i.label)).toEqual(["Night one", "Night two"]);
+    const none = fakeCtx({ answer, sheets: ["camera"] });
+    expect(await fill(typed, none.ctx)).toBeNull();
+    expect(none.log.media).toEqual([]);
+  });
+
+  it("a blurry photo, no event, no AI: said in the app's words, at the button", async () => {
+    const blurry = fakeCtx({ answer: { legible: false, events: [] }, sheets: ["camera"] });
+    await expect(fill(typed, blurry.ctx)).rejects.toThrow("The photo is too blurry to read");
+    const empty = fakeCtx({ answer: { legible: true, events: [] }, sheets: ["camera"] });
+    await expect(fill(typed, empty.ctx)).rejects.toThrow("There's no event on this photo");
+    const noAi = fakeCtx({ ai: false, sheets: ["camera"] });
+    await expect(fill(typed, noAi.ctx)).rejects.toThrow("AI isn't available here, so a photo can't be read");
+    expect(noAi.log.captured).toEqual([]);
+  });
+
+  it("the sample poster fills the form without AI", async () => {
+    const { ctx, log } = fakeCtx({ sheets: ["sample"] });
+    const values = (await fill(typed, ctx))!;
+    expect(log.asked).toEqual([]);
+    expect(String(values.title)).not.toBe("");
+    expect(values.start).toBeInstanceOf(Date);
+    expect(values.poster).toMatchObject({ mime: "image/svg+xml" });
+  });
+});
+
 describe("Read a poster", () => {
   it("photo → reading → the checked event, saved with its poster, a reminder and the page opened", async () => {
     const { ctx, log, photo } = fakeCtx({ sheets: ["camera"] });
