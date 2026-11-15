@@ -215,6 +215,13 @@ describe("checkFill: what a fill returned, against the entity's fields", () => {
     ]);
   });
 
+  it("a value hidden behind a __proto__ key is refused, not accepted through the prototype", () => {
+    const hidden = JSON.parse('{"__proto__":{"key":"blob-1","mime":"image/png"}}') as unknown;
+    const out = checkFill("bottle", fields, { label: hidden, name: "Catena" });
+    expect(out.values).toEqual({ name: "Catena" });
+    expect(out.refused.map((r) => [r.field, r.issue.rule])).toEqual([["label", "media"]]);
+  });
+
   it("copies what it accepts: the form never holds the app's own objects", () => {
     const tags = ["red"];
     const tasted = new Date("2024-05-01T00:00:00Z");

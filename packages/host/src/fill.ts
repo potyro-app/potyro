@@ -80,6 +80,9 @@ function plainCopy(value: unknown, budget: { chars: number }, depth = 0, seen: S
     if (proto !== Object.prototype && proto !== null) return NOT_PLAIN;
     const out: Record<string, unknown> = {};
     for (const key of Object.keys(value)) {
+      // An own "__proto__" key (JSON and structured clone both deliver one) would, assigned below, become
+      // the copy's prototype: a value its field accepts by reading through it, and that saves as {}.
+      if (key === "__proto__") return NOT_PLAIN;
       budget.chars -= key.length;
       if (budget.chars < 0) throw new TooLarge();
       const copy = plainCopy((value as Record<string, unknown>)[key], budget, depth + 1, seen);

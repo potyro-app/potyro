@@ -97,6 +97,8 @@ export function FormFill({ runtime, entity, recordId, values, shown, unwritten, 
   const latest = useRef(values);
   latest.current = values;
   const live = useRef(true);
+  // The guard a second tap in the same tick still sees: `running` is only this render's.
+  const busy = useRef(false);
   useEffect(() => {
     live.current = true;
     return () => {
@@ -117,7 +119,8 @@ export function FormFill({ runtime, entity, recordId, values, shown, unwritten, 
   const label = (key: string): string => fieldLabel(runtime, entity, key);
 
   const run = async (index: number): Promise<void> => {
-    if (running !== null) return;
+    if (busy.current) return;
+    busy.current = true;
     setRunning(index);
     onBusy(true);
     setNote(null);
@@ -129,6 +132,7 @@ export function FormFill({ runtime, entity, recordId, values, shown, unwritten, 
       // `fillForm` does not reject; a runtime that does must still leave the form usable.
       result = { ok: false, message: e instanceof Error ? e.message : String(e) };
     }
+    busy.current = false;
     if (!live.current) return;
     setRunning(null);
     onBusy(false);
