@@ -7,7 +7,7 @@
 // is QuickJS itself, which verification and the Studio still use until they move (docs/22 §8 phase 2).
 
 import type { CreateHostOptions } from "@potyro/host";
-import type { QuickJSAsyncContextLike } from "@potyro/host/isolate";
+import type { QuickJSEngine } from "@potyro/host/isolate";
 import type { Store } from "@potyro/store";
 import { markRealmUnavailable, sandboxRunner } from "./sandbox-runner.js";
 import type { SealedViewSource } from "./realm-bridge.js";
@@ -16,7 +16,7 @@ export type LoadIsolated = NonNullable<CreateHostOptions["loadIsolated"]>;
 
 export interface SandboxOptions {
   timeoutMs?: number;
-  /** QuickJS only. A Worker has no per-realm memory cap (docs/22 §6.1, §7). */
+  /** QuickJS only: the most the app's engine may hold, all of it (docs/22 §6.1). A Worker has no per-realm memory cap (§7). */
   memoryLimitBytes?: number;
   loadTimeoutMs?: number;
 }
@@ -28,18 +28,19 @@ export interface SandboxOptions {
  * `createIsolateLoader`'s defaults are two separate numbers: 5000 ms to load the module (parse +
  * eval the bundle + install the harness — DEFAULT_LOAD_TIMEOUT in isolate-host.ts) and 1000 ms per
  * `invoke()` call, i.e. each computed/action/filter call the app makes afterward (DEFAULT_TIMEOUT).
- * Both default to 64 MB of memory. An interactive render takes those defaults; a candidate replay
+ * Both default to 96 MB of memory — the whole of what the app's engine may hold, which lives in a
+ * WebAssembly memory of its own that cannot grow past it. An interactive render takes those defaults; a candidate replay
  * runs a handful of queries back to back and passes its own `timeoutMs` / `loadTimeoutMs` so a
  * slow-but-correct app isn't false-failed by the interactive budget.
  */
 export async function createSandboxLoader(store: Store, opts?: SandboxOptions): Promise<LoadIsolated> {
-  const [{ createIsolateLoader }, quickjs] = await Promise.all([
+  const [{ boundedContexts, createIsolateLoader }, quickjs] = await Promise.all([
     import("@potyro/host/isolate"),
     import("quickjs-emscripten"),
   ]);
   return createIsolateLoader({
     store,
-    newContext: () => quickjs.newAsyncContext() as unknown as Promise<QuickJSAsyncContextLike>,
+    newContext: boundedContexts(quickjs as unknown as QuickJSEngine),
     ...opts,
   });
 }

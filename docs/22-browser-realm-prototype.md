@@ -312,11 +312,28 @@ pass, 512 arrays of 131,072 doubles pass, and one 512 MB string fails with `out 
 moving to the realm loses less than the issue assumed. Fixing the cap is a separate bug, and the
 fix would be a custom allocator in the WASM build.
 
+**Since fixed, without a new build** (`packages/host/src/isolate/bounded-memory.ts`). Measured again
+on the same package before the fix: 120 typed arrays of 8 MB were kept under the 64 MB limit, the
+box's WebAssembly memory reached 997 MB and the host process grew by 985 MB; array buffers, strings
+and plain arrays did the same. The engine's own limit still counts nothing, so it is no longer what
+bounds a box. Every byte the engine has is inside one `WebAssembly.Memory`, each app's box is its
+own module (`newAsyncContext` never shared one), and the variant's loader takes a memory of ours
+(`wasmMemory`): the host now makes each box's memory with a `maximum`, and the browser refuses a
+`grow` past it whatever the code inside does. A loader handed an engine built on any other memory
+refuses to run the app. The limit is **96 MB for the whole box** — three of the largest pictures a
+box handles (25 MB each: one read from a capture, a changed copy, and the copy the engine makes
+while that is handed out, 80 MB measured) plus the engine and the app's own objects; verification,
+the Studio's run and the Add-an-app trial pass 64 MB. A box that is refused memory is stopped for
+good — an engine with none left cannot even be handed a string — as a `HostFault` "stopped" ("The
+app was stopped before this finished."), its engine is closed and its memory is collected with it
+(twelve boxes stopped in a row leave none of theirs behind: `packages/host/test/isolate-memory.test.ts`).
+The realm row of the table is unchanged: a Worker has no cap.
+
 ## 7. What is lost compared with QuickJS, and the mitigations (acceptance 5)
 
 | QuickJS gives | Realm | Mitigation |
 |---|---|---|
-| **Memory cap** (claimed: 64 MB per isolate) | None per Worker. `measureUserAgentSpecificMemory` needs cross-origin isolation, which an opaque frame does not have. | The cap did not hold anyway (§6.1). Cap what crosses `ctx` (rows per query, payload bytes, as `FORMAT_LIMITS` already does). Rely on process isolation where the engine has it. On Android, add a native `WebViewRenderProcessClient.onRenderProcessUnresponsive` / render-process-gone handler that reloads the shell with that app's realm off. |
+| **Memory cap** (claimed: 64 MB per isolate) | None per Worker. `measureUserAgentSpecificMemory` needs cross-origin isolation, which an opaque frame does not have. | The cap did not hold when this was written (§6.1; it does now, in the fallback only). Cap what crosses `ctx` (rows per query, payload bytes, as `FORMAT_LIMITS` already does). Rely on process isolation where the engine has it. On Android, add a native `WebViewRenderProcessClient.onRenderProcessUnresponsive` / render-process-gone handler that reloads the shell with that app's realm off. |
 | **Deterministic interrupt.** The interrupt handler aborts *one call* and keeps the VM. | The whole realm is killed after ≤ 1 s of silence, losing in-memory state, with a 40–60 ms restart. | App state lives in the Store, so the loss is a cache. Escalate repeated kills to "this app keeps stopping, show it without its own code" (the declarative fallback). |
 | **Pre-emption of any code.** QuickJS checks the interrupt inside every loop. | Logic: yes, by thread termination. **Views: only where the frame is out of process** (desktop Chromium). Elsewhere a view loop blocks the shell until it yields. | Views in the Worker: OffscreenCanvas (chart.js supports it) or a remote-DOM tree rendered by the shell (Shopify's design), which keeps view code off every main thread. Or keep views trusted-only on those engines. |
 | **Identical semantics everywhere.** QuickJS behaves the same on web and on native. | Built-ins are the engine's own, with ICU data per browser and version. | That is the point of #272: an app behaves as it would in the person's own browser. Formatting goes through one module (`format.ts`) at both provenances, as before. |

@@ -1,7 +1,8 @@
 // IsolateHost (docs/05, docs/07): the untrusted runner. The app bundle runs in a QuickJS-WASM
 // isolate with NO ambient authority — no fetch, DOM, filesystem, or globals. The single bridge
 // out is `ctx`, mediated by the host. Records/params marshal in, values marshal out, under
-// memory + time limits.
+// memory + time limits. The memory limit is the size its engine's WebAssembly memory may reach, and
+// no more (bounded-memory.ts): a box that asks for more is stopped, and what it held is let go.
 
 import type { AppDefinition, Ctx, KeepWhileHidden, PotyroRecord, PermissionManifest, Resolved, UiProgress, UiTimer, Value, Words } from "potyro";
 import type { TimerData } from "../timers.js";
@@ -18,6 +19,7 @@ import { guestBookOf } from "../guests.js";
 import { assertNotAuthor, stampAuthor, stripAuthor } from "../authorship.js";
 import { deserialize, serialize } from "./marshal.js";
 import { BOX_BYTES, HARNESS_SOURCE, PICTURE_BYTES } from "./harness.js";
+import { boxMemory, type BoxMemory } from "./bounded-memory.js";
 import { AI_LIMITS } from "../ai.js";
 import { SocketBridge, type BoxSocketEvent, type BoxSocketInfo } from "../socket-bridge.js";
 import { SpeechBridge, type BoxSpeechEvent, type BoxSpeechInfo } from "../speech-bridge.js";
@@ -56,8 +58,16 @@ export interface QuickJSAsyncContextLike {
 
 export interface IsolateLoaderOptions {
   store: Store;
-  /** Factory for a fresh async context (injectable for tests). */
-  newContext: () => Promise<QuickJSAsyncContextLike>;
+  /**
+   * Factory for a fresh async context, in an engine of its own built on `memory` (`boundedContexts`,
+   * bounded-memory.ts). A context built on any other memory is refused: nothing would bound it.
+   */
+  newContext: (memory: WebAssembly.Memory) => Promise<QuickJSAsyncContextLike>;
+  /**
+   * The most memory one app's box may hold, all of it together — its objects, strings and buffers,
+   * and the engine's own. It is the maximum of the WebAssembly memory the engine lives in, so the
+   * engine cannot pass it; a box that asks for more is stopped (`HostFault`, "stopped").
+   */
   memoryLimitBytes?: number;
   /** Budget for each `invoke()` — one computed/action/filter/etc. call. See `loadTimeoutMs` for the load budget, which is a separate, larger number. */
   timeoutMs?: number;
@@ -73,7 +83,14 @@ export interface IsolateLoaderOptions {
   loadTimeoutMs?: number;
 }
 
-const DEFAULT_MEMORY = 64 * 1024 * 1024; // 64 MB
+/**
+ * The most one shared app's box holds: 96 MB. Three of the largest pictures a box handles
+ * (`PICTURE_BYTES`, 25 MB) — one read from a capture, an edited copy of it, and the copy the engine
+ * makes while that one is handed back out — measured at 80 MB of the engine's memory, and the rest
+ * for the engine itself (about 5 MB) and the app's own objects. The engine asks for memory a little
+ * ahead of its need, so the last 5% may be refused to a small request.
+ */
+export const DEFAULT_MEMORY = 96 * 1024 * 1024;
 const DEFAULT_TIMEOUT = 1000; // ms per invoke() call — NOT the load; see DEFAULT_LOAD_TIMEOUT
 const DEFAULT_LOAD_TIMEOUT = 5000; // ms for loadIsolated (parse + eval bundle + harness install)
 
@@ -145,6 +162,10 @@ class IsolateLoadedApp implements LoadedApp {
   /** Screens the box holds on and timers it draws, by its id for each (`ui.keepAwake`, `ui.drawsTimer`). */
   private awake = new Map<string, { release(): void }>();
   private disposed = false;
+  /** Why this box was stopped for good: it asked for more memory than it may hold. */
+  private spent: HostFault | null = null;
+  /** Calls waiting on the box, to be told when it is stopped under them. */
+  private readonly waiting = new Set<(why: HostFault) => void>();
   /** Questions open for the person, and the time they have held calls up — a call's budget pauses for them. */
   private questionsOpen = 0;
   private questionSince = 0;
@@ -167,10 +188,11 @@ class IsolateLoadedApp implements LoadedApp {
   private readonly listening = new Set<number>();
 
   constructor(
-    private readonly vm: QuickJSAsyncContextLike,
+    private vm: QuickJSAsyncContextLike,
     definition: AppDefinition,
     private readonly store: Store,
     private readonly timeoutMs: number,
+    private memory: BoxMemory | null = null,
   ) {
     this.definition = definition;
     this.permissions = definition.permissions ?? {};
@@ -594,6 +616,8 @@ class IsolateLoadedApp implements LoadedApp {
 
   /** Fire-and-forget ops (toast/log/nav): synchronous so they are safe in promise continuations. */
   private handleSyncOp(opJson: string): void {
+    // A box the engine has just refused memory is about to be stopped: nothing more is done for it.
+    if (this.full()) return;
     const op = deserialize<Record<string, unknown>>(opJson);
     switch (op.op as string) {
       case "log":
@@ -823,13 +847,34 @@ class IsolateLoadedApp implements LoadedApp {
     return new HostFault(`interrupted: the call did not finish within ${this.timeoutMs} ms`, "slow");
   }
 
+  /**
+   * The box asked for more memory than it may hold, and the engine refused it. That is the end of
+   * this box: an engine with no memory left cannot be handed a string, let alone be trusted to carry
+   * on, and its memory never shrinks while it lives. So it is closed here — which lets go of all it
+   * held — every call waiting on it is told, and every later one gets the same answer.
+   */
+  private outOfRoom(): HostFault {
+    if (this.spent) return this.spent;
+    const limit = this.memory?.limit ?? 0;
+    this.spent = new HostFault(`stopped: the app asked for more memory than a shared app may hold (${megabytes(limit)})`, "stopped");
+    this.dispose();
+    for (const tell of [...this.waiting]) tell(this.spent);
+    return this.spent;
+  }
+  private full(): boolean {
+    return this.memory?.refused() === true;
+  }
+
   /** One synchronous entry into the VM, under the per-entry CPU budget, then the jobs it queued. */
   private enter(run: () => void): void {
+    if (this.spent) throw this.spent;
     const deadline = Date.now() + this.timeoutMs;
     // Whether THIS entry was cut short: the engine's own error for it ("interrupted") says nothing
     // a person can be told, so what it throws is named for what happened — the call ran too long (#76).
     let interrupted = false;
     this.vm.runtime.setInterruptHandler(() => {
+      // Refused memory ends the entry at once, whether or not the app's code caught the error.
+      if (this.full()) return true;
       interrupted = Date.now() > deadline;
       if (interrupted) this.cutShort = true;
       return interrupted;
@@ -838,11 +883,15 @@ class IsolateLoadedApp implements LoadedApp {
       run();
       this.vm.runtime.executePendingJobs();
     } catch (e) {
+      // Whatever it threw — the engine's "out of memory", a trap from an engine with none left.
+      if (this.full()) throw this.outOfRoom();
       if (interrupted) throw this.tooSlow();
       throw e;
     } finally {
-      this.vm.runtime.removeInterruptHandler?.();
+      if (!this.disposed) this.vm.runtime.removeInterruptHandler?.();
     }
+    // The app's code may have caught the refusal and returned as if nothing happened.
+    if (this.full()) throw this.outOfRoom();
   }
 
   /** One connection event into the box. True when the app took it (or it needs no ack); false when held. */
@@ -929,8 +978,13 @@ class IsolateLoadedApp implements LoadedApp {
       timer = setTimeout(check, this.timeoutMs);
     });
     timedOut.catch(() => {});
+    // Stopped under this call, from another entry (a host call's answer going back in).
+    let tell!: (why: HostFault) => void;
+    const stopped = new Promise<never>((_, reject) => void (tell = reject));
+    stopped.catch(() => {});
+    this.waiting.add(tell);
     try {
-      const resolved = await Promise.race([settled, timedOut]);
+      const resolved = await Promise.race([settled, timedOut, stopped]);
       const valueHandle = this.vm.unwrapResult(resolved);
       const out = this.vm.getString(valueHandle);
       valueHandle.dispose();
@@ -939,11 +993,15 @@ class IsolateLoadedApp implements LoadedApp {
       if (!parsed.ok) throw new AppCodeError(thrownFrom(parsed));
       return parsed.value ?? null;
     } catch (e) {
+      if (this.spent) throw this.spent;
+      // Reading the answer out is the engine's work too: with no memory left, that is what failed.
+      if (this.full()) throw this.outOfRoom();
       // An async function cut short surfaces as its promise rejected with the engine's "interrupted".
       if (this.cutShort && !(e instanceof AppCodeError) && !(e instanceof HostFault)) throw this.tooSlow();
       throw e;
     } finally {
       clearTimeout(timer);
+      this.waiting.delete(tell);
       this.ended();
       if (!this.disposed) (handle as QuickJSHandle | null)?.dispose();
       // ctxHost is left as it is: an action that awaited a question resumes after this call has
@@ -1047,14 +1105,25 @@ class IsolateLoadedApp implements LoadedApp {
     return null; // docs/05: custom views run only for trusted apps
   }
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
     this.sockets.endAll("left", "the app was closed");
     for (const [, held] of this.awake) held.release();
     this.awake.clear();
     this.speech.endAll();
     this.shots.clear();
     this.dropCrossing();
-    this.disposed = true;
-    this.vm.dispose();
+    const vm = this.vm;
+    // The engine's memory is let go with the last reference to it, and this was one: whoever still
+    // holds this app (a screen that has not unmounted yet) no longer holds up to the limit with it.
+    this.vm = closedVm(this.spent);
+    this.memory = null;
+    try {
+      vm.dispose();
+    } catch (e) {
+      // An engine stopped for want of memory may not manage even this; its memory goes all the same.
+      if (!this.spent) throw e;
+    }
   }
 }
 
@@ -1069,15 +1138,31 @@ function errorForBox(e: unknown): string {
   return JSON.stringify({ __err: message, ...(code !== undefined ? { code } : {}), ...(name !== "Error" ? { name } : {}), ...(refusal ? { refusal } : {}) });
 }
 
-/** Build the untrusted loader. Each loaded app gets its own isolate. */
+/** What stands where a closed box's engine was: any use of it says why it is gone. */
+function closedVm(spent: HostFault | null): QuickJSAsyncContextLike {
+  return new Proxy({} as QuickJSAsyncContextLike, {
+    get() {
+      throw spent ?? new HostFault("the app was closed", "closed");
+    },
+  });
+}
+
+/** Build the untrusted loader. Each loaded app gets its own isolate: its own engine, in its own memory. */
 export function createIsolateLoader(opts: IsolateLoaderOptions) {
   const memory = opts.memoryLimitBytes ?? DEFAULT_MEMORY;
   const timeout = opts.timeoutMs ?? DEFAULT_TIMEOUT;
   const loadTimeout = opts.loadTimeoutMs ?? DEFAULT_LOAD_TIMEOUT;
 
   return async function loadIsolated(args: { code: string; provenance: Provenance }): Promise<LoadedApp> {
-    const vm = await opts.newContext();
-    vm.runtime.setMemoryLimit(memory);
+    const room = boxMemory(memory);
+    const vm = await opts.newContext(room.memory);
+    if (!room.used()) {
+      vm.dispose();
+      throw new HostFault("the isolate was not built on the memory it was given: nothing would bound what the app holds", "fault");
+    }
+    // The engine's own limit, for what it is worth here: one allocation larger than it is refused
+    // without the memory growing first. The total is `room`'s to hold (bounded-memory.ts).
+    vm.runtime.setMemoryLimit(room.limit);
 
     // The candidate's module body runs in step 1 below (`evalCode(args.code)`) — before any
     // `call()` has happened, so `invoke()`'s per-call interrupt handler (further down) has not been
@@ -1088,7 +1173,7 @@ export function createIsolateLoader(opts: IsolateLoaderOptions) {
     // independent of the per-call budget `invoke()` uses later — see `loadTimeoutMs` on
     // `IsolateLoaderOptions` for why they must differ.
     const deadline = Date.now() + loadTimeout;
-    vm.runtime.setInterruptHandler(() => Date.now() > deadline);
+    vm.runtime.setInterruptHandler(() => room.refused() || Date.now() > deadline);
     try {
       // 1) Run the app bundle: it must set globalThis.__potyroApp to the app definition.
       const appRes = vm.evalCode(args.code);
@@ -1110,7 +1195,7 @@ export function createIsolateLoader(opts: IsolateLoaderOptions) {
       defHandle.dispose();
 
       // 3) Install the harness (ctx bridge + __potyro.call).
-      const app = new IsolateLoadedApp(vm, definition, opts.store, timeout);
+      const app = new IsolateLoadedApp(vm, definition, opts.store, timeout, room);
       app.installBridge();
       const harnessRes = vm.evalCode(HARNESS_SOURCE);
       vm.unwrapResult(harnessRes).dispose();
@@ -1123,13 +1208,19 @@ export function createIsolateLoader(opts: IsolateLoaderOptions) {
       // A failed load is now the COMMON case, not the rare one (the deadline above is what makes
       // it fail instead of hang). Nothing else holds a handle to `vm` on this path — `IsolateLoadedApp`
       // was never constructed, or was abandoned before being returned — so without disposing here,
-      // every killed runaway, OOM, or syntax error strands its whole QuickJS runtime (64 MB budget)
+      // every killed runaway, OOM, or syntax error strands its whole QuickJS runtime (up to its memory limit)
       // for the page's lifetime. That used to be a rare event; an agent loop retrying up to 8
       // candidates per bug, each calling `verifyCandidate`, makes it routine. Clear the interrupt
       // handler before disposing (disposing first would free the runtime pointer it needs), then
       // rethrow so the caller still sees the original failure.
-      vm.runtime.removeInterruptHandler?.();
-      vm.dispose();
+      const full = room.refused();
+      try {
+        vm.runtime.removeInterruptHandler?.();
+        vm.dispose();
+      } catch (gone) {
+        if (!full) throw gone;
+      }
+      if (full) throw new HostFault(`stopped: the app asked for more memory than a shared app may hold (${megabytes(room.limit)})`, "stopped");
       throw e;
     }
   };

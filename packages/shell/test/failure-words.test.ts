@@ -36,7 +36,9 @@ globalThis.__potyroApp = {
       actions: {
         identify: async function(r, ctx){ await ctx.patch("wine", r.id, { grape: "Cabernet Sauvignon" }); },
         refuse: async function(){ throw new Error("Pick a bottle first"); },
-        bug: async function(r){ return r.cellar.shelf; }
+        bug: async function(r){ return r.cellar.shelf; },
+        hoard: async function(){ globalThis.keep = []; for (var i = 0; i < 400; i++) { try { keep.push(new Uint8Array(8 * 1024 * 1024)); } catch (e) {} } },
+        tidy: async function(r, ctx){ await ctx.patch("wine", r.id, { name: "Tidied" }); }
       }
     }
   },
@@ -126,6 +128,24 @@ describe("a call Potyro ended", () => {
       }
     }
   });
+});
+
+describe("a sealed app that asks for more memory than it may hold", () => {
+  it("is stopped, in a sentence that says so and nothing about memory, limits or the box", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { runtime, toasts, heard, id } = await open("sealed");
+    // 3.2 GB in pieces of 8 MB, each refusal caught: before the bound, all of it was kept.
+    await runtime.runAction("wine", "hoard", id);
+    expect(toasts).toEqual(["The app was stopped before this finished."]);
+    expect(heard[0]).toMatchObject({ app: "cellar", what: "action wine.hoard", shown: toasts[0] });
+    // The developer's line has the reason and the number.
+    expect(heard[0]!.message).toBe("stopped: the app asked for more memory than a shared app may hold (96 MB)");
+    const thrown = warn.mock.calls[0]![1] as HostFault;
+    expect([thrown instanceof HostFault, thrown.why]).toEqual([true, "stopped"]);
+    // The box is gone: what is asked of it next ends the same way, and none of its code runs.
+    await runtime.runAction("wine", "tidy", id);
+    expect(toasts).toEqual(["The app was stopped before this finished.", "The app was stopped before this finished."]);
+  }, 30_000);
 });
 
 describe("each rule a field can refuse by", () => {
