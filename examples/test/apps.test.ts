@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
-import { checkReferences, checkWords, computedInfo, computedRun, isPotyroApp, isWordsMap, wordSlots, type AppDefinition } from "potyro";
+import { checkReferences, checkWords, computedInfo, computedRun, guideProblems, isPotyroApp, isWordsMap, wordSlots, type AppDefinition } from "potyro";
 import { catalogProblems } from "@potyro/generator/app-catalog";
 import recipes from "../recipes.app.js";
 import plants from "../plants.app.js";
@@ -84,6 +84,22 @@ describe("every example speaks the six languages (#303)", () => {
       // short token with no space is a word somebody forgot to translate.
       const catalogs = Object.fromEntries(SIX.filter((l) => l !== "en").map((l) => [l, catalogOf(name, l)]));
       expect(await catalogProblems({ source: sourceOf(name), catalogs, same: /^(\S{1,5}|\$\/kg|Wiki|Shakshuka|Monstera deliciosa|2 × 1 l)$/ })).toEqual([]);
+    });
+  }
+});
+
+describe("an example's guide (#80)", () => {
+  it("split says how it is used, in steps that name only what it really shows", () => {
+    expect(split.guide).toHaveLength(4);
+    // Every quoted name is a button, a heading or an action of the app, as written.
+    expect(guideProblems(split)).toEqual([]);
+    // A step that named a button the app does not have would be said.
+    expect(guideProblems({ ...split, guide: ["Tap “Even out”."] })).toEqual([expect.stringContaining("step 1 names “Even out”")]);
+  });
+
+  for (const [name, app] of Object.entries(apps)) {
+    it(`${name}'s guide, if it has one, names nothing the app lacks`, () => {
+      expect(guideProblems(app, sourceOf(name))).toEqual([]);
     });
   }
 });

@@ -31,6 +31,11 @@ export default defineApp({
   category: "everyday",             // its group on the launcher's Start screen
   tile: async (ctx) => ({ count: (await ctx.query("recipe")).length }),  // its live tile (docs/04 §Tile)
 
+  // optional: how to use the app, in 1–6 short steps. The shell shows them the first time the app is
+  // opened and from its menu ("How to use it"); they travel with the app, so whoever is sent it reads
+  // them too. Words like the rest (docs/30). Names in quotes are checked against the app (docs/04 §Guide).
+  guide: ["Tap “Add a recipe” and photograph or paste one.", "Open a recipe and tap “Cook” to walk through its steps."],
+
   // declares what native powers this app expects; used for the trust prompt when the app
   // is run untrusted. Trusted (own) apps get everything without prompting.
   permissions: { camera: true, filesystem: true /* network, notifications, geo … */ },

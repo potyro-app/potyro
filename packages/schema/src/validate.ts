@@ -12,6 +12,7 @@ import { LINK_LIMITS, LINK_PARAM_NAME } from "./links.js";
 import { z } from "zod";
 import { ENUM_COLORS, FIELD_TYPES } from "./types/fields.js";
 import { isWordsSchema, zLanguage, zWords, zWordsNonEmpty } from "./words-schema.js";
+import { guideSchema } from "./guide.js";
 import { ICON_IMAGE_MAX, isIcon } from "./icon.js";
 
 /** An icon (#425): a Lucide name ("shopping-cart", as on lucide.dev), a picture (a shipped file's path,
@@ -825,6 +826,8 @@ export const structureSchema = z.object({
   // against the maps by `checkWords`, after this.
   language: zLanguage.optional(),
   languages: z.array(zLanguage).min(1).optional(),
+  // How to use it (#80, guide.ts): a few steps, each a words slot like any other.
+  guide: guideSchema.optional(),
   theme: z.object({ accent: z.string().optional(), background: backdropSchema.optional(), appearance: z.enum(["light", "dark", "system"]).optional() }).optional(),
   // A function, or the sealed box's placeholder for one (a definition read out of it).
   tile: z.union([zFn, z.literal("__potyro_fn__")]).optional(),

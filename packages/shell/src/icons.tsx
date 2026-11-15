@@ -12,6 +12,7 @@ import {
   Calendar,
   ChartBar,
   ChevronLeft,
+  CircleQuestionMark,
   CircleUser,
   Code,
   Copy,
@@ -100,6 +101,8 @@ export const I = {
   language: icon(Languages),
   stop: icon(Square),
   report: icon(Flag),
+  /** An app's own guide: how to use it. */
+  guide: icon(CircleQuestionMark),
   shield: icon(Shield),
   shield16: icon(Shield, 16),
   sync16: icon(RefreshCw, 16),

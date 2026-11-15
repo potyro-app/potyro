@@ -592,16 +592,11 @@ export interface PageLayout {
 export const LAYOUT_TYPES = ["stack", "grid", "split", "tabs"] as const;
 
 /**
- * A button the app puts on a page, beside its filter chips.
- *
- * This is how an app adds something to TAP that is not "open a record" or "make a record". It runs
- * an ordinary function with `ctx` — no record, because a page is not a record — so it can do
- * anything `ctx` can: read the position, create something, move the map that is on screen
- * (`ctx.views`), tell the person something with `ctx.ui`.
- *
- * Unlike an action named by key (`rowActions`, a detail view's `actions`), it carries its own
- * `label`: the button says what the app wants it to say, not a prettified identifier. See
- * `CtxViews` for the one that moves a map.
+ * A button the app puts on a page, beside its filter chips: something to TAP that is not "open a
+ * record" or "make a record". It runs a function with `ctx` and no record (a page is not one), so it
+ * can do anything `ctx` can: read the position, create something, move the map on screen
+ * (`ctx.views`, see `CtxViews`), tell the person something with `ctx.ui`. Unlike an action named by
+ * key (`rowActions`, a detail view's `actions`), it carries its own `label`.
  */
 export interface PageAction {
   label: Words;
@@ -651,9 +646,8 @@ export interface PageLink {
   params?: string[];
 }
 
-/** A page as an app declares it: `view` or `layout` (one of the two; `defineApp` fills `view` from a
- *  layout's first item). One object type rather than a union, so the functions inside a page's
- *  views keep their contextual types. */
+/** A page as an app declares it: `view` or `layout`, one of the two (`defineApp` fills `view` from a
+ *  layout's first item). One type, not a union: the functions inside keep their contextual types. */
 export type PageInput = Omit<Page, "view"> & { view?: View };
 
 /** What `defineApp` accepts: pages may carry a `view` or a `layout`. */
@@ -734,10 +728,10 @@ export interface Theme {
 }
 
 /**
- * A prominent create-flow trigger (e.g. "Start a session"). Declarative: the shell owns the flow —
- * pick a single required enum inline ("menu") or open the create form ("form"); "auto" chooses menu
- * when the entity has exactly one required enum and no other required fields, else form. When
- * `open` (default true), the new record's detail is opened after creating.
+ * A prominent create button ("Start a session"). The shell owns the flow: "menu" picks a single
+ * required enum inline, "form" opens the create form, "auto" is menu when the entity has exactly one
+ * required enum and no other required field, else form. `open` (default true) opens the new
+ * record's detail after creating.
  */
 export interface QuickAction {
   id: string;
@@ -745,12 +739,12 @@ export interface QuickAction {
   /** A Lucide name. */
   icon?: string;
   entity: string;
-  /** `instant` creates the record straight from field defaults + `prefill` with NO form — the point
-   *  of a quick action when every field has a default (e.g. "Start workout" mid-gym). */
+  /** `instant`: created from field defaults + `prefill` with NO form, for when every field has a
+   *  default ("Start workout" mid-gym). */
   mode?: "auto" | "form" | "menu" | "instant";
   open?: boolean;
-  /** Page to land on after creating. Defaults to the entity's detail page, then its list. Use this
-   *  to jump straight into a custom view (a runner/tracker) instead of a settings screen. */
+  /** Page to land on after creating; default: the entity's detail page, then its list. Jumps
+   *  straight into a custom view (a runner, a tracker) instead of a settings screen. */
   openPage?: string;
   prefill?: Record<string, unknown>;
 }
@@ -801,6 +795,11 @@ export interface AppDefinition {
   language?: Language;
   /** Every language it carries, its own first: `["en", "pl"]`. Added only when asked (`translate`). */
   languages?: Language[];
+  /** How to use the app, shown on first open and from its menu: 1–6 short steps (each ≤ 160 characters,
+   *  plain text) from what it really does, with the pages and buttons a step names in quotes, as written:
+   *  `["Tap “Scan label” on the Bottles page and photograph a bottle.", "Check what it filled in, then save."]`.
+   *  A change that adds, moves or renames what a step names updates the step. */
+  guide?: Words[];
   theme?: Theme;
   /** Live launcher tile (docs/04 §Tile). */
   tile?: (ctx: Ctx) => TileContent | Promise<TileContent>;
@@ -811,12 +810,11 @@ export interface AppDefinition {
   permissions?: PermissionManifest;
   /** An app-wide selected record ("current trip") that every function can read as `ctx.scope`. */
   scope?: ScopeDef;
-  /** How the app presents its object types: a grid home or a tab bar. Default: grid when there are
-   *  several entities, tabs when few. */
+  /** A grid home of its object types, or a tab bar. Default: grid with several entities, tabs with few. */
   nav?: "grid" | "tabs";
-  /** Prominent create triggers shown in the action bar / grid home. When omitted, the shell
-   *  auto-derives an "Add: <Entity>" per top-level entity; `[]` says nothing is added by hand (records
-   *  the app makes itself, like a live feed's): no floating add, and a map has no place button. */
+  /** The app's main add buttons. Omitted: the shell derives an "Add: <Entity>" per top-level entity;
+   *  `[]`: nothing is added by hand (records the app makes itself, a live feed's), so no add button,
+   *  and a map has no place button. */
   quickActions?: QuickAction[];
   entities: Record<string, EntityDef>;
   pages: Page[];
@@ -826,11 +824,8 @@ export interface AppDefinition {
   sources?: Record<string, SourceDef>;
 }
 
-/**
- * The result of `defineApp`. It *is* the (normalized) definition — carrying all field data
- * and live function closures — plus a brand so the host can recognize it. The host reads
- * `.definition` off a loaded module; a `PotyroApp` satisfies that by being its own definition.
- */
+/** The result of `defineApp`: the normalized definition itself (data and live functions), with a
+ *  brand so the host recognizes it; the host reads it as the loaded module's `.definition`. */
 export interface PotyroApp extends AppDefinition {
   readonly __potyroApp: true;
 }

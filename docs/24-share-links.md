@@ -25,6 +25,10 @@ A **demo link** does. Whoever opens it sees the app running, straight away:
 - in **the viewer's language** (Potyro's words and, where the app has them, the app's);
 - with one calm bar: **Made with Potyro · Make it mine · Keep this app**.
 
+An app's guide (docs/04 §Guide) is not put in front of someone trying a demo: its first-open card
+belongs to an app that is on the device, and shows the first time a kept copy is opened. The demo's
+menu still has **How to use it**.
+
 A permission is asked for only when the app itself reaches for a capability, and a library is
 fetched only after the person says yes — both through the prompts every sealed app already gets.
 

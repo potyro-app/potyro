@@ -1137,7 +1137,9 @@ a whole-file reply is still accepted but labelled, so the Studio says so. A cand
 is then run (`packages/shell/src/run-candidate.ts`): on a throwaway store seeded with sample
 records, in the isolate with a budget, every computed value, filter, action and reminder runs and
 every page is mounted; what threw comes back as errors and a page that shows nothing as a warning,
-as does a filter chip that can never offer a choice (`deadFilters` in `packages/shell/src/render-pages.tsx`).
+as does a filter chip that can never offer a choice (`deadFilters` in `packages/shell/src/render-pages.tsx`)
+and a step of the app's guide that names, in quotes, something no page, button or field of the app is
+called (`guideProblems`, docs/04 §Guide).
 What an action commonly starts with stands in, so the rest of it runs: the camera hands over a small
 picture and `ctx.caps.ai` answers whatever shape is asked for, from the shape alone — no model is
 called (`StandInAi` in `packages/capabilities/src/stand-in-ai.ts`). An action that read such an
@@ -1169,7 +1171,10 @@ nothing to someone who does not read code, so the card is written from the app i
 own words lead; then the host compares the app before and after (its name, its pages, the buttons on
 them, filters, the kinds of record and their fields) and adds a sentence for each difference those
 words do not already name, with where to find it: "New on the “Bottles” page: a “Scan label”
-button." A new app's card says its name, its pages and the first thing to tap. A change that passes
+button." A new app's card says its name, its pages and the first thing to tap — or, when the app
+carries a guide (docs/04 §Guide), the app's own steps in place of that guess: "How to use it: 1. Tap
+“Scan label”… 2. Check…". A change that touches the guide says so in one sentence, with where it is
+read. A change that passes
 every gate but came without a word is asked once, the change already accepted, what it changed and
 which parts of the request it left out; what it lists under `Not done:` follows on the card. The
 count of edits is said only when neither the model nor the app has anything to show. Code saved by

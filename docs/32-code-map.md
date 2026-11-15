@@ -186,6 +186,9 @@ Design: docs/00 §An app's life; the composition root is `main.tsx`.
 - `packages/shell/src/ui-bridge.ts` `createUiBridge` (what `ctx.ui` does in the shell: toasts,
   dialogs, pickers, share, record links), `createNavBridge`; `dialog.tsx` `DialogHost` (ONE dialog at
   a time), `shellDialogs`; `share-body.tsx` `ShareBody` (Copy, Copy link, the device's sheet).
+- An app's guide (`guide` in `defineApp`, docs/04 §Guide): `app-guide.tsx` `GuideCard` (first open),
+  `GuideSheet` (the menu's "How to use it"), `guideSeen`/`markGuideSeen`; the limits, `guideSteps` and
+  `guideProblems` are in `packages/schema/src/guide.ts` and `guide-check.ts`.
 - Trust and provenance: `trust-dialog.tsx`, `promotion.ts`; per-app standings: `ai-setting.ts`,
   `app-sockets.ts`, `app-speech.ts`; identity panel: `identity-panel.tsx`; the Data page:
   `data-runtime.ts`; files: `files-panel.tsx`, `device-files.tsx`, `shipped-files.ts`, `seed-files.ts`.

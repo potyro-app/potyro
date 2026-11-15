@@ -18,7 +18,7 @@ typed `record` and `ctx`, (b) normalizes defaults, and (c) in dev runs a Zod che
 **declarative** parts only. It does not and must not constrain function bodies.
 
 ```ts
-export default defineApp({ id, name, icon, version, schemaVersion, language, languages, theme, permissions, entities, pages, reminders, migrations });
+export default defineApp({ id, name, icon, version, schemaVersion, language, languages, guide, theme, permissions, entities, pages, reminders, migrations });
 ```
 
 `name`, `icon` and `theme.accent` are the app's identity: the launcher tile shows them
@@ -108,6 +108,56 @@ runs (`LoadedApp.callDemo`, docs/05), and does not wait for it. A replay goes on
 like one of the app's actions; Earthquakes, Word Watch and Ticker hand it the same function their
 "Demo" button runs. It runs only for a demo link, never for a copy someone keeps or adds: those start
 as the app starts for anyone, with the sample records if the card kept them.
+
+### Guide — how to use it, said by the app (#80)
+
+```ts
+guide?: Words[];   // 1–6 steps, each one line of plain text, at most 160 characters
+```
+
+A person describes an app, gets it, and would otherwise learn how it works by trying things; someone
+who is sent the app never saw the conversation that made it. So the app says it itself: a short
+ordered list of steps, written from what the app really does.
+
+```ts
+guide: [
+  "Tap “Scan label” on the Bottles page and photograph a bottle.",
+  "Check the details it filled in, then save.",
+  "Use the filter to find bottles by country or grape.",
+],
+```
+
+- **Shape.** A list of `Words`: a step is a string in the app's own language, translated through the
+  app's catalogs like every other word (docs/30) — `translate` lists `guide.0`, `guide.1`… with the
+  rest. No markup, no nested structure, no functions. The validator refuses an empty list, more than
+  `GUIDE_LIMITS.steps` (6) steps, a step longer than `GUIDE_LIMITS.chars` (160), an empty step and a
+  line break, each in words that say what to do instead. Additive and optional: `schemaVersion` does
+  not move.
+- **Where it shows.** The shell draws it, never the app's code, so it is the same for an app of
+  yours and a sealed one. The first time an app with a guide is opened on a device, a card at the top
+  of the page lists the steps, numbered, with one button (“Got it”); closed, it does not come back by
+  itself (remembered per app, and forgotten when the app is deleted). It is part of the page rather
+  than a dialog: it cannot cover a question — letting the app run as yours, a permission, joining —
+  and takes no focus and no tap. It is not shown over a map that fills the page or a full-screen page.
+  From then on the app's menu has **How to use it**, which opens the same steps as a dialog; the
+  entry is absent when the app has no guide. A demo link and the Studio's preview show no card by
+  themselves (nothing is installed there to remember it for, and the Studio's version card already
+  says the steps); the menu entry is there.
+- **A stranger's words.** A shared app's guide is text someone else wrote. It is drawn as text only:
+  no HTML, no link made tappable, and `guideSteps` clamps what is drawn whatever the app declared —
+  strings only, six steps, 320 characters each (twice the written limit, since a translation runs
+  longer).
+- **Kept true.** A step puts the names it means in quotes, as the app shows them. The Studio's
+  candidate run reads those names and warns about one that nothing in the app is called
+  (`guideProblems`): `the guide's step 2 names “Scan label”, which no page, button or field of the app
+  is called`. A name is known when it is any word the app declares (a page or section title, a page
+  button, a quick action, a record's action, a kind of record, a field, option or filter label), a
+  name the shell makes from a key with no label (`dueDate` → "Due date"), the shell's own add button
+  for a kind of record ("Add: Bottle"), or — for a button a custom view draws or a label from
+  `ctx.t` — text in the app's source outside the guide. Both “typographic” and "straight" quotes are
+  read, and „…“ and «…»; never an apostrophe. Only the app's own language is checked: the catalogs
+  translate the steps and the names from the same source text. A step that quotes nothing passes. So
+  quote what the app names, and say the rest without quotes ("Use the filter…", "Type a name").
 
 ### How it looks — presentation options (all optional)
 

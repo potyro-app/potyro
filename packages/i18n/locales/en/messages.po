@@ -2402,9 +2402,11 @@ msgstr "Clear"
 msgid "Clear {filter}"
 msgstr "Clear {filter}"
 
+#. Button that closes a dialog
 #. Button: close the fix panel
 #. Button: close the replay report
 #: ../shell/src/activity-panel.tsx
+#: ../shell/src/app-guide.tsx
 #: ../shell/src/ask-panel.tsx
 #: ../shell/src/case-report.tsx
 #: ../shell/src/chat-panel.tsx
@@ -3600,6 +3602,11 @@ msgstr "Go to your apps"
 msgid "going online on its own"
 msgstr "going online on its own"
 
+#. Button that closes an app's guide for good; it stays in the app's menu
+#: ../shell/src/app-guide.tsx
+msgid "Got it"
+msgstr "Got it"
+
 #. An hour of the colour clock
 #: ../shell/src/studio.tsx
 msgid "Green"
@@ -3747,6 +3754,21 @@ msgstr "How should it read?"
 #: ../shell/src/suggest-wording.tsx
 msgid "How suggestions are kept, and how to remove one"
 msgstr "How suggestions are kept, and how to remove one"
+
+#. App menu: the app's own short guide, the steps to use it
+#. App menu: the app's own short guide, the steps to use it
+#. Heading over an app's own short guide: the steps to use it
+#. Heading over an app's own short guide: the steps to use it
+#: ../shell/src/app-guide.tsx
+#: ../shell/src/app-guide.tsx
+#: ../shell/src/App.tsx
+#: ../shell/src/studio-summary.ts
+msgid "How to use it"
+msgstr "How to use it"
+
+#: ../shell/src/studio-summary.ts
+msgid "How to use it: {numbered}"
+msgstr "How to use it: {numbered}"
 
 #: ../shell/src/platform-request-card.tsx
 msgid "How your app is put together"
@@ -4081,6 +4103,10 @@ msgstr "Its description says it is “{said}”, and its code says “{code}”,
 #: ../shell/src/package-libraries.ts
 msgid "Its file {file} is not the copy this app was saved with, so it was not added."
 msgstr "Its file {file} is not the copy this app was saved with, so it was not added."
+
+#: ../shell/src/studio-summary.ts
+msgid "Its guide ({entry}, in the app’s menu) is updated to match."
+msgstr "Its guide ({entry}, in the app’s menu) is updated to match."
 
 #: ../shell/src/platform-request-card.tsx
 msgid "Its lists, fields and pages. None of your entries are in it, and its code is left out — each piece shows as “(a function)”."
@@ -7106,8 +7132,16 @@ msgid "The app is now called {now}."
 msgstr "The app is now called {now}."
 
 #: ../shell/src/studio-summary.ts
+msgid "The app no longer has a guide."
+msgstr "The app no longer has a guide."
+
+#: ../shell/src/studio-summary.ts
 msgid "The app now also keeps: {names}."
 msgstr "The app now also keeps: {names}."
+
+#: ../shell/src/studio-summary.ts
+msgid "The app now has a guide: {entry}, in its menu."
+msgstr "The app now has a guide: {entry}, in its menu."
 
 #. A toast: the person left an app while one of its buttons was still working
 #: ../shell/src/failure-words.ts

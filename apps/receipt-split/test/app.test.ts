@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { checkReferences, fieldValueProblem, isPotyroApp, structureSchema, type Ctx } from "potyro";
+import { checkReferences, fieldValueProblem, guideProblems, isPotyroApp, structureSchema, type Ctx } from "potyro";
 import app from "../receipt-split.app.js";
 
 const source = readFileSync(new URL("../receipt-split.app.ts", import.meta.url), "utf8");
@@ -52,6 +52,16 @@ describe("Receipt Split", () => {
     const none = fakeCtx({ items: [] }, { ai: false });
     await read(none.ctx);
     expect(none.toasts).toEqual(["AI isn't available here."]);
+  });
+});
+
+describe("its guide (#80)", () => {
+  it("says how to use it in three steps, naming the button and the field as the app shows them", () => {
+    expect(app.guide).toHaveLength(3);
+    expect(app.guide![0]).toContain("“Read a receipt”");
+    expect(guideProblems(app)).toEqual([]);
+    // A step that named a button the app does not have would be said.
+    expect(guideProblems({ ...app, guide: ["Tap “Scan a bill”."] })).toEqual([expect.stringContaining("step 1 names “Scan a bill”")]);
   });
 });
 

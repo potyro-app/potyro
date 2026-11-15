@@ -12,12 +12,12 @@
 
 import { plural, t } from "@lingui/core/macro";
 import { fmt } from "@potyro/i18n";
-import { humanizeKey, localize, pickLanguage, type AppDefinition, type Language, type Localized } from "potyro";
+import { guideSteps, humanizeKey, localize, pickLanguage, type AppDefinition, type Language, type Localized } from "potyro";
 import { NEEDS_PLATFORM } from "@potyro/generator/agent";
 import { withoutNotDone } from "@potyro/generator/backends";
 
 /** The parts of an app a card speaks of, its words already in the person's language. */
-export type Described = Localized<Pick<AppDefinition, "name" | "pages" | "entities" | "quickActions">>;
+export type Described = Localized<Pick<AppDefinition, "name" | "pages" | "entities" | "quickActions" | "guide">>;
 
 /** A loaded app as the card describes it: its words in the first of `prefs` it carries, else its own. */
 export function describedIn(app: AppDefinition, prefs: readonly Language[]): Described {
@@ -228,6 +228,16 @@ export function describeChange(before: Described, after: Described): ChangeLine[
     }
     renames(d, (was, to) => t`In ${entity}, ${was} is now called ${to}.`, label);
   }
+
+  // The app's own guide (#80): that it changed, and where it is read — never the steps again.
+  const [guideWas, guideNow] = [guideSteps(before.guide), guideSteps(after.guide)];
+  if (guideWas.join("\n") !== guideNow.join("\n")) {
+    const menu = t({ message: "How to use it", comment: "App menu: the app's own short guide, the steps to use it" });
+    const entry = quoted(menu);
+    if (!guideWas.length) say(t`The app now has a guide: ${entry}, in its menu.`, [menu]);
+    else if (!guideNow.length) say(t`The app no longer has a guide.`, [menu]);
+    else say(t`Its guide (${entry}, in the app’s menu) is updated to match.`, [menu]);
+  }
   return lines;
 }
 
@@ -240,7 +250,8 @@ function firstButton(app: Described, p: DescribedPage): string | null {
 
 /**
  * A new app, said as what it is and the first thing to do in it (#72): its name, its pages, and
- * the button to start with — one of its main buttons, else the first page's own.
+ * how to use it — the app's own guide (#80), else the button to start with: one of its main buttons,
+ * else the first page's own.
  */
 export function describeNewApp(app: Described): string {
   const name = app.name;
@@ -252,7 +263,12 @@ export function describeNewApp(app: Described): string {
   }
   const main = app.quickActions?.[0]?.label;
   const withButton = pages.map((p) => ({ p, label: firstButton(app, p) })).find((x) => x.label);
-  if (main) {
+  // The app says how it is used itself (#80): its own steps, in place of the host's guess at a first tap.
+  const steps = guideSteps(app.guide);
+  if (steps.length) {
+    const numbered = steps.map((step, i) => `${i + 1}. ${step}`).join(" ");
+    out.push(t`How to use it: ${numbered}`);
+  } else if (main) {
     const button = quoted(main);
     out.push(t`To start, tap ${button}.`);
   } else if (withButton) {
