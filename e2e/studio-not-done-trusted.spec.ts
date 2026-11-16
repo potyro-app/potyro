@@ -19,6 +19,9 @@ const BOOK = `  entities: { book: { label: "Book", displayField: "title", fields
 const APP = `import { defineApp } from "potyro";\nexport default defineApp({\n  id: "reader",\n  name: "Reader",\n  version: "1.0.0",\n  schemaVersion: 1,\n${BOOK}\n  pages: [{ id: "all", title: "Books", view: { type: "list", entity: "book", display: { primary: "title" } } }],\n});`;
 const AUTHOR_FREE = 'author: { type: "text", label: "Author" }';
 const PUBLISHER_FREE = 'publisher: { type: "text", label: "Publisher" }';
+// An edit names whole lines, and the fields share one: each change is that line, rewritten.
+const ONE = BOOK.replace(AUTHOR, AUTHOR_FREE);
+const BOTH = ONE.replace(PUBLISHER, PUBLISHER_FREE);
 const LEFT = "Publisher still has to be filled in: the list of books is sorted by it";
 
 const block = (search: string, replace: string): string => `<<<<<<< SEARCH\n${search}\n=======\n${replace}\n>>>>>>> REPLACE`;
@@ -61,9 +64,9 @@ const REQUEST = "saving a book fails when I leave things empty, stop that";
 test("a rule lifted from one field and left on another: the model is asked once, and what it says was not done is on the card", async ({ page }) => {
   const requests = await script(page, [
     "```ts\n" + APP + "\n```",
-    edits("A book can now be saved without an author.", block(AUTHOR, AUTHOR_FREE)),
+    edits("A book can now be saved without an author.", block(BOOK, ONE)),
     `Not done:\n- ${LEFT}`,
-    edits("Books can carry a note.", block(PUBLISHER, `${PUBLISHER}, note: { type: "text", label: "Note" }`)),
+    edits("Books can carry a note.", block(ONE, ONE.replace(PUBLISHER, `${PUBLISHER}, note: { type: "text", label: "Note" }`))),
   ]);
 
   const studio = await madeReader(page);
@@ -110,8 +113,8 @@ test("a rule lifted from one field and left on another: the model is asked once,
 test("answered with a fuller change, that change is what is saved, and nothing is listed as not done", async ({ page }) => {
   const requests = await script(page, [
     "```ts\n" + APP + "\n```",
-    edits("A book can now be saved without an author.", block(AUTHOR, AUTHOR_FREE)),
-    edits("A book can now be saved without an author or a publisher.", block(AUTHOR, AUTHOR_FREE), block(PUBLISHER, PUBLISHER_FREE)),
+    edits("A book can now be saved without an author.", block(BOOK, ONE)),
+    edits("A book can now be saved without an author or a publisher.", block(BOOK, BOTH)),
   ]);
 
   const studio = await madeReader(page);
@@ -127,7 +130,7 @@ test("answered with a fuller change, that change is what is saved, and nothing i
 });
 
 test("a change that answers every part is not asked about", async ({ page }) => {
-  const requests = await script(page, ["```ts\n" + APP + "\n```", edits("A book can now be saved without an author or a publisher.", block(AUTHOR, AUTHOR_FREE), block(PUBLISHER, PUBLISHER_FREE))]);
+  const requests = await script(page, ["```ts\n" + APP + "\n```", edits("A book can now be saved without an author or a publisher.", block(BOOK, BOTH))]);
 
   const studio = await madeReader(page);
   await ask(studio, REQUEST);
