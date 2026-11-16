@@ -1142,7 +1142,8 @@ Be straight with anyone you invite:
 - **No backups yet** ([§6](#6-backups-214)). A lost disk is every shared space and every link.
 - **A first visit downloads about 1 MB** (brotli; measured on a local build, 2026-11-16): the page's
   first script 380 kB, SQLite's Wasm 350 kB, the stylesheet 44 kB, fonts and icons. Then the service
-  worker keeps what an app's screen, the Studio and sync need, about 220 kB more. Not a security
+  worker keeps those files and what an app's screen, the Studio and sync need: about 1.2 MB in its
+  cache, about 220 kB of it not fetched by the page. Not a security
   issue, but it is what a phone on mobile data will feel first; the page shows its wordmark and
   heading from the HTML while the script arrives (#48). An app's first open adds the bundler's Wasm,
   about 3.8 MB.

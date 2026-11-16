@@ -123,9 +123,13 @@ test("after one visit with nothing big fetched, the Studio and an app opened bef
   // What Home does not load is on the list the worker's install keeps, and is kept.
   const { boot, rest } = await buildList(page);
   for (const kept of [/\/assets\/App-[^/]+\.js$/, /\/assets\/studio-[^/]+\.js$/, /\/assets\/sync-[^/]+\.js$/]) expect(boot.some((f) => kept.test(f)), String(kept)).toBe(true);
+  // So is storage: its worker and SQLite's Wasm, which no chunk imports. (This server sends no
+  // `immutable`, so the browser's own cache cannot stand in for the worker's, as it can elsewhere.)
+  for (const kept of [/\/assets\/sqlite-worker-[^/]+\.js$/, /\/assets\/sqlite3-[^/]+\.wasm$/]) expect(boot.some((f) => kept.test(f)), String(kept)).toBe(true);
   await expect.poll(() => missing(page, boot), { timeout: 60_000 }).toBe(0);
   // And nothing big was fetched to get there: the bundler's Wasm waits to be asked for.
   const wasm = rest.filter((f) => f.endsWith(".wasm"));
+  expect(wasm.length).toBeGreaterThan(0);
   expect(await missing(page, wasm)).toBe(wasm.length);
 
   // An app opened once, online, the way a person opens it.

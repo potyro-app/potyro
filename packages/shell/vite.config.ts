@@ -264,6 +264,15 @@ const KEPT_WITH_BOOT = [
   /[\\/]generator[\\/]src[\\/]agent[\\/]index\.ts$/,
 ];
 
+/**
+ * Files no chunk imports, that nothing opens without: the storage worker, SQLite's Wasm and the
+ * helper that reaches the device's files for it. Home fetches them on every visit, but the first
+ * time before the service worker is in charge, so it never saw them; until they were listed here an
+ * app opened offline after one visit only where the browser's own cache still had them (a server
+ * that sends `immutable`), and answered "open in another tab" where it did not.
+ */
+const KEPT_FILES = [/^assets\/sqlite-worker-[^/]+\.js$/, /^assets\/sqlite3-[^/]+\.wasm$/, /^assets\/sqlite3-opfs-async-proxy-[^/]+\.js$/];
+
 function precacheShell(): Plugin {
   let base = "/";
   let publicDir = "";
@@ -296,6 +305,11 @@ function precacheShell(): Plugin {
         const holder = Object.values(bundle).find((item) => item.type === "chunk" && item.moduleIds.some((id) => kept.test(id)));
         if (!holder) throw new Error(`precacheShell: no chunk holds ${kept}; was the file renamed? (KEPT_WITH_BOOT, vite.config.ts)`);
         visit(holder.fileName);
+      }
+      for (const kept of KEPT_FILES) {
+        const files = Object.keys(bundle).filter((f) => kept.test(f));
+        if (!files.length) throw new Error(`precacheShell: the build made no file like ${kept} (KEPT_FILES, vite.config.ts)`);
+        for (const file of files) boot.add(file);
       }
       const entry = entries.find((item) => item.type === "chunk" && /[\\/]src[\\/]main\.tsx$/.test(item.facadeModuleId ?? "")) ?? entries[0];
       if (!entry) throw new Error("precacheShell: the build has no entry chunk");
