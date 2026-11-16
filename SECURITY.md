@@ -36,7 +36,8 @@ Potyro is maintained by one person. There is **no bug bounty** and no payment fo
 - **The QuickJS fallback** while it ships (`packages/host/src/isolate/`), on the same terms.
 - **Trust and install**: a link, an update or a shared package that makes an app run as trusted
   without the person confirming it (`docs/07-execution-and-targets.md`).
-- **The relays and services we run**: the sync relay's deployment (`docs/16-deployment.md`), the AI
+- **The relays and services we run**: the sync relay's deployment (`docs/16-deployment.md`) and the
+  gate in front of it (`packages/sync-gate`), the AI
   relay (`packages/ai-relay`), the rooms relay (`packages/rooms`), the share-link service
   (`packages/share-links`) and the requests service (`packages/platform-requests`). For example:
   reading another person's data, spending the AI allowance outside its limits, or taking a service

@@ -10,7 +10,7 @@
 #
 # (~/potyro-src is a plain clone of https://github.com/potyro-app/potyro; any clone will do.)
 #
-# What it does, for each service named (relay, requests, share-links, ai, rooms; none = all):
+# What it does, for each service named (relay, gate, requests, share-links, ai, rooms; none = all):
 #   1. copies the package's code from the checkout into /opt/<container>/ (rsync --delete, never
 #      node_modules), and installs the one service with dependencies of its own (rooms: `ws`) or the
 #      relay's pinned `jazz-run`, in a throwaway node:22 container;
@@ -23,7 +23,8 @@
 # `sudo RECREATE=1 deploy/containers.sh ai` (an env file is read only when a container is created).
 #
 # Every container is node:22-bookworm, `--restart unless-stopped`, published on 127.0.0.1 only:
-# Caddy (deploy/potyro.app.Caddyfile) is the one way in.
+# Caddy (deploy/potyro.app.Caddyfile) is the one way in. (The gate in front of the sync relay is on
+# the host's network instead, bound to 127.0.0.1 itself: it has to reach the relay's loopback port.)
 #
 # Secrets are never in this repository. The env files live in /etc/potyro/, owned by root, mode 600,
 # and the values are the owner's (deploy/env.example/ has one template per file, names only):
@@ -35,6 +36,8 @@
 #   /etc/potyro/share-links.env   SHARE_ADMIN_TOKEN, SHARE_ABUSE_CONTACT — optional: the service
 #                                 runs without it, with no takedown route over HTTPS and the
 #                                 default report address on a taken-down link's page
+#   /etc/potyro/sync-gate.env     SYNC_* limits — optional, nothing secret: without it the gate
+#                                 runs on its defaults
 #
 # The requests relay and the AI relay refuse to start without their file (no token, no key).
 # The sync relay and the rooms relay hold no secret and have no env file.
@@ -43,7 +46,7 @@ set -euo pipefail
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGE="node:22-bookworm"
 ENV_DIR="/etc/potyro"
-ALL=(relay requests share-links ai rooms)
+ALL=(relay gate requests share-links ai rooms)
 
 say() { printf '%s\n' "$*"; }
 die() { printf '✘ %s\n' "$*" >&2; exit 1; }
@@ -103,6 +106,24 @@ relay() {
     -p 127.0.0.1:4201:4201 \
     -v "$dir":/app -v /var/lib/potyro:/data -w /app \
     "$IMAGE" node node_modules/.bin/jazz-run sync --host 0.0.0.0 --port 4201 --db /data/sync.db
+}
+
+# The gate in front of the sync relay (docs/16 "The gate in front of the relay"): packages/sync-gate,
+# no dependencies. Caddy's /sync goes to it (4206), and it goes to the relay (4201). On the host's
+# network, because the relay's port is published on the host's loopback only; it binds 127.0.0.1
+# itself. It sees the relay's data folder read-only, to stop sync before the disk is full.
+gate() {
+  local changed envfile=()
+  mkdir -p /var/lib/potyro
+  [ -f "$ENV_DIR/sync-gate.env" ] && envfile=(--env-file "$ENV_DIR/sync-gate.env")
+  changed="$(copy "$SRC/packages/sync-gate" /opt/potyro-sync-gate)"
+  up potyro-sync-gate "$changed" \
+    --network host \
+    -e HOST=127.0.0.1 -e PORT=4206 \
+    -e SYNC_UPSTREAM=127.0.0.1:4201 -e SYNC_DISK_PATH=/data \
+    "${envfile[@]}" \
+    -v /opt/potyro-sync-gate:/app:ro -v /var/lib/potyro:/data:ro -w /app \
+    "$IMAGE" node --experimental-strip-types src/server.ts
 }
 
 # Requests to the Potyro team (#263): packages/platform-requests, no dependencies.
@@ -167,6 +188,7 @@ rooms() {
 for service in "$@"; do
   case "$service" in
     relay) relay ;;
+    gate) gate ;;
     requests) requests ;;
     share-links) share_links ;;
     ai) ai ;;

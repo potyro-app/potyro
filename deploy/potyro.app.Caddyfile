@@ -23,9 +23,11 @@ potyro.app {
 		-Server
 	}
 
-	# The CRDT relay (a websocket). The prefix is taken off: jazz-run serves at its root.
+	# The CRDT relay (a websocket), through its gate (4206, packages/sync-gate), which holds each
+	# address to its limits and passes the rest on to jazz-run (4201). The prefix is taken off.
+	# Never straight to 4201: the relay itself takes anything from anyone (docs/16).
 	handle_path /sync* {
-		reverse_proxy 127.0.0.1:4201
+		reverse_proxy 127.0.0.1:4206
 	}
 
 	# Rooms for multiplayer apps (docs/26). The relay's own routes start with /rooms/.
