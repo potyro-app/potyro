@@ -339,6 +339,147 @@ The realm row of the table is unchanged: a Worker has no cap.
 | **Identical semantics everywhere.** QuickJS behaves the same on web and on native. | Built-ins are the engine's own, with ICU data per browser and version. | That is the point of #272: an app behaves as it would in the person's own browser. Formatting goes through one module (`format.ts`) at both provenances, as before. |
 | **No WebRTC and no navigation by construction.** | Both exist in the frame. | §3.2: delete the RTC constructors, and serve the shell with `frame-src 'none'`. Both are measured fixed. |
 
+### 7.1 Memory in the realm: what was measured, what is bounded, what is not (#90)
+
+**There is no memory bound on a sealed app in the realm, and none can be built on what browsers
+offer.** What follows is what each engine does when an app keeps memory without end, what Potyro
+bounds on its own side, and what a person sees. The effect is on availability only: a tab that
+slows, or that the browser ends. Nothing crosses the boundary because of it.
+
+**No control exists.** Checked in the realm itself (`e2e/realm-memory-probe-sandbox.spec.ts`,
+Chromium 151, Firefox 153):
+
+- `performance.measureUserAgentSpecificMemory` is `undefined` in the frame and in its Worker: it
+  needs cross-origin isolation, which an opaque-origin frame cannot have (`crossOriginIsolated` is
+  `false` in both).
+- `performance.memory` is `undefined` in a Worker in both engines. On the frame's own thread it
+  exists in Chromium only, and reports the heap of that thread's JavaScript, not buffers, not the
+  Worker. App code shares that global and can replace it, so a check built on it would stop honest
+  apps and no others. None is built.
+- Nothing in the platform takes a limit for a Worker or a frame. (`resourceLimits` is Node's.) A
+  `WebAssembly.Memory`'s `maximum` bounds that memory alone, which is how the QuickJS box is bounded
+  (§6.1): there the whole engine lives inside one. A realm's JavaScript heap and its buffers do not.
+
+**What each engine does.** One realm frame built as `frame.ts` builds it, growing in steps with a
+beat every 100 ms, as the worker runtime beats. Every run was bounded: a ceiling of its own, and
+for the runs meant to reach the end of memory a cgroup around that browser alone
+(`systemd-run --user --scope -p MemoryMax=…`, swap off), so the kernel ended a process of that
+browser at the cgroup's limit while the machine had memory to spare. The engines' own heap limits
+were reached cheaply by lowering them to 256 MB (`--js-flags=--max-old-space-size`,
+`javascript.options.mem.max`): who dies and what the page hears does not depend on the number.
+
+| Engine, how it was run | What grew | What happened | The shell's page |
+|---|---|---|---|
+| Chromium 151, site isolation; heap lowered to 256 MB | objects in the Worker | beats stop, the frame stops answering: the frames' process is gone. No event. | alive (longest stall 11 ms) |
+| same | objects on a frame's own thread (a view) | the same | alive |
+| Chromium 151, site isolation; 3 GB cgroup | buffers in the Worker | at 3.0 GB the kernel ends the frames' process: silence, no event | alive (12 ms) |
+| same | buffers on a frame's thread | the same | alive |
+| Chromium 151, site isolation; its own heap limit, 6 GB cgroup | objects in the Worker | beats stop somewhere past 4 GB and do not come back in 60 s; the frames' process is gone | alive (13 ms) |
+| Chromium 151 headless shell (no site isolation); heap lowered | objects, Worker or frame | **the tab crashes** | gone |
+| Firefox 153; heap lowered to 256 MB | objects in the Worker | the Worker goes silent at its limit; no `error` event reaches the frame; the frame answers | alive |
+| same | objects on a frame's own thread | **the page hangs**: it never answered again in 3 minutes | hung |
+| Firefox 153; 3 GB cgroup | buffers, Worker or frame | **the tab crashes** (its content process is ended) | gone |
+| Firefox 153; its own heap limit, 6 GB cgroup | objects in the Worker | **the tab crashes** after 50 s of growth | gone |
+| any of the three; heap lowered to 256 MB | 2 GB of platform strings | nothing: kept, not refused | alive |
+
+Not measured: WebKit, an Android WebView, iOS. Byte counts for objects are the probe's estimate
+(64 bytes an object), good to a factor of two; the outcomes are what was observed.
+
+Read together:
+
+- **Desktop Chromium keeps the shell alive.** Sandboxed frames are out of process there (§4.2;
+  the probe sees one out-of-process frame), so the heap limit and the kernel both take the
+  frames' process and leave the page. The host hears nothing, only silence: no `error` event
+  reaches the frame's `worker.onerror`, the frame's own thread stops answering. The heartbeat
+  (logic) and the view's pings are what notice. Every sealed frame of the page shares that process
+  (§11.3), so another open realm goes with it and starts again on its next call.
+- **Without site isolation the tab goes.** The headless shell crashed the tab at the heap limit, for
+  the Worker and for a view alike. This is what to expect of an Android WebView until it is measured
+  (§5).
+- **Firefox ends the Worker quietly at its heap limit**, without an `error` event, and the tab lives.
+  The same growth on a view frame's own thread — which is the page's thread and the page's heap
+  there — hung the page: the frame is in the page's process.
+- **Memory outside the JavaScript heap has no engine limit at all.** Typed arrays and strings made
+  by the platform (a `TextDecoder`'s) are not in the heap the limits count: 2 GB of strings was kept
+  under a 256 MB heap limit in all three, nothing refused. Only the system ends that: in
+  Chromium the frames' process, in Firefox the tab.
+- **At their own limits the engines are slow to say no.** Left at its default, Chromium's Worker
+  heap grew for tens of seconds past 4 GB before its process went; Firefox's tab crashed after 50
+  seconds. Whether the engine or the cgroup ended each of those two runs was not told apart. A
+  person's device reaches the end of its memory first; the watchdog's one second of silence ends
+  the realm before either, where the page survives to count it.
+
+**What is bounded: the host's side** (`packages/host/src/realm/limits.ts`, `REALM_LIMITS`). The
+page the person's other apps and data live in keeps things for a sealed app; each is now bounded,
+for the app's logic and its screens together. Over a bound the op is refused with an ordinary
+`RangeError` (`code: "too-much"`) that the app can catch; nothing is reported anywhere.
+
+| What the host keeps | Bound | Before |
+|---|---|---|
+| One op's arguments (a file to write, a picture to keep) | 64 MB | none |
+| One op of words and choices (a toast, a dialog, a form, a navigation, a log line) | 4 MB | none |
+| All unanswered ops' arguments, and downloads being read, at once | 192 MB | none |
+| Ops unanswered at once | 16,384 | none |
+| Questions to the person open at once (dialogs, sheets, pickers) | 16 | none |
+| Progress bars open at once | 8 | none |
+| A download's answer (`caps.network.fetch`), read by parts and cut off | 64 MB | the whole body, whatever its size |
+| What one call of the app hands back (a computed value, a summary, a tile) | 8 MB | none |
+| The app's definition, read at load | 8 MB | none |
+| Bytes on a port in one watchdog window (50 ms) | 256 MB, then stopped like a message flood | none |
+| Values in one message (the host walks them to measure it) | 1,000,000, then refused as too much | none |
+| Time the host spends measuring one app's messages | 400 ms in a second, then stopped like a flood | none |
+| Toasts on screen (the shell's, for every app) | 4 | none |
+| Already bounded | ctx ids (512), screen and timer holds (32 + 64), watched queries per screen (256), live connections and their buffers (docs/28), timers, AI images (25 MB), `ui.share` files (10, 25 MB), message floods (2,000 per 50 ms; a screen 4,000 per 100 ms) | |
+
+Two limits of these bounds, said plainly:
+
+- **The host measures a message after the browser has delivered it.** A message over a bound has
+  already been copied into the shell's process. The host refuses to keep it, so it is garbage at
+  once, and a realm that keeps sending is stopped; but the instant's peak is the browser's.
+- **Per answer, not per page.** A page keeps every row's computed values while it shows, so what a
+  page holds is rows × values × up to 8 MB. Rows are the app's own records, which it may write
+  without a count limit; a store quota per sealed app is not built.
+
+**What is not bounded, and cannot be from here:** the realm's own memory — the Worker's heap, a
+view frame's heap and DOM, their buffers, nested Workers. The browser ends it, as the table says.
+
+**Recovery: not started again into the same thing.**
+
+- **The logic.** A realm the watchdog stops is started afresh by the next call, as before — once,
+  twice. Stopped **three times within two minutes** (`REST_AFTER_STOPS`, `REST_WINDOW_MS` in
+  `realm-host.ts`; a realm that will not come up again counts), the app **rests**: no realm is
+  started for it, its calls fail at once as "stopped", and the page says, above the app: "This app
+  stopped several times in a row, so Potyro paused it. What you saved in it is still here." with
+  **Start it again** (`LoadedApp.rest`, `packages/shell/src/rest-banner.tsx`). The count is the
+  watchdog's, whatever the cause: a loop, a flood, or a process the browser took for its memory all
+  look the same from the page, and are treated the same. Realms restarted to free a process another
+  app's screen held (§11.3) are not counted.
+- **A screen.** Unchanged: a view that stops answering is removed, the page shows the app's plain
+  version and **Try its screen again**, and that app's views stay off on this device (§11.2). A view
+  frame lost to memory is one that stopped answering.
+- **A tab that died.** Where the browser's answer is the whole tab, nothing in the page can say
+  anything. So while a sealed app is open and on screen, the shell keeps a marker in localStorage,
+  refreshed every second, removed when the app is put away or the page goes off screen
+  (`packages/shell/src/sealed-open-guard.ts`; the views' guard under keys of its own). A marker
+  that another page load finds three seconds stale means a tab died or froze with that app open:
+  the next time, the app is **not started** — none of its code runs — and its place says "Potyro
+  stopped working the last time this app was open, so it has not been started. What you saved in it
+  is still here.", with **Start it** and **Back to my apps**. It is not proof the app did it — a
+  browser killed for any reason while a sealed app was on screen leaves the same marker — which is
+  why it costs one tap and decides nothing.
+- **A tile.** The launcher runs a sealed app's tile code on Home. It is marked the same way while it
+  runs, and a paused app's tile is not run.
+- **Not covered:** a demo link's app and the Studio's preview run sealed logic too and are not
+  marked. A tab reloaded within three seconds of dying reads its marker as another live tab's, and
+  finds it stale only at a later load. The rest is per open app: a tile run starts its own count.
+
+**Tests.** `packages/host/test/realm-limits.test.ts` (each bound, the refusal as an error the app
+can catch, the flood by bytes, the rest and the wake, a realm that will not start again);
+`packages/shell/test/sealed-open-guard.test.ts`; `e2e/realm-rest-sandbox.spec.ts` (three stops, the
+notice, Start it again; a dead tab's marker, the screen, Start it). The measurement is
+`POTYRO_REALM_MEMORY=1 pnpm e2e e2e/realm-memory-probe-sandbox.spec.ts --project=sandbox`
+(Linux with systemd for the cgroup runs; it skips them elsewhere), and is not part of the suite.
+
 ## 8. Recommendation and migration sketch
 
 **Go, with conditions.** Logic in the realm meets every acceptance point in every engine. It is
