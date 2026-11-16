@@ -4,6 +4,7 @@ import { copyFileSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { skipWithoutSealedScreens } from "./engines";
 
 // Breakout, added from its package as someone else's app (sealed), plays (#267): its `mount` screen
 // draws on a canvas in its own sandboxed frame, reads its levels with ctx.files and its best score
@@ -46,6 +47,9 @@ const look = (frame: Frame) =>
     }
     return { drawn, hash };
   });
+
+// Every test here is about the app's own screen in its frame.
+test.beforeEach(({}, info) => skipWithoutSealedScreens(info));
 
 for (const width of [1280, 412]) {
   test(`Breakout, sealed, draws its board and plays in its frame (${width} px)`, async ({ page }) => {

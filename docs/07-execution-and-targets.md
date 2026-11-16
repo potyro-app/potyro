@@ -18,7 +18,7 @@ runner accordingly.
 | provenance | example | runner | `ctx.caps` |
 |---|---|---|---|
 | **trusted** | app in your own workspace dir; app you authored/promoted | **direct**: real import / dynamic `import()` in the host (main thread or worker), full language, real modules | all real, unmediated, no prompts |
-| **untrusted** | app imported via share-sheet, URL, or received file, not yet promoted | **sealed**: bundled, and its logic run in a **browser realm** — a Worker inside an opaque-origin sandboxed iframe — reached only through the mediated `ctx` (#272; the QuickJS-WASM isolate is the fallback, behind a flag) | denied by default; each declared permission granted only after a user consent prompt, then handed a **mediated** wrapper |
+| **untrusted** | app imported via share-sheet, URL, or received file, not yet promoted | **sealed**: bundled, and its logic run in a **browser realm** — a Worker inside an opaque-origin sandboxed iframe — reached only through the mediated `ctx` (#272; where a browser cannot build one, the QuickJS-WASM isolate — the fallback box, below) | denied by default; each declared permission granted only after a user consent prompt, then handed a **mediated** wrapper |
 
 The user can inspect an untrusted app's source and **promote** it to trusted (then it runs
 direct, full authority) — same mental model as trusting a browser extension or a userscript.
@@ -85,12 +85,36 @@ What is lost against QuickJS, and how it is answered (docs/22 §7):
 | The same semantics everywhere | The engine's own built-ins and ICU data | The point of #272: an app behaves as in the person's browser. Formatting is still `format.ts` at both provenances. |
 | No WebRTC, no navigation, by construction | Both exist in the frame | Deleted, and `frame-src 'none'` (above). |
 
-**The QuickJS fallback** stays until the owner removes it (docs/22 §8 phase 4). It runs when
-`localStorage["potyro:sandbox"] = "quickjs"` on a device, when the shell is built with
-`VITE_POTYRO_SANDBOX=quickjs`, under `pnpm dev:sandbox:quickjs`, wherever no realm can be built (no
-Worker, no DOM: the Node tests), and for the rest of a session in which the realm would not start
-(`RealmStartError`: the box failed, not the app). Either way the app is sealed. Verification and the
-Studio's checks still run candidates in QuickJS until phase 2 moves them.
+**The QuickJS fallback** is a second sealed box, and a path the product takes by itself, not a
+switch somebody has to flip. It stays until the owner removes it (docs/22 §8 phase 4). Which box a
+shared app gets is `sandboxRunner()` in `packages/shell/src/sandbox-runner.ts`; QuickJS runs:
+
+- **by itself, where no realm can be built**: the page has no `Worker`, no `MessageChannel` or no
+  `<iframe srcdoc>` (`realmAvailable()`: the Node tests, a very old WebView), and for the rest of a
+  session in which the realm would not start (`RealmStartError`, caught in
+  `packages/shell/src/isolate-bridge.ts`: the box failed, not the app);
+- **always, for the Studio's checks**, on every device: the validation of an app
+  (`validate-app.ts`), the run of a candidate on sample records (`run-candidate.ts`), verification
+  (`verify-candidate.ts`) and the concurrency check (`check-concurrency.ts`) call
+  `createSandboxLoader`, which is QuickJS, until phase 2 moves them; so does the Studio's preview
+  of an app that runs sealed, and of a draft of the person's own that will not load directly
+  (`studio-preview.tsx`; their own app is otherwise previewed direct);
+- **when asked**: `localStorage["potyro:sandbox"] = "quickjs"` on a device, a shell built with
+  `VITE_POTYRO_SANDBOX=quickjs`, or `pnpm dev:sandbox:quickjs`.
+
+Either way the app is sealed, behind the same mediated `ctx`. What the fallback does **not** do,
+each of them by design and each said to the person in words:
+
+| In the fallback | What a person gets |
+|---|---|
+| **No screens of the app's own.** A custom view needs a frame to draw in, and QuickJS is an engine with no page. | The page says "This screen is built with the app’s own code, so it only runs when the app runs as yours.", lists the app's other pages as buttons, and offers **Run it as mine** (`NoScreenHere` in `packages/views/src/custom.tsx`). The trust dialog says the box cannot draw the app's screens on this device. An app that is one custom screen is only that card there. |
+| **No browser built-ins**: no `Intl`, `URL`, `TextEncoder`, `atob`, `Blob`, timers, `crypto` (the list is `FEATURES` in `packages/shell/src/missing-features.ts`). | The Add-an-app card tries the app in the box first and says "It uses a feature shared apps don’t have yet: …" with the feature's name; an app or a library that only meets the gap later fails at that part, in its place. |
+| **No `ctx.caps.network.fetch`**: the call throws (`harness.ts`). Sockets and rooms are carried (docs/28). | Whatever the app does with the failure; the app is not told apart from one that is offline. |
+| **Bytes as base64**, at most 4 MB in one piece (`BOX_BYTES`); a picture is a `Uint8Array` or what the camera gave, never a `Blob`. | An action that hands over more is stopped with a sentence naming the limit. |
+
+Its browser project is `sandbox-quickjs` (`pnpm test:e2e:quickjs`: every sandbox spec but the realm's
+own, with the specs of an app's own screen skipped by name, `e2e/engines.ts`). It is not part of the
+gate; `e2e/sealed-views-fallback-sandbox.spec.ts`, which is, asserts what a person sees there.
 
 In the fallback a box's memory is bounded, all of it: each app's engine is its own WebAssembly
 module in a memory the host makes with a maximum — 96 MB, or the 64 MB a check passes — which the
@@ -183,7 +207,7 @@ per app id, and the realm (or the isolate) only receives a `ctx` bound to that a
   throws, the card still comes up and says the app could not be previewed — never "does not load".
   If the code, once loaded, names a different app than its declaration, it is not added.
 - **A test load at install** (#271). Before the person confirms, the module and its libraries load in
-  the sealed box the app will run in — the realm, or QuickJS behind the flag — on a throwaway store and the generator's smoke run puts sample records through its
+  the sealed box the app will run in — the realm, or QuickJS where that is this device's box — on a throwaway store and the generator's smoke run puts sample records through its
   computed values, filters, actions and reminders (`shell/src/app-trial.ts`). A ReferenceError or
   TypeError on a global the box lacks is named in plain words on the card ("It uses a feature shared
   apps don't have yet: a full web page (document)", `missing-features.ts`; in QuickJS also the
@@ -255,7 +279,7 @@ per app id, and the realm (or the isolate) only receives a `ctx` bound to that a
   its digest first. A mismatch refuses to bundle — "chart.js 4.4.1 is not the copy this app was
   installed with" — and the app shows that on its splash instead of opening.
 - **Libraries in the sealed box** are just more code in the realm's Worker (no DOM; `fetch` refused by
-  its CSP), or in the isolate behind the flag. One
+  its CSP), or in the isolate where that is this device's box. One
   that touches `window`/`document` while loading fails with its own name: "chart.js 4.4.1 needs a
   full web page to work … this app can only run as yours". The card says so when the bytes came with
   the package; when they were fetched at install, the dialog says it right after.
@@ -323,7 +347,7 @@ per app id, and the realm (or the isolate) only receives a `ctx` bound to that a
 ### PWA (first)
 Vite build + cache-first service worker. Persistence via OPFS SQLite. `WebCapabilities` backs
 `ctx.caps`. Trusted apps run direct (main/worker); untrusted apps' logic in the browser realm, served
-with `frame-src 'none'` (QuickJS-WASM behind the flag).
+with `frame-src 'none'` (QuickJS-WASM where the realm cannot be built).
 
 **Offline after one visit, and the home screen (#123).** The service worker
 (`packages/shell/public/sw.js`) serves pages network-first and everything else cache-first, and it

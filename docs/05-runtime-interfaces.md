@@ -305,7 +305,8 @@ Runner behavior:
   which the isolate could not carry. `caps.ai.extract` / `caps.ai.ask` (docs/23) are two more ops:
   a picture crosses as a Blob, a reference as its plain fields; the isolate carries bytes as base64.
   The QuickJS-WASM isolate (`@potyro/host/isolate`) is the
-  fallback behind a flag (docs/07) and still runs verification until docs/22 phase 2.
+  fallback the shell takes where no realm can be built (docs/07) and still runs verification until
+  docs/22 phase 2.
 - **Hard limits (realm).** A per-call deadline (1 s, paused while a question, a dialog, a consent
   prompt, a fetch or an AI request waits), a 100 ms heartbeat from the Worker (1 s of silence stops it), and a
   flood guard (more than 2,000 messages in 50 ms). A stop tears the realm down and rejects what was
@@ -452,9 +453,10 @@ never run in the shell's realm.
   died turns that app's views off on the device until the person asks, so an endless loop can freeze
   Potyro at most once per app. After a silent stop, a realm frame that does not answer means the
   stuck view still holds Chromium's shared sandbox process: every realm is restarted so it exits.
-- **Where views cannot run sealed** — the QuickJS fallback, and the Studio's preview, which still
-  previews in QuickJS — the page says the screen runs only as yours and offers the trust dialog (in a
-  demo link, "Keep this app" first).
+- **Where views cannot run sealed** — the QuickJS fallback, and the Studio's preview of an app that
+  runs sealed, which still previews in QuickJS — the page says the screen runs only as yours, lists
+  the app's other pages as buttons, and offers the trust dialog (in a demo link, "Keep this app"
+  first).
 
 **Before #267, that policy kept shared apps' views off — and that used to make shared apps useless,
 which it no longer did since KA-24.** A shared app's main

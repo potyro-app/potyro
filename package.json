@@ -33,6 +33,7 @@
     "dev:shell-only": "pnpm --filter @potyro/shell dev",
     "test:e2e:prod": "POTYRO_PROD=1 playwright test --project=prod",
     "test:e2e:firefox": "POTYRO_FIREFOX=1 playwright test --project=trusted-firefox --project=sandbox-firefox",
+    "test:e2e:quickjs": "POTYRO_QUICKJS=1 playwright test --project=sandbox-quickjs",
     "pack:app": "node scripts/pack-app.mjs",
     "new:app": "node scripts/new-app.mjs",
     "check:app": "pnpm --filter @potyro/generator check:app --",

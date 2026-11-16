@@ -245,7 +245,7 @@ code runs.
    as an ES module in the page and runs direct (`direct-host.ts`): the functions are real closures
    and a custom view is a real React component. An app that came from anyone else loads sealed
    through the runner the shell injects (`packages/shell/src/sandbox-runner.ts` chooses the realm,
-   or QuickJS behind a flag): the bundle runs in a Worker inside a sandboxed iframe, and the host
+   or QuickJS where the browser cannot build one): the bundle runs in a Worker inside a sandboxed iframe, and the host
    talks to it over a MessagePort, the browser's channel between two JavaScript contexts
    (`packages/host/src/realm/realm-host.ts`; "Security isolation"
    below). Either way the result is a `LoadedApp` with the same `call*`
@@ -915,12 +915,16 @@ so a change to the app's own code can still be judged.
 
 ### The fallback, consent, promotion, and the limits
 
-**QuickJS-WASM** was the sealed box before the realm and remains behind a flag
-(`packages/host/src/isolate/`, chosen by `packages/shell/src/sandbox-runner.ts`): for a whole build,
-for one device through localStorage, or automatically where no realm can be built (no DOM or no
-Worker, which is the Node tests and a very old WebView). Both boxes are sealed; the choice is which
-engine, never whether the app gets ambient authority. The Studio's own checks of a candidate still
-run in QuickJS. A QuickJS box holds at most 96 MB, everything counted: its engine lives in a
+**QuickJS-WASM** was the sealed box before the realm and remains the fallback
+(`packages/host/src/isolate/`, chosen by `packages/shell/src/sandbox-runner.ts`). It is not behind
+a switch: the shell takes it by itself where no realm can be built (no DOM or no Worker, which is
+the Node tests and a very old WebView) and for the rest of a session in which the realm would not
+start; the Studio's checks of a candidate, and its preview of an app that runs sealed, always run
+in it; and a build or a device can ask for it (`VITE_POTYRO_SANDBOX`, localStorage). Both boxes are
+sealed; the choice is which engine, never whether the app gets ambient authority. The fallback is
+the narrower box: it draws no screens of an app's own (the page says so and names the pages that
+work), has none of the browser's built-ins, and has no `ctx.caps.network.fetch` (docs/07 has the
+table). Its browser project, `pnpm test:e2e:quickjs`, is not part of the gate. A QuickJS box holds at most 96 MB, everything counted: its engine lives in a
 WebAssembly memory of its own that cannot grow further, and an app that asks for more is stopped. The realm won on the measurements in docs/22: a shared app that uses `Intl`, `URL`
 and a charting library runs and draws, where through QuickJS its computed values came back empty,
 and a `ctx` round trip is faster.

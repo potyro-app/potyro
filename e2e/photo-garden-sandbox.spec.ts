@@ -1,4 +1,5 @@
 import { test, expect, type Frame, type Page } from "./console-guard";
+import { skipWithoutSealedScreens } from "./engines";
 import { changed, needEsmSh, packApp, pixelsOf } from "./library-demos";
 import { addPackage } from "./live-apps";
 
@@ -9,6 +10,9 @@ import { addPackage } from "./live-apps";
 // itself: p5's canvas inside the sealed frame, with specks moving on it.
 
 test.use({ viewport: { width: 1280, height: 900 }, colorScheme: "light" });
+
+// Every test here is about the app's own screen in its frame.
+test.beforeEach(({}, info) => skipWithoutSealedScreens(info));
 
 /** The Studio's frame, once p5 has drawn in it. */
 async function studioFrame(page: Page): Promise<Frame> {

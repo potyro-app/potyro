@@ -32,7 +32,9 @@ through the same `ctx` over MessagePorts. Two build targets (PWA, Capacitor) sha
    CSP, logic in its Worker, custom views each in a sandboxed frame, host power only through the
    mediated `ctx` over MessagePorts, denied-by-default caps, a permission prompt and a watchdog.
    Never run untrusted app code with ambient authority, and never in the shell's own realm. (The
-   QuickJS-WASM isolate is the fallback behind a flag; the shell is served with `frame-src 'none'`.)
+   QuickJS-WASM isolate is the fallback box, and a supported path for an app's logic: the shell takes
+   it by itself where no realm can be built, and the Studio's checks always run in it. It draws no
+   custom views. The shell is served with `frame-src 'none'`.)
 4. **Structure is declarative and validated; logic is typed, not validated.** `packages/schema`
    validates the data parts with Zod. Functions are typed by TS; never "validate" code — sandbox it.
 5. **Respect the seams.** Views talk to the runtime API only. Runtime depends on the `Store` and
@@ -118,6 +120,7 @@ pnpm dev                                    # the shell, examples seeded as your
 pnpm dev:sandbox                            # the same, examples seeded sealed (the realm, the prompts)
 pnpm e2e e2e/<spec>.spec.ts                 # one browser spec; the whole suite = pnpm e2e, ONE worker
 pnpm test:e2e:firefox                       # Firefox; engine differences go in e2e/engines.ts
+pnpm test:e2e:quickjs                       # the sealed specs in the QuickJS fallback box (not in the gate)
 pnpm ci:local all --post                    # THE GATE before a merge: run it on the CI machine (vazio),
                                             # never on a laptop (slow, flaky under load); --post marks GitHub
 node scripts/ci-select.mjs                  # which specs a change touches
