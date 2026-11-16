@@ -13,8 +13,14 @@ export const GATE_LIMITS = {
   /** Frames a second one address may send, all its connections together, and the burst. Slowed past it. */
   framesPerSecond: 1000,
   frameBurst: 20_000,
-  /** Bytes one address may send towards the relay in a calendar day (UTC). Closed and refused past it. */
-  bytesPerAddressDay: 2 * 1024 * 1024 * 1024,
+  /**
+   * Bytes one address may send towards the relay in a calendar day (UTC). Closed and refused past it.
+   * A twentieth of `bytesPerDay`: what closes sync for everyone is twenty addresses at their limit,
+   * not five (docs/16 "What the gate cannot do" says why this is a ratio and not a protection).
+   */
+  bytesPerAddressDay: 512 * 1024 * 1024,
+  /** Bytes every /64 of one IPv6 /48 together may send in a day: twice one address's. */
+  bytesPerNetDay: 1024 * 1024 * 1024,
   /** Bytes every address together may send in a calendar day (UTC): what the relay's disk can grow by. */
   bytesPerDay: 10 * 1024 * 1024 * 1024,
   /** The longest single message, all its frames together. Longer closes with 1009. */

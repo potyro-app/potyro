@@ -4,13 +4,22 @@
 // 14 bytes) to count frames, to know how long the message says it is BEFORE its bytes arrive, and to
 // know when the stream is between two frames (the only place a close frame of the gate's own may be
 // written). The payload is never unmasked, parsed or kept.
+//
+// What a header says is CHECKED, not only counted, so that the gate's idea of where a message ends
+// does not rest on the relay behind refusing what the gate let through: no reserved bit (no extension
+// is ever agreed: the gate's own request to the relay offers none), a control frame whole and short,
+// a continuation only of a message under way, and no new message inside one (RFC 6455 §5.4, §5.5).
 
 export interface Walked {
   /** Frames whose header was completed in this chunk. */
   frames: number;
   /** A message (all its fragments together) says it is longer than the limit. */
   tooBig: boolean;
-  /** Not a websocket stream this gate passes on: a reserved opcode, an unmasked client frame, an oversized control frame. */
+  /**
+   * Not a websocket stream this gate passes on: a reserved bit or opcode, an unmasked client frame, a
+   * control frame that is fragmented or over 125 bytes, a continuation of nothing, a message begun
+   * inside another.
+   */
   bad: boolean;
 }
 
@@ -23,6 +32,9 @@ export class FrameWalker {
   private left = 0;
   /** Payload bytes of the message so far: a message may come as several frames. */
   private messageBytes = 0;
+  /** A message whose last frame has not come yet. */
+  private open = false;
+  private closeSeen = false;
 
   /** `mustBeMasked`: frames from a client always are (RFC 6455 §5.1); frames from a server never. */
   constructor(maxMessageBytes: number, mustBeMasked: boolean) {
@@ -33,6 +45,11 @@ export class FrameWalker {
   /** True between two frames: nothing of a frame has been seen that is not complete. */
   get atBoundary(): boolean {
     return this.left === 0 && this.headLength === 0;
+  }
+
+  /** A close frame's header has passed: the side this walker reads has said it is done. */
+  get sawClose(): boolean {
+    return this.closeSeen;
   }
 
   feed(chunk: Buffer): Walked {
@@ -62,14 +79,19 @@ export class FrameWalker {
       this.headLength = 0;
       out.frames++;
 
+      const fin = (this.head[0]! & 0x80) !== 0;
+      const reserved = (this.head[0]! & 0x70) !== 0;
       const control = opcode >= 0x8;
       const known = opcode <= 0x2 || (opcode >= 0x8 && opcode <= 0xa);
-      if (!known || masked !== this.mustBeMasked || (control && length > 125)) {
+      // 0 continues the message under way; 1 (text) and 2 (binary) start one.
+      const outOfTurn = !control && (opcode === 0) !== this.open;
+      if (!known || reserved || masked !== this.mustBeMasked || (control && (length > 125 || !fin)) || outOfTurn) {
         out.bad = true;
         return out;
       }
+      if (opcode === 0x8) this.closeSeen = true;
       if (!control) {
-        // 0 continues the message under way; 1 (text) and 2 (binary) start one.
+        this.open = !fin;
         this.messageBytes = (opcode === 0 ? this.messageBytes : 0) + length;
         if (this.messageBytes > this.maxMessageBytes) {
           out.tooBig = true;

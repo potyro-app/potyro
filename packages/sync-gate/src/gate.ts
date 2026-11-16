@@ -16,14 +16,15 @@
 //
 // What it holds per connection is two sockets and a few numbers: it never buffers a message, never
 // unmasks or parses one, and reads only each frame's header (frames.ts). Per address it holds three
-// buckets and a count, for at most `addresses` addresses. It logs its start, its stop and one line of
-// totals an hour — never an address, never a single refusal.
+// buckets and a count, for at most `addresses` addresses; an IPv6 address is its /64, and what the
+// /64s of one /48 sent today is counted together as well. It logs its start, its stop and one line
+// of totals an hour — never an address, never a single refusal.
 //
 // It cannot count what a SPACE holds: see docs/16 for why, and for what stands in its place.
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { connect, type Socket } from "node:net";
 import type { Duplex } from "node:stream";
-import { addressKey, clientAddress, type TrustProxy } from "./address.ts";
+import { addressKey, clientAddress, netKey, type TrustProxy } from "./address.ts";
 import { Bucket } from "./bucket.ts";
 import { closeFrame, FrameWalker } from "./frames.ts";
 import { CLOSE, CLOSE_REASON, dayOf, GATE_LIMITS, secondsLeftToday, type GateLimits } from "./limits.ts";
@@ -98,7 +99,29 @@ interface AddressUse {
   /** The calendar day `dayBytes` is for. */
   day: number;
   dayBytes: number;
+  /** The IPv6 /48 the address is in, counted beside it; null for an IPv4 address. */
+  net: NetUse | null;
+  netKey: string | null;
+  /** Which of `resting` it is in, or -1. */
+  tier: number;
 }
+
+/** What every /64 of one IPv6 /48 sent today, together. */
+interface NetUse {
+  /** The counted addresses in it. */
+  members: number;
+  day: number;
+  dayBytes: number;
+}
+
+/**
+ * An address (or a /48) that has sent this share of its day or more is never forgotten to make room
+ * for another: forgetting it would hand it the day again. One that has sent less may be, the least
+ * first, and what it is forgiven is under this share.
+ */
+const KEPT_FROM = 1 / 4;
+/** Under this share an address counts as having sent little: forgotten before one that sent more. */
+const LITTLE = 1 / 64;
 
 interface Conn {
   client: Duplex;
@@ -117,6 +140,8 @@ interface Conn {
 
 const KEY = /^[A-Za-z0-9+/]{22}==$/;
 const HOUR_MS = 60 * 60 * 1000;
+/** Sockets that may be on their way in (headers not read yet, or being refused) beside the connections. */
+const ARRIVING = 1024;
 
 export function startSyncGate(opts: GateOptions): Promise<SyncGate> {
   const limits: GateLimits = { ...GATE_LIMITS, ...opts.limits };
@@ -126,8 +151,13 @@ export function startSyncGate(opts: GateOptions): Promise<SyncGate> {
   const origins = opts.origins ?? "*";
   const tokenGate = opts.tokenGate ?? openGate;
   const addresses = new Map<string, AddressUse>();
-  /** The counted addresses with no connection, the one that has had none longest first: who may be forgotten. */
-  const resting = new Set<string>();
+  const nets = new Map<string, NetUse>();
+  /**
+   * The counted addresses with no connection that may be forgotten for a newcomer, in three steps:
+   * those that sent nothing today, those that sent little, those that sent under KEPT_FROM of their
+   * day. Each with the one resting longest first. An address past KEPT_FROM is in none of them.
+   */
+  const resting: [Set<string>, Set<string>, Set<string>] = [new Set(), new Set(), new Set()];
   const conns = new Set<Conn>();
   /** Sockets being answered or dialled for, so a stop can let go of them too. */
   const pending = new Set<Duplex>();
@@ -155,27 +185,43 @@ export function startSyncGate(opts: GateOptions): Promise<SyncGate> {
     day = dayOf(t);
     dayBytes = 0;
   };
-  const rollUse = (use: AddressUse, t: number): void => {
+  const rollUse = (use: AddressUse | NetUse, t: number): void => {
     if (use.day === dayOf(t)) return;
     use.day = dayOf(t);
     use.dayBytes = 0;
   };
+  /** What it sent TODAY: a count from another day is nothing. */
+  const sentToday = (use: AddressUse | NetUse, t: number): number => (use.day === dayOf(t) ? use.dayBytes : 0);
 
   /** An address nothing needs to remember: no connection, nothing spent today, every bucket full. */
   const idle = (use: AddressUse, t: number): boolean =>
-    use.connections === 0 && (use.day !== dayOf(t) || use.dayBytes === 0) && use.connects.full(t) && use.bytes.full(t) && use.frames.full(t);
+    use.connections === 0 && sentToday(use, t) === 0 && use.connects.full(t) && use.bytes.full(t) && use.frames.full(t);
 
-  /** The address's counts, made if it has none; null when the table is full of addresses in use. */
+  /** Which step of `resting` an address with no connection belongs in; -1 for one that is kept. */
+  const tierOf = (use: AddressUse, t: number): number => {
+    const share = sentToday(use, t) / limits.bytesPerAddressDay;
+    return share === 0 ? 0 : share < LITTLE ? 1 : share < KEPT_FROM ? 2 : -1;
+  };
+
+  /** The address's counts, made if it has none; null when the table is full and nothing in it may be forgotten. */
   function useOf(address: string, t: number): AddressUse | null {
     const known = addresses.get(address);
     if (known) return known;
     if (addresses.size >= limits.addresses) {
-      // The one that has had no connection longest is forgotten: it starts again, which can only be
-      // in its favour. The whole relay's limits hold whatever is forgotten here. An address with a
-      // connection is never forgotten; when every counted address has one, the newcomer is refused.
-      const victim = resting.values().next();
-      if (victim.done) return null;
-      forget(victim.value);
+      // Room is made by forgetting an address with no connection that has sent nothing today; then
+      // one that sent little; then one under KEPT_FROM of its day. Never one with a connection, and
+      // never one near or past its day: that one would come back with the day to spend again. When
+      // nothing may be forgotten the NEWCOMER is refused: a full table closes, it does not forgive.
+      const victim = resting.find((step) => step.size > 0)?.values().next().value;
+      if (victim === undefined) return null;
+      forget(victim);
+    }
+    const key = netKey(address);
+    let net: NetUse | null = null;
+    if (key !== null) {
+      net = nets.get(key) ?? { members: 0, day: dayOf(t), dayBytes: 0 };
+      net.members++;
+      nets.set(key, net);
     }
     const use: AddressUse = {
       connections: 0,
@@ -184,29 +230,55 @@ export function startSyncGate(opts: GateOptions): Promise<SyncGate> {
       frames: new Bucket(limits.framesPerSecond, limits.frameBurst, t),
       day: dayOf(t),
       dayBytes: 0,
+      net,
+      netKey: key,
+      tier: -1,
     };
     addresses.set(address, use);
-    resting.add(address);
+    rest(address, use, t);
     return use;
   }
 
+  function unrest(address: string, use: AddressUse): void {
+    if (use.tier >= 0) resting[use.tier]!.delete(address);
+    use.tier = -1;
+  }
+  function rest(address: string, use: AddressUse, t: number): void {
+    unrest(address, use);
+    use.tier = tierOf(use, t);
+    if (use.tier >= 0) resting[use.tier]!.add(address);
+  }
   function forget(address: string): void {
+    const use = addresses.get(address);
+    if (!use) return;
+    unrest(address, use);
     addresses.delete(address);
-    resting.delete(address);
+    if (!use.net || use.netKey === null) return;
+    use.net.members--;
+    // A /48 outlives its last address while it holds a share of its day worth keeping (the sweep
+    // lets it go when the day is over): the next /64 out of it finds what the others sent.
+    if (use.net.members === 0 && sentToday(use.net, now()) < limits.bytesPerNetDay * KEPT_FROM) nets.delete(use.netKey);
   }
   /** One more connection for an address, or one fewer: keeps `resting` in step. */
   function connected(address: string, use: AddressUse): void {
     use.connections++;
-    resting.delete(address);
+    unrest(address, use);
   }
   function disconnected(address: string, use: AddressUse): void {
     use.connections--;
     if (addresses.get(address) !== use) return;
-    if (idle(use, now())) return forget(address);
-    if (use.connections === 0) resting.add(address);
+    const t = now();
+    if (idle(use, t)) return forget(address);
+    if (use.connections === 0) rest(address, use, t);
   }
 
-  const server = createServer((req, res) => answerHttp(req, res));
+  // Before the upgrade a socket is the HTTP server's: it gets ten seconds to send its headers, and
+  // there are never more sockets than the gate's connections and some room for the ones arriving.
+  const server = createServer({ connectionsCheckingInterval: 2000 }, (req, res) => answerHttp(req, res));
+  server.headersTimeout = 10_000;
+  server.requestTimeout = 15_000;
+  server.keepAliveTimeout = 5_000;
+  server.maxConnections = limits.connections + ARRIVING;
   server.on("upgrade", (req: IncomingMessage, socket: Duplex, head: Buffer) => {
     socket.on("error", () => socket.destroy());
     // The HTTP server's sockets stay half open when the other side ends: a client that has gone
@@ -222,7 +294,9 @@ export function startSyncGate(opts: GateOptions): Promise<SyncGate> {
     const path = pathOf(req.url);
     if (req.method === "GET" && path === "/health") {
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
-      res.end(JSON.stringify({ ok: true, connections: conns.size }));
+      // Nothing but that it is up: this path is public (`/sync/health`), and how many are connected is
+      // the operator's to know, from the totals in the log.
+      res.end(JSON.stringify({ ok: true }));
       return;
     }
     res.writeHead(426, { "content-type": "text/plain", "cache-control": "no-store", upgrade: "websocket" });
@@ -265,7 +339,10 @@ export function startSyncGate(opts: GateOptions): Promise<SyncGate> {
     rollUse(use, t);
     if (!use.connects.take(1, t)) return refuse(socket, "too-fast", 429, "Too Many Requests", 1 / limits.connectsPerSecond);
     if (use.connections >= limits.connectionsPerAddress) return refuse(socket, "too-many-connections", 429, "Too Many Requests", 30);
-    if (use.dayBytes >= limits.bytesPerAddressDay) return refuse(socket, "over-today", 429, "Too Many Requests", secondsLeftToday(t));
+    if (use.net) rollUse(use.net, t);
+    if (use.dayBytes >= limits.bytesPerAddressDay || (use.net !== null && use.net.dayBytes >= limits.bytesPerNetDay)) {
+      return refuse(socket, "over-today", 429, "Too Many Requests", secondsLeftToday(t));
+    }
 
     // The connection counts from here, so two that arrive together cannot both take the last place.
     connected(address, use);
@@ -349,7 +426,12 @@ export function startSyncGate(opts: GateOptions): Promise<SyncGate> {
     upstream.on("data", (chunk: Buffer) => fromRelay(conn, chunk));
     // The client has gone: what it sent before leaving still goes to the relay.
     socket.on("close", () => finish(conn, true));
-    upstream.on("close", () => shut(conn, CLOSE.goingAway));
+    upstream.on("close", () => {
+      // The relay closed it in the ordinary way (its own close frame went to the client, or answered
+      // the client's): nothing of the gate's is written after that, and it is not a relay going away.
+      if (conn.down.sawClose && conn.down.atBoundary) return over(conn);
+      shut(conn, CLOSE.goingAway);
+    });
     upstream.on("error", () => upstream.destroy());
 
     const rest = answer.subarray(end + 4);
@@ -421,6 +503,11 @@ export function startSyncGate(opts: GateOptions): Promise<SyncGate> {
     rollDay(t);
     rollUse(conn.use, t);
     conn.use.dayBytes += chunk.length;
+    const net = conn.use.net;
+    if (net) {
+      rollUse(net, t);
+      net.dayBytes += chunk.length;
+    }
     dayBytes += chunk.length;
     totals.bytesUp += chunk.length;
     if (!conn.upstream.write(chunk) && !conn.upstreamFull) {
@@ -435,6 +522,10 @@ export function startSyncGate(opts: GateOptions): Promise<SyncGate> {
     if (dayBytes >= limits.bytesPerDay) {
       warn(`[sync-gate] sync is closed until midnight UTC: ${limits.bytesPerDay} bytes were sent to the relay today (SYNC_BYTES_DAY)`);
       for (const other of [...conns]) shut(other, CLOSE.relayFull);
+      return;
+    }
+    if (net && net.dayBytes >= limits.bytesPerNetDay) {
+      for (const other of [...conns]) if (other.use.net === net) shut(other, CLOSE.overToday);
       return;
     }
     if (conn.use.dayBytes >= limits.bytesPerAddressDay) {
@@ -501,12 +592,24 @@ export function startSyncGate(opts: GateOptions): Promise<SyncGate> {
     conn.client.destroy();
   }
 
+  /** The relay ended the connection itself, close frame and all: the client's side is ended after it. */
+  function over(conn: Conn): void {
+    if (conn.done) return;
+    finish(conn);
+    conn.client.end();
+    setTimeout(() => conn.client.destroy(), 1000).unref();
+  }
+
   // Addresses that are done for the day, or whose buckets have filled again, are forgotten here; the
   // totals go to the log when there is something to say.
   const sweeper = setInterval(
     () => {
       const t = now();
-      for (const [address, use] of addresses) if (idle(use, t)) forget(address);
+      for (const [address, use] of addresses) {
+        if (idle(use, t)) forget(address);
+        else if (use.connections === 0) rest(address, use, t); // a new day moves it to where it now belongs
+      }
+      for (const [key, net] of nets) if (net.members === 0 && sentToday(net, t) === 0) nets.delete(key);
     },
     opts.sweepMs ?? 10 * 60 * 1000,
   );

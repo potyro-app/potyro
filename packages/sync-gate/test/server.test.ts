@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { spawn, type ChildProcess } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { limitsFromEnv, originsFromEnv, upstreamFromEnv } from "../src/server.ts";
+import { checkExposure, limitsFromEnv, originsFromEnv, upstreamFromEnv } from "../src/server.ts";
 import { CLOSE, GATE_LIMITS } from "../src/limits.ts";
 import { cleanup, fakeRelay, from, open, refusal } from "./helpers.ts";
 
@@ -27,6 +27,23 @@ describe("configuration from the environment", () => {
     // One message always fits the burst, or a single long edit could never be sent.
     expect(GATE_LIMITS.byteBurst).toBeGreaterThanOrEqual(GATE_LIMITS.messageBytes);
     expect(GATE_LIMITS.bytesPerDay).toBeGreaterThanOrEqual(GATE_LIMITS.bytesPerAddressDay);
+  });
+
+  it("will not believe the proxy's header on an address anyone can reach, unless the operator says the port is closed", () => {
+    for (const host of ["127.0.0.1", "127.0.0.53", "localhost", "::1"]) expect(() => checkExposure(host, "caddy", {})).not.toThrow();
+    for (const host of ["0.0.0.0", "::", "10.0.0.5", "203.0.113.9"]) {
+      expect(() => checkExposure(host, "caddy", {})).toThrow("TRUST_PROXY=caddy with HOST=");
+      expect(() => checkExposure(host, "none", {})).not.toThrow();
+      expect(() => checkExposure(host, "caddy", { TRUST_PROXY_OFF_LOOPBACK: "1" })).not.toThrow();
+      expect(() => checkExposure(host, "caddy", { TRUST_PROXY_OFF_LOOPBACK: "yes" })).toThrow();
+    }
+  });
+
+  it("keeps one address's day a small share of the relay's, and a /48's between the two", () => {
+    expect(GATE_LIMITS.bytesPerDay / GATE_LIMITS.bytesPerAddressDay).toBeGreaterThanOrEqual(20);
+    expect(GATE_LIMITS.bytesPerNetDay).toBeGreaterThan(GATE_LIMITS.bytesPerAddressDay);
+    expect(GATE_LIMITS.bytesPerNetDay).toBeLessThan(GATE_LIMITS.bytesPerDay);
+    expect(limitsFromEnv({ SYNC_BYTES_PER_NET_DAY: "1000" })).toEqual({ bytesPerNetDay: 1000 });
   });
 
   it("reads where the relay is, and which origins may connect", () => {
@@ -69,7 +86,7 @@ describe("the process", () => {
       child!.stderr!.on("data", (d: Buffer) => (out += d.toString()));
       child!.once("exit", (code) => reject(new Error(`exited ${code}: ${out}`)));
     });
-    expect(await (await fetch(`http://127.0.0.1:${port}/health`)).json()).toEqual({ ok: true, connections: 0 });
+    expect(await (await fetch(`http://127.0.0.1:${port}/health`)).json()).toEqual({ ok: true });
 
     const url = `ws://127.0.0.1:${port}/`;
     const a = await open(url, from("9.9.9.9"));

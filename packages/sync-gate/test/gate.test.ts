@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { CLOSE } from "../src/limits.ts";
 import { SYNC_PROTOCOL, TOKEN_PREFIX } from "../src/token.ts";
-import { cleanup, fakeRelay, from, gate, open, refusal, until } from "./helpers.ts";
+import { cleanup, fakeRelay, from, gate, open, rawClient, rawFrame, rawRelay, refusal, until } from "./helpers.ts";
 
 afterEach(cleanup);
 
@@ -44,6 +44,91 @@ describe("passing a connection through", () => {
     expect((await a.closed).code).toBe(CLOSE.goingAway);
   });
 
+  it("passes the relay's own close on as it is: no second close frame after it, and not counted as the relay going away", async () => {
+    const relay = await rawRelay();
+    const { port, gate: g } = await gate(relay);
+    const a = await rawClient(port);
+    const close = Buffer.from([0x88, 2, 0x03, 0xe8]); // 1000, as a server writes it
+    relay.sockets[0]!.end(close);
+    await until(() => a.socket.readableEnded || a.socket.destroyed);
+    expect(a.got().equals(close)).toBe(true);
+    expect(g.stats().closed).toEqual({});
+    expect(g.stats().connections).toBe(0);
+  });
+
+  it("closes with the relay's code, once, when a websocket client is closed by the relay", async () => {
+    const relay = await fakeRelay();
+    const { url, gate: g } = await gate(relay);
+    const a = await open(url);
+    relay.sockets[0]!.close(4999, "the relay's own");
+    expect(await a.closed).toEqual({ code: 4999, reason: "the relay's own" });
+    await until(() => g.stats().connections === 0);
+    expect(g.stats().closed).toEqual({});
+  });
+
+  it("delivers to the relay everything it took from a client, when the client is gone before the relay has read it", async () => {
+    // A relay that is not reading: what the gate takes piles up on the way to it.
+    const relay = await rawRelay((s) => s.pause());
+    const { port, gate: g } = await gate(relay, { limits: { byteBurst: 1e9, bytesPerSecond: 1e9 } });
+    const a = await rawClient(port);
+    const piece = rawFrame(2, 32_000);
+    let sent = 0;
+    // Piece by piece until the gate stops taking them: the way to the relay is full, in the gate too.
+    for (;;) {
+      a.socket.write(piece);
+      sent += piece.length;
+      const taken = await until(() => g.stats().bytesUp === sent, 300).then(() => true, () => false);
+      if (!taken) break;
+    }
+    const took = g.stats().bytesUp;
+    expect(took).toBeGreaterThan(0);
+    a.socket.resetAndDestroy(); // gone at once: a phone off the network, a killed tab
+    await until(() => g.stats().connections === 0);
+    relay.sockets[0]!.resume();
+    await until(() => relay.got().length >= took || relay.sockets[0]!.destroyed, 5000);
+    expect(relay.got().length).toBe(took);
+  }, 30_000);
+
+  it("cuts a connection when what the relay sends stops being a websocket stream, and lets go of both sides", async () => {
+    for (const bad of [rawFrame(2, 5, { masked: true }), rawFrame(2, 5, { masked: false, rsv: true }), rawFrame(0, 5, { masked: false }), Buffer.from("HTTP/1.1 500 no\r\n\r\n")]) {
+      const relay = await rawRelay();
+      const { port, gate: g } = await gate(relay);
+      const a = await rawClient(port);
+      const good = rawFrame(1, 3, { masked: false });
+      relay.sockets[0]!.write(good);
+      await until(() => a.got().length === good.length);
+      relay.sockets[0]!.write(bad);
+      await until(() => a.socket.destroyed || a.socket.readableEnded);
+      expect(a.got().equals(good)).toBe(true); // nothing of the bad frame, and no close frame of the gate's in the middle of it
+      await until(() => g.stats().connections === 0);
+      await until(() => relay.sockets[0]!.destroyed || relay.sockets[0]!.readableEnded);
+      expect(g.stats().closed).toEqual({});
+    }
+  });
+
+  it("refuses what is not a client's websocket stream with 1002: a reserved bit, a piece of no message, a message inside a message", async () => {
+    for (const bad of [[rawFrame(2, 5, { rsv: true })], [rawFrame(0, 5)], [rawFrame(2, 5, { fin: false }), rawFrame(2, 5)], [rawFrame(9, 5, { fin: false })]]) {
+      const relay = await rawRelay();
+      const { port, gate: g } = await gate(relay);
+      const a = await rawClient(port);
+      for (const f of bad) a.socket.write(f);
+      await until(() => g.stats().closed[CLOSE.protocol] === 1);
+      await until(() => a.got().length >= 4);
+      expect(a.got().readUInt16BE(2)).toBe(CLOSE.protocol);
+    }
+  });
+
+  it("holds a message sent in pieces to the message limit, all its pieces together", async () => {
+    const relay = await rawRelay();
+    const { port, gate: g } = await gate(relay, { limits: { messageBytes: 1000 } });
+    const a = await rawClient(port);
+    a.socket.write(rawFrame(2, 400, { fin: false }));
+    a.socket.write(rawFrame(0, 400, { fin: false }));
+    a.socket.write(rawFrame(9, 0)); // a ping between the pieces is no part of the message
+    a.socket.write(rawFrame(0, 400));
+    await until(() => g.stats().closed[CLOSE.tooBig] === 1);
+  });
+
   it("lets go of a client that leaves without a word, and of its connection to the relay", async () => {
     const relay = await fakeRelay();
     const { url, gate: g } = await gate(relay, { limits: { connectionsPerAddress: 1 } });
@@ -68,7 +153,8 @@ describe("passing a connection through", () => {
     const relay = await fakeRelay();
     const { port } = await gate(relay);
     const health = await fetch(`http://127.0.0.1:${port}/sync/health`);
-    expect(await health.json()).toEqual({ ok: true, connections: 0 });
+    // The path is public: it says the gate is up, and nothing about who is on it.
+    expect(await health.json()).toEqual({ ok: true });
     expect((await fetch(`http://127.0.0.1:${port}/`)).status).toBe(426);
   });
 });
@@ -202,6 +288,26 @@ describe("limits per address", () => {
     await open(url, from("9.9.9.9"));
   });
 
+  it("counts every /64 of one IPv6 /48 against the /48's bytes for the day as well: a new /64 out of it does not start the day again", async () => {
+    const relay = await fakeRelay();
+    const { url, gate: g } = await gate(relay, { limits: { bytesPerAddressDay: 50_000, bytesPerNetDay: 70_000 } });
+    const a = await open(url, from("2001:db8:1:1::1"));
+    const b = await open(url, from("2001:db8:1:2::1"));
+    const elsewhere = await open(url, from("2001:db8:2:1::1"));
+    const v4 = await open(url, from("9.9.9.9"));
+    a.ws.send("q".repeat(40_000));
+    await until(() => relay.got.length === 1);
+    b.ws.send("q".repeat(40_000)); // neither /64 is at its own limit; the /48 they are in is
+    expect((await b.closed).code).toBe(CLOSE.overToday);
+    expect((await a.closed).code).toBe(CLOSE.overToday);
+    expect((await refusal(url, from("2001:db8:1:ffff::1"))).status).toBe(429); // a third /64 of the same /48
+    expect((await refusal(url, from("2001:db8:1:1::1"))).status).toBe(429);
+    expect(elsewhere.ws.readyState).toBe(1);
+    expect(v4.ws.readyState).toBe(1);
+    await open(url, from("2001:db8:2:9::1"));
+    expect(g.stats().closed[CLOSE.overToday]).toBe(2);
+  });
+
   it("closes a connection with 1009 at the header of a message longer than the limit, before its bytes are passed on", async () => {
     const relay = await fakeRelay();
     const { url } = await gate(relay, { limits: { messageBytes: 100_000 } });
@@ -282,6 +388,58 @@ describe("the limiter's own memory", () => {
     await open(url, from("3.3.3.3"));
     expect((await refusal(url, from("4.4.4.4"))).status).toBe(503);
     expect(g.stats().addresses).toBe(2);
+  });
+
+  it("never forgets an address that used up its day to make room: it stays refused, and the newcomer is refused when nothing else can go", async () => {
+    const relay = await fakeRelay();
+    const { url, gate: g } = await gate(relay, { limits: { addresses: 3, bytesPerAddressDay: 500 } });
+    const a = await open(url, from("10.0.0.1"));
+    a.ws.send("q".repeat(600));
+    expect((await a.closed).code).toBe(CLOSE.overToday);
+    expect((await refusal(url, from("10.0.0.1"))).status).toBe(429);
+    // Three more addresses come and go through a table of three: each makes room by one of THEM being forgotten.
+    for (const other of ["10.0.0.2", "10.0.0.3", "10.0.0.4"]) {
+      (await open(url, from(other))).ws.terminate();
+      await until(() => g.stats().connections === 0);
+    }
+    expect((await refusal(url, from("10.0.0.1"))).status).toBe(429); // the day was not handed back
+    expect(g.stats().refused["over-today"]).toBe(2);
+
+    // And when every counted address is one that must be kept, the table is closed to a newcomer.
+    const { url: small, gate: g2 } = await gate(relay, { limits: { addresses: 1, bytesPerAddressDay: 500 } });
+    const b = await open(small, from("10.0.0.1"));
+    b.ws.send("q".repeat(600));
+    await b.closed;
+    expect(await refusal(small, from("10.0.0.2"))).toEqual({ status: 503, retryAfter: "30" });
+    expect(g2.stats().refused["addresses-full"]).toBe(1);
+    expect((await refusal(small, from("10.0.0.1"))).status).toBe(429);
+  });
+
+  it("forgets the address that sent least first, and keeps the one well into its day", async () => {
+    const relay = await fakeRelay();
+    const { url, gate: g } = await gate(relay, { limits: { addresses: 3, bytesPerAddressDay: 1_000_000, connectsPerSecond: 0.001 } });
+    const leave = async (address: string, bytes: number): Promise<void> => {
+      const c = await open(url, from(address));
+      if (bytes > 0) c.ws.send("q".repeat(bytes));
+      await until(() => relay.got.reduce((n, m) => n + m.bytes, 0) >= sent + bytes);
+      sent += bytes;
+      c.ws.terminate();
+      await until(() => g.stats().connections === 0);
+    };
+    let sent = 0;
+    await leave("10.0.0.1", 400_000); // past a quarter of its day: kept
+    await leave("10.0.0.2", 100_000); // under a quarter
+    await leave("10.0.0.3", 1_000); // little
+    await leave("10.0.0.4", 0); // 10.0.0.3 goes
+    await leave("10.0.0.5", 0); // 10.0.0.4 goes (the handshake's few bytes are little too, and it rested first)
+    await leave("10.0.0.6", 0); // 10.0.0.5 goes
+    // 10.0.0.1 and 10.0.0.2 are still counted: sending the rest of the day closes them.
+    const one = await open(url, from("10.0.0.1"));
+    one.ws.send("q".repeat(600_000));
+    expect((await one.closed).code).toBe(CLOSE.overToday);
+    const two = await open(url, from("10.0.0.2"));
+    two.ws.send("q".repeat(900_000));
+    expect((await two.closed).code).toBe(CLOSE.overToday);
   });
 
   it("finds an address to forget however many connected ones were counted before it", async () => {

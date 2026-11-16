@@ -1,7 +1,7 @@
 // scripts/takedown.mjs, run as the operator runs it: a separate Node process.
 import { afterEach, describe, expect, it } from "vitest";
 import { execFile } from "node:child_process";
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -109,6 +109,20 @@ describe("scripts/takedown.mjs", () => {
     const remote = await run([id, "--erase", "--site", "https://potyro.app"], { SHARE_ADMIN_TOKEN: ADMIN });
     expect(remote.code).toBe(2);
     expect(remote.err).toMatch(/on the server only/);
+  });
+
+  it.skipIf(!stripsTypes)("erases a link whose making was cut short: a package with no title beside it is not left behind", async () => {
+    dir = mkdtempSync(join(tmpdir(), "shares-"));
+    const id = "C".repeat(22);
+    const at = join(dir, id.slice(0, 2), id);
+    mkdirSync(at, { recursive: true });
+    writeFileSync(join(at, "payload.bin"), "the package, and nothing else");
+    writeFileSync(join(at, "preview"), "a picture");
+
+    const ok = await run([id, "--erase", "--dir", dir], {}, ["--experimental-strip-types", "--no-warnings"]);
+    expect(ok.err).toBe("");
+    expect(ok.out).toContain(`Erased: ${id}.`);
+    expect(readdirSync(join(dir, id.slice(0, 2)))).toEqual([]);
   });
 
   it("sends the token only over https, or to this machine", async () => {

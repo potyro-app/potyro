@@ -4,13 +4,17 @@
 //   PORT                          default 4206
 //   HOST                          default 127.0.0.1 — reachable only through the proxy in front of it
 //   SYNC_UPSTREAM                 default 127.0.0.1:4201 — the relay (`jazz-run sync`), host:port
-//   TRUST_PROXY                   default caddy — whose X-Forwarded-For to believe (address.ts); `none` for none
+//   TRUST_PROXY                   default caddy — whose X-Forwarded-For to believe (address.ts); `none` for none.
+//                                 With `caddy` the gate must not be reachable past the proxy: it stops at start
+//                                 when HOST is not a loopback address, unless TRUST_PROXY_OFF_LOOPBACK=1 says the
+//                                 operator has closed the port to everything but the proxy some other way
 //   SYNC_ORIGINS                  comma-separated browser origins allowed to connect; default any ("*")
 //   SYNC_CONNECTIONS_PER_ADDRESS  default 64 at once (an IPv6 address counts as its /64)
 //   SYNC_CONNECTS_PER_SECOND      default 10 new connections a second per address (burst SYNC_CONNECT_BURST, default 300)
 //   SYNC_BYTES_PER_SECOND         default 1048576 towards the relay per address (burst SYNC_BYTE_BURST, default 8388608); slowed past it
 //   SYNC_FRAMES_PER_SECOND        default 1000 per address (burst SYNC_FRAME_BURST, default 20000); slowed past it
-//   SYNC_BYTES_PER_ADDRESS_DAY    default 2147483648 towards the relay per address a day (UTC)
+//   SYNC_BYTES_PER_ADDRESS_DAY    default 536870912 towards the relay per address a day (UTC)
+//   SYNC_BYTES_PER_NET_DAY        default 1073741824 towards the relay from all of one IPv6 /48 a day (UTC)
 //   SYNC_BYTES_DAY                default 10737418240 towards the relay from everyone a day (UTC): size it to the disk
 //   SYNC_MAX_MESSAGE_BYTES        default 8388608
 //   SYNC_MAX_CONNECTIONS          default 5000 for the whole gate
@@ -24,7 +28,7 @@
 import { statfs } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { pathToFileURL } from "node:url";
-import { readTrustProxy } from "./address.ts";
+import { readTrustProxy, type TrustProxy } from "./address.ts";
 import { startSyncGate } from "./gate.ts";
 import type { GateLimits } from "./limits.ts";
 
@@ -37,6 +41,7 @@ const ENV_LIMITS: ReadonlyArray<readonly [string, keyof GateLimits]> = [
   ["SYNC_FRAMES_PER_SECOND", "framesPerSecond"],
   ["SYNC_FRAME_BURST", "frameBurst"],
   ["SYNC_BYTES_PER_ADDRESS_DAY", "bytesPerAddressDay"],
+  ["SYNC_BYTES_PER_NET_DAY", "bytesPerNetDay"],
   ["SYNC_BYTES_DAY", "bytesPerDay"],
   ["SYNC_MAX_MESSAGE_BYTES", "messageBytes"],
   ["SYNC_MAX_CONNECTIONS", "connections"],
@@ -73,6 +78,21 @@ export function originsFromEnv(raw: string | undefined): readonly string[] | "*"
     .filter(Boolean);
 }
 
+const isLoopback = (host: string): boolean => host === "localhost" || host === "::1" || host === "[::1]" || /^127(\.\d{1,3}){3}$/.test(host);
+
+/**
+ * Believing the proxy's header is safe only while nothing but the proxy can reach the gate: anyone
+ * else who can would write the header, and so the address, themselves. Throws when the two are set
+ * against each other, unless the operator says the port is closed some other way.
+ */
+export function checkExposure(host: string, trust: TrustProxy, env: Record<string, string | undefined>): void {
+  if (trust !== "caddy" || isLoopback(host) || env.TRUST_PROXY_OFF_LOOPBACK === "1") return;
+  throw new Error(
+    `TRUST_PROXY=caddy with HOST=${host}: whoever reaches this port directly chooses the address they are counted under. ` +
+      "Listen on 127.0.0.1, or set TRUST_PROXY=none, or set TRUST_PROXY_OFF_LOOPBACK=1 if only the proxy can reach the port",
+  );
+}
+
 /** The free bytes on the disk `path` is on. */
 export const freeBytesOf = (path: string) => async (): Promise<number> => {
   const s = await statfs(path);
@@ -88,6 +108,7 @@ async function main(): Promise<void> {
   if (disk) await statfs(disk); // a path that is not there stops the gate starting, not the check silently
   const port = Number(process.env.PORT ?? 4206);
   const host = process.env.HOST ?? "127.0.0.1";
+  checkExposure(host, trustProxy, process.env);
   const gate = await startSyncGate({
     port,
     host,

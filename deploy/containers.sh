@@ -23,8 +23,10 @@
 # `sudo RECREATE=1 deploy/containers.sh ai` (an env file is read only when a container is created).
 #
 # Every container is node:22-bookworm, `--restart unless-stopped`, published on 127.0.0.1 only:
-# Caddy (deploy/potyro.app.Caddyfile) is the one way in. (The gate in front of the sync relay is on
-# the host's network instead, bound to 127.0.0.1 itself: it has to reach the relay's loopback port.)
+# Caddy (deploy/potyro.app.Caddyfile) is the one way in. The sync relay and its gate are on the
+# host's network instead, each bound to 127.0.0.1 itself: a port published from Docker's bridge is
+# closed to the outside but open to every other container on the bridge, and the relay must be
+# reachable by its gate and by nothing else here.
 #
 # Secrets are never in this repository. The env files live in /etc/potyro/, owned by root, mode 600,
 # and the values are the owner's (deploy/env.example/ has one template per file, names only):
@@ -91,6 +93,9 @@ up() {
 
 # The sync relay: `jazz-run sync`, pinned to the jazz-run in the root package.json (it must match the
 # cojson the shell was built against). Its code dir holds only that pin and its install.
+# On the host's network, listening on 127.0.0.1 only. NOT on Docker's bridge with `-p 127.0.0.1:…`:
+# there it listens on the bridge too, where the other containers (share-links, ai, requests, rooms)
+# could reach it past its gate. From the host's loopback only the gate and Caddy can.
 relay() {
   local dir=/opt/potyro-relay version changed=""
   version="$(sed -n 's/^ *"jazz-run": *"\([^"]*\)".*/\1/p' "$SRC/package.json")"
@@ -103,15 +108,16 @@ relay() {
     changed=changed
   fi
   up potyro-relay "$changed" \
-    -p 127.0.0.1:4201:4201 \
+    --network host \
     -v "$dir":/app -v /var/lib/potyro:/data -w /app \
-    "$IMAGE" node node_modules/.bin/jazz-run sync --host 0.0.0.0 --port 4201 --db /data/sync.db
+    "$IMAGE" node node_modules/.bin/jazz-run sync --host 127.0.0.1 --port 4201 --db /data/sync.db
 }
 
 # The gate in front of the sync relay (docs/16 "The gate in front of the relay"): packages/sync-gate,
 # no dependencies. Caddy's /sync goes to it (4206), and it goes to the relay (4201). On the host's
-# network, because the relay's port is published on the host's loopback only; it binds 127.0.0.1
-# itself. It sees the relay's data folder read-only, to stop sync before the disk is full.
+# network like the relay, which listens on the host's loopback only; it binds 127.0.0.1 itself (and
+# refuses to start believing Caddy's header on any other address). It sees the relay's data folder
+# read-only, to stop sync before the disk is full.
 gate() {
   local changed envfile=()
   mkdir -p /var/lib/potyro

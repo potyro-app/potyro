@@ -26,7 +26,7 @@ health checks under each service were run on 2026-10-30.
 | Service | Container | Port (127.0.0.1) | Code | Data | Env file | Caddy route |
 |---|---|---|---|---|---|---|
 | The shell | — (static files) | — | `/srv/potyro/site` ← `packages/shell/dist` | — | — | everything not below: `try_files`, then `index.html` |
-| Sync relay | `potyro-relay` | 4201 | `/opt/potyro-relay` (a `jazz-run` pin and its install) | `/var/lib/potyro/sync.db` | — | none of its own once the gate runs; until then `handle_path /sync*` |
+| Sync relay | `potyro-relay` | 4201 (on the host's network once re-created from this script; on Docker's bridge, published to loopback, as read on 2026-11-01) | `/opt/potyro-relay` (a `jazz-run` pin and its install) | `/var/lib/potyro/sync.db` | — | none of its own once the gate runs; until then `handle_path /sync*` |
 | The relay's gate (**in `deploy/`, not yet on the server**) | `potyro-sync-gate` | 4206 (on the host's network) | `/opt/potyro-sync-gate` ← `packages/sync-gate` | — (memory); reads the free space of `/var/lib/potyro` | `/etc/potyro/sync-gate.env`, optional | `handle_path /sync*` |
 | Request relay | `potyro-requests` | 4202 | `/opt/potyro-requests` ← `packages/platform-requests` | — (memory) | `/etc/potyro/requests.env` | `handle_path /requests/*` |
 | Share service | `potyro-share-links` | 4203 | `/opt/potyro-share-links` ← `packages/share-links` | `/var/lib/potyro/shares`; reads `/srv/potyro/site` | none yet (`-e` on the run line; `share-links.env` to be added) | `@share` (`/s/<id>`, its preview) and `handle /share-api/*` |
@@ -118,10 +118,10 @@ The script writes `/opt/potyro-relay/package.json` with the `jazz-run` version p
 
 ```bash
 docker run -d --name potyro-relay --restart unless-stopped \
-  -p 127.0.0.1:4201:4201 \
+  --network host \
   -v /opt/potyro-relay:/app -v /var/lib/potyro:/data -w /app \
   node:22-bookworm \
-  node node_modules/.bin/jazz-run sync --host 0.0.0.0 --port 4201 --db /data/sync.db
+  node node_modules/.bin/jazz-run sync --host 127.0.0.1 --port 4201 --db /data/sync.db
 ```
 
 It runs in a container because cojson needs Node **22**, whatever the server has, and the container
@@ -132,9 +132,19 @@ Three details, each load-bearing:
   holding, and a peer that was offline at the time can never catch up — its edits and everyone
   else's diverge permanently. `pnpm dev` uses `--in-memory` because a dev relay has nothing worth
   keeping. Yours does.
-- **`-p 127.0.0.1:4201:4201`** — published to loopback only, so the relay is reachable only through
-  Caddy. Bound to `0.0.0.0` it would be an unauthenticated websocket on the internet with nothing in
-  front of it, not even the proxy's TLS.
+- **`--network host` and `--host 127.0.0.1`**: the relay listens on the server's own loopback and
+  nowhere else, so it is reachable by Caddy and by its gate (below) and by nothing else, on the
+  internet or on the server. It was `-p 127.0.0.1:4201:4201` with `--host 0.0.0.0` until #11, and
+  that closes less than it seems to: `-p 127.0.0.1:…` only says where the port is published on the
+  *host*. Inside Docker's default bridge the relay was listening on its bridge address
+  (`172.17.0.x:4201`), where every other container on the server reaches it directly — past the
+  gate, with no limit. (Checked 2026-11-16 with two throwaway containers: one listening the old
+  way, the other fetching `http://172.17.0.2:<port>/` and getting an answer; the same listener on
+  the host's network at `127.0.0.1` was refused from a bridge container and answered from the
+  host. `jazz-run sync --host 127.0.0.1` listens on `127.0.0.1:4201` only: `ss -ltn`.) The other
+  services are not hostile, but each takes requests from the internet, and the relay behind its
+  gate should not be one bug in any of them away. **Re-creating the relay this way restarts
+  sync** for a few seconds: [Putting the gate in](#putting-the-gate-in), step 2.
 - **Pin the version.** `jazz-run` must match the `cojson` the shell was built against (`0.20.19`
   today). The script reads it from the repo's `package.json`, never `latest`.
 
@@ -165,27 +175,33 @@ docker run -d --name potyro-sync-gate --restart unless-stopped \
 docker logs potyro-sync-gate   # "[sync-gate] in front of 127.0.0.1:4201, listening on 127.0.0.1:4206, trusting caddy, …"
 ```
 
-`--network host`, unlike every other container: the relay's port is published on the host's loopback
-only, and a container on the bridge network cannot reach that. The gate binds `127.0.0.1` itself, so
-it is no more reachable than the others. `/var/lib/potyro` is mounted read-only, for one thing: how
-much room the disk has left.
+`--network host`, like the relay and unlike every other container: the relay listens on the host's
+loopback only, and a container on the bridge network cannot reach that (which is the point). The
+gate binds `127.0.0.1` itself, so it is no more reachable than the others, and it **will not start**
+believing Caddy's header on any other address (`TRUST_PROXY=caddy` with a `HOST` that is not
+loopback): whoever could reach the port directly would write `X-Forwarded-For`, and so choose the
+address they are counted under. `TRUST_PROXY_OFF_LOOPBACK=1` is for an operator who has closed the
+port to everything but the proxy some other way (a firewall, a private network).
+`/var/lib/potyro` is mounted read-only, for one thing: how much room the disk has left.
 
 What it does to a connection, in order:
 
 | | |
 |---|---|
-| Whose it is | The address Caddy reports (`TRUST_PROXY=caddy`: the last `X-Forwarded-For` entry; [Addresses](#4-caddy-in-front)), an IPv6 address as its /64. |
+| Whose it is | The address Caddy reports (`TRUST_PROXY=caddy`: the last `X-Forwarded-For` entry; [Addresses](#4-caddy-in-front)), an IPv6 address as its /64, and its /48 counted beside it for the day's bytes. |
+| Before it is a websocket | The socket is the HTTP server's: ten seconds to send its headers, and never more sockets than `SYNC_MAX_CONNECTIONS` and 1024 arriving ones; past that a new one is dropped. |
 | Refused before the relay is dialled | The gate is asked for a websocket and answers plain HTTP instead: **429** with `Retry-After` for an address with `SYNC_CONNECTIONS_PER_ADDRESS` connections open (64), making more than `SYNC_CONNECTS_PER_SECOND` new ones (10, bursts of 300), or out of its bytes for the day; **503** with `Retry-After` when the whole relay is out of bytes for the day, its disk is under the floor, the gate has `SYNC_MAX_CONNECTIONS` (5000) open, or the relay does not answer. |
 | Slowed, never closed | An address sending more than `SYNC_BYTES_PER_SECOND` (1 MiB, bursts of 8 MiB) or `SYNC_FRAMES_PER_SECOND` (1000, bursts of 20 000) towards the relay, all its connections together: the gate stops reading from it until it has paid, and TCP holds the sender. Nothing is dropped, and the relay's pings still reach the client, so a big upload is slow, not broken. (What one read brought, 64 KiB at most, is passed on before the hold.) |
-| Closed, with a code | **1009**: one message over `SYNC_MAX_MESSAGE_BYTES` (8 MiB), known from the frame's header before its bytes are passed on. **4021**: the address reached `SYNC_BYTES_PER_ADDRESS_DAY` (2 GiB) towards the relay in a calendar day (UTC). **4022**: everyone together reached `SYNC_BYTES_DAY` (10 GiB), or the disk fell under `SYNC_MIN_FREE_BYTES` (2 GiB). **1001**: the gate or the relay is restarting. |
+| Closed, with a code | **1009**: one message over `SYNC_MAX_MESSAGE_BYTES` (8 MiB), known from the frame's header before its bytes are passed on. **1002**: not a websocket stream (a reserved bit, a frame out of turn, an unmasked frame), checked at each header so that where a message ends is the gate's own knowledge and not the relay's. **4021**: the address reached `SYNC_BYTES_PER_ADDRESS_DAY` (512 MiB) towards the relay in a calendar day (UTC), or the /64s of its IPv6 /48 together reached `SYNC_BYTES_PER_NET_DAY` (1 GiB). **4022**: everyone together reached `SYNC_BYTES_DAY` (10 GiB), or the disk fell under `SYNC_MIN_FREE_BYTES` (2 GiB). **1001**: the gate or the relay is restarting. A close of the relay's own is passed on as it is, with nothing of the gate's after it. |
 | What the relay is told | Nothing but the websocket key: no address (jazz-run would name the peer by it, and print it on an error), no subprotocol, no cookie. |
-| What it holds | Per connection, two sockets and a few numbers: it never buffers, unmasks or parses a message, and reads only each frame's header. Per address, three buckets and two counts, for at most `SYNC_MAX_ADDRESSES` (100 000) addresses: past that the oldest one with no connection is forgotten, which can only be in that address's favour, and the whole relay's limits hold regardless. Nothing on disk; a restart starts every count again. |
+| What it holds | Per connection, two sockets and a few numbers: it never buffers, unmasks or parses a message, and reads only each frame's header. Per address, three buckets and two counts, for at most `SYNC_MAX_ADDRESSES` (100 000) addresses. When the table is full, room for a new address is made by forgetting one with no connection: one that sent nothing today first, then one that sent little (under 1/64 of its day), then one under a quarter of its day. **An address at a quarter of its day or past it is never forgotten** (it would come back with the day to spend again), nor one with a connection; when nothing may be forgotten the *newcomer* is refused (503). A full table closes, it does not forgive. Nothing on disk; a restart starts every count again. |
 | Logs | Its start and stop, one line of totals an hour when anything happened (connections let in, refusals by kind, closes by code, bytes each way), and one line, at most hourly, when the whole relay is closed to writes. **Never an address, and never a line for one refusal.** |
-| Origins | Any, by default. `SYNC_ORIGINS=https://potyro.app,https://localhost,capacitor://localhost` makes it answer 403 to a browser on another site (a request with no `Origin`, which is not a browser, passes). Not set on potyro.app's line: check the native apps against it first. |
+| Origins | Any, by default (`*`), and that default stays: the gate does not know the name of the site it serves (a self-hosted one has its own), and a client that is not a browser sends no `Origin` at all, so a list never keeps anyone out who means to get in. What a list does stop is *another website* opening sockets through its visitors' browsers, each from the visitor's own address, which the per-address limits do not hold (the whole relay's do). `SYNC_ORIGINS=https://potyro.app,https://localhost,capacitor://localhost` in `/etc/potyro/sync-gate.env` makes the gate answer 403 to those. It is the list the rooms relay already runs with (the native shells are a WebView on `https://localhost` on Android and `capacitor://localhost` on iOS, `packages/native/capacitor.config.ts`), and it is **left for the operator to switch on** after syncing once from the Android app through the gate: a wrong list fails silently, as sync that never connects on one kind of device. |
 
 Every limit is an environment variable (the list is at the top of `src/server.ts` and in
 [`deploy/env.example/sync-gate.env.example`](../deploy/env.example/sync-gate.env.example)); a value
-that is not a positive number, or a `TRUST_PROXY` it does not know, stops it starting. To change one:
+that is not a positive number, a `TRUST_PROXY` it does not know, or `TRUST_PROXY=caddy` on a `HOST`
+that is not loopback, stops it starting. To change one:
 put it in `/etc/potyro/sync-gate.env` and `sudo RECREATE=1 deploy/containers.sh gate` (open
 connections are closed with 1001 and come back on their own).
 
@@ -194,8 +210,17 @@ can grow in a day, whoever is sending and from however many addresses, and `SYNC
 where sync stops before the disk is full (a full disk takes the share links and the AI ledger with
 it; `VACUUM` after an erase needs room too). When either is reached, sync is closed for everyone:
 apps keep working on every device, changes wait there, and they sync when it opens again (midnight
-UTC, or when there is room). That is a bad day, chosen over a worse one. The per-address numbers
-are generous on purpose: a classroom is one address.
+UTC, or when there is room). That is a bad day, chosen over a worse one.
+
+**One address's day is a twentieth of the relay's** (512 MiB of 10 GiB), and a /48's a tenth. The
+ratio is the whole of what the per-address day buys: it is how many addresses, each at its limit,
+close sync for everyone. It was 2 GiB (five addresses) in the first draft of this gate; a twentieth
+is the default because nothing an honest address sends comes near it — what goes *towards* the
+relay is edits (bytes to kilobytes each) and the files a person adds, and a shared app's files are
+budgeted at 200 MB a space — while a classroom or a mobile carrier's shared address is many people
+behind one number, which is why it is not smaller still. An address past it loses sync until
+midnight UTC and nothing else. If you lower `SYNC_BYTES_DAY` to fit a small disk, lower
+`SYNC_BYTES_PER_ADDRESS_DAY` and `SYNC_BYTES_PER_NET_DAY` with it, or the ratio goes.
 
 **What a device does when it is refused.** Nothing new was built for this: the shell's relay
 connection (`attachRelay` in `packages/store/src/jazz-backend.ts`, cojson's
@@ -241,9 +266,20 @@ subprotocol.
   but an address that is out for the day cannot read either until midnight UTC.
 - **What the relay sends back is not limited.** Someone who knows a value's id can fetch it again
   and again. That is bandwidth, not disk; the connection and frame limits are all that hold it.
-- **Many addresses.** Someone with thousands of addresses is held by the whole relay's limits only,
-  and reaching those closes sync for everyone until midnight UTC. An IPv6 /48 is 65 536 "addresses"
-  here (the share service counts /48s as well; the gate does not).
+- **Many addresses.** The per-address day is a ratio, not a protection: **twenty addresses at their
+  limit, or ten IPv6 /48s, use up the whole relay's day, and sync is then closed for everyone
+  until midnight UTC.** Twenty addresses is a small rented botnet or a handful of cloud accounts;
+  a hosting company hands out a /48 for the asking, and a /32 is 65 536 of them. Rotating /64s
+  inside one /48 no longer multiplies anything (the /48 is counted), but nothing here tells one
+  person with many allocations from many people. What that attack can do is bounded and chosen:
+  it cannot fill the disk (`SYNC_BYTES_DAY`, `SYNC_MIN_FREE_BYTES`), it can close sync for a day
+  at a time, and apps keep working on every device meanwhile. Holding it off properly needs to
+  know *who* is writing, which is what the token gate is the place for.
+- **A full table refuses newcomers.** With `SYNC_MAX_ADDRESSES` addresses counted and none that
+  may be forgotten (each connected, or a quarter into its day), a new address gets 503 until one
+  leaves. That takes 100 000 addresses connected at once or deep into their day, which the whole
+  relay's limits make unreachable at the defaults (ten gigabytes is eighty addresses a quarter
+  into their day), but it is the direction the gate fails in: closed.
 - **Nothing here was run under real load.** The limits are tested one by one and against the real
   relay and client (`packages/sync-gate/test`), and once on a laptop with 3000 connections and
   400 MB through one gate (about 100 MB/s, 180 MB of memory). The defaults are judgement, not
@@ -254,20 +290,33 @@ subprotocol.
 ```bash
 # 1. The gate, beside the relay. Sync is untouched: Caddy still goes to 4201.
 sudo deploy/containers.sh gate
-curl -s http://127.0.0.1:4206/health                 # {"ok":true,"connections":0}
-# 2. Through it by hand, before anyone else: expect "HTTP/1.1 101 Switching Protocols", then a ping.
+curl -s http://127.0.0.1:4206/health                 # {"ok":true}
+# 2. THE RELAY, RE-CREATED ON THE HOST'S LOOPBACK. This restarts sync: every device is cut for the
+#    few seconds it takes and reconnects by itself; nothing is lost (edits wait on the device, and
+#    the database in /var/lib/potyro is the same file). Pick a quiet moment.
+sudo deploy/containers.sh relay                      # "✓ potyro-relay created" (its run line changed)
+curl -s http://127.0.0.1:4201/health                 # ok — Caddy still goes here, sync is back
+ss -ltn | grep 4201                                  # 127.0.0.1:4201, and no other address
+# 3. Through the gate by hand, before anyone else: expect "HTTP/1.1 101 Switching Protocols", then a ping.
 curl -s --http1.1 -i -N --max-time 3 \
   -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' \
   -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' http://127.0.0.1:4206/
-# 3. Caddy: /sync to 4206 (deploy/potyro.app.Caddyfile), then
+# 4. Caddy: /sync to 4206 (deploy/potyro.app.Caddyfile), then
 caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy
-curl -s https://potyro.app/sync/health               # {"ok":true,"connections":…}: the gate's answer, not "ok"
+curl -s https://potyro.app/sync/health               # {"ok":true}: the gate's answer; the relay's own is the bare word ok
 ```
 
-A reload keeps open websockets, so devices already connected stay on the relay directly until they
-next reconnect; nothing is cut. Then [the check with two devices](#5-check-it). **Going back** is
-step 3 with `4201`. The relay's own port stays published on loopback only; nothing but the gate
-(and an operator on the server) can reach it.
+Steps 1 and 2 are independent of each other and of step 4: the gate reaches the relay at
+`127.0.0.1:4201` whichever way the relay was started, and so does Caddy. Until step 2 the relay can
+still be reached from the other containers, past the gate, as it always could. A plain
+`sudo deploy/containers.sh` (every service) does step 2 as well, because the relay's run line
+changed: **the first run of the script after this change restarts sync once.**
+
+A Caddy reload keeps open websockets, so devices already connected stay on the relay directly until
+they next reconnect; nothing is cut. Then [the check with two devices](#5-check-it). **Going back**
+is step 4 with `4201`: the relay still listens there, on the host's loopback, for Caddy as for the
+gate. `/sync/health` is public and says only that the gate is up; how many are connected is in the
+hourly totals in its log.
 
 ### What the relay holds for a shared app's files (#255)
 
@@ -447,6 +496,15 @@ What each part is for:
 - **`handle_path` takes the prefix off; `handle` keeps it.** The relay's gate, the AI relay and the request
   relay serve at their root (`/health`, `/complete`, `/platform-requests`). The rooms relay and the
   share service serve under `/rooms/` and `/share-api/` themselves.
+- **A client cannot choose the address it is counted under.** Every service takes the *last*
+  `X-Forwarded-For` entry (`TRUST_PROXY=caddy`), and with no `trusted_proxies` set, as here, Caddy
+  does not pass a client's own header on at all. Checked 2026-11-16 with `caddy:2` (v2.11.7) in a
+  container in front of the gate, this file's `handle_path /sync* { reverse_proxy … }` block: a
+  request sent with `X-Forwarded-For: 6.6.6.6` reached the backend as `X-Forwarded-For: 127.0.0.1`
+  (the peer Caddy saw), and so did one sent with two such headers; with one connection allowed per
+  address, a websocket claiming `6.6.6.6` was let in and a second claiming `7.7.7.7` got 429. The
+  rule holds only while nothing but Caddy can reach a service's port, which is what the loopback
+  publishing is for (and why the gate refuses to start otherwise).
 - **Websockets need nothing.** `reverse_proxy` passes an upgrade through as it is, for `/sync` and
   `/rooms/`, and Caddy's defaults put no timeout on an open connection.
 - **`frame-src 'none'`** on every response: the shell embeds no frame that fetches, and this is what
@@ -1087,7 +1145,8 @@ address, no account, no device id; the per-address counts are in memory and are 
    ```
 
    The title, picture and package are removed and no record is written: this is their own "stop
-   sharing" done for them, not a takedown. (A link that was *taken down* keeps only the time and
+   sharing" done for them, not a takedown. Whatever is in the link's folder goes, a whole link or
+   not: one whose making was cut short (a package on disk and no title beside it) is erased too. (A link that was *taken down* keeps only the time and
    the operator's reason, which are not theirs.)
 3. **What it cannot reach**, and say so: the nightly backups hold the link until they age out
    ([§6](#6-backups-214)); a chat app that drew the link's card keeps its copy of the picture and

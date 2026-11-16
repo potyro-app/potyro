@@ -95,14 +95,22 @@ async function storeIn(dir) {
   }
 }
 
-/** The sharer's own "stop sharing", done for them: the link's title, picture and package go; nothing is kept. */
+/**
+ * The sharer's own "stop sharing", done for them: the link's title, picture and package go; nothing is kept.
+ * Whatever is there goes, whole link or not: a link is written package first and title last, so one
+ * whose making was cut short has a package and no title, and "there is no such link" would leave it.
+ */
 async function eraseOnDisk(id, dir) {
   const store = await storeIn(dir);
-  if (!(await store.get(id))) {
+  const anything = async () => Boolean((await store.get(id)) || (await store.payload(id)) || (await store.image(id)));
+  if (!(await anything())) {
     if (await store.takenDown(id)) return `Nothing left to erase: ${id} was taken down, and only the time and the reason of that are kept.`;
     throw new Error(`No link ${id} in ${dir}: it was never made here, or it is already gone.`);
   }
   await store.remove(id);
+  // Once more, for a link that was being written at that very moment.
+  if (await anything()) await store.remove(id);
+  if (await anything()) throw new Error(`${id} is still being written in ${dir}: run this again.`);
   return `Erased: ${id}. The link now answers 404, and nothing of it is kept.`;
 }
 

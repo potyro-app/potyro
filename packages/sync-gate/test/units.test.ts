@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { addressKey, clientAddress, readTrustProxy } from "../src/address.ts";
+import { addressKey, clientAddress, netKey, readTrustProxy } from "../src/address.ts";
 import { Bucket } from "../src/bucket.ts";
 import { closeFrame, FrameWalker } from "../src/frames.ts";
 import { dayOf, secondsLeftToday } from "../src/limits.ts";
 
 /** A frame as a client (masked) or a server (not) writes it; the payload's bytes do not matter here. */
-function frame(opcode: number, length: number, opts: { masked?: boolean; fin?: boolean } = {}): Buffer {
+function frame(opcode: number, length: number, opts: { masked?: boolean; fin?: boolean; rsv?: number } = {}): Buffer {
   const masked = opts.masked ?? true;
-  const head: number[] = [(opts.fin === false ? 0 : 0x80) | opcode];
+  const head: number[] = [(opts.fin === false ? 0 : 0x80) | (opts.rsv ?? 0) | opcode];
   const bit = masked ? 0x80 : 0;
   if (length < 126) head.push(bit | length);
   else if (length < 65536) head.push(bit | 126, length >> 8, length & 0xff);
@@ -27,6 +27,15 @@ describe("the client's address", () => {
     expect(addressKey("9.9.9.9")).toBe("9.9.9.9");
     expect(addressKey("::ffff:9.9.9.9")).toBe("9.9.9.9");
     expect(addressKey("2001:db8:1:2:3:4:5:6")).toBe("2001:db8:1:2::/64");
+  });
+
+  it("names the /48 an IPv6 /64 is in, and nothing for an IPv4 address", () => {
+    expect(netKey(addressKey("2001:db8:1:2:3:4:5:6"))).toBe("2001:db8:1::/48");
+    expect(netKey(addressKey("2001:db8:1:ffff::1"))).toBe("2001:db8:1::/48");
+    expect(netKey(addressKey("2001:db8:2:2::1"))).toBe("2001:db8:2::/48");
+    expect(netKey(addressKey("::1"))).toBe("0:0:0::/48");
+    expect(netKey("9.9.9.9")).toBeNull();
+    expect(netKey("unknown")).toBeNull();
   });
 
   it("stops the gate starting on a TRUST_PROXY it does not know", () => {
@@ -99,6 +108,28 @@ describe("walking frames", () => {
     expect(new FrameWalker(1000, true).feed(frame(8, 126)).bad).toBe(true);
     expect(new FrameWalker(1000, true).feed(Buffer.from("GET / HTTP/1.1\r\n")).bad).toBe(true);
     expect(new FrameWalker(1000, false).feed(frame(1, 5, { masked: false })).bad).toBe(false);
+  });
+
+  it("checks what a header says, so where a message ends is the gate's own knowledge", () => {
+    const bad = (...frames: Buffer[]): boolean => {
+      const w = new FrameWalker(1000, true);
+      return frames.map((f) => w.feed(f).bad).at(-1)!;
+    };
+    for (const rsv of [0x40, 0x20, 0x10]) expect(bad(frame(2, 5, { rsv }))).toBe(true); // no extension is ever agreed
+    expect(bad(frame(0, 5))).toBe(true); // a piece of no message
+    expect(bad(frame(1, 5, { fin: false }), frame(2, 5))).toBe(true); // a message inside a message
+    expect(bad(frame(1, 5, { fin: false }), frame(0, 5), frame(0, 5))).toBe(true); // a piece after the last piece
+    expect(bad(frame(9, 5, { fin: false }))).toBe(true); // a control frame in pieces
+    expect(bad(frame(1, 5, { fin: false }), frame(9, 5), frame(0, 5, { fin: false }), frame(0, 5), frame(2, 5))).toBe(false);
+  });
+
+  it("knows when a close frame has passed", () => {
+    const w = new FrameWalker(1000, false);
+    w.feed(frame(1, 5, { masked: false }));
+    expect(w.sawClose).toBe(false);
+    w.feed(closeFrame(1000, ""));
+    expect(w.sawClose).toBe(true);
+    expect(w.atBoundary).toBe(true);
   });
 
   it("writes a close frame a browser reads: the code, and a reason of at most 123 bytes", () => {

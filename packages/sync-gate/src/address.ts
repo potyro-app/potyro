@@ -62,6 +62,16 @@ export function addressKey(ip: string): string {
     .join(":")}::/64`;
 }
 
+/**
+ * The /48 an IPv6 /64 key (`2001:db8:1:2::/64`, as addressKey writes it) is in; null for anything
+ * else. A household is often given a /56 and a server a /48: without a wider count, one of them is
+ * 256 or 65 536 "addresses". (The gate's own: the copies of this file in the other relays have no use for it.)
+ */
+export function netKey(key: string): string | null {
+  const m = /^([0-9a-f]{1,4}):([0-9a-f]{1,4}):([0-9a-f]{1,4}):[0-9a-f]{1,4}::\/64$/.exec(key);
+  return m ? `${m[1]}:${m[2]}:${m[3]}::/48` : null;
+}
+
 /** The eight 16-bit groups of an IPv6 address, or null when it is not one. */
 function ipv6Groups(s: string): number[] | null {
   const text = s.split("%")[0]!; // a zone ("fe80::1%eth0") is not part of the address
