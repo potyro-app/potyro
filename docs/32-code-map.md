@@ -120,6 +120,10 @@ iframe (`sandbox="allow-scripts"`, `REALM_CSP`); each custom view in a frame of 
 - `packages/host/src/realm/sealed-view.ts` `SealedViewController`; `place-watch.ts` (told when the view's
   place moves, so its height is measured again); `view-watchdog.ts`; `view-guard.ts` (crash-loop
   guard); `form-submit-shim.ts`; `realm-sockets.ts`; `realm-speech.ts`; `port-transport.ts`.
+- `packages/host/src/realm/limits.ts` — what the host keeps for a sealed app, bounded (docs/22 §7.1):
+  `REALM_LIMITS`, `sizeOf`, `HeldBudget`, `readBody`; the app's rest after repeated stops is
+  `RealmLoadedApp.rest` (`REST_AFTER_STOPS`), shown by `packages/shell/src/rest-banner.tsx`;
+  `packages/shell/src/sealed-open-guard.ts` (an app open when a tab died is not started by itself).
 - `packages/host/src/isolate/isolate-host.ts` `createIsolateLoader`, `IsolateLoadedApp`; `harness.ts`
   `HARNESS_SOURCE`; `marshal.ts`. (The fallback: chosen by `sandbox-runner.ts` where no realm can be built, always by
   the Studio's checks, or with `localStorage["potyro:sandbox"] = "quickjs"`; docs/07.)

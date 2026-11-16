@@ -23,11 +23,11 @@ export const REALM_LIMITS = {
    * One op that carries words and choices rather than bytes — a toast, a dialog, a form, a
    * navigation, a log line: the shell lays these out on its own thread.
    */
-  wordsBytes: 1 * MB,
+  wordsBytes: 4 * MB,
   /** All of an app's unanswered ops together, and the answers being read for them: its logic's and its screens'. */
   heldBytes: 192 * MB,
   /** Ops unanswered at once. A page of a few hundred rows asks a few thousand. */
-  opsInFlight: 8192,
+  opsInFlight: 16_384,
   /** Questions to the person open at once (a dialog, a sheet, a picker, a consent). */
   questions: 16,
   /** Progress bars open at once. */

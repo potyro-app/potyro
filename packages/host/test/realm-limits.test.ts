@@ -162,7 +162,7 @@ describe("in the realm: an op over a bound is an ordinary error, and the app car
       {},
       { ui: { toast: (m) => void toasts.push(m), confirm: async () => true, prompt: async () => null, pick: async () => null } },
     );
-    expect(await loaded.callComputed("n", "big", row, ctx)).toBe("RangeError | too-much | ctx.ui.confirm: this is more than a shared app may send at once (at most 1 MB)");
+    expect(await loaded.callComputed("n", "big", row, ctx)).toBe("RangeError | too-much | ctx.ui.confirm: this is more than a shared app may send at once (at most 4 MB)");
     expect(await loaded.callComputed("n", "small", row, ctx)).toBe("true");
     expect(kills).toEqual([]);
     loaded.dispose();
@@ -290,6 +290,33 @@ describe("an app the watchdog keeps stopping rests until the person starts it ag
     expect(rest.resting()).toBe(false);
     loaded.dispose();
   }, 30000);
+
+  it("an app that cannot be started again counts too: it is not tried for ever", async () => {
+    // Its top level runs away every time it is evaluated after the first: what an app that fills
+    // memory as it loads does to each fresh realm.
+    const until = Date.now() + 1200;
+    const code = `if (Date.now() > ${until}) { for(;;){} }
+      globalThis.__potyroApp = { id: "r", name: "R", version: "1.0.0", schemaVersion: 1,
+      entities: { n: { fields: { t: { type: "text" } }, computed: { spin: function(){ for(;;){} }, ok: function(){ return "fine"; } } } },
+      pages: [{ id: "p", title: "P", view: { type: "list", entity: "n" } }] };`;
+    const { loaded, ctx, row, kills } = await setup(code, { timeoutMs: 150, loadTimeoutMs: 400 });
+    expect(await loaded.callComputed("n", "ok", row, ctx)).toBe("fine");
+    await new Promise((r) => setTimeout(r, Math.max(0, until - Date.now()) + 50));
+    await expect(loaded.callComputed("n", "spin", row, ctx)).rejects.toBeInstanceOf(HostFault); // stopped once
+    expect(kills).toHaveLength(1);
+    // Twice more it is started, and does not come up; several calls waiting on one start are one stop.
+    for (let i = 0; i < REST_AFTER_STOPS - 1; i++) {
+      expect(loaded.rest!.resting()).toBe(false);
+      const waiting = await Promise.allSettled([loaded.callComputed("n", "ok", row, ctx), loaded.callComputed("n", "ok", row, ctx), loaded.callComputed("n", "ok", row, ctx)]);
+      expect(waiting.map((w) => w.status)).toEqual(["rejected", "rejected", "rejected"]);
+      expect(String((waiting[0] as PromiseRejectedResult).reason)).toMatch(/did not load within 400 ms/);
+    }
+    expect(loaded.rest!.resting()).toBe(true);
+    const started = performance.now();
+    expect(actionFailure(await loaded.callComputed("n", "ok", row, ctx).catch((e: unknown) => e))).toMatchObject({ kind: "stopped", why: "stopped" });
+    expect(performance.now() - started).toBeLessThan(100);
+    loaded.dispose();
+  }, 20000);
 
   it("one stop is an accident: the app answers again by itself", async () => {
     const { loaded, ctx, row } = await setup(SPINS, { timeoutMs: 150 });

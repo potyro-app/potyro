@@ -283,7 +283,15 @@ export class RealmLoadedApp implements LoadedApp {
   /** Start (or restart, after a kill) the realm and load the app into it. */
   start(): Promise<void> {
     if (this.disposed) return Promise.reject(new HostFault("this app was closed", "closed"));
-    this.starting ??= this.spawn().finally(() => (this.starting = null));
+    this.starting ??= this.spawn()
+      .catch((e: unknown) => {
+        // A realm that will not come up AGAIN (it did once: there is a definition) is a stop like any
+        // other — its top level runs away now, or its process is taken as it loads — and counts
+        // towards the app's rest. Once per start, however many calls were waiting on it.
+        if (this.definition && !this.disposed) this.stopped();
+        throw e;
+      })
+      .finally(() => (this.starting = null));
     return this.starting;
   }
 
