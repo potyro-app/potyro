@@ -80,6 +80,23 @@ describe("counts", () => {
     expect(await countOnce("own-key", { fetch, now: () => OCT, relayThere: there })).toBe("sent");
   });
 
+  it("an address that posted too often today was not counted: no flag, and it is tried again the next time", async () => {
+    const busy = (async () => new Response(JSON.stringify({ ok: false, error: "busy" }), { status: 429 })) as unknown as typeof fetch;
+    expect(await countOnce("want-plan", { fetch: busy, now: () => OCT, relayThere: there })).toBe("failed");
+    expect(countedThisMonth("want-plan", OCT)).toBe(false);
+    expect(wantedPlan()).toBe(false);
+    const { sent, fetch } = wire();
+    expect(await countOnce("want-plan", { fetch, now: () => OCT, relayThere: there })).toBe("sent");
+    expect(sent).toHaveLength(1);
+  });
+
+  it("a switch turned off while the relay was being looked for stops the count that was on its way", async () => {
+    const { sent, fetch } = wire();
+    const outcome = await countOnce("own-key", { fetch, now: () => OCT, relayThere: async () => (setCountsOn(false), true) });
+    expect(outcome).toBe("off");
+    expect(sent).toHaveLength(0);
+  });
+
   it("an unreachable relay is tried again the next time", async () => {
     const failing = (async () => {
       throw new TypeError("Failed to fetch");

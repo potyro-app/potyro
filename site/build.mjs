@@ -81,10 +81,13 @@ export async function buildSite(opts = {}) {
   const galleryCss = chrome + "\n" + readFileSync(join(GALLERY_DIR, "src", "page", "gallery.css"), "utf8");
   const siteCss = chrome + "\n" + readFileSync(join(here, "src", "page", "home.css"), "utf8") + "\n/* the hero's tiles, placed */\n" + tilesCss();
   const textCss = chrome + "\n" + readFileSync(join(here, "src", "page", "text.css"), "utf8");
-  // Each page loads one script: what every page shares (the language, the theme), then its own.
-  const galleryJs = pageScript(readFileSync(join(GALLERY_DIR, "src", "page", "gallery.js")));
-  const siteJs = pageScript(readFileSync(join(here, "src", "page", "site.js")));
-  const textJs = pageScript(Buffer.from(""));
+  // Each page loads one script: what every page shares (the language, the theme), the site's visit
+  // count (#10, src/page/count.js: potyro.com's own, so the gallery built alone has none), then its own.
+  const count = readFileSync(join(here, "src", "page", "count.js"));
+  const counted = (/** @type {Buffer} */ own) => pageScript(Buffer.concat([count, Buffer.from("\n"), own]));
+  const galleryJs = counted(readFileSync(join(GALLERY_DIR, "src", "page", "gallery.js")));
+  const siteJs = counted(readFileSync(join(here, "src", "page", "site.js")));
+  const textJs = counted(Buffer.from(""));
   put("tokens.css", tokens);
   put("hours.css", hours);
   put("gallery.css", galleryCss);

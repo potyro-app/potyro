@@ -260,3 +260,56 @@ describe("the apps page", () => {
     expect(["https://potyro.com/", "https://potyro.com/apps/"]).toContain(url);
   });
 });
+
+// #10: the site counts page views as one number, and nothing about who opened the page.
+describe("the visit count", () => {
+  const source = readFileSync(join(here, "src", "page", "count.js"), "utf8");
+  type Sent = { url: unknown; init: Record<string, unknown> };
+  /** Run the script as a page would, in a browser that says this about itself. */
+  function open(browser: { gpc?: boolean; dnt?: string; webdriver?: boolean; protocol?: string } = {}): Sent[] {
+    const sent: Sent[] = [];
+    const fetchFake = (url: unknown, init: Record<string, unknown>) => (sent.push({ url, init }), Promise.resolve({ ok: true }));
+    const navigatorFake = { globalPrivacyControl: browser.gpc, doNotTrack: browser.dnt, webdriver: browser.webdriver ?? false };
+    // Anything else the script reached for (document, localStorage, cookies) would throw here: it has none.
+    new Function("navigator", "location", "fetch", source)(navigatorFake, { protocol: browser.protocol ?? "https:" }, fetchFake);
+    return sent;
+  }
+
+  it("posts the event and nothing else: no id, no cookie, no referrer, not even which page", () => {
+    expect(open()).toEqual([
+      {
+        url: "/count",
+        init: { method: "POST", headers: { "content-type": "application/json" }, body: '{"event":"visit"}', credentials: "omit", referrerPolicy: "no-referrer", cache: "no-store", keepalive: true },
+      },
+    ]);
+  });
+
+  it("reads nothing from the visitor's browser and keeps nothing in it", () => {
+    const code = source.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(code).not.toMatch(/localStorage|sessionStorage|indexedDB|cookie|document|userAgent|screen|language|href|pathname|caches/);
+  });
+
+  it("does not count a browser that asks not to be tracked, one driven by a program, or a page off https", () => {
+    expect(open({ gpc: true })).toEqual([]);
+    expect(open({ dnt: "1" })).toEqual([]);
+    expect(open({ webdriver: true })).toEqual([]);
+    expect(open({ protocol: "http:" })).toEqual([]);
+  });
+
+  it("is in every page's one script on potyro.com; the privacy page and the terms load no script, so reading them is not counted", () => {
+    for (const f of ["site.js", "gallery.js", "text.js"]) expect(readFileSync(join(out, f), "utf8"), f).toContain(source.trim());
+    for (const page of ["privacy", "terms"]) {
+      const file = join(out, page, "index.html");
+      if (existsSync(file)) expect(readFileSync(file, "utf8")).not.toMatch(/<script/);
+    }
+  });
+
+  it("the server lets the pages post to their own name only, and passes the POST to the counter", () => {
+    const caddy = readFileSync(join(here, "..", "deploy", "potyro.app.Caddyfile"), "utf8");
+    const policy = /\(site_headers\)[\s\S]*?Content-Security-Policy "([^"]+)"/.exec(caddy)?.[1] ?? "";
+    expect(policy).toContain("default-src 'none'");
+    expect(policy.split(";").map((d) => d.trim())).toContain("connect-src 'self'");
+    const site = caddy.slice(caddy.indexOf("\npotyro.com {"));
+    expect(site).toMatch(/@count \{\s+method POST\s+path \/count\s+\}\s+reverse_proxy @count 127\.0\.0\.1:4204/);
+  });
+});
