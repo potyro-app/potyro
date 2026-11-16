@@ -76,7 +76,12 @@ export async function buildSite(opts = {}) {
    * @type {Map<string, string>}
    */
   const stamps = new Map();
-  const stamped = (/** @type {string} */ html) => html.replace(STAMPED_ATTR, (whole, attr, path) => (stamps.has(path) ? `${attr}="${path}?v=${stamps.get(path)}"` : whole));
+  const stampOne = (/** @type {string} */ path) => (stamps.has(path) ? `${path}?v=${stamps.get(path)}` : path);
+  const stamped = (/** @type {string} */ html) =>
+    html
+      .replace(STAMPED_ATTR, (whole, attr, path) => (stamps.has(path) ? `${attr}="${stampOne(path)}"` : whole))
+      // A `srcset` names several files, each followed by its width or density.
+      .replace(/\bsrcset="([^"]+)"/g, (_whole, list) => `srcset="${String(list).replace(/(^|,\s*)(\/[^\s,?#]+)/g, (_m, lead, path) => `${lead}${stampOne(path)}`)}"`);
   const put = (/** @type {string} */ path, /** @type {Buffer | string} */ bytes) => {
     if (path === "index.html" || path.endsWith("/index.html")) written.push(`/${path.slice(0, -"index.html".length)}`);
     if (STAMPED_FILE.test(`/${path}`)) stamps.set(`/${path}`, shortHash(bytes));
