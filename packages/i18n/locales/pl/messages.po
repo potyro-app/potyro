@@ -3575,6 +3575,10 @@ msgid "Fr"
 msgstr "Pt"
 
 #: ../shell/src/app-ai.ts
+msgid "Free AI is used up for now. Try again later, or add your own OpenRouter key in Model settings."
+msgstr "Darmowa AI na razie się wyczerpała. Spróbuj później albo dodaj własny klucz OpenRouter w ustawieniach modelu."
+
+#: ../shell/src/app-ai.ts
 msgid "Free AI isn't available yet — add your own key in Model settings."
 msgstr "Darmowa AI nie jest jeszcze dostępna — dodaj własny klucz w ustawieniach modelu."
 
@@ -5888,6 +5892,14 @@ msgstr "Potyro przekazuje to wszystko do OpenRouter i do modelu, który wybiera.
 msgid "Potyro pink"
 msgstr "Róż Potyro"
 
+#: ../shell/src/app-ai.ts
+msgid "Potyro's free AI is used up for everyone for now. It's back next month, or add your own OpenRouter key in Model settings."
+msgstr "Darmowa AI Potyro na razie wyczerpała się dla wszystkich. Wróci w przyszłym miesiącu, albo dodaj własny klucz OpenRouter w ustawieniach modelu."
+
+#: ../shell/src/app-ai.ts
+msgid "Potyro's free AI is used up for everyone for now. It's back tomorrow, or add your own OpenRouter key in Model settings."
+msgstr "Darmowa AI Potyro na razie wyczerpała się dla wszystkich. Wróci jutro, albo dodaj własny klucz OpenRouter w ustawieniach modelu."
+
 #. Edit tile, Live connections: Potyro's own relay where apps play together
 #: ../shell/src/live-connections-setting.tsx
 msgid "Potyro’s rooms"
@@ -7922,8 +7934,8 @@ msgid "This month"
 msgstr "Ten miesiąc"
 
 #: ../shell/src/app-ai.ts
-msgid "This month's free AI is used up — add your own OpenRouter key in Model settings."
-msgstr "Darmowa AI na ten miesiąc się wyczerpała — dodaj własny klucz OpenRouter w ustawieniach modelu."
+msgid "This month's free AI is used up on this device. It's back next month, or add your own OpenRouter key in Model settings."
+msgstr "Darmowa AI na ten miesiąc wyczerpała się na tym urządzeniu. Wróci w przyszłym miesiącu, albo dodaj własny klucz OpenRouter w ustawieniach modelu."
 
 #: ../shell/src/free-ai.ts
 msgid "This month's free app making is used up on this device. Add your own key to keep going, or start from an app in the gallery."
@@ -8075,6 +8087,14 @@ msgstr "Do kodu źródłowego aplikacji lub jej pakietu"
 #: ../views/src/date-input.tsx
 msgid "Today"
 msgstr "Dziś"
+
+#: ../shell/src/app-ai.ts
+msgid "Today's free AI is used up on this device. It's back tomorrow, or add your own OpenRouter key in Model settings."
+msgstr "Darmowa AI na dziś wyczerpała się na tym urządzeniu. Wróci jutro, albo dodaj własny klucz OpenRouter w ustawieniach modelu."
+
+#: ../shell/src/app-ai.ts
+msgid "Today's free AI is used up on this network. It's back tomorrow, or add your own OpenRouter key in Model settings."
+msgstr "Darmowa AI na dziś wyczerpała się w tej sieci. Wróci jutro, albo dodaj własny klucz OpenRouter w ustawieniach modelu."
 
 #: ../views/src/date-input.tsx
 #: ../views/src/date-input.tsx

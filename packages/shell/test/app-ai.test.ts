@@ -8,7 +8,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { AI_FORMAT, AI_MODEL, OPENROUTER_URL } from "@potyro/ai-relay";
 import type { AiCall } from "@potyro/capabilities";
-import { createAppAi, resetAiGuards, resetRelayMemory, OWN_KEY_PER_MINUTE, type AppAiDeps } from "../src/app-ai.js";
+import { createAppAi, usedUpText, resetAiGuards, resetRelayMemory, OWN_KEY_PER_MINUTE, type AppAiDeps } from "../src/app-ai.js";
 import { setAiStanding } from "../src/ai-setting.js";
 import { spentIn } from "../src/ask-spend.js";
 
@@ -95,9 +95,36 @@ describe("neither", () => {
     await expect(ai.complete(CALL)).rejects.toThrow("Free AI isn't available yet — add your own key in Model settings.");
   });
 
-  it("says the month's free AI is used up when it is, and there is no key", async () => {
-    const { ai } = setup({ relay: () => json(429, { ok: false, error: "allowance", reason: "service-month" }) });
-    await expect(ai.complete(CALL)).rejects.toThrow("This month's free AI is used up — add your own OpenRouter key in Model settings.");
+  // The relay says which limit it was (relay.ts `usedUp`); the words follow it, and never show the code.
+  const KEY = "add your own OpenRouter key in Model settings.";
+  const REASONS: Array<[reason: unknown, said: string]> = [
+    ["device-day", `Today's free AI is used up on this device. It's back tomorrow, or ${KEY}`],
+    ["address-day", `Today's free AI is used up on this network. It's back tomorrow, or ${KEY}`],
+    ["device-month", `This month's free AI is used up on this device. It's back next month, or ${KEY}`],
+    ["service-day", `Potyro's free AI is used up for everyone for now. It's back tomorrow, or ${KEY}`],
+    ["service-month", `Potyro's free AI is used up for everyone for now. It's back next month, or ${KEY}`],
+    ["a-limit-from-a-newer-relay", `Free AI is used up for now. Try again later, or ${KEY}`],
+    [undefined, `Free AI is used up for now. Try again later, or ${KEY}`],
+    [{ not: "a reason" }, `Free AI is used up for now. Try again later, or ${KEY}`],
+  ];
+  it.each(REASONS)("with no key, a refusal for %j says when free AI is back, and never the code", async (reason, said) => {
+    const { ai } = setup({ relay: () => json(429, { ok: false, error: "allowance", ...(reason === undefined ? {} : { reason }) }) });
+    const error = await ai.complete(CALL).then(
+      () => null,
+      (e: Error) => e,
+    );
+    expect(error?.message).toBe(said);
+    if (typeof reason === "string") expect(error?.message).not.toContain(reason);
+  });
+
+  it("a day's limit never says the month is used up (the bug: every refusal said \"this month\")", () => {
+    for (const reason of ["device-day", "address-day", "service-day"]) {
+      expect(usedUpText(reason)).toContain("tomorrow");
+      expect(usedUpText(reason)).not.toMatch(/month/i);
+    }
+    for (const reason of ["device-month", "service-month"]) expect(usedUpText(reason)).toContain("next month");
+    // The whole service's limit is not put on the person or the device.
+    for (const reason of ["service-day", "service-month"]) expect(usedUpText(reason)).toMatch(/for everyone/);
   });
 });
 

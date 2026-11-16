@@ -153,6 +153,29 @@ async function withTimeout<T>(ms: number, run: (signal: AbortSignal) => Promise<
 
 const isAbort = (e: unknown): boolean => (e as { name?: string } | null)?.name === "AbortError";
 
+/**
+ * What a person is told when the free allowance refuses (`{ error: "allowance", reason }`, relay.ts),
+ * by which limit it was: a day's limit is back tomorrow, a month's next month, and a limit of the
+ * whole service is nobody's own doing. The relay's `reason` is a code and never shown; one this
+ * shell does not know, or none, gets a sentence that promises no day.
+ */
+export function usedUpText(reason: unknown): string {
+  switch (reason) {
+    case "device-day":
+      return t`Today's free AI is used up on this device. It's back tomorrow, or add your own OpenRouter key in Model settings.`;
+    case "address-day":
+      return t`Today's free AI is used up on this network. It's back tomorrow, or add your own OpenRouter key in Model settings.`;
+    case "device-month":
+      return t`This month's free AI is used up on this device. It's back next month, or add your own OpenRouter key in Model settings.`;
+    case "service-day":
+      return t`Potyro's free AI is used up for everyone for now. It's back tomorrow, or add your own OpenRouter key in Model settings.`;
+    case "service-month":
+      return t`Potyro's free AI is used up for everyone for now. It's back next month, or add your own OpenRouter key in Model settings.`;
+    default:
+      return t`Free AI is used up for now. Try again later, or add your own OpenRouter key in Model settings.`;
+  }
+}
+
 let relayMissingUntil = 0;
 /** When the free relay last answered as itself (a reply, or "used up"), and whether it still gave. */
 let relaySeen: { at: number; gives: boolean } | null = null;
@@ -244,12 +267,12 @@ export function createAppAi(deps: AppAiDeps): AiCap {
   const timeoutMs = deps.timeoutMs ?? AI_TIMEOUT_MS;
   const relay = deps.relay ?? aiRelayEndpoint();
 
-  const free = async (payload: AiPayload): Promise<{ tried: Tried; text?: string }> => {
+  const free = async (payload: AiPayload): Promise<{ tried: Tried; text?: string; reason?: unknown }> => {
     if (now() < relayMissingUntil) return { tried: "missing" };
     try {
       return await withTimeout(timeoutMs, async (signal) => {
         const res = await doFetch(relay, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload), signal });
-        const body = (await res.json().catch(() => null)) as { ok?: boolean; text?: unknown; error?: string } | null;
+        const body = (await res.json().catch(() => null)) as { ok?: boolean; text?: unknown; error?: string; reason?: unknown } | null;
         // Not there: a site with no relay answers with its own page, or with a 404 / 405 of its own.
         if (body === null || typeof body !== "object" || res.status === 404 || res.status === 405) {
           markMissing();
@@ -261,7 +284,7 @@ export function createAppAi(deps: AppAiDeps): AiCap {
         }
         if (res.status === 429 && body.error === "allowance") {
           relaySeen = { at: now(), gives: false };
-          return { tried: "used-up" as const };
+          return { tried: "used-up" as const, reason: body.reason };
         }
         return { tried: "failed" as const };
       });
@@ -343,7 +366,7 @@ export function createAppAi(deps: AppAiDeps): AiCap {
       if (first.tried === "free-ok") return { text: first.text!, via: "free" };
       const key = deps.ownKey().trim();
       if (key) return ownKey(key, payload);
-      if (first.tried === "used-up") throw new Error(t`This month's free AI is used up — add your own OpenRouter key in Model settings.`);
+      if (first.tried === "used-up") throw new Error(usedUpText(first.reason));
       if (first.tried === "failed") throw new Error(t`The free AI service didn't answer. Try again in a minute, or add your own OpenRouter key in Model settings.`);
       throw new Error(t`Free AI isn't available yet — add your own key in Model settings.`);
     },
