@@ -8383,16 +8383,25 @@ body:has(.k-tabbar) .k-toasts {
 }
 .k-notdone-list {
   display: grid;
-  gap: var(--space-1);
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
+/* Each part is told from the next, and from a line that only wrapped, by a dash of its own. */
 .k-notdone-item {
+  position: relative;
+  padding-inline-start: var(--space-3);
   color: var(--ink);
   font-size: var(--text-small);
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+.k-notdone-item::before {
+  content: "–";
+  position: absolute;
+  inset-inline-start: 0;
+  color: var(--muted);
 }
 
 /* What was guessed, on the version's card: quieter than what changed, each guess a row to tap. The
