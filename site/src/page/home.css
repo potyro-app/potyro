@@ -21,6 +21,15 @@
 .learn { margin-top: var(--space-5); }
 .learn a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 18px; border-radius: var(--radius-pill); border: var(--stroke) solid #231f20; color: #231f20; font-weight: 600; text-decoration: none; }
 .learn a:hover { background: rgba(255, 255, 255, 0.35); }
+.learn { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.rec-toggle { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; padding: 0 18px 0 14px; border: var(--stroke) solid #231f20; border-radius: var(--radius-pill); background: transparent; color: #231f20; font: inherit; font-weight: 600; cursor: pointer; transition: background var(--dur-fast) var(--ease-out); }
+.rec-toggle[hidden] { display: none; }
+.rec-toggle:hover { background: rgba(255, 255, 255, 0.35); }
+.rec-toggle:active { transform: scale(0.97); }
+.learn a:focus-visible, .rec-toggle:focus-visible { outline: 3px solid #231f20; outline-offset: 3px; }
+.rec-toggle > span { display: inline-flex; align-items: center; gap: 8px; }
+.rec-toggle .rec-pause, .rec-toggle.playing .rec-play { display: none; }
+.rec-toggle.playing .rec-pause { display: inline-flex; }
 
 main { max-width: none; padding: 0; }
 .wrap { max-width: var(--wide); margin: 0 auto; padding: 0 var(--gutter); }
@@ -93,17 +102,8 @@ main { max-width: none; padding: 0; }
 .block-pic:hover .phone { transform: rotateY(0) rotateX(0); }
 /* the recording is a whole screen, so its phone stays whole, on the block's ground */
 .block-pic .rec-phone { margin-bottom: 0; }
-/* a recording can be stopped: a press on it, or this button on the phone's corner (white ring on graphite, so it reads on any screen) */
+/* a recording can be stopped: a press on it, or the button beside "Learn more", off the phone so it covers nothing of the app */
 .rec { cursor: pointer; }
-.rec-toggle { position: absolute; right: 22px; bottom: 22px; z-index: 1; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; border: var(--stroke) solid #fff; border-radius: 50%; background: #231f20; color: #fff; cursor: pointer; transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
-.rec-toggle[hidden] { display: none; }
-.rec-toggle:hover { background: #414042; }
-.rec-toggle:active { transform: scale(0.94); }
-.rec-toggle:focus-visible { outline: 3px solid #231f20; outline-offset: 3px; box-shadow: 0 0 0 3px #fff; }
-.rec-toggle > span { display: grid; place-items: center; }
-.rec-toggle .rec-pause, .rec-toggle.playing .rec-play { display: none; }
-.rec-toggle.playing .rec-pause { display: grid; }
-.rec-toggle .rec-play .k-icon { transform: translateX(1px); }
 #database .block { padding-bottom: var(--space-7); }
 @media (min-width: 900px) { #database .block { padding-bottom: var(--space-8); } }
 .boxed { outline: var(--stroke) dashed #231f20; outline-offset: 14px; border-radius: 40px; }

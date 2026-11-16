@@ -173,12 +173,14 @@ export function renderHome({ gallery, words, lucide, code, logos, v, sizes, lega
   const clip = (/** @type {string} */ name, /** @type {string} */ labelKey, cls = "") => {
     const poster = `/media/${name}-poster.jpg`;
     const s = size(poster);
-    // A recording moves and loops, so it can be stopped (WCAG 2.2.2): a button on the phone, reached
-    // with Tab, and a press on the recording itself. The script shows the button; without the script
-    // nothing plays, and the poster stays.
-    const stop = `<button type="button" class="rec-toggle" hidden><span class="rec-pause">${icon(ICON.pause, 20)}<span class="visually-hidden"${t("recPause")}>${e(w.recPause)}</span></span><span class="rec-play">${icon(ICON.play, 20)}<span class="visually-hidden"${t("recPlay")}>${e(w.recPlay)}</span></span></button>`;
-    return `<div class="phone rec-phone ${cls}"><video class="rec" muted loop playsinline preload="none" poster="${poster}" width="${s.width}" height="${s.height}" aria-label="${e(w[labelKey])}"${ta(`aria-label:${labelKey}`)}><source src="/media/${name}.webm" type="video/webm"><source src="/media/${name}.mp4" type="video/mp4"></video>${stop}</div>`;
+    return `<div class="phone rec-phone ${cls}"><video class="rec" muted loop playsinline preload="none" poster="${poster}" width="${s.width}" height="${s.height}" aria-label="${e(w[labelKey])}"${ta(`aria-label:${labelKey}`)}><source src="/media/${name}.webm" type="video/webm"><source src="/media/${name}.mp4" type="video/mp4"></video></div>`;
   };
+
+  // A recording moves and loops, so it can be stopped (WCAG 2.2.2): a button beside "Learn more",
+  // off the phone, so it covers nothing of the app being shown; one for the block, both phones of a
+  // pair with it. A press on a recording does the same. The script shows the button; without the
+  // script nothing plays, and the posters stay.
+  const stop = `<button type="button" class="rec-toggle" hidden><span class="rec-pause">${icon(ICON.pause, 18)}<span${t("recPause")}>${e(w.recPause)}</span></span><span class="rec-play">${icon(ICON.play, 18)}<span${t("recPlay")}>${e(w.recPlay)}</span></span></button>`;
 
   const tiles = TILES.map((tile, i) => {
     const p = TILE_PLACES[i];
@@ -203,7 +205,7 @@ export function renderHome({ gallery, words, lucide, code, logos, v, sizes, lega
       (s, i) => `
 <div class="block-row" id="${s.id}"><div class="wrap">
   <section class="block reveal ${i % 2 ? "flip" : ""}" data-traco="${s.hour}" aria-labelledby="${s.id}-h">
-    <div class="block-words"><h2 id="${s.id}-h"${t(s.id)}>${e(w[s.id])}</h2><p class="say"${t(`${s.id}Text`)}>${e(w[`${s.id}Text`])}</p>${s.extra ?? ""}<p class="learn"><a href="/how/${s.id}/"><span${t("learnMore")}>${e(w.learnMore)}</span><span class="visually-hidden">: <span${t(s.id)}>${e(w[s.id])}</span></span></a></p></div>
+    <div class="block-words"><h2 id="${s.id}-h"${t(s.id)}>${e(w[s.id])}</h2><p class="say"${t(`${s.id}Text`)}>${e(w[`${s.id}Text`])}</p>${s.extra ?? ""}<p class="learn"><a href="/how/${s.id}/"><span${t("learnMore")}>${e(w.learnMore)}</span><span class="visually-hidden">: <span${t(s.id)}>${e(w[s.id])}</span></span></a>${s.pic.includes("<video") ? stop : ""}</p></div>
     <div class="block-pic">${s.pic}</div>
   </section>
 </div></div>`,

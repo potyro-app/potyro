@@ -132,15 +132,19 @@ describe("the home", () => {
 });
 
 describe("a recording can be stopped", () => {
-  it("each one has a button a keyboard reaches, saying Pause and Play in every language, shown by the script", () => {
-    const phones = home.match(/<div class="phone rec-phone[^"]*">.*?<\/div>/gs) ?? [];
-    expect(phones.length).toBe((home.match(/<video\b/g) ?? []).length);
-    for (const phone of phones) {
-      // A real button, in the page's order right after its recording, with no tabindex taking it out.
-      expect(phone).toMatch(/<\/video><button type="button" class="rec-toggle" hidden>/);
-      expect(phone).not.toContain("tabindex");
-      expect(phone).toMatch(/<span class="visually-hidden" data-t="recPause">Pause<\/span>/);
-      expect(phone).toMatch(/<span class="visually-hidden" data-t="recPlay">Play<\/span>/);
+  it("each block with a recording has one button a keyboard reaches, off the phone, saying Pause and Play in every language", () => {
+    const blocks = home.match(/<section class="block reveal.*?<\/section>/gs) ?? [];
+    const moving = blocks.filter((b) => b.includes("<video"));
+    expect(moving.length).toBeGreaterThanOrEqual(4);
+    for (const block of blocks) expect(block.match(/class="rec-toggle"/g)?.length ?? 0, block.slice(0, 80)).toBe(block.includes("<video") ? 1 : 0);
+    for (const block of moving) {
+      // A real button beside "Learn more", in the words, never inside a phone where it would cover the app shown.
+      const words = block.slice(0, block.indexOf('<div class="block-pic">'));
+      expect(words).toMatch(/<\/a><button type="button" class="rec-toggle" hidden>/);
+      expect(words).not.toContain("tabindex");
+      expect(words).toMatch(/<span data-t="recPause">Pause<\/span>/);
+      expect(words).toMatch(/<span data-t="recPlay">Play<\/span>/);
+      for (const phone of block.match(/<div class="phone rec-phone[^"]*">.*?<\/div>/gs) ?? []) expect(phone).not.toContain("<button");
     }
     const words = JSON.parse(readFileSync(join(here, "words.json"), "utf8"));
     for (const lang of Object.keys(words)) expect(words[lang].recPause, lang).not.toBe(words[lang].recPlay);
@@ -153,7 +157,7 @@ describe("a recording can be stopped", () => {
     expect(js).toContain("button.hidden = false");
     expect(js).toMatch(/else if \(!v\.hasAttribute\("data-held"\)\) start\(v\)/);
     const css = readFileSync(join(out, "site.css"), "utf8");
-    expect(css).toMatch(/\.rec-toggle \{[^}]*width: 44px; height: 44px;/);
+    expect(css).toMatch(/\.rec-toggle \{[^}]*min-height: 44px; min-width: 44px;/);
     expect(css).toMatch(/\.rec-toggle:focus-visible \{[^}]*outline:/);
   });
 });

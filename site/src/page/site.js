@@ -31,31 +31,44 @@
   }
 
   // A recording plays only while it is on screen, never under reduced motion (its poster stays), and
-  // never again by itself once a person has stopped it: a press on the recording or on its button
-  // stops it and starts it (WCAG 2.2.2), and what they chose holds while they scroll.
+  // never again by itself once a person has stopped it: a press on a recording, or on its block's
+  // button, stops it and starts it (WCAG 2.2.2), and what they chose holds while they scroll. The
+  // two phones of a pair stop and start together.
   var clips = document.querySelectorAll("video.rec");
   var start = function (v) {
     var p = v.play();
     if (p && p.catch) p.catch(function () {});
   };
-  clips.forEach(function (v) {
-    var button = v.parentNode.querySelector(".rec-toggle");
+  document.querySelectorAll(".block").forEach(function (block) {
+    var group = Array.prototype.slice.call(block.querySelectorAll("video.rec"));
+    if (!group.length) return;
+    var button = block.querySelector(".rec-toggle");
+    var playing = function () {
+      return group.some(function (v) {
+        return !v.paused;
+      });
+    };
     var toggle = function () {
-      if (v.paused) {
-        v.removeAttribute("data-held");
-        start(v);
-      } else {
-        v.setAttribute("data-held", "");
-        v.pause();
-      }
+      var stop = playing();
+      group.forEach(function (v) {
+        if (stop) {
+          v.setAttribute("data-held", "");
+          v.pause();
+        } else {
+          v.removeAttribute("data-held");
+          start(v);
+        }
+      });
     };
-    v.addEventListener("click", toggle);
-    if (!button) return;
     var show = function () {
-      button.classList.toggle("playing", !v.paused);
+      if (button) button.classList.toggle("playing", playing());
     };
-    v.addEventListener("play", show);
-    v.addEventListener("pause", show);
+    group.forEach(function (v) {
+      v.addEventListener("click", toggle);
+      v.addEventListener("play", show);
+      v.addEventListener("pause", show);
+    });
+    if (!button) return;
     button.addEventListener("click", toggle);
     button.hidden = false;
     show();

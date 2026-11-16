@@ -1041,8 +1041,12 @@ are filmed through the browser's screencast, so they share one clock) and copy t
 
 ```bash
 pnpm site:build                       # → dist/site/ (refuses gallery data with a problem, or a missing picture)
-rsync -av --delete dist/site/ <admin>@<server>:/srv/potyro.com/
+rsync -av --delete --delay-updates dist/site/ <admin>@<server>:/srv/potyro.com/
 ```
+
+`--delay-updates` puts every file in place together at the end. Without it a page can arrive
+before a picture it names with a new `?v=`, and a visitor in that moment would keep the old picture
+under the new address for a year.
 
 By hand, with an account that can write `/srv/potyro.com`: the deploy key cannot, since `rrsync`
 holds it to the app's web root. Nothing deploys the site automatically. The Caddy block is
