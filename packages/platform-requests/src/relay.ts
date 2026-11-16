@@ -19,6 +19,7 @@
 // Pure apart from `IssueTracker`: the HTTP server (server.ts) and the GitHub client (github.ts) are
 // thin, and everything here is tested with a fake tracker.
 
+import { addressKey } from "./address.ts";
 import { LIMITS, issueBody, normalizeTitle, readPayload, type RequestKind } from "./request.ts";
 
 export interface Issue {
@@ -128,7 +129,8 @@ export function createRelay(deps: RelayDeps): { handle: (req: RelayRequest) => P
     const before = answered.get(p.id);
     if (before) return before;
     const device = `device:${p.device}`;
-    const address = `address:${ip}`;
+    // An IPv6 address counts as its /64: one home or phone is usually given a whole /64.
+    const address = `address:${addressKey(ip)}`;
     if (!rate.allows(device, limits.perDevice) || !rate.allows(address, limits.perAddress)) {
       return { status: 429, body: { ok: false, error: "too many requests — try again tomorrow" } };
     }

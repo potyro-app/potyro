@@ -9,6 +9,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { Duplex } from "node:stream";
 import { randomBytes } from "node:crypto";
 import { WebSocketServer, WebSocket, type RawData } from "ws";
+import { addressKey, clientAddress, type TrustProxy } from "./address.ts";
 import { Bucket } from "./bucket.ts";
 import {
   CLOSE,
@@ -36,11 +37,11 @@ export interface RelayOptions {
    */
   origins: readonly string[] | "*";
   /**
-   * Take the client's address from the LAST `X-Forwarded-For` entry — the one the proxy in front
-   * appended — rather than the socket. Default true: the relay is meant to sit behind the site's proxy
-   * (Caddy) on loopback. The first entry is whatever the client sent, so it is never used.
+   * Whose `X-Forwarded-For` is believed (address.ts): `caddy`, the default, takes the LAST entry — the
+   * one the proxy in front wrote; the relay is meant to sit behind the site's proxy on loopback. The
+   * first entry is whatever the client sent, so it is never used. `none` takes the socket's own peer.
    */
-  trustProxy?: boolean;
+  trustProxy?: TrustProxy;
   /** Lifecycle lines only (start, stop, errors). Never a payload, a room id or an address. */
   log?: (line: string) => void;
   now?: () => number;
@@ -83,7 +84,7 @@ export function startRoomsRelay(opts: RelayOptions): Promise<RoomsRelay> {
   const limits: RoomLimits = { ...ROOM_LIMITS, ...opts.limits };
   const now = opts.now ?? Date.now;
   const log = opts.log ?? (() => {});
-  const trustProxy = opts.trustProxy ?? true;
+  const trust = opts.trustProxy ?? "caddy";
   const rooms = new Map<string, Room>();
   const addresses = new Map<string, AddressUse>();
   const conns = new Set<Conn>();
@@ -120,9 +121,9 @@ export function startRoomsRelay(opts: RelayOptions): Promise<RoomsRelay> {
     return opts.origins.includes(origin);
   }
 
+  /** What the per-address limits count under: the address the proxy reports, an IPv6 one as its /64. */
   function addressOf(req: IncomingMessage): string {
-    const forwarded = trustProxy ? String(req.headers["x-forwarded-for"] ?? "").split(",").pop()!.trim() : "";
-    return forwarded || req.socket.remoteAddress || "unknown";
+    return addressKey(clientAddress(req.headers["x-forwarded-for"], req.socket.remoteAddress, trust));
   }
 
   function shut(ws: WebSocket, code: number): void {

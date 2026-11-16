@@ -5,7 +5,8 @@
 //   HOST                          default 127.0.0.1 — reachable only through the proxy in front of it
 //   ROOMS_ORIGINS                 comma-separated browser origins allowed to connect, or "*";
 //                                 default https://potyro.app,https://localhost,capacitor://localhost
-//   ROOMS_TRUST_PROXY             default 1 — the address is the LAST X-Forwarded-For entry (the proxy's)
+//   TRUST_PROXY                   default caddy — whose X-Forwarded-For to believe (address.ts): the LAST entry,
+//                                 the proxy's; `none` for none. (ROOMS_TRUST_PROXY=0, the old name, still means none.)
 //   ROOMS_MAX_MESSAGE_BYTES       default 65536
 //   ROOMS_MAX_MEMBERS             default 16 a room
 //   ROOMS_PER_ADDRESS             default 8 rooms at once per address
@@ -22,6 +23,7 @@
 // relay. It logs its start and stop, never a payload, a room id or an address.
 import { pathToFileURL } from "node:url";
 import type { AddressInfo } from "node:net";
+import { readTrustProxy, type TrustProxy } from "./address.ts";
 import { startRoomsRelay } from "./relay.ts";
 import type { RoomLimits } from "./protocol.ts";
 
@@ -65,6 +67,12 @@ export function originsFromEnv(raw: string | undefined): readonly string[] | "*"
     .filter(Boolean);
 }
 
+/** `TRUST_PROXY`, as in every relay; the rooms relay's older `ROOMS_TRUST_PROXY=0` still turns it off. */
+export function trustFromEnv(env: Record<string, string | undefined>): TrustProxy {
+  if ((env.TRUST_PROXY === undefined || env.TRUST_PROXY === "") && env.ROOMS_TRUST_PROXY === "0") return "none";
+  return readTrustProxy(env.TRUST_PROXY);
+}
+
 async function main(): Promise<void> {
   const limits = limitsFromEnv(process.env);
   const origins = originsFromEnv(process.env.ROOMS_ORIGINS);
@@ -75,7 +83,7 @@ async function main(): Promise<void> {
     host,
     limits,
     origins,
-    trustProxy: process.env.ROOMS_TRUST_PROXY !== "0",
+    trustProxy: trustFromEnv(process.env),
     log: (line) => console.log(line),
   });
   const bound = relay.server.address() as AddressInfo;

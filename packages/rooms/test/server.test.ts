@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { spawn, type ChildProcess } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { DEFAULT_ORIGINS, limitsFromEnv, originsFromEnv } from "../src/server.ts";
+import { DEFAULT_ORIGINS, limitsFromEnv, originsFromEnv, trustFromEnv } from "../src/server.ts";
 import { CLOSE, newRoomId } from "../src/protocol.ts";
 import { connect, join } from "./helpers.ts";
 
@@ -14,6 +14,14 @@ describe("configuration from the environment", () => {
   it("refuses a limit that is not a positive number", () => {
     expect(() => limitsFromEnv({ ROOMS_MAX_MEMBERS: "lots" })).toThrow("ROOMS_MAX_MEMBERS must be a positive number");
     expect(() => limitsFromEnv({ ROOMS_PER_ADDRESS: "0" })).toThrow("ROOMS_PER_ADDRESS");
+  });
+
+  it("reads TRUST_PROXY as every relay does, and still takes the old ROOMS_TRUST_PROXY=0 for none", () => {
+    expect(trustFromEnv({})).toBe("caddy");
+    expect(trustFromEnv({ TRUST_PROXY: "none" })).toBe("none");
+    expect(trustFromEnv({ ROOMS_TRUST_PROXY: "0" })).toBe("none");
+    expect(trustFromEnv({ ROOMS_TRUST_PROXY: "0", TRUST_PROXY: "caddy" })).toBe("caddy");
+    expect(() => trustFromEnv({ TRUST_PROXY: "apache" })).toThrow("TRUST_PROXY must be one of caddy, none");
   });
 
   it("allows the site and the Android app by default, a list, or any origin", () => {
