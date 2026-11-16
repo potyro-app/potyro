@@ -71,12 +71,13 @@ potyro.app {
 	# no other .html file but index.html, so nothing else changes.
 	handle {
 		root * /srv/potyro/site
-		@assets path /assets/*
+		# /assets/* and the legal pages' own files (/legal/*) carry a hash of their bytes in their names.
+		@assets path /assets/* /legal/*
 		header @assets Cache-Control "public, max-age=31536000, immutable"
 		@fresh path / /index.html /sw.js /privacy* /terms*
 		header @fresh Cache-Control "no-cache"
-		# The icons, the manifest and robots.txt: unversioned names, so a day and no longer.
-		@icons path /favicon.svg /apple-touch-icon.png /icon-*.png /manifest.webmanifest /robots.txt
+		# The icons, the manifest, robots.txt and the sitemap: unversioned names, so a day and no longer.
+		@icons path /favicon.svg /favicon.ico /apple-touch-icon.png /icon-*.png /manifest.webmanifest /robots.txt /sitemap.xml
 		header @icons Cache-Control "public, max-age=86400"
 		try_files {path} {path}.html {path}index.html /index.html
 		# The deploy's build leaves a brotli and a gzip copy beside each text file (#48,
@@ -137,11 +138,26 @@ potyro.com {
 			file_server
 		}
 	}
-	@page path / /index.html /apps /apps/ /apps/index.html
+	# Every page (the home, /apps/, the docs, the Learn-more pages, the privacy page and the terms):
+	# kept, and asked about each time, so an upload shows at once and an unchanged page costs a 304.
+	@page path / */ *.html
 	header @page Cache-Control "no-cache"
 	# Stylesheets and scripts carry ?v=<hash> in the pages, so a day's cache never serves a stale one.
-	@assets path /gallery.css /gallery.js /site.css /site.js /text.css /tokens.css /hours.css /fonts/* /logo/* /shots/* /screens/* /media/* /favicon.svg /docs/*/diagrams.css /how/*/diagrams.css /developers/diagrams.css
+	@assets path /gallery.css /gallery.js /site.css /site.js /text.css /text.js /tokens.css /hours.css /fonts/* /logo/* /shots/* /screens/* /media/* /favicon.svg /docs/*/diagrams.css /how/*/diagrams.css /developers/diagrams.css
 	header @assets Cache-Control "public, max-age=86400"
+	# robots.txt and the sitemap: a day too.
+	@crawl path /robots.txt /sitemap.xml
+	header @crawl Cache-Control "public, max-age=86400"
+	# A file that cannot change under its address: a picture, a recording, a font or a logo a page
+	# names with ?v=<a hash of its bytes> (site/build.mjs), and the legal pages' files, which carry
+	# the hash in their names. A year. These two come after @assets: the last one that matches wins.
+	@stamped {
+		path /fonts/* /logo/* /shots/* /screens/* /media/*
+		query v=*
+	}
+	header @stamped Cache-Control "public, max-age=31536000, immutable"
+	@named path /legal/*
+	header @named Cache-Control "public, max-age=31536000, immutable"
 
 	# No access log: a gallery that keeps no record of you, on the server too.
 	log {

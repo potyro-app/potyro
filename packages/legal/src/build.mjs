@@ -36,6 +36,22 @@ export const PAGES = /** @type {const} */ (["privacy", "terms"]);
 /** Where the texts' other links go: the repository, for the notes the drafts point at (README.md, facts.md). */
 export const REPOSITORY = "https://github.com/potyro-app/potyro/blob/main/docs/legal/";
 
+/**
+ * The one address each page is read at, for a search engine and for a pasted link: the site's. The
+ * app serves the same two pages (potyro.app/privacy), and names this address as the original, so
+ * the two copies count as one.
+ */
+export const LEGAL_HOME = "https://potyro.com";
+
+/** What a search result and a pasted link say under the title, by page. */
+export const DESCRIPTIONS = /** @type {const} */ ({
+  privacy: "What stays on your device, what leaves it and when, and for how long. No accounts, no ads, no cookies.",
+  terms: "The terms for using Potyro: what it is, what you can count on, and what is asked of you.",
+});
+
+/** The picture a pasted link shows: the site's own card (site/media/og.png), 1200×630. */
+const SHARE_IMAGE = `${LEGAL_HOME}/media/og.png`;
+
 /** The logo files a page shows, light and dark grounds (packages/design/logo). */
 const LOGOS = /** @type {const} */ (["wordmark-rosa.svg", "wordmark-rosa-on-dark.svg"]);
 /** The tab's icon: the symbol on its dark circle, the shell's and the gallery's favicon too. */
@@ -141,6 +157,8 @@ export function renderLegalPage(page, md, opts) {
   const app = e(opts.appHref ?? "../");
   const at = (/** @type {string} */ path) => `../${e(path)}`;
   const { assets } = opts;
+  const address = `${LEGAL_HOME}/${page}/`;
+  const description = e(DESCRIPTIONS[page]);
   const nav = (/** @type {"privacy" | "terms"} */ p, /** @type {string} */ label) => `<a href="../${p}"${p === page ? ' aria-current="page"' : ""}>${label}</a>`;
   return `<!doctype html>
 <html lang="en">
@@ -148,6 +166,17 @@ export function renderLegalPage(page, md, opts) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>${e(title)} · Potyro</title>
+  <meta name="description" content="${description}" />
+  <link rel="canonical" href="${address}" />
+  <meta property="og:site_name" content="Potyro" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="${address}" />
+  <meta property="og:title" content="${e(title)} · Potyro" />
+  <meta property="og:description" content="${description}" />
+  <meta property="og:image" content="${SHARE_IMAGE}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#1c1b1c" media="(prefers-color-scheme: dark)" />

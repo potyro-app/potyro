@@ -33,4 +33,16 @@ describe("the app's own page, before any script runs", () => {
   it("has a robots.txt of its own", () => {
     expect(readFileSync(`${here}public/robots.txt`, "utf8")).toMatch(/^User-agent: \*$/m);
   });
+
+  it("has a sitemap and a favicon.ico that are what they say, so neither address answers with the app's page", () => {
+    const sitemap = readFileSync(`${here}public/sitemap.xml`, "utf8");
+    expect(sitemap.startsWith("<?xml")).toBe(true);
+    expect([...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1])).toEqual(["https://potyro.app/"]);
+    expect(readFileSync(`${here}public/robots.txt`, "utf8")).toContain("Sitemap: https://potyro.app/sitemap.xml");
+
+    // An .ico file: reserved 0, type 1 (icon), then how many pictures it holds.
+    const ico = readFileSync(`${here}public/favicon.ico`);
+    expect([ico.readUInt16LE(0), ico.readUInt16LE(2)]).toEqual([0, 1]);
+    expect(ico.readUInt16LE(4)).toBeGreaterThanOrEqual(1);
+  });
 });

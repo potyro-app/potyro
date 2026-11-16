@@ -78,7 +78,9 @@
     "copied": "Copied",
     "language": "Language",
     "toDark": "Switch to dark",
-    "toLight": "Switch to light"
+    "toLight": "Switch to light",
+    "recPause": "Pause",
+    "recPlay": "Play"
   },
   "pt-BR": {
     "title": "Potyro — o app de que você precisa, feito por você",
@@ -138,7 +140,9 @@
     "copied": "Copiado",
     "language": "Idioma",
     "toDark": "Mudar para o escuro",
-    "toLight": "Mudar para o claro"
+    "toLight": "Mudar para o claro",
+    "recPause": "Pausar",
+    "recPlay": "Reproduzir"
   },
   "de": {
     "title": "Potyro — die App, die du brauchst, von dir gemacht",
@@ -198,7 +202,9 @@
     "copied": "Kopiert",
     "language": "Sprache",
     "toDark": "Dunkel anzeigen",
-    "toLight": "Hell anzeigen"
+    "toLight": "Hell anzeigen",
+    "recPause": "Anhalten",
+    "recPlay": "Abspielen"
   },
   "es": {
     "title": "Potyro — la app que necesitas, hecha por ti",
@@ -258,7 +264,9 @@
     "copied": "Copiado",
     "language": "Idioma",
     "toDark": "Cambiar a oscuro",
-    "toLight": "Cambiar a claro"
+    "toLight": "Cambiar a claro",
+    "recPause": "Pausar",
+    "recPlay": "Reproducir"
   },
   "pl": {
     "title": "Potyro — aplikacja, której potrzebujesz, zrobiona przez ciebie",
@@ -318,7 +326,9 @@
     "copied": "Skopiowano",
     "language": "Język",
     "toDark": "Przełącz na ciemny",
-    "toLight": "Przełącz na jasny"
+    "toLight": "Przełącz na jasny",
+    "recPause": "Wstrzymaj",
+    "recPlay": "Odtwórz"
   },
   "it": {
     "title": "Potyro — l'app che ti serve, fatta da te",
@@ -378,6 +388,8 @@
     "copied": "Copiato",
     "language": "Lingua",
     "toDark": "Passa allo scuro",
-    "toLight": "Passa al chiaro"
+    "toLight": "Passa al chiaro",
+    "recPause": "Metti in pausa",
+    "recPlay": "Riproduci"
   }
 }
