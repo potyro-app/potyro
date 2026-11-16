@@ -251,14 +251,17 @@ Design: docs/00 §The Studio and the generator; docs/23 (AI in apps).
   `agent/system-prompt.ts`, `agent/create-system-prompt.ts`, `agent/modify-system-prompt.ts`.
 - Loops: `agent/loop.ts` `runAgentLoop`; `agent/create-loop.ts` `runCreateLoop`; `agent/modify-loop.ts`
   `runModifyLoop`; `agent/tools.ts`, `agent/discovery-tools.ts` (`lookupReference`), `agent/ask.ts`,
-  `agent/conversation.ts`, `agent/loop-recovery.ts`, `agent/verify-claims.ts`, `agent/translate-tool.ts`.
+  `agent/conversation.ts`, `agent/loop-recovery.ts`, `agent/verify-claims.ts`, `agent/translate-tool.ts`;
+  `src/request-parts.ts` (which parts of a request a change left unanswered, and the fields left with a
+  rule it lifted elsewhere).
 - The corpus: `src/corpus.ts` `buildCorpus`, `src/corpus-files.ts`, `packages/generator/scripts/build-corpus.ts` →
   `src/corpus.generated.ts` (`pnpm --filter @potyro/generator gen:corpus`; `test/corpus.test.ts`).
 - Backends: `openrouter-backend.ts` (`OPENROUTER_MODELS`), `claude-backend.ts`, `cli-backend.ts`,
   `webllm-backend.ts`, `gemini-nano-backend.ts`, `hybrid-backend.ts`, `backend.ts` (`FixtureBackend`).
 - Evals: `packages/generator/src/*-eval.ts` run by `packages/generator/scripts/run-*-eval.ts`
-  (the `eval:*` scripts; paid — never without being asked). `packages/generator/scripts/i18n-app.ts` is `pnpm i18n:app`.
-- The Studio in the shell: `studio.tsx` `Studio`; `studio-engine.ts`; `studio-summary.ts` (what a version's card says changed); `studio-preview.tsx`
+  (the `eval:*` scripts; paid — never without being asked); `src/main-path.ts` (where the feature a
+  request names sits in the app: `eval:cli -- --corpus main-path`). `packages/generator/scripts/i18n-app.ts` is `pnpm i18n:app`.
+- The Studio in the shell: `studio.tsx` `Studio`; `studio-engine.ts`; `studio-summary.ts` (what a version's card says changed; what it did not do is listed by `studio-thread-view.tsx`); `studio-preview.tsx`
   `buildPreview`; `studio-tools.tsx`; `studio-thread-view.tsx`, `studio-thread.ts`, `studio-chat.ts`;
   `studio-paused.ts` (a run that stopped to ask), `studio-plan.ts` `planFor` (a change shown before it is saved);
   `start-create.ts`, `start-modify.ts`, `start-ask.ts`, `start-fix.ts`; `generate-client.ts`.
