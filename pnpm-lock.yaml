@@ -791,6 +791,24 @@ importers:
         specifier: workspace:*
         version: link:../schema
 
+  packages/sync-gate:
+    devDependencies:
+      '@types/ws':
+        specifier: 8.18.1
+        version: 8.18.1
+      cojson:
+        specifier: 0.20.19
+        version: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+      cojson-transport-ws:
+        specifier: 0.20.19
+        version: 0.20.19(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+      jazz-run:
+        specifier: 0.20.19
+        version: 0.20.19(@effect/platform@0.62.5(@effect/schema@0.71.4(effect@3.22.1))(effect@3.22.1))(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react-native@0.86.2(@babel/core@7.29.7)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+      ws:
+        specifier: 8.21.1
+        version: 8.21.1
+
   packages/views:
     dependencies:
       '@lingui/core':

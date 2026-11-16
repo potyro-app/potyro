@@ -67,6 +67,12 @@ const rules = [
     note: "rooms depends on no Potyro package",
   },
   {
+    // The gate in front of the sync relay (docs/16) runs on the server, alone: the same rule.
+    pkg: "packages/sync-gate/src",
+    forbidden: [/^(?:import|export)\b[^\n]*["']@potyro\//m, /import\(\s*["']@potyro\//],
+    note: "sync-gate depends on no Potyro package",
+  },
+  {
     // The legal pages (#117) are built by the shell's Vite config and the gallery's script, both
     // plain Node: the builder reads docs/legal and packages/design's files, never another package.
     pkg: "packages/legal/src",
