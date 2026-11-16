@@ -1012,8 +1012,22 @@ potyro.com is one static folder, built by `pnpm site:build` into `dist/site/`: t
 `gallery/src/build.mjs` page, its files at the root), the privacy page and the terms when their
 texts are ready, and beside them the design system's tokens and fonts, the colour clock, the logo,
 the apps' screenshots (`gallery/shots`, `site/shots`) and the recordings (`site/media`). Nothing runs
-on the server for it, it keeps no logs, and it loads nothing from anyone else, so it is served
-with a strict policy: no inline style, no inline script, and `media-src 'self'` for the clips.
+on the server for it but its visit count (below), it keeps no logs, and it loads nothing from anyone
+else, so it is served with a strict policy: no inline style, no inline script, `media-src 'self'`
+for the clips, and `connect-src 'self'` for the count.
+
+**The visit count (#10).** Every page's one script carries `site/src/page/count.js`: a page view
+posts `{"event":"visit"}` to `/count` on potyro.com itself, which Caddy passes to the AI relay's
+`/count` (the `@count` block: the POST only). The relay keeps one number a month and takes one
+visit a day from an address, as for every count ("AI for apps" above, Counts); read them at
+`https://potyro.app/ai/count`. The post carries the event and a content type: no id, no cookie, no
+referrer, not which page; the script reads nothing from the browser and writes nothing to it. Not
+counted: a browser that sends Global Privacy Control or Do Not Track, one driven by a program, a
+page not on https, and the privacy page and the terms (they load no script). An address's posts
+count towards the relay's 20 a day (`AI_COUNT_PER_ADDRESS_DAY`) whatever the event, so a person who
+opens more than 20 pages in a day is answered 429 after that, uncounted. The gallery built alone
+(`pnpm gallery:build`) has no count. Apply the Caddy block before a build with the script goes up:
+without `connect-src 'self'` the browser blocks the post and says so in the console.
 
 The recordings are made by `e2e/site-recordings-trusted.spec.ts`, which runs only when asked
 (`POTYRO_SITE_RECORD=1 POTYRO_E2E_PORT_BASE=5100 pnpm exec playwright test
@@ -1032,7 +1046,8 @@ By hand, with an account that can write `/srv/potyro.com`: the deploy key cannot
 holds it to the app's web root. Nothing deploys the site automatically. The Caddy block is
 `potyro.com, www.potyro.com` in [`deploy/potyro.app.Caddyfile`](../deploy/potyro.app.Caddyfile):
 `file_server`, `no-cache` on the pages, a day's cache on the files (the pages name their
-stylesheets and scripts with `?v=<hash>`), `/gallery/*` → `/apps/`, and `log { output discard }`.
+stylesheets and scripts with `?v=<hash>`), `/gallery/*` → `/apps/`, `POST /count` → the AI relay,
+and `log { output discard }`.
 
 ## The gallery's links (docs/24 §10)
 

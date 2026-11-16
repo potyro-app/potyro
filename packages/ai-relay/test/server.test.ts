@@ -6,6 +6,7 @@ import { clientAddress, readTrustProxy } from "../src/address.ts";
 import { createAiRelay, type RelayRequest } from "../src/relay.ts";
 import { createBudget } from "../src/budget.ts";
 import { createChatProxy } from "../src/chat.ts";
+import { createCounts } from "../src/counts.ts";
 import { memoryLedger } from "../src/ledger.ts";
 import { AI_FORMAT, OPENROUTER_URL } from "../src/request.ts";
 
@@ -212,5 +213,29 @@ describe("the chat route's OpenRouter client", () => {
     expect(calls[0]!.url).toBe(OPENROUTER_URL);
     expect((calls[0]!.init.headers as Record<string, string>).Authorization).toBe("Bearer sk-or-test");
     expect(calls[0]!.init.signal).toBeInstanceOf(AbortSignal);
+  });
+});
+
+// #10: potyro.com passes its pages' POST /count on as it is, with no /ai prefix.
+describe("the counts over HTTP", () => {
+  it("counts a visit the site's proxy passes on, once a day per address, and reads back numbers a month and nothing else", async () => {
+    const now = Date.UTC(2026, 10, 16, 12);
+    const ledger = memoryLedger();
+    const counts = createCounts({ now: () => now, ledger });
+    server = await startServer({ handle: async () => ({ status: 404, body: { ok: false } }), counts: counts.handle, port: 0, host: "127.0.0.1" });
+    const { port } = server.address() as AddressInfo;
+    const visit = (address: string): Promise<Response> =>
+      fetch(`http://127.0.0.1:${port}/count`, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": address }, body: '{"event":"visit"}' });
+    for (const address of ["203.0.113.7", "203.0.113.7", "198.51.100.9"]) {
+      const res = await visit(address);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ ok: true });
+      expect(res.headers.get("set-cookie")).toBeNull();
+    }
+    const read = await fetch(`http://127.0.0.1:${port}/ai/count`);
+    const text = await read.text();
+    expect(JSON.parse(text)).toEqual({ ok: true, months: { "2026-11": { visit: 2 } } });
+    // Neither the answer nor what would be written to the ledger file names an address.
+    for (const kept of [text, JSON.stringify(ledger.snapshot())]) expect(kept).not.toMatch(/203\.0\.113|198\.51\.100/);
   });
 });

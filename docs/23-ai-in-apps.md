@@ -122,8 +122,18 @@ Owner decision 2026-10-15: **both**, free first.
 3. **Neither:** the call throws, in words the shell shows as the action's failure:
    - relay not deployed or not reachable: *"Free AI isn't available yet — add your own key in Model
      settings."*
-   - allowance used up: *"This month's free AI is used up — add your own OpenRouter key in Model
-     settings."*
+   - allowance used up: the words follow the relay's `reason` (`usedUpText` in `app-ai.ts`), and
+     always end with "…or add your own OpenRouter key in Model settings." A day's limit is back
+     tomorrow, a month's next month, and a limit of the whole service is said as nobody's own doing:
+
+     | `reason` | What the person reads |
+     |---|---|
+     | `device-day` | "Today's free AI is used up on this device. It's back tomorrow, or…" |
+     | `address-day` | "Today's free AI is used up on this network. It's back tomorrow, or…" |
+     | `device-month` | "This month's free AI is used up on this device. It's back next month, or…" |
+     | `service-day` | "Potyro's free AI is used up for everyone for now. It's back tomorrow, or…" |
+     | `service-month` | "Potyro's free AI is used up for everyone for now. It's back next month, or…" |
+     | any other, or none | "Free AI is used up for now. Try again later, or…" |
 
 ### The chat route's refusals
 
@@ -224,11 +234,22 @@ The shell posts `{"event": "own-key"}` the first time a key is typed into Model 
 and `{"event": "want-plan"}` when "I'd pay for a plan" is pressed — each at most once a
 calendar month per device (`potyro:counted:<event>:<month>`), only to a relay whose `/health`
 answered, with no device id, no cookies (`credentials: "omit"`), no referrer and no header but the
-content type (`demand-counts.ts`, tested). **You → Counts → Count me anonymously** (on by default;
-its help: "That I used my own key, or that I'd pay for a plan") turns those two off, and only those.
-`exhausted`, "used up", is counted by the relay itself as part of keeping the allowance (it already
-holds each device's month to meter it), so the switch does not reach it. Pressing "I'd pay for a
-plan" promises nothing back: no notice when a plan exists is built (#118 item 3).
+content type (`demand-counts.ts`, tested). An answer of 429 (the address posted too often that day)
+was not counted, so no flag is set and it goes the next time. **You → Counts → Count me
+anonymously** (on by default; its help: "That I used my own key, or that I'd pay for a plan") turns
+those two off, and only those. `exhausted`, "used up", is counted by the relay itself as part of
+keeping the allowance (it already holds each device's month to meter it), so the switch does not
+reach it.
+
+"Tell me when the plan exists" happens in the app, and no address is taken: a device that pressed
+"I'd pay for a plan" keeps a flag (`potyro:wanted-plan`), and once the relay's `/health` carries
+`plan` (an https address, `AI_PLAN_URL`, docs/16), the key panel shows "The plan you asked for
+exists now." as a link to it, where the button was (`free-panel.tsx`).
+
+The fourth count, `visit`, is potyro.com's (docs/16 "The site on potyro.com"): each page view posts
+`{"event": "visit"}` to the site's own `/count`. It is not the shell's, and the switch in You, which
+belongs to a device's Potyro, does not reach it; a browser that sends Global Privacy Control or Do
+Not Track is not counted.
 
 **On the person's key** two guards run on the device before dispatch: 20 calls a minute per app (a
 loop in an app's code must not empty a wallet) and $1 a month per app. Past either, the call

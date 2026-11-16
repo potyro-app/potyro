@@ -93,7 +93,7 @@ potyro.app {
 # folder with nothing from anyone else: its own fonts, pictures and recordings (media-src).
 (site_headers) {
 	header {
-		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; media-src 'self'; base-uri 'none'; form-action https://potyro.app; frame-ancestors 'none'"
+		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; media-src 'self'; connect-src 'self'; base-uri 'none'; form-action https://potyro.app; frame-ancestors 'none'"
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "no-referrer"
@@ -116,6 +116,15 @@ potyro.com {
 	redir /gallery /apps/ 301
 	redir /gallery/* /apps/ 301
 	redir /index.html / 301
+
+	# The site's own visit count (#10): its pages post {"event":"visit"} to /count on this same name,
+	# so the policy above stays `connect-src 'self'`, and the AI relay counts it as one number a month
+	# (docs/16 "AI for apps", Counts). Only the POST: the numbers are read at potyro.app/ai/count.
+	@count {
+		method POST
+		path /count
+	}
+	reverse_proxy @count 127.0.0.1:4204
 
 	import site_headers
 	# An address that is not a page: the site's own "this page does not exist", with the 404 status

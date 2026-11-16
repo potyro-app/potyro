@@ -88,20 +88,24 @@ export async function countOnce(event: ShellCount, deps: CountDeps = {}): Promis
     // Read again: the switch may have been turned off while the relay was looked at.
     if (!countsOn()) return "off";
     const doFetch = deps.fetch ?? ((input: RequestInfo | URL, init?: RequestInit) => globalThis.fetch(input, init));
+    let status: number;
     try {
-      await doFetch(countUrl(), {
+      ({ status } = await doFetch(countUrl(), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ event }),
         credentials: "omit",
         referrerPolicy: "no-referrer",
         cache: "no-store",
-      });
+      }));
     } catch {
       // Not reached: tried again the next time it happens.
       return "failed";
     }
-    // Any answer is the relay's: a repeat or a busy address is not worth sending again this month.
+    // Too many posts from this address today (others share it, and the site's page views count
+    // towards the same limit, #10): it was not counted, so it is tried again the next time.
+    if (status === 429) return "failed";
+    // Any other answer is the relay's: a repeat is not worth sending again this month.
     try {
       globalThis.localStorage?.setItem(flag, "1");
       if (event === "want-plan") globalThis.localStorage?.setItem(WANTED_PLAN, "1");

@@ -3575,6 +3575,10 @@ msgid "Fr"
 msgstr "Ve"
 
 #: ../shell/src/app-ai.ts
+msgid "Free AI is used up for now. Try again later, or add your own OpenRouter key in Model settings."
+msgstr "L'IA gratuita è esaurita per ora. Riprova più tardi, oppure aggiungi la tua chiave OpenRouter nelle impostazioni del modello."
+
+#: ../shell/src/app-ai.ts
 msgid "Free AI isn't available yet — add your own key in Model settings."
 msgstr "L'IA gratuita non è ancora disponibile: aggiungi la tua chiave nelle impostazioni del modello."
 
@@ -5888,6 +5892,14 @@ msgstr "Potyro passa tutto questo a OpenRouter e al modello che sceglie."
 msgid "Potyro pink"
 msgstr "Rosa Potyro"
 
+#: ../shell/src/app-ai.ts
+msgid "Potyro's free AI is used up for everyone for now. It's back next month, or add your own OpenRouter key in Model settings."
+msgstr "L'IA gratuita di Potyro è esaurita per tutti, per ora. Torna il mese prossimo, oppure aggiungi la tua chiave OpenRouter nelle impostazioni del modello."
+
+#: ../shell/src/app-ai.ts
+msgid "Potyro's free AI is used up for everyone for now. It's back tomorrow, or add your own OpenRouter key in Model settings."
+msgstr "L'IA gratuita di Potyro è esaurita per tutti, per ora. Torna domani, oppure aggiungi la tua chiave OpenRouter nelle impostazioni del modello."
+
 #. Edit tile, Live connections: Potyro's own relay where apps play together
 #: ../shell/src/live-connections-setting.tsx
 msgid "Potyro’s rooms"
@@ -7922,8 +7934,8 @@ msgid "This month"
 msgstr "Questo mese"
 
 #: ../shell/src/app-ai.ts
-msgid "This month's free AI is used up — add your own OpenRouter key in Model settings."
-msgstr "L'IA gratuita di questo mese è esaurita: aggiungi la tua chiave OpenRouter nelle impostazioni del modello."
+msgid "This month's free AI is used up on this device. It's back next month, or add your own OpenRouter key in Model settings."
+msgstr "L'IA gratuita di questo mese è esaurita su questo dispositivo. Torna il mese prossimo, oppure aggiungi la tua chiave OpenRouter nelle impostazioni del modello."
 
 #: ../shell/src/free-ai.ts
 msgid "This month's free app making is used up on this device. Add your own key to keep going, or start from an app in the gallery."
@@ -8075,6 +8087,14 @@ msgstr "Al codice sorgente dell’app o al suo pacchetto"
 #: ../views/src/date-input.tsx
 msgid "Today"
 msgstr "Oggi"
+
+#: ../shell/src/app-ai.ts
+msgid "Today's free AI is used up on this device. It's back tomorrow, or add your own OpenRouter key in Model settings."
+msgstr "L'IA gratuita di oggi è esaurita su questo dispositivo. Torna domani, oppure aggiungi la tua chiave OpenRouter nelle impostazioni del modello."
+
+#: ../shell/src/app-ai.ts
+msgid "Today's free AI is used up on this network. It's back tomorrow, or add your own OpenRouter key in Model settings."
+msgstr "L'IA gratuita di oggi è esaurita su questa rete. Torna domani, oppure aggiungi la tua chiave OpenRouter nelle impostazioni del modello."
 
 #: ../views/src/date-input.tsx
 #: ../views/src/date-input.tsx
