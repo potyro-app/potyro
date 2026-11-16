@@ -107,6 +107,37 @@
       el.setAttribute("href", el.getAttribute("data-new") + "?new=" + encodeURIComponent(el.textContent.trim()));
     });
     themeLabel();
+    pictures();
+  }
+
+  /**
+   * The apps' pictures (build.mjs `shotPicture`) follow what is chosen here. Without the script a
+   * picture is the device's theme, in English. A theme chosen on the page beats the device's: the
+   * dark files' `media` becomes "always" or "never". A language the picture was taken in replaces
+   * the folder in every address; any other language keeps the first.
+   */
+  function pictures() {
+    var chosen = root.getAttribute("data-theme");
+    document.querySelectorAll("picture[data-shot-locales]").forEach(function (picture) {
+      var taken = picture.getAttribute("data-shot-locales").split(" ");
+      var folder = "shots/" + (taken.indexOf(root.lang) >= 0 ? root.lang : taken[0]) + "/";
+      var move = function (el, attr) {
+        var now = el.getAttribute(attr);
+        var next = now && now.replace(/shots\/[^/]+\//g, folder);
+        if (next && next !== now) el.setAttribute(attr, next);
+      };
+      picture.querySelectorAll("source").forEach(function (source) {
+        var theme = source.getAttribute("data-theme-of");
+        var media = theme === "light" ? null : !chosen ? "(prefers-color-scheme: " + theme + ")" : chosen === theme ? "all" : "not all";
+        if (media && source.getAttribute("media") !== media) source.setAttribute("media", media);
+        move(source, "srcset");
+      });
+      var img = picture.querySelector("img");
+      if (img) {
+        move(img, "srcset");
+        move(img, "src");
+      }
+    });
   }
 
   // Language
@@ -143,6 +174,7 @@
       root.setAttribute("data-theme", next);
       save("potyro-gallery:theme", next);
       themeLabel();
+      pictures();
     });
   }
   if (dark && dark.addEventListener) dark.addEventListener("change", themeLabel);

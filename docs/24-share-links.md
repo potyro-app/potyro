@@ -286,15 +286,41 @@ each ready app's link the way a person does, in a new, empty browser: an example
 launcher; an app under `apps/` is packed (`scripts/pack-app.mjs`) and added through Add an app. The link
 is made from the tile's Share sheet. A second empty browser then opens it as a stranger — sealed, a
 heading, no console error — opens the remix link to see the Make it mine card, and takes the
-screenshot (412 px wide, demo bar hidden). Each link and screenshot is written as soon as it is made.
+pictures (412 px wide, demo bar hidden). Each link and its pictures are written as soon as they are made.
 Running it again keeps every link already on that site (`--refresh` makes new ones); coming-soon apps
-are skipped and listed. Nothing personal goes out: the browser is empty, and no name is on the links
+are skipped and listed.
+
+**The pictures** (#33) are a set per app: the stranger's screen once per language and theme — the
+lists `SHOT_LOCALES` (`en`, `pt-BR`) and `SHOT_THEMES` (light, dark) in `gallery/src/data.mjs`; another
+language is one more entry — each written as AVIF and WebP at 412 and 824 px (1x and 2x) under
+`gallery/shots/<language>/<id>-<theme>-<width>.<format>` (encoded with `sharp`, a dev dependency of
+the workspace). `screenshot` in gallery.json names the set's fallback, `shots/en/<id>-light-412.webp`.
+The page shows a set as a `<picture>` with `srcset`, `sizes`, and its width and height, so nothing
+moves as pictures arrive: the dark files for a device in dark, AVIF before WebP. The page's script
+moves it to the theme and the language chosen on the page; a language the app was not shot in keeps
+English. The build refuses a set with a file missing in English and copies only whole languages.
+
+**`pnpm gallery:shoot`** (`gallery/src/shoot.mjs`) takes every app's pictures again, in one command,
+and changes no link: it builds the shell from this checkout, serves the build on a port the system
+hands out (and checks that what answers there is that build), and runs the publisher with
+`--shots-only` against it — each app's demo link is made there for the occasion and thrown away.
+`--only a,b` for some apps, `--no-build` to shoot the build already in `packages/shell/dist`. Run it
+after a change to how apps look, look at every picture in both themes, and commit `gallery/shots`
+and gallery.json. An app that needs arranging before its picture says so in gallery.json, in `shot`:
+`press` is a list of CSS selectors pressed in order once the app is open (a first-visit sheet to close;
+selectors, never words, since the screen is shot in every language) and `settle` the milliseconds to
+wait before the picture when the default 2.5 s is too short (a demo still replaying, a map still
+drawing). With `POTYRO_GALLERY_DEBUG=<folder>` set, the screen at the moment a step failed is kept there
+as a PNG. A picture shows the app as this checkout draws it, from the app's package as it is
+here; the link a card opens carries the package as it was when the link was made (`--refresh`
+against the real site makes new ones). Nothing personal goes out: the browser is empty, and no name is on the links
 unless `--by` says one.
 
 **`pnpm gallery:build`** (`gallery/src/build.mjs`) writes `dist/gallery/`: one HTML page that is whole
 without JavaScript (English), its stylesheet and a small script on the same origin, system fonts, the
-screenshots it shows and nothing else. The script picks the language — `?lang=`, the one chosen on the
-page, then the browser's — and handles the light/dark switch and the category filter; what it remembers
+pictures it shows and nothing else. The script picks the language — `?lang=`, the one chosen on the
+page, then the browser's — and handles the light/dark switch (the apps' pictures follow both) and the
+category filter; what it remembers
 stays in that browser. Every card has **Try it** (the demo link) and **Make it mine** (the same link
 with `&remix=1`). The footer has "Report a link", a mailto to the report address (`packages/shell/src/contacts.json`,
 the same one the demo bar's Report uses; `contact@potyro.com` while the abuse address is a

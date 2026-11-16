@@ -22,6 +22,11 @@ export const MAX_LINE = 110;
 
 /**
  * @typedef {typeof LANGUAGES[number]} Language
+ * @typedef {{ press?: string[]; settle?: number }} Staging  how the app's picture is staged (publish.mjs):
+ *   `press` — things to press first, in order, each a CSS selector (never words: the screen is shot in
+ *   several languages), found in the page or in the app's own sealed frames — a first-run sheet's
+ *   button, say; `settle` — how long the app is left to itself before the picture, in ms, for one
+ *   whose demo plays or whose map draws (2500 when left out).
  * @typedef {Record<Language, string>} Words
  * @typedef {{ example: string } | { package: string[]; files?: string; seed?: string }} From
  * @typedef {{
@@ -33,6 +38,7 @@ export const MAX_LINE = 110;
  *   line: Words;
  *   from?: From;
  *   waitsFor?: string;
+ *   shot?: Staging;
  *   link?: string;
  *   screenshot?: string;
  *   publishedAt?: string;
@@ -43,7 +49,45 @@ export const MAX_LINE = 110;
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,47}$/;
 /** A hosted demo link (docs/24 §2): `<site>/s/<id>#k=<key>`, and nothing else in its fragment. */
 const HOSTED_RE = /^https?:\/\/[^/\s#?]+(?:\/[^\s#?]*)?\/s\/[A-Za-z0-9_-]{16,64}#k=[A-Za-z0-9_-]+$/;
-const SHOT_RE = /^shots\/[a-z0-9][a-z0-9-]*\.(?:jpg|png|webp)$/;
+const SHOT_RE = /^shots\/(?:[A-Za-z]{2}(?:-[A-Za-z]{2})?\/)?[a-z0-9][a-z0-9-]*\.(?:jpg|png|webp)$/;
+
+/**
+ * The pictures of one app (#33): `gallery:publish` shoots it once per language and theme below, and
+ * writes each shot in every format at every width. Another language is one more entry in
+ * `SHOT_LOCALES`; the first is the one every app must have, and what a card falls back to.
+ */
+export const SHOT_LOCALES = /** @type {const} */ (["en", "pt-BR"]);
+export const SHOT_THEMES = /** @type {const} */ (["light", "dark"]);
+/** CSS pixels across, 1x and 2x of the stranger's 412 px screen. */
+export const SHOT_WIDTHS = /** @type {const} */ ([412, 824]);
+/** Best first: a browser takes the first it can read. The last is also the `<img>`'s own file. */
+export const SHOT_FORMATS = /** @type {const} */ (["avif", "webp"]);
+
+/**
+ * Where one file of an app's pictures is, under the gallery's folder.
+ * @param {string} id
+ * @param {{ locale?: string; theme?: string; width?: number; format?: string }} [of] the fallback's when left out
+ */
+export function shotPath(id, of = {}) {
+  const { locale = SHOT_LOCALES[0], theme = SHOT_THEMES[0], width = SHOT_WIDTHS[0], format = SHOT_FORMATS[SHOT_FORMATS.length - 1] } = of;
+  return `shots/${locale}/${id}-${theme}-${width}.${format}`;
+}
+
+/** How long an app is left to itself before its picture when its `shot` does not say, and the most it may ask. */
+export const SETTLE = 2_500;
+export const MAX_SETTLE = 30_000;
+
+/** Every file of an app's pictures in one language. @param {string} id @param {string} locale */
+export function shotFiles(id, locale) {
+  return SHOT_THEMES.flatMap((theme) => SHOT_WIDTHS.flatMap((width) => SHOT_FORMATS.map((format) => shotPath(id, { locale, theme, width, format }))));
+}
+
+/**
+ * Whether an app's `screenshot` is the fallback of a full set of pictures (what `gallery:publish`
+ * writes) rather than one file someone put there.
+ * @param {{ id: string; screenshot?: string }} app
+ */
+export const hasShotSet = (app) => app.screenshot === shotPath(app.id);
 
 /** @param {unknown} v @returns {v is Record<string, unknown>} */
 const isObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -113,12 +157,20 @@ export function galleryProblems(data, opts = {}) {
       // The files it ships with (docs/24 §2), a folder packed whole: `apps/markdown-notes/files`.
       const files = isObject(from) ? from.files : undefined;
       if (files !== undefined && !(typeof files === "string" && /^apps\/[^\s]+[^/\s]$/.test(files) && !files.includes(".."))) out.push(`${where}: files is a folder under apps/`);
+      const shot = app.shot;
+      if (shot !== undefined) {
+        const press = isObject(shot) ? shot.press : undefined;
+        const settle = isObject(shot) ? shot.settle : undefined;
+        if (!isObject(shot) || Object.keys(shot).some((k) => k !== "press" && k !== "settle")) out.push(`${where}: shot is { "press": ["<selector>"], "settle": <ms> }`);
+        if (press !== undefined && !(Array.isArray(press) && press.every((p) => typeof p === "string" && p.trim() && p.length <= 200))) out.push(`${where}: shot.press is a list of CSS selectors`);
+        if (settle !== undefined && !(typeof settle === "number" && Number.isInteger(settle) && settle >= 0 && settle <= MAX_SETTLE)) out.push(`${where}: shot.settle is a number of milliseconds, at most ${MAX_SETTLE}`);
+      }
     } else {
       if (typeof app.waitsFor !== "string" || !app.waitsFor.trim()) out.push(`${where}: a coming-soon app says what it waits for`);
       if (app.link !== undefined) out.push(`${where}: a coming-soon app has no link yet`);
     }
     if (app.link !== undefined && (typeof app.link !== "string" || !isDemoLink(app.link, opts))) out.push(`${where}: link is not a demo link (https://<site>/s/<id>#k=<key>)`);
-    if (app.screenshot !== undefined && (typeof app.screenshot !== "string" || !SHOT_RE.test(app.screenshot))) out.push(`${where}: screenshot must be shots/<name>.jpg, .png or .webp`);
+    if (app.screenshot !== undefined && (typeof app.screenshot !== "string" || !SHOT_RE.test(app.screenshot))) out.push(`${where}: screenshot must be shots/<name>.jpg, .png or .webp, or the publish script's shots/<language>/<name>.webp`);
     if (app.link !== undefined && app.screenshot === undefined) out.push(`${where}: a published app has a screenshot`);
   });
   return out;

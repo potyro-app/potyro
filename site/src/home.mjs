@@ -7,7 +7,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createCssVariablesTheme, createHighlighter } from "shiki";
-import { escapeHtml as e, inlineLogo, topTools, APP_SITE, CONTACT } from "../../gallery/src/build.mjs";
+import { escapeHtml as e, inlineLogo, shotPicture, topTools, APP_SITE, CONTACT } from "../../gallery/src/build.mjs";
 import { hourOf, LANGUAGES, remixLink, shownApps } from "../../gallery/src/data.mjs";
 
 export const REPO_URL = "https://github.com/potyro-app/potyro";
@@ -220,7 +220,7 @@ export function renderHome({ gallery, words, lucide, code, logos, v, sizes, lega
     const s = size(shot, { width: 824, height: 1720 });
     return `
     <li class="card reveal" data-traco="${e(hourOf(app.category, gallery.categories))}">
-      <a class="card-shot" href="${e(app.link ?? "")}" tabindex="-1" aria-hidden="true"><img src="${e(shot)}" width="${s.width}" height="${s.height}" alt="" loading="lazy" decoding="async"></a>
+      <a class="card-shot" href="${e(app.link ?? "")}" tabindex="-1" aria-hidden="true">${shotPicture(app, s, { base: "/", sizes: "(min-width: 40rem) 20rem, calc(100vw - 4rem)" })}</a>
       <h3 data-app-name="${e(app.id)}">${e(name)}</h3>
       <p data-app-line="${e(app.id)}">${e(app.line.en)}</p>
       <div class="card-actions">
