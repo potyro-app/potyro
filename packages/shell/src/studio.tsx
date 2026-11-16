@@ -608,7 +608,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       }
     }
     if (issues.length || lost) {
-      setHeld({ source: src, summary: said, note, issues, loss: lost, libraries, ...(own ? { own } : {}), ...(made ? { made } : {}) });
+      setHeld({ source: src, summary: said, note, issues, loss: lost, libraries, ...(own ? { own } : {}), ...(made ? { made } : {}), ...(extra.notDone?.length ? { notDone: extra.notDone } : {}) });
       setPreview(built ?? preview);
       const problems = issues.join("\n- ");
       await say({
@@ -697,7 +697,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     if (outcome.kind === "failed") return say({ kind: "failure", text: outcome.text, ...(outcome.detail ? { detail: outcome.detail } : {}), ...platformAsk(outcome.platformRequest) });
     // The ladder's third rung (#132): what could not be done is a host gap, filed with the app's
     // diagnoses so Edit mode reads it back as already reported.
-    if (outcome.kind === "source" && outcome.notDone?.length && appRef.current) {
+    if (outcome.notDone?.length && appRef.current) {
       const now = new Date().toISOString();
       for (const part of outcome.notDone) void recordDiagnosis(appRef.current, { complaint: note, text: part }, now);
     }
@@ -708,7 +708,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       outcome.kind === "loss" ? outcome.loss : null,
       outcome.kind === "source"
         ? { ...platformAsk(outcome.platformRequest), ...(outcome.assumed?.length ? { assumed: outcome.assumed } : {}), ...(outcome.notDone?.length ? { notDone: outcome.notDone } : {}) }
-        : {},
+        : outcome.notDone?.length
+          ? { notDone: outcome.notDone }
+          : {},
       // A plan refined without touching its modules still carries the edits it had made to them.
       outcome.modules ?? refined?.own?.texts,
       outcome.kind === "source" ? outcome.seed : undefined,
@@ -778,7 +780,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     try {
       const fixed = await (await engine()).repair(held.source, held.issues, held.own?.texts);
       const l = fixedLanding(held, fixed);
-      await land(l.source, l.summary, l.note, l.loss, {}, l.modules, l.made);
+      await land(l.source, l.summary, l.note, l.loss, l.notDone ? { notDone: l.notDone } : {}, l.modules, l.made);
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
       await say({ kind: "failure", text: t`Could not fix it: ${reason}` });
@@ -815,7 +817,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     if (!go) return;
     const kept = t`Kept with problems.`;
     const k = keptAnyway(h, kept);
-    await keep(k.source, preview, k.summary, k.note, undefined, k.libraries, {}, k.own, k.made);
+    await keep(k.source, preview, k.summary, k.note, undefined, k.libraries, k.notDone ? { notDone: k.notDone } : {}, k.own, k.made);
   };
 
   /** An older card: put that version back, as a new version — nothing after it is lost. */

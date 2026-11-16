@@ -234,6 +234,8 @@ export const REVIEW_WAYS = [
   `- If the request asked for it and it cannot be done: reply with prose only, in the person's language, one bullet for each under "${NOT_DONE}" saying what it would need.`,
   "- If the request did not ask for it: reply with one short sentence saying so. Nothing else is needed, and the person is shown nothing more.",
 ].join("\n");
+/** `ask_person` in answer to the review or explain note: the run cannot pause there without losing the change that passed. */
+export const KEPT_NO_QUESTION_NOTE = "The change that passed is already kept, so the person cannot be asked now. Decide, and answer the note above: a fuller change, or prose.";
 /** Added when the change also came without a word: the explanation is asked for in the same note. */
 export const REVIEW_EXPLAIN =
   "Whichever it is: you sent the change without a word of explanation, and the person who asked does not read code. Say, in their language, what is new or different in the app and where to find it (which page, which button).";
@@ -476,7 +478,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     if (calls.length) {
       // A question that will be put to the person (#75) is not the model going round: the turn pauses
       // the run, and counts as the one step it took. Past the limit it is a tool turn like any other.
-      const asks = asked < MAX_QUESTIONS && calls.some((c) => c.function.name === ASK_PERSON && readAsk(argsOf(c.function.arguments)) !== null);
+      const asks = !unexplained && asked < MAX_QUESTIONS && calls.some((c) => c.function.name === ASK_PERSON && readAsk(argsOf(c.function.arguments)) !== null);
       const sig = toolTurnSignature(calls);
       if (asks) toolStreak = null;
       else if (toolStreak?.sig === sig) toolStreak.count += 1;
@@ -499,7 +501,8 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
         if (c.function.name === ASK_PERSON) {
           const question = readAsk(args);
           // Its result is the person's answer, which only they can give: every other answer is said now.
-          const refusal = !question ? "ask_person needs a `question`: one sentence, in plain words." : asked >= MAX_QUESTIONS ? ASK_LIMIT_NOTE : waiting ? ONE_QUESTION_NOTE : null;
+          // A change that passed is waiting on this reply (#73): a pause would drop it, so nothing is asked now.
+          const refusal = !question ? "ask_person needs a `question`: one sentence, in plain words." : unexplained ? KEPT_NO_QUESTION_NOTE : asked >= MAX_QUESTIONS ? ASK_LIMIT_NOTE : waiting ? ONE_QUESTION_NOTE : null;
           if (question && refusal === null) {
             waiting = { id: c.id, question };
             deps.onStep?.({ kind: "tool", name: ASK_PERSON, ok: true, detail: question.question });

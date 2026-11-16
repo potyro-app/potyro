@@ -20,6 +20,7 @@ vi.mock("../src/open-store.js", () => ({
 const chat = await import("../src/studio-chat.js");
 const { ThreadView } = await import("../src/studio-thread-view.js");
 const { withNotDoneLine } = await import("../src/studio-summary.js");
+const { fixedLanding, keptAnyway } = await import("../src/studio-held.js");
 import type { ChatItem } from "../src/studio-chat.js";
 import type { ThreadViewProps } from "../src/studio-thread-view.js";
 import type { AppVersion } from "../src/app-history.js";
@@ -74,6 +75,21 @@ describe("a version keeps what it did not do", () => {
     expect(withNotDoneLine(DID, [COUNTRY, ADD])).toBe(`${DID} Not done yet: ${COUNTRY}; ${ADD}`);
     expect(withNotDoneLine(DID, [])).toBe(DID);
     expect(withNotDoneLine(DID, undefined)).toBe(DID);
+  });
+});
+
+describe("a change held back keeps what it did not do (#73)", () => {
+  const held = { source: "app", summary: DID, note: "do not fail", issues: ["a problem"], loss: null, libraries: null, notDone: [COUNTRY] };
+
+  it("through Fix it and through Keep it anyway", () => {
+    expect(fixedLanding(held, { source: "fixed", summary: "Fixed it.", loss: null })).toMatchObject({ source: "fixed", notDone: [COUNTRY] });
+    expect(keptAnyway(held, "Kept with problems.")).toMatchObject({ summary: `${DID} Kept with problems.`, notDone: [COUNTRY] });
+  });
+
+  it("and a held change with everything done carries no list", () => {
+    const whole = { ...held, notDone: undefined };
+    expect("notDone" in fixedLanding(whole, { source: "fixed", summary: "", loss: null })).toBe(false);
+    expect("notDone" in keptAnyway(whole, "Kept.")).toBe(false);
   });
 });
 

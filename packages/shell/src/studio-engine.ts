@@ -45,7 +45,7 @@ export type Outcome =
   /** `assumed`: what the model said it guessed (#75), each a short sentence the card offers to change. */
   | { kind: "source"; source: string; summary: string; notDone?: string[]; assumed?: string[]; platformRequest?: PlatformRequest; modules?: Record<string, string>; seed?: AppSeed }
   /** It was rewritten rather than edited, and lost what `loss` names. Never saved without asking. */
-  | { kind: "loss"; source: string; summary: string; loss: string; modules?: Record<string, string> }
+  | { kind: "loss"; source: string; summary: string; loss: string; notDone?: string[]; modules?: Record<string, string> }
   /**
    * It asked, and waits (#75). `options`: the answers to tap. `paused`: the run itself, when a loop
    * asked — handed back with the answer (`TurnRun.resume`), the same run goes on instead of a new one.
@@ -432,7 +432,7 @@ export function studioEngine(
         if ("kind" in unpacked) return unpacked;
         const { got, have } = unpacked;
         const summary = await explain({ source: got.source, have }, result, t`The model sent the whole file back instead of edits. Check that nothing else changed.`);
-        if (result.loss !== null) return { kind: "loss", ...got, summary, loss: result.loss };
+        if (result.loss !== null) return { kind: "loss", ...got, summary, loss: result.loss, ...(result.notDone?.length ? { notDone: result.notDone } : {}) };
         return { kind: "source", ...got, summary, notDone: result.notDone, ...(result.assumed?.length ? { assumed: result.assumed } : {}) };
       };
       // A chat engine drives the modify LOOP (#131): the model looks declarations up and checks a

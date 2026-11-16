@@ -88,6 +88,13 @@ describe("where the feature a request names sits (#78)", () => {
     expect(await featurePlacement(source, USES)).toMatchObject({ where: "first-page-view", onMainPath: true, found: ["pages[0].view"] });
   });
 
+  it("the first page is several views, and one of them takes the picture: on the main path", async () => {
+    const top = `function Scanner({ ctx }: { ctx: Ctx }) { return <button onClick={() => void readLabel(ctx)}>Scan</button>; }\n`;
+    const stack = `layout: { type: "stack", items: [{ view: { type: "custom", entity: "bottle", render: (props) => <Scanner ctx={props.ctx} /> } }, { view: { type: "list", entity: "bottle" } }] }`;
+    expect(await featurePlacement(app({ top, pages: `{ id: "home", title: "Cellar", ${stack} }` }), USES)).toMatchObject({ where: "first-page-view", onMainPath: true, mainEntity: "bottle", found: ["pages[0].layout.items[0]"] });
+    expect(await featurePlacement(app({ top, pages: `${LIST}, { id: "scan", title: "Scan", ${stack} }` }), USES)).toMatchObject({ where: "elsewhere", onMainPath: false, found: ["pages[1].layout.items[0]"] });
+  });
+
   // The app #78 was opened on: a plain form, and the scan on the saved record.
   it("only on a saved record's action: NOT on the main path", async () => {
     const source = app({ actions: `\n      actions: { scan: { label: "Scan label", run: async (r, ctx) => { const read = await readLabel(ctx); if (read) await ctx.data.update("bottle", r.id, read); } } },`, pages: LIST });

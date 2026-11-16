@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EXPLAIN_NOTE, REVIEW_EXPLAIN, REVIEW_HEAD, REVIEW_WAYS, runModifyLoop, type ModifyLoopDeps } from "../src/agent/modify-loop.js";
+import { EXPLAIN_NOTE, KEPT_NO_QUESTION_NOTE, REVIEW_EXPLAIN, REVIEW_HEAD, REVIEW_WAYS, runModifyLoop, type ModifyLoopDeps } from "../src/agent/modify-loop.js";
 import type { ChatEngine, ChatRequest, ChatResponse } from "../src/chat-backend.js";
 
 // #73: an accepted change is held against the request's own parts, and the model is asked ONCE about
@@ -124,6 +124,21 @@ describe("the modify loop asks once about what a change left unanswered (#73)", 
     const { engine } = scripted([freeText("Grape now takes any text.", "grape"), freeText("All of them.", "grape", "country", "region"), "", ""]);
     const out = await runModifyLoop(base({ engine, instruction: GENERIC, maxSteps: 4, check: async (src) => (src.includes('region: { type: "text"') ? ["region is used as a list elsewhere"] : []) }));
     expect(out).toMatchObject({ kind: "source", applied: 1, rationale: "Grape now takes any text." });
+  });
+
+  it("a question in answer to the note is not put to the person: the run does not pause on a change that passed", async () => {
+    const seen: ChatRequest[] = [];
+    const turns: ChatResponse["choices"][number]["message"][] = [
+      { content: freeText("Grape now takes any text.", "grape") },
+      { content: "", tool_calls: [{ id: "q1", type: "function", function: { name: "ask_person", arguments: JSON.stringify({ question: "Country too?", options: ["Yes", "No"] }) } }] },
+      { content: "Not done:\n- Country stays a list" },
+    ];
+    let i = 0;
+    const engine: ChatEngine = { chat: { completions: { create: async (req) => (seen.push({ ...req, messages: [...req.messages] }), { choices: [{ message: turns[i++] ?? { content: "" } }] }) } } };
+    const out = await runModifyLoop(base({ engine, askPerson: true }));
+    expect(seen).toHaveLength(3);
+    expect(seen[2]!.messages.at(-1)).toMatchObject({ role: "tool", tool_call_id: "q1", content: KEPT_NO_QUESTION_NOTE });
+    expect(out).toMatchObject({ kind: "source", applied: 1, rationale: "Grape now takes any text.", notDone: ["Country stays a list"] });
   });
 
   it("nothing left unanswered: accepted at once", async () => {

@@ -199,6 +199,14 @@ export async function featurePlacement(source: string, uses: string | RegExp): P
     if (view?.type === "custom" && (does(`pages.${p}.view.render`) || does(`pages.${p}.view.mount`))) {
       places.push({ where: p === 0 ? "first-page-view" : "elsewhere", at: `pages[${p}].view` });
     }
+    // A page of several views (`layout`) declares no `view` of its own: each item's view is looked at.
+    const items = isData(page.layout) && Array.isArray(page.layout.items) ? page.layout.items : [];
+    items.forEach((item, i) => {
+      const at = `pages.${p}.layout.items.${i}.view`;
+      if (isData(item) && isData(item.view) && item.view.type === "custom" && (does(`${at}.render`) || does(`${at}.mount`))) {
+        places.push({ where: p === 0 ? "first-page-view" : "elsewhere", at: `pages[${p}].layout.items[${i}]` });
+      }
+    });
   });
 
   const where = ORDER.find((w) => places.some((pl) => pl.where === w)) ?? "absent";
