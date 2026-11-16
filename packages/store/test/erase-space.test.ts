@@ -210,6 +210,49 @@ function ownedIds(file: string, group: string): string[] {
   return out;
 }
 
+describe.skipIf(!hasNodeSqlite)("what each space holds on the relay (--sizes)", () => {
+  it("lists the spaces by the bytes of their edits, biggest first, and changes nothing", async () => {
+    const file = copyOfDb();
+    const before = counts(file);
+    const r = await run(["--db", file, "--sizes", "--json"]);
+    expect(r.err).toBe("");
+    const report = JSON.parse(r.out) as { total: { bytes: number; coValues: number }; spaces: Array<{ id: string; kind: string; bytes: number; coValues: number; edits: number }> };
+    // Ana's space holds a 150 kB file: it is first, and what it holds is at least that file.
+    expect(report.spaces[0]!.id).toBe(world.a.group);
+    expect(report.spaces[0]!.bytes).toBeGreaterThan(150_000);
+    expect(report.spaces[0]!.coValues).toBe(ownedIds(file, world.a.group).length + 1);
+    const listed = report.spaces.map((s) => s.id);
+    expect(listed).toContain(world.b.group);
+    expect(listed).toContain(world.c.group);
+    for (let i = 1; i < report.spaces.length; i++) expect(report.spaces[i - 1]!.bytes).toBeGreaterThanOrEqual(report.spaces[i]!.bytes);
+    expect(report.total.coValues).toBe(before.coValues);
+    expect(report.total.bytes).toBeGreaterThanOrEqual(report.spaces.reduce((n, s) => n + s.bytes, 0));
+    expect(counts(file)).toEqual(before);
+
+    const top = await run(["--db", file, "--sizes", "--top", "1"]);
+    expect(top.out).toContain(world.a.group);
+    expect(top.out).not.toContain(world.b.group);
+    expect(top.out).toContain("Nothing was changed");
+  });
+
+  it("is what --space then erases: the biggest space's bytes leave the count", async () => {
+    const file = copyOfDb();
+    const size = async () => (JSON.parse((await run(["--db", file, "--sizes", "--json"])).out) as { total: { bytes: number }; spaces: Array<{ id: string; bytes: number }> });
+    const before = await size();
+    expect((await run(["--db", file, "--space", world.a.group])).code).toBe(0);
+    const after = await size();
+    expect(after.spaces.map((s) => s.id)).not.toContain(world.a.group);
+    expect(before.total.bytes - after.total.bytes).toBe(before.spaces[0]!.bytes);
+  });
+
+  it("refuses to be combined with an erase, or a --top that is not a number", async () => {
+    const file = copyOfDb();
+    expect((await run(["--db", file, "--sizes", "--space", world.a.group])).code).toBe(2);
+    expect((await run(["--db", file, "--sizes", "--top", "many"])).code).toBe(2);
+    expect(ids(file).has(world.a.group)).toBe(true);
+  });
+});
+
 describe.skipIf(!hasNodeSqlite)("erasing a space from the relay's database", () => {
   it("a dry run lists the space and everything it owns, and changes nothing", async () => {
     const file = copyOfDb();
