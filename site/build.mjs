@@ -10,7 +10,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { APP_SITE, GALLERY_DIR, hoursCss, imageSize, LOGO_FILES, pageScript, readStrings, renderPage } from "../gallery/src/build.mjs";
+import { APP_SITE, GALLERY_DIR, hoursCss, imageSize, LOGO_FILES, pageScript, readShot, readStrings, renderPage } from "../gallery/src/build.mjs";
 import { readGallery, shownApps } from "../gallery/src/data.mjs";
 import { legalSite } from "../packages/legal/src/build.mjs";
 import { CODE, highlightCode, lucidePaths, renderHome, tilesCss } from "./src/home.mjs";
@@ -76,7 +76,12 @@ export async function buildSite(opts = {}) {
    * @type {Map<string, string>}
    */
   const stamps = new Map();
-  const stamped = (/** @type {string} */ html) => html.replace(STAMPED_ATTR, (whole, attr, path) => (stamps.has(path) ? `${attr}="${path}?v=${stamps.get(path)}"` : whole));
+  const stampOne = (/** @type {string} */ path) => (stamps.has(path) ? `${path}?v=${stamps.get(path)}` : path);
+  const stamped = (/** @type {string} */ html) =>
+    html
+      .replace(STAMPED_ATTR, (whole, attr, path) => (stamps.has(path) ? `${attr}="${stampOne(path)}"` : whole))
+      // A `srcset` names several files, each followed by its width or density.
+      .replace(/\bsrcset="([^"]+)"/g, (_whole, list) => `srcset="${String(list).replace(/(^|,\s*)(\/[^\s,?#]+)/g, (_m, lead, path) => `${lead}${stampOne(path)}`)}"`);
   const put = (/** @type {string} */ path, /** @type {Buffer | string} */ bytes) => {
     if (path === "index.html" || path.endsWith("/index.html")) written.push(`/${path.slice(0, -"index.html".length)}`);
     if (STAMPED_FILE.test(`/${path}`)) stamps.set(`/${path}`, shortHash(bytes));
@@ -133,7 +138,12 @@ export async function buildSite(opts = {}) {
     put(served.replace(/^\//, ""), bytes);
   };
   const { published } = shownApps(gallery);
-  for (const app of published) picture(join(GALLERY_DIR, app.screenshot ?? ""), `/${app.screenshot}`);
+  // An app's picture is a set of files (#33): each language and theme, AVIF and WebP, 1x and 2x.
+  for (const app of published) {
+    const { shot, files } = readShot(GALLERY_DIR, app);
+    sizes[`/${app.screenshot}`] = shot;
+    for (const f of files) put(f, readFileSync(join(GALLERY_DIR, f)));
+  }
   for (const f of readdirSync(join(here, "shots"))) if (f.endsWith(".jpg")) picture(join(here, "shots", f), `/screens/${f}`);
   for (const f of readdirSync(join(here, "media"))) {
     if (/\.(jpg|png)$/.test(f)) picture(join(here, "media", f), `/media/${f}`);

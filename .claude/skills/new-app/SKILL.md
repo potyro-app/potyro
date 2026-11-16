@@ -60,7 +60,9 @@ and `react` (`pnpm lint:boundaries` refuses anything else).
 
 ## The gallery (when asked)
 
-`gallery/gallery.json` is the page's order; add the entry where its complexity puts it, with a
-412 px screenshot in `gallery/shots/`. `pnpm gallery:publish --site https://potyro.app --only <id>
---by Potyro` makes the demo link through the real share flow; `pnpm gallery:build` renders the site.
+`gallery/gallery.json` is the page's order; add the entry where its complexity puts it.
+`pnpm gallery:publish --site https://potyro.app --only <id> --by Potyro` makes the demo link through
+the real share flow and takes its pictures (light and dark, each language, into `gallery/shots/`);
+`pnpm gallery:shoot --only <id>` takes the pictures again from this checkout without touching the
+link — look at each one before committing it; `pnpm gallery:build` renders the site.
 `gallery/test/gallery.test.ts` pins the order.

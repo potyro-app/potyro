@@ -135,7 +135,7 @@
         "it": "Un documento in cui tutti scrivono insieme, ognuno con il suo colore, con commenti sulle parole."
       },
       "link": "https://potyro.app/s/1-XwqbVXRSs5C-pF-Y0jYQ#k=m0053WTRzAM_9Q_qPnvTDQ",
-      "screenshot": "shots/write-together.jpg",
+      "screenshot": "shots/en/write-together-light-412.webp",
       "publishedAt": "2026-11-06T21:21:06.442Z"
     },
     {
@@ -165,7 +165,7 @@
         "it": "Un gioco di gruppo: una persona disegna, tutti gli altri indovinano, in tempo reale."
       },
       "link": "https://potyro.app/s/LBb0fuk1xb4F0deVvva15Q#k=BUEh-fbx0eTzdyd3zGfqwA",
-      "screenshot": "shots/draw-guess.jpg",
+      "screenshot": "shots/en/draw-guess-light-412.webp",
       "publishedAt": "2026-10-17T21:45:11.184Z"
     },
     {
@@ -196,7 +196,7 @@
         "it": "Un piano di studio per il pianoforte, un po’ ogni giorno, settimana dopo settimana."
       },
       "link": "https://potyro.app/s/j6NC9OtGW_db-mVSHIn7yA#k=sjkf5csDOsiF18prwy5skA",
-      "screenshot": "shots/piano.jpg",
+      "screenshot": "shots/en/piano-light-412.webp",
       "publishedAt": "2026-10-17T21:53:37.760Z"
     },
     {
@@ -226,7 +226,7 @@
         "it": "Una foto diventa migliaia di granelli alla deriva che si disperdono al tocco."
       },
       "link": "https://potyro.app/s/-vAS-ODd5cNeUSm6jHSelg#k=xOVvUDvo9A_f-rWIcJxm2g",
-      "screenshot": "shots/photo-garden.jpg",
+      "screenshot": "shots/en/photo-garden-light-412.webp",
       "publishedAt": "2026-10-20T16:49:24.777Z"
     },
     {
@@ -256,7 +256,7 @@
         "it": "La fotocamera frontale con un mostro dentro: occhi strabuzzati e zanne che seguono il tuo viso."
       },
       "link": "https://potyro.app/s/qJ8U18gISNgWsTOb0ZQg6Q#k=SjznyZtrH9tCLA4UJgyGBQ",
-      "screenshot": "shots/mirror-monsters.jpg",
+      "screenshot": "shots/en/mirror-monsters-light-412.webp",
       "publishedAt": "2026-10-17T21:45:22.139Z"
     },
     {
@@ -265,6 +265,11 @@
       "from": {
         "package": [
           "apps/daily-puzzle/daily-puzzle.app.ts"
+        ]
+      },
+      "shot": {
+        "press": [
+          ".dp-dialog .dp-primary"
         ]
       },
       "category": "play",
@@ -286,7 +291,7 @@
         "it": "Un rompicapo di colori al giorno, lo stesso per tutti."
       },
       "link": "https://potyro.app/s/pxKdXy1uHCZBrx78MlRXQQ#k=YifV395CknNyVzXfrS3_3w",
-      "screenshot": "shots/daily-puzzle.jpg",
+      "screenshot": "shots/en/daily-puzzle-light-412.webp",
       "publishedAt": "2026-10-20T16:53:28.603Z"
     },
     {
@@ -316,7 +321,7 @@
         "it": "Qualsiasi foto diventa un puzzle da mandare a un amico."
       },
       "link": "https://potyro.app/s/KwPmZ28JC-Rb9wdhXySoog#k=_-ygIw1gsmIkEG7tgS9z7Q",
-      "screenshot": "shots/photo-puzzle.jpg",
+      "screenshot": "shots/en/photo-puzzle-light-412.webp",
       "publishedAt": "2026-10-20T16:50:24.269Z"
     },
     {
@@ -346,7 +351,7 @@
         "it": "Cattura i colori di una foto, poi tieni e condividi la palette."
       },
       "link": "https://potyro.app/s/23lqdpodbdIe1days6xt_A#k=OzvgPtfoJuWMkY5TT_l9qA",
-      "screenshot": "shots/palette-catcher.jpg",
+      "screenshot": "shots/en/palette-catcher-light-412.webp",
       "publishedAt": "2026-10-20T18:13:47.950Z"
     },
     {
@@ -377,7 +382,7 @@
         "it": "Come hai dormito e come ti sei sentito, e cosa dicono le mattine messe insieme."
       },
       "link": "https://potyro.app/s/5OUPR2Z0zj9wCPwmGaQMkw#k=JOY96iHbUY5Lv2LmZ7zWGg",
-      "screenshot": "shots/mood-sleep.jpg",
+      "screenshot": "shots/en/mood-sleep-light-412.webp",
       "publishedAt": "2026-10-17T22:00:08.519Z"
     },
     {
@@ -387,6 +392,9 @@
         "package": [
           "apps/earthquakes/earthquakes.app.ts"
         ]
+      },
+      "shot": {
+        "settle": 9000
       },
       "category": "world",
       "icon": "🌋",
@@ -407,7 +415,7 @@
         "it": "Terremoti in tutto il mondo, su una mappa, mentre accadono."
       },
       "link": "https://potyro.app/s/9Rek4XrHKksDhqwh05upog#k=fdks2UUbOE8n9c8CA1KFGg",
-      "screenshot": "shots/earthquakes.jpg",
+      "screenshot": "shots/en/earthquakes-light-412.webp",
       "publishedAt": "2026-10-20T16:51:30.747Z"
     },
     {
@@ -417,6 +425,9 @@
         "package": [
           "apps/word-watch/word-watch.app.ts"
         ]
+      },
+      "shot": {
+        "settle": 9000
       },
       "category": "world",
       "icon": "💬",
@@ -437,7 +448,7 @@
         "it": "Scegli una parola e guardala passare su Bluesky, in tempo reale."
       },
       "link": "https://potyro.app/s/-l7rsQ0GxMxdYNX-h3rOuw#k=hz15XGPJR4UVEtmIob_gvw",
-      "screenshot": "shots/word-watch.jpg",
+      "screenshot": "shots/en/word-watch-light-412.webp",
       "publishedAt": "2026-10-20T17:02:02.524Z"
     },
     {
@@ -467,7 +478,7 @@
         "it": "Prezzi in tempo reale di alcune criptovalute, accanto ai cambi dell’euro del giorno."
       },
       "link": "https://potyro.app/s/V_riOwnsoOLsxbcq7h2Cjg#k=D-TtPn2HTYPJ3Jyte__cGg",
-      "screenshot": "shots/ticker.jpg",
+      "screenshot": "shots/en/ticker-light-412.webp",
       "publishedAt": "2026-10-20T16:51:57.116Z"
     },
     {
@@ -497,7 +508,7 @@
         "it": "Fotografa una pianta e scopri cosa potrebbe avere, in parole semplici."
       },
       "link": "https://potyro.app/s/T01q4lxKVOfNIi_xW8B_7g#k=GZr6gfclFm4OSzYK48Ezyw",
-      "screenshot": "shots/plant-doctor.jpg",
+      "screenshot": "shots/en/plant-doctor-light-412.webp",
       "publishedAt": "2026-10-20T17:01:35.327Z"
     },
     {
@@ -527,7 +538,7 @@
         "it": "Fotografa un poster o un biglietto, e diventa un evento nel tuo calendario."
       },
       "link": "https://potyro.app/s/yqY8C15mYncj7J6r0EKZ7g#k=TEzV4_MvfaNZA2sCTLdHIw",
-      "screenshot": "shots/poster-event.jpg",
+      "screenshot": "shots/en/poster-event-light-412.webp",
       "publishedAt": "2026-10-20T17:01:48.981Z"
     },
     {
@@ -558,7 +569,7 @@
         "it": "Fotografa uno scontrino e le sue righe diventano voci da dividere."
       },
       "link": "https://potyro.app/s/4PkIRDNSF9bT3JsCDMoG9g#k=GSXgwj-QYx4WyryGx3wHfw",
-      "screenshot": "shots/receipt-split.jpg",
+      "screenshot": "shots/en/receipt-split-light-412.webp",
       "publishedAt": "2026-10-17T21:53:50.207Z"
     },
     {
@@ -590,7 +601,7 @@
         "it": "Note scritte in Markdown, salvate come file che puoi portare ovunque."
       },
       "link": "https://potyro.app/s/Tp2DCiaB0bW6c4l7rPOPYQ#k=ZNiX9SfBRRdkSY1tIH6BxA",
-      "screenshot": "shots/markdown-notes.jpg",
+      "screenshot": "shots/en/markdown-notes-light-412.webp",
       "publishedAt": "2026-10-21T07:56:40.558Z"
     },
     {
@@ -620,7 +631,7 @@
         "it": "Fotografa uno scaffale o uno scontrino: cosa c’è in cucina, da ciò che scade prima."
       },
       "link": "https://potyro.app/s/nW3GB1qdtmfJoRBuInZTRA#k=vOKNu6QusOGrVve3i0aA8Q",
-      "screenshot": "shots/pantry.jpg",
+      "screenshot": "shots/en/pantry-light-412.webp",
       "publishedAt": "2026-10-20T17:01:21.701Z"
     },
     {
@@ -648,7 +659,7 @@
         "it": "Ricette con le calorie già calcolate, e cosa puoi cucinare con quello che hai."
       },
       "link": "https://potyro.app/s/dT57Z4iPCZQ9WR-FYxEOgg#k=kOn_EfcgjKznfqnVqWd6vg",
-      "screenshot": "shots/recipes.jpg",
+      "screenshot": "shots/en/recipes-light-412.webp",
       "publishedAt": "2026-10-17T21:46:40.481Z"
     },
     {
@@ -676,7 +687,7 @@
         "it": "Una lista della spesa nell’ordine in cui giri il negozio. Spunta, trascina, fatto."
       },
       "link": "https://potyro.app/s/T4CpaC3esi2UUmA4xWLHdA#k=TAv1hQZD94NoBUcQu7M5iQ",
-      "screenshot": "shots/groceries.jpg",
+      "screenshot": "shots/en/groceries-light-412.webp",
       "publishedAt": "2026-10-17T21:46:48.729Z"
     },
     {
@@ -704,7 +715,7 @@
         "it": "Le tue piante, e quale ha bisogno d’acqua oggi, secondo la stagione."
       },
       "link": "https://potyro.app/s/UyDG_i4GJO04LQiWLZJBxg#k=k5ewhiBZuA3JEf2YRW5Giw",
-      "screenshot": "shots/plants.jpg",
+      "screenshot": "shots/en/plants-light-412.webp",
       "publishedAt": "2026-10-17T21:46:59.699Z"
     },
     {
@@ -732,7 +743,7 @@
         "it": "Luoghi che ami o vuoi vedere, su una mappa, e quali sono aperti adesso."
       },
       "link": "https://potyro.app/s/AcKOBEv1xsFRAYo4waxdDw#k=VT6Oy1D03JSWX-o1OAnA9Q",
-      "screenshot": "shots/places.jpg",
+      "screenshot": "shots/en/places-light-412.webp",
       "publishedAt": "2026-10-17T21:47:16.400Z"
     },
     {
@@ -760,7 +771,7 @@
         "it": "Spese condivise con coinquilini o amici, e chi deve quanto a chi, al centesimo."
       },
       "link": "https://potyro.app/s/c4hNipRgdU3X-CBX_Rtn6Q#k=2B1J0WGcs7Qa6a-cx8nMxg",
-      "screenshot": "shots/split.jpg",
+      "screenshot": "shots/en/split-light-412.webp",
       "publishedAt": "2026-10-17T21:47:25.731Z"
     },
     {
@@ -788,7 +799,7 @@
         "it": "Un diario di spinta, trazione e gambe: ogni serie che sollevi, e il tuo record finora."
       },
       "link": "https://potyro.app/s/znKbERdPxDkUhmMOFkc_7Q#k=q2Qt_WmmiyIyvKdB3EsvJw",
-      "screenshot": "shots/workout.jpg",
+      "screenshot": "shots/en/workout-light-412.webp",
       "publishedAt": "2026-10-17T21:47:35.425Z"
     },
     {
@@ -818,7 +829,7 @@
         "it": "I giorni che mancano a ciò che conta, il prossimo in grande."
       },
       "link": "https://potyro.app/s/mRuqU5eUuwVCzSb4PsDzyw#k=FBGUMbu6ssE3OO2w-VRO2g",
-      "screenshot": "shots/countdowns.jpg",
+      "screenshot": "shots/en/countdowns-light-412.webp",
       "publishedAt": "2026-10-21T13:30:24.408Z"
     },
     {
@@ -848,7 +859,7 @@
         "it": "Un tocco salva il posto; poi ti dice quanto manca e da che parte."
       },
       "link": "https://potyro.app/s/0xXH2Jw2BLzRzmkVl3R4cQ#k=AF0kgnWT8dvDj7irrDQKlA",
-      "screenshot": "shots/where-i-parked.jpg",
+      "screenshot": "shots/en/where-i-parked-light-412.webp",
       "publishedAt": "2026-10-21T13:30:37.693Z"
     },
     {
@@ -879,7 +890,7 @@
         "it": "Due prezzi, due formati: il costo per unità e chi vince."
       },
       "link": "https://potyro.app/s/5WxKaSZIc5FBmvWVSnGVQA#k=9kJJ6AMmQxPQ3C-ueTAVvQ",
-      "screenshot": "shots/which-is-cheaper.jpg",
+      "screenshot": "shots/en/which-is-cheaper-light-412.webp",
       "publishedAt": "2026-10-21T13:30:52.263Z"
     },
     {
@@ -909,7 +920,7 @@
         "it": "Un testo, un link o il tuo Wi‑Fi diventa un codice da mostrare, offline."
       },
       "link": "https://potyro.app/s/TrS5lys4AKDLkzQr02WADw#k=ciEnSEBoRc8FighOR7pLZw",
-      "screenshot": "shots/qr-maker.jpg",
+      "screenshot": "shots/en/qr-maker-light-412.webp",
       "publishedAt": "2026-10-21T13:34:12.590Z"
     }
   ]

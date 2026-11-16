@@ -293,3 +293,9 @@ svg {
     scroll-behavior: auto !important;
   }
 }
+
+/* An app's picture (build.mjs `shotPicture`): the <picture> is only a choice of files — the <img>
+   inside is laid out as if it stood alone, wherever a page puts it. */
+picture[data-shot-locales] {
+  display: contents;
+}

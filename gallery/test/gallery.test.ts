@@ -1,14 +1,16 @@
 // The gallery's data and page (docs/24 §10): the data is checked before anything is built or
 // published, the words are in all six languages, and the page asks nothing of anyone else.
 import { describe, expect, it } from "vitest";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LOCALES } from "../../packages/i18n/src/locale.ts";
 import { remixLink as shellRemixLink, readDemoLink } from "../../packages/shell/src/demo-link.ts";
 import { reportAddress } from "../../packages/shell/src/contact.ts";
-import { FORMAT, galleryProblems, isDemoLink, LANGUAGES, publishable, readGallery, remixLink, shownApps } from "../src/data.mjs";
-import { buildGallery, CONTACT, escapeHtml, imageSize, readStrings, renderPage } from "../src/build.mjs";
+import sharp from "sharp";
+import { FORMAT, galleryProblems, hasShotSet, isDemoLink, LANGUAGES, publishable, readGallery, remixLink, shotFiles, shotPath, shownApps, SHOT_LOCALES } from "../src/data.mjs";
+import { buildGallery, CONTACT, escapeHtml, imageSize, readShot, readStrings, renderPage, shotPicture } from "../src/build.mjs";
+import { said, writeShot } from "../src/publish.mjs";
 
 const here = new URL("..", import.meta.url).pathname;
 const real = JSON.parse(readFileSync(join(here, "gallery.json"), "utf8"));
@@ -232,5 +234,95 @@ describe("the page", () => {
   it("reads a screenshot's size from its header", () => {
     expect(imageSize(PNG)).toEqual({ width: 1, height: 1 });
     expect(imageSize(Buffer.from("not an image"))).toBeNull();
+  });
+});
+
+// #33: an app's picture is a set — every language and theme it was shot in, AVIF and WebP, 1x and 2x.
+describe("an app's pictures", () => {
+  /** A screen as the publisher takes it: 824 px across, 2x of the stranger's 412. */
+  const screen = (colour: string) => sharp({ create: { width: 824, height: 1720, channels: 3, background: colour } }).png().toBuffer();
+  const app = { id: "groceries", screenshot: shotPath("groceries") };
+  /** A gallery folder with the pictures the publisher writes for these languages. */
+  async function shot(locales: readonly string[]) {
+    const dir = mkdtempSync(join(tmpdir(), "gallery-shots-"));
+    for (const locale of locales) for (const theme of ["light", "dark"]) await writeShot(await screen(theme === "dark" ? "#1c1b1c" : "#ffffff"), dir, "groceries", locale, theme);
+    return dir;
+  }
+
+  it("names every file by language, theme and width, and the fallback is the first of each", () => {
+    expect(shotPath("groceries")).toBe("shots/en/groceries-light-412.webp");
+    expect(shotPath("groceries", { locale: "pt-BR", theme: "dark", width: 824, format: "avif" })).toBe("shots/pt-BR/groceries-dark-824.avif");
+    expect(shotFiles("groceries", "en")).toHaveLength(8);
+    expect(hasShotSet(app)).toBe(true);
+    expect(hasShotSet({ id: "groceries", screenshot: "shots/groceries.jpg" })).toBe(false);
+    // The data accepts the fallback's path, and still refuses a path out of the folder.
+    expect(galleryProblems(withApp({ link: LINK, screenshot: app.screenshot }))).toEqual([]);
+    expect(galleryProblems(withApp({ link: LINK, screenshot: "shots/../../x.webp" })).join()).toMatch(/screenshot must be/);
+  });
+
+  it("the publisher writes each shot as AVIF and WebP at 1x and 2x, the size the page will say", async () => {
+    const dir = await shot(["en"]);
+    for (const f of shotFiles("groceries", "en")) {
+      const meta = await sharp(join(dir, f)).metadata();
+      expect([f, meta.format === "heif" ? "avif" : meta.format, meta.width, meta.height]).toEqual([f, f.split(".").pop(), f.includes("-824.") ? 824 : 412, f.includes("-824.") ? 1720 : 860]);
+    }
+    expect(imageSize(readFileSync(join(dir, app.screenshot)))).toEqual({ width: 412, height: 860 });
+  });
+
+  it("a set is a <picture>: dark for a device in dark, AVIF before WebP, both widths, and its size", () => {
+    const html = shotPicture(app, { width: 412, height: 860, locales: ["en", "pt-BR"] }, { base: "/" });
+    expect(html).toMatch(/^<picture data-shot-locales="en pt-BR">/);
+    const sources = [...html.matchAll(/<source ([^>]+)\/>/g)].map((m) => m[1]!);
+    expect(sources.map((x) => [x.match(/data-theme-of="(\w+)"/)![1], x.match(/media="([^"]+)"/)?.[1] ?? null, x.match(/type="([^"]+)"/)![1]])).toEqual([
+      ["dark", "(prefers-color-scheme: dark)", "image/avif"],
+      ["dark", "(prefers-color-scheme: dark)", "image/webp"],
+      ["light", null, "image/avif"],
+    ]);
+    expect(sources[0]).toContain('srcset="/shots/en/groceries-dark-412.avif 412w, /shots/en/groceries-dark-824.avif 824w"');
+    for (const x of sources) expect(x).toMatch(/ sizes="[^"]+"/);
+    // The <img> is the light WebP, with the size that keeps the page still while it arrives.
+    expect(html).toMatch(/<img src="\/shots\/en\/groceries-light-412\.webp" srcset="\/shots\/en\/groceries-light-412\.webp 412w, \/shots\/en\/groceries-light-824\.webp 824w" sizes="[^"]+" width="412" height="860" /);
+    // One file someone put there stays the one <img> it was.
+    expect(shotPicture({ id: "groceries", screenshot: "shots/groceries.png" }, { width: 1, height: 1 })).toBe('<img src="shots/groceries.png" width="1" height="1" alt="" loading="lazy" decoding="async" />');
+  });
+
+  it("the build copies every file of every whole language, and names the languages on the card", async () => {
+    const dir = await shot(SHOT_LOCALES);
+    // A language shot only in part does not count: the card keeps the first for it.
+    const partial = await shot(["en"]);
+    mkdirSync(join(partial, "shots", "pt-BR"));
+    writeFileSync(join(partial, shotPath("groceries", { locale: "pt-BR" })), readFileSync(join(dir, shotPath("groceries", { locale: "pt-BR" }))));
+    expect(readShot(partial, app).shot).toEqual({ width: 412, height: 860, locales: ["en"] });
+    expect(readShot(dir, app)).toEqual({ shot: { width: 412, height: 860, locales: [...SHOT_LOCALES] }, files: SHOT_LOCALES.flatMap((l) => shotFiles("groceries", l)) });
+
+    writeFileSync(join(dir, "gallery.json"), JSON.stringify(withApp({ link: LINK, screenshot: app.screenshot })));
+    buildGallery({ data: join(dir, "gallery.json"), out: join(dir, "out") });
+    const page = readFileSync(join(dir, "out", "index.html"), "utf8");
+    expect(page).toContain(`<picture data-shot-locales="${SHOT_LOCALES.join(" ")}">`);
+    // Every address the page asks for is a file in the folder.
+    const asked = [...page.matchAll(/srcset="([^"]+)"/g)].flatMap((m) => m[1]!.split(", ").map((c) => c.split(" ")[0]!));
+    expect(asked).toHaveLength(8);
+    for (const f of [...asked, ...SHOT_LOCALES.flatMap((l) => shotFiles("groceries", l))]) expect(existsSync(join(dir, "out", f)), f).toBe(true);
+  });
+
+  it("refuses to build a set with a file missing in the first language, and says the command", async () => {
+    const dir = await shot(["en"]);
+    writeFileSync(join(dir, "gallery.json"), JSON.stringify(withApp({ link: LINK, screenshot: app.screenshot })));
+    const gone = join(dir, shotPath("groceries", { theme: "dark", width: 824, format: "avif" }));
+    rmSync(gone);
+    expect(() => buildGallery({ data: join(dir, "gallery.json"), out: join(dir, "out") })).toThrow(/groceries-dark-824\.avif\): pnpm gallery:shoot --only groceries/);
+  });
+
+  it("every published app in the repo has its whole set, in every language the gallery shoots", () => {
+    for (const a of shownApps(readGallery(clone(real))).published) {
+      expect(hasShotSet(a), a.id).toBe(true);
+      expect(readShot(here, a).shot, a.id).toEqual({ width: 412, height: 860, locales: [...SHOT_LOCALES] });
+    }
+  });
+
+  it("presses a button by its name in the screen's language, from Potyro's catalog", () => {
+    expect(said("en", "Fetch and open")).toBe("Fetch and open");
+    expect(said("pt-BR", "Fetch and open")).toBe("Baixar e abrir");
+    expect(said("pt-BR", "words no catalog has")).toBe("words no catalog has");
   });
 });

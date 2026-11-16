@@ -39,6 +39,7 @@
     "gallery:build": "node gallery/src/build.mjs",
     "site:build": "node site/build.mjs",
     "gallery:publish": "node gallery/src/publish.mjs",
+    "gallery:shoot": "node gallery/src/shoot.mjs",
     "i18n:app": "pnpm --filter @potyro/generator i18n:app"
   },
   "devDependencies": {
@@ -48,6 +49,7 @@
     "@types/react": "^18.3.12",
     "concurrently": "^10.0.4",
     "jazz-run": "0.20.19",
+    "sharp": "^0.35.5",
     "typescript": "^5.5.4",
     "vitest": "^2.1.8"
   },

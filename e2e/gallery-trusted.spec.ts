@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { publish } from "../gallery/src/publish.mjs";
+import { SHOT_LOCALES, shotFiles, shotPath } from "../gallery/src/data.mjs";
 import { buildGallery } from "../gallery/src/build.mjs";
 
 // The gallery (docs/24 §10). `gallery:publish` makes each ready app's demo link the way a person does,
@@ -13,7 +14,7 @@ import { buildGallery } from "../gallery/src/build.mjs";
 // `gallery:build` turns the data into a static page that asks nothing of anyone else.
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".svg": "image/svg+xml", ".jpg": "image/jpeg", ".png": "image/png" };
+const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".svg": "image/svg+xml", ".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".avif": "image/avif" };
 
 /** The built folder, served as Caddy would: files only, nothing outside it. */
 function serve(dir: string): Promise<{ server: Server; url: string }> {
@@ -45,7 +46,8 @@ test.describe.configure({ mode: "serial" });
 
 test("gallery:publish makes each link through the share flow, checks it opens for a stranger, and keeps it when run again", async ({ baseURL, browserName }) => {
   test.skip(browserName !== "chromium", "the script drives its own Chromium; one run proves it");
-  test.setTimeout(300_000);
+  // Each app is opened once per language and theme the gallery shows (#33), and each screen encoded.
+  test.setTimeout(540_000);
   const { dir, data } = scratchGallery(["groceries", "receipt-split", "markdown-notes"]);
   const lines: string[] = [];
   const first = await publish({ site: baseURL!, data, log: (l: string) => lines.push(l) });
@@ -53,14 +55,16 @@ test("gallery:publish makes each link through the share flow, checks it opens fo
   // In the gallery's own order (gallery.json is the page's order, #501), each one made.
   const ready = g.apps.filter((a: { status: string }) => a.status === "ready").map((a: { id: string }) => a.id);
   expect(ready).toHaveLength(3);
-  expect(first.map((o: { id: string; outcome: string }) => [o.id, o.outcome])).toEqual(ready.map((id: string) => [id, "made"]));
+  expect(first.map((o: { id: string; outcome: string }) => [o.id, o.outcome]), lines.join("\n")).toEqual(ready.map((id: string) => [id, "made"]));
   // Receipt Split is a package with a seed, Notes one with a seed AND the files it ships with: the
   // publisher packs all of it, so their demos open on a receipt and on four notes (#389).
   for (const id of ["groceries", "receipt-split", "markdown-notes"]) {
     const app = g.apps.find((a: { id: string }) => a.id === id);
     expect(app.link).toMatch(new RegExp(`^${baseURL}/s/[A-Za-z0-9_-]{16,64}#k=[A-Za-z0-9_-]+$`));
-    expect(app.screenshot).toBe(`shots/${id}.jpg`);
-    expect(readFileSync(join(dir, app.screenshot)).subarray(0, 2)).toEqual(Buffer.from([0xff, 0xd8]));
+    // Its pictures (#33): light and dark, in every language the gallery shoots, AVIF and WebP, 1x and 2x.
+    expect(app.screenshot).toBe(shotPath(id));
+    expect(readFileSync(join(dir, app.screenshot)).subarray(0, 4).toString("latin1")).toBe("RIFF");
+    for (const locale of SHOT_LOCALES) for (const f of shotFiles(id, locale)) expect(existsSync(join(dir, f)), f).toBe(true);
   }
   // Nothing is on the workbench any more (2026-10-20): the publisher names none as left alone.
   expect(lines.join("\n")).not.toMatch(/coming soon, not published/);
@@ -129,8 +133,19 @@ test("the gallery page: accessible, asks nothing of anyone else, Try it and Make
     await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined))));
     const axe = await new AxeBuilder({ page }).analyze();
     expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+    // The card's picture is the light one on a light device, and its size is in the markup (#33).
+    const shot = card.locator("img");
+    const shown = () => shot.evaluate((img: HTMLImageElement) => img.currentSrc);
+    const isSet = (await card.locator("picture").count()) > 0;
+    if (isSet) {
+      await expect.poll(shown).toMatch(/shots\/en\/[\w-]+-light-(412|824)\.(avif|webp)$/);
+      await expect(shot).toHaveAttribute("width", "412");
+      await expect(shot).toHaveAttribute("height", "860");
+    }
     await page.getByRole("button", { name: "Switch to dark" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    // The theme chosen on the page beats the device's: the picture is the dark one.
+    if (isSet) await expect.poll(shown).toMatch(/shots\/en\/[\w-]+-dark-(412|824)\.(avif|webp)$/);
     // Only the ones that end: the closing's clock (the "y" taking the next hour) runs for ever.
     await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined))));
     const dark = await new AxeBuilder({ page }).analyze();
@@ -149,8 +164,14 @@ test("the gallery speaks the browser's language, and another when asked", async 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Opisz. Gotowe, masz aplikację.");
     await expect(page.locator(".card").first().getByRole("link", { name: /^Przerób na swoją: / })).toBeVisible();
     await expect(page.locator("[data-app-name='groceries']").first()).toHaveText("Zakupy");
+    // Polish has no pictures of its own: the card shows the first language's.
+    const shot = page.locator(".card").first().locator("img");
+    const isSet = (await page.locator(".card").first().locator("picture").count()) > 0;
+    if (isSet) await expect.poll(() => shot.evaluate((img: HTMLImageElement) => img.currentSrc)).toMatch(/\/shots\/en\//);
     await page.getByRole("combobox", { name: "Język" }).selectOption("pt-BR");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Descreva. Pronto, é um app.");
+    // Portuguese was shot: the picture is the app in Portuguese.
+    if (isSet) await expect.poll(() => shot.evaluate((img: HTMLImageElement) => img.currentSrc)).toMatch(/\/shots\/pt-BR\//);
     // Remembered on this browser only.
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("lang", "pt-BR");

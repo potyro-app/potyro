@@ -12,7 +12,7 @@ import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { hourOf, LANGUAGES, readGallery, remixLink, shownApps, SOURCE_LANGUAGE } from "./data.mjs";
+import { hasShotSet, hourOf, LANGUAGES, readGallery, remixLink, shotFiles, shotPath, shownApps, SHOT_FORMATS, SHOT_LOCALES, SHOT_THEMES, SHOT_WIDTHS, SOURCE_LANGUAGE } from "./data.mjs";
 // The privacy page and the terms of use (#117): built only once docs/legal has no placeholder left.
 import { legalSite } from "../../packages/legal/src/build.mjs";
 
@@ -165,10 +165,64 @@ const ICON = {
 };
 
 /**
+ * What the page knows of an app's picture: its size, and — for a set the publish script made — the
+ * languages it was taken in. Without `locales` it is one file, shown as it is.
+ * @typedef {{ width: number; height: number; locales?: string[] }} Shot
+ */
+
+/** How wide a card's picture is drawn (gallery.css `.card-block img`), for the browser to pick a file by. */
+export const CARD_SIZES = "(min-width: 44rem) 21rem, calc(100vw - 5.5rem)";
+
+/**
+ * An app's picture (#33). A set from the publish script is a `<picture>`: AVIF then WebP, each at 1x
+ * and 2x, the dark shots for a device in dark — and the page's script (chrome.js) moves it to the
+ * theme and the language chosen on the page. Anything else is the one `<img>` it always was. The
+ * size is in the markup either way, so the page never moves as pictures arrive.
+ * @param {{ id: string; screenshot?: string }} app @param {Shot} shot
+ * @param {{ base?: string; sizes?: string; attrs?: string }} [of] `base`: before every path (no trailing
+ *   file); `attrs`: the `<img>`'s own (alt, loading…), already escaped
+ */
+export function shotPicture(app, shot, of = {}) {
+  const e = escapeHtml;
+  const b = of.base ?? "";
+  const attrs = of.attrs ?? 'alt="" loading="lazy" decoding="async"';
+  if (!shot.locales?.length) return `<img src="${b}${e(app.screenshot ?? "")}" width="${shot.width}" height="${shot.height}" ${attrs} />`;
+  const sizes = e(of.sizes ?? CARD_SIZES);
+  const locale = shot.locales[0];
+  const srcset = (/** @type {string} */ theme, /** @type {string} */ format) => SHOT_WIDTHS.map((width) => `${b}${shotPath(app.id, { locale, theme, width, format })} ${width}w`).join(", ");
+  const [light, ...others] = SHOT_THEMES;
+  const last = SHOT_FORMATS[SHOT_FORMATS.length - 1];
+  const sources = [
+    ...others.flatMap((theme) => SHOT_FORMATS.map((f) => `<source data-theme-of="${theme}" media="(prefers-color-scheme: ${theme})" type="image/${f}" srcset="${srcset(theme, f)}" sizes="${sizes}" />`)),
+    ...SHOT_FORMATS.slice(0, -1).map((f) => `<source data-theme-of="${light}" type="image/${f}" srcset="${srcset(light, f)}" sizes="${sizes}" />`),
+  ];
+  return `<picture data-shot-locales="${e(shot.locales.join(" "))}">${sources.join("")}<img src="${b}${shotPath(app.id, { locale })}" srcset="${srcset(light, last)}" sizes="${sizes}" width="${shot.width}" height="${shot.height}" ${attrs} /></picture>`;
+}
+
+/**
+ * An app's picture as it is in the gallery's folder: its size and languages, and the files the page
+ * will ask for. A set must be whole in the first language; another language counts only when whole.
+ * @param {string} shotsRoot @param {{ id: string; screenshot?: string }} app
+ * @returns {{ shot: Shot; files: string[] }}
+ */
+export function readShot(shotsRoot, app) {
+  const at = (/** @type {string} */ path) => join(shotsRoot, path);
+  const first = at(app.screenshot ?? "");
+  if (!app.screenshot || !existsSync(first)) throw new Error(`${app.id}: its screenshot ${app.screenshot} is not in ${shotsRoot}`);
+  const size = imageSize(readFileSync(first));
+  if (!size) throw new Error(`${app.id}: ${app.screenshot} is not a PNG, JPEG or WebP`);
+  if (!hasShotSet(app)) return { shot: size, files: [app.screenshot] };
+  const locales = SHOT_LOCALES.filter((locale) => shotFiles(app.id, locale).every((f) => existsSync(at(f))));
+  const missing = shotFiles(app.id, SHOT_LOCALES[0]).filter((f) => !existsSync(at(f)));
+  if (missing.length) throw new Error(`${app.id}: its pictures are not all in ${shotsRoot} (${missing.join(", ")}): pnpm gallery:shoot --only ${app.id}`);
+  return { shot: { ...size, locales }, files: locales.flatMap((locale) => shotFiles(app.id, locale)) };
+}
+
+/**
  * The page, as HTML. Pure: everything it says comes from its arguments.
  * @param {import("./data.mjs").Gallery} gallery
  * @param {Record<string, Record<string, string>>} strings
- * @param {{ css: string; js: string; shots: Record<string, { width: number; height: number }>; logos?: Record<string, string>; legal?: boolean; base?: string }} assets
+ * @param {{ css: string; js: string; shots: Record<string, Shot>; logos?: Record<string, string>; legal?: boolean; base?: string }} assets
  *   `legal`: the folder has /privacy and /terms, so the footer links them. `base`: what comes before every
  *   file's path — nothing when the page is the folder's own index, `/` when it is served at /apps/ on the site.
  */
@@ -196,7 +250,7 @@ export function renderPage(gallery, strings, assets) {
     return `
       <li class="card" data-category="${e(app.category)}" data-id="${e(app.id)}" data-traco="${e(hour(app.category))}">
         <a class="card-block" href="${e(app.link ?? "")}" tabindex="-1" aria-hidden="true">
-          <img src="${b}${e(app.screenshot ?? "")}" width="${shot.width}" height="${shot.height}" alt="" data-t-alt="shotAlt" data-name-of="${e(app.id)}" ${i < 2 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async" />
+          ${shotPicture(app, shot, { base: b, attrs: `alt="" data-t-alt="shotAlt" data-name-of="${e(app.id)}" ${i < 2 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"` })}
         </a>
         <div class="card-body">
           <p class="card-meta"><span class="cat" data-cat-name="${e(app.category)}">${e(word(gallery.categories[app.category]))}</span></p>
@@ -354,9 +408,20 @@ export function renderPage(gallery, strings, assets) {
 `;
 }
 
-/** The size of a PNG or JPEG, read from its header; null when it is neither. @param {Buffer} b */
+/** The size of a PNG, JPEG or WebP, read from its header; null when it is none of them. @param {Buffer} b */
 export function imageSize(b) {
   if (b.length > 24 && b.readUInt32BE(0) === 0x89504e47) return { width: b.readUInt32BE(16), height: b.readUInt32BE(20) };
+  if (b.length > 30 && b.toString("latin1", 0, 4) === "RIFF" && b.toString("latin1", 8, 12) === "WEBP") {
+    const kind = b.toString("latin1", 12, 16);
+    // Lossy, lossless and extended: three places a WebP says its size.
+    if (kind === "VP8 ") return { width: b.readUInt16LE(26) & 0x3fff, height: b.readUInt16LE(28) & 0x3fff };
+    if (kind === "VP8L") {
+      const bits = b.readUInt32LE(21);
+      return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 };
+    }
+    if (kind === "VP8X") return { width: b.readUIntLE(24, 3) + 1, height: b.readUIntLE(27, 3) + 1 };
+    return null;
+  }
   if (b[0] === 0xff && b[1] === 0xd8) {
     let i = 2;
     while (i + 9 < b.length) {
@@ -387,19 +452,22 @@ export function buildGallery(opts = {}) {
   const js = pageScript(readFileSync(join(here, "page", "gallery.js")));
   const tokens = readFileSync(join(DESIGN, "tokens.css"));
   const hours = hoursCss();
-  /** @type {Record<string, { width: number; height: number }>} */
+  /** @type {Record<string, Shot>} */
   const shots = {};
+  /** @type {string[]} */
+  const pictures = [];
   const { published } = shownApps(gallery);
   for (const app of published) {
-    const from = join(shotsRoot, app.screenshot ?? "");
-    if (!existsSync(from)) throw new Error(`${app.id}: its screenshot ${app.screenshot} is not in ${shotsRoot}`);
-    const size = imageSize(readFileSync(from));
-    if (!size) throw new Error(`${app.id}: ${app.screenshot} is not a PNG or JPEG`);
-    shots[app.screenshot ?? ""] = size;
+    const read = readShot(shotsRoot, app);
+    shots[app.screenshot ?? ""] = read.shot;
+    pictures.push(...read.files);
   }
   rmSync(out, { recursive: true, force: true });
   mkdirSync(join(out, "shots"), { recursive: true });
-  for (const path of Object.keys(shots)) copyFileSync(join(shotsRoot, path), join(out, path));
+  for (const path of pictures) {
+    mkdirSync(dirname(join(out, path)), { recursive: true });
+    copyFileSync(join(shotsRoot, path), join(out, path));
+  }
   writeFileSync(join(out, "gallery.css"), css);
   writeFileSync(join(out, "gallery.js"), js);
   writeFileSync(join(out, "tokens.css"), tokens);

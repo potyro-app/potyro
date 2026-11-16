@@ -1076,6 +1076,14 @@ pnpm gallery:publish --site https://potyro.app
 git add gallery/gallery.json gallery/shots && git commit -m "chore(gallery): links for potyro.app"
 ```
 
+The apps' pictures alone, after a change to how apps look — no link is made on the real site, none
+changes (docs/24 §10):
+
+```bash
+pnpm gallery:shoot                    # builds this checkout, shoots it: light and dark, en and pt-BR
+git add gallery/gallery.json gallery/shots && git commit -m "chore(gallery): the apps' pictures again"
+```
+
 The publishing browser is new and empty, so the links carry no one's name unless `--by "Potyro"` is
 passed, and no records but the apps' own samples (docs/24 §3). The share service limits each address to
 30 links a day; one run makes at most one per ready app.

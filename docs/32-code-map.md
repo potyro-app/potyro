@@ -217,8 +217,10 @@ Design: docs/24 (§11 a link to a page, §12 a link to a record, §10 the galler
   on a synced store for a record link), `DemoScreen` (the bar: Keep, Make it mine, Report).
 - `packages/share-links/src/` — the share service (server.ts, handler.ts, page.ts, store.ts, wire.ts);
   `packages/share-links/scripts/takedown.mjs`.
-- `gallery/gallery.json` (the page's order), `gallery/shots/`, `gallery/src/build.mjs`
-  (`pnpm gallery:build`), `gallery/src/publish.mjs` (`pnpm gallery:publish`), `gallery/test/`.
+- `gallery/gallery.json` (the page's order), `gallery/shots/<language>/` (each app's pictures: light
+  and dark, AVIF and WebP, 1x and 2x), `gallery/src/build.mjs` (`pnpm gallery:build`),
+  `gallery/src/publish.mjs` (`pnpm gallery:publish`), `gallery/src/shoot.mjs` (`pnpm gallery:shoot`:
+  the pictures again from this checkout's build, links untouched), `gallery/test/`.
 
 ## Design system, styles, i18n
 
