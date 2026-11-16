@@ -23,7 +23,9 @@ package __PACKAGE__;
 import android.app.UiModeManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.os.Build;
+import android.util.Log;
 import android.view.Window;
 import android.webkit.WebView;
 
@@ -44,9 +46,19 @@ public class AppearancePlugin extends Plugin {
     static final String PREFS = "potyro_appearance";
     static final String LOOK = "look";
 
+    private boolean listening = false;
+    /** What the page last said it shows; null until it has. */
+    private Boolean shown = null;
+
+    // In handleOnStart and NOT in load(): plugins are loaded inside the Bridge's constructor, and the
+    // builder then REPLACES the bridge's list of WebView listeners (Bridge.Builder.create →
+    // setWebViewListeners), so a listener added in load() is silently dropped and the page script
+    // never runs. That was this plugin's first version: registered, and never heard from.
     @Override
-    public void load() {
-        super.load();
+    protected void handleOnStart() {
+        super.handleOnStart();
+        if (listening) return;
+        listening = true;
         getBridge().addWebViewListener(new WebViewListener() {
             @Override
             public void onPageLoaded(WebView webView) {
@@ -55,13 +67,32 @@ public class AppearancePlugin extends Plugin {
         });
     }
 
+    // Whenever the configuration changes — a rotation, the phone's theme, or the night mode this
+    // plugin itself has just handed to the system — Capacitor's SystemBars paints the window's
+    // background from the activity's theme again, which is the PHONE's theme of the moment the
+    // activity was made. Seen on an emulator: a light Home under a dark strip with dark icons on it.
+    // The bridge tells its plugins in no fixed order (a HashMap), so what the page last said is drawn
+    // again here and once more in a posted turn, which runs after every plugin has had its say.
+    @Override
+    protected void handleOnConfigurationChanged(Configuration newConfig) {
+        super.handleOnConfigurationChanged(newConfig);
+        if (shown == null) return;
+        final boolean dark = shown;
+        draw(dark);
+        getActivity().getWindow().getDecorView().post(() -> draw(dark));
+        Log.d("PotyroAppearance", "configuration changed; drawn again for dark=" + dark);
+    }
+
     @PluginMethod
     public void show(final PluginCall call) {
         final boolean dark = Boolean.TRUE.equals(call.getBoolean("dark", false));
         final String look = call.getString("look", "system");
         getBridge().executeOnMainThread(() -> {
+            shown = dark;
             draw(dark);
-            remember(look);
+            final String night = remember(look);
+            // One line per call: what the page said, what was set. No personal data.
+            Log.d("PotyroAppearance", "show dark=" + dark + " look=" + look + "; bar icons " + (dark ? "light" : "dark") + "; app night mode " + night);
             call.resolve();
         });
     }
@@ -79,14 +110,16 @@ public class AppearancePlugin extends Plugin {
         getBridge().getWebView().setBackgroundColor(page);
     }
 
-    private void remember(String look) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
+    /** Hands the choice to the system where it can keep one. Returns what happened, for the log. */
+    private String remember(String look) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return "not on this Android";
         final SharedPreferences prefs = getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        if (look.equals(prefs.getString(LOOK, "system"))) return;
+        if (look.equals(prefs.getString(LOOK, "system"))) return "unchanged";
         final UiModeManager ui = (UiModeManager) getContext().getSystemService(Context.UI_MODE_SERVICE);
-        if (ui == null) return;
+        if (ui == null) return "no UiModeManager";
         // AUTO is "no choice of the app's": the phone's theme decides again.
         ui.setApplicationNightMode("dark".equals(look) ? UiModeManager.MODE_NIGHT_YES : "light".equals(look) ? UiModeManager.MODE_NIGHT_NO : UiModeManager.MODE_NIGHT_AUTO);
         prefs.edit().putString(LOOK, look).apply();
+        return "set to " + look;
     }
 }

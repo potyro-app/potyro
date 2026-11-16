@@ -17,6 +17,7 @@ interface Call { plugin: string; method: string; options: Record<string, unknown
 /** A page as the script sees it: the root's attribute, the phone's theme, the kept Look, the bridge. */
 function page(o: { theme?: string; phoneDark?: boolean; look?: unknown; bridge?: boolean } = {}) {
   const calls: Call[] = [];
+  const logged: string[] = [];
   const state = { theme: o.theme as string | undefined, phoneDark: o.phoneDark ?? false, look: o.look };
   let onAttribute: () => void = () => {};
   let onMedia: () => void = () => {};
@@ -31,6 +32,7 @@ function page(o: { theme?: string; phoneDark?: boolean; look?: unknown; bridge?:
   const context = {
     window,
     document: { documentElement: { getAttribute: (n: string) => (n === "data-theme" ? state.theme ?? null : null) } },
+    console: { log: (line: string) => logged.push(line) },
     MutationObserver: class {
       constructor(cb: () => void) { onAttribute = cb; observers++; }
       observe(_: unknown, options: { attributeFilter?: string[] }) { expect(options.attributeFilter).toEqual(["data-theme"]); }
@@ -41,6 +43,7 @@ function page(o: { theme?: string; phoneDark?: boolean; look?: unknown; bridge?:
   run();
   return {
     calls,
+    logged,
     run,
     observers: () => observers,
     setTheme: (t: string | undefined) => { state.theme = t; onAttribute(); },
@@ -118,6 +121,12 @@ describe("appearance.js: what the page tells the app", () => {
     expect(script).toContain('getItem("potyro:look")');
   });
 
+  it("says once, in the app's log, what it found when it started", () => {
+    const p = page({ theme: "light", phoneDark: true, look: { appearance: "light" } });
+    p.run();
+    expect(p.logged).toEqual(["[potyro] appearance: watching; data-theme=light, phone dark=true, look=light, bridge=true"]);
+  });
+
   it("never polls", () => {
     const code = script.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
     expect(code).not.toMatch(/setInterval|setTimeout|requestAnimationFrame/);
@@ -149,9 +158,19 @@ describe("AppearancePlugin: installed with the script inside it", () => {
       },
       document: { documentElement: { getAttribute: () => "light" } },
       MutationObserver: class { observe() {} },
+      console: { log: () => {} },
       JSON,
     });
     expect(calls).toEqual(['SystemBars.setStyle {"style":"LIGHT"}', 'PotyroAppearance.show {"dark":false,"look":"light"}']);
+  });
+
+  it("listens for page loads from handleOnStart: a listener added in load() is dropped by the bridge's builder", () => {
+    const code = plugin.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
+    expect(code).not.toMatch(/void load\(\)/);
+    const start = code.slice(code.indexOf("void handleOnStart()"), code.indexOf("@PluginMethod"));
+    expect(start).toContain("getBridge().addWebViewListener(");
+    expect(start).toContain("webView.evaluateJavascript(WATCH, null);");
+    expect(code).toContain('Log.d("PotyroAppearance", "show dark="');
   });
 
   it("draws the bars for what is shown and hands the person's choice to the system, from Android 12", () => {
@@ -159,7 +178,7 @@ describe("AppearancePlugin: installed with the script inside it", () => {
     expect(code).toContain("bars.setAppearanceLightStatusBars(!dark);");
     expect(code).toContain("bars.setAppearanceLightNavigationBars(!dark);");
     expect(code).toContain("dark ? R.color.potyro_bg_dark : R.color.potyro_bg_light");
-    expect(code).toContain("if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;");
+    expect(code).toContain("if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return");
     expect(code).toMatch(/"dark"\.equals\(look\) \? UiModeManager\.MODE_NIGHT_YES : "light"\.equals\(look\) \? UiModeManager\.MODE_NIGHT_NO : UiModeManager\.MODE_NIGHT_AUTO/);
   });
 });

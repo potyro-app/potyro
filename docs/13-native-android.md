@@ -113,7 +113,13 @@ design package (`packages/design/logo`, `tokens.css`), never from a picture kept
   `PotyroAppearance` plugin, watching `data-theme` on `<html>` and the phone's theme, never polling —
   and the app draws the status and navigation bar icons for that (through Capacitor's own
   `SystemBars`, which puts the style back after a rotation), and colours the bars where Android
-  still lets an app (before 15). The **splash** is drawn by the system before any app code runs, so
+  still lets an app (before 15). Two things about Capacitor decide how the plugin is written. It
+  listens for page loads from `handleOnStart`, not `load()`: plugins load inside the bridge's
+  constructor and the builder then replaces the bridge's list of WebView listeners, so a listener
+  added in `load()` is dropped without a word. And it draws again after every configuration change,
+  because `SystemBars` then repaints the window from the activity's theme, which is the phone's.
+  Each call the plugin receives is one line in the log (tag `PotyroAppearance`: what the page said,
+  what was set), and the page script says once what it found when it started. The **splash** is drawn by the system before any app code runs, so
   nothing in the app can choose it at that moment: on Android 12+ the person's own choice for Potyro
   (the Look, read where the shell keeps it) is handed to the system
   (`UiModeManager.setApplicationNightMode`), which keeps it and uses it for the next start's splash;
@@ -197,9 +203,22 @@ POTYRO_AGP=8.13.0 POTYRO_GRADLE=8.14.3 pnpm cap:sync  # or pin somewhere else
   shell's signal ended it; Home followed with no blank gap, phone in light and in dark; "open in
   another tab" 0 times in 12. Found there: with Potyro light on a dark phone the bar icons were white
   on the white page and a dark splash gave way to a white Home — the reason for `PotyroAppearance`
-  above. **`PotyroAppearance` itself has not run on any device yet**: it compiles into the APK and
-  its page script is unit-tested; the four combinations (phone light/dark × Potyro light/dark), a
-  themed app, and the remembered splash are owed on a phone.
+  above. The first `PotyroAppearance` then did nothing on this phone: registered, never heard from
+  (the dropped listener, above). **The corrected plugin has not been checked on the phone yet**; the
+  four combinations, a themed app and the remembered splash are owed there, on Android 17.
+- **Emulator, Android 15 (API 35), WebView 124, software rendering**, the corrected plugin, this
+  branch merged with main, looked at in screenshots with the log beside them. With the listener in
+  `load()`: no line from the page script or the plugin, and a light Home under a dark bar strip.
+  Corrected: phone dark × Potyro light, phone dark × Potyro dark, phone light × Potyro dark, phone
+  light × Potyro light, each after choosing it in Look and after a cold start — dark icons on the
+  light page, light icons on the dark page, eight of eight. The next start's splash followed the
+  remembered Look in both crossed cases (light splash on a dark phone, dark splash on a light one).
+  "The phone decides" followed the phone again when its theme was switched with Potyro open. Found
+  on the way: handing the Look to the system is itself a configuration change, and Capacitor's
+  `SystemBars` answered it by painting the window dark behind dark icons — hence the redraw. An
+  install over the earlier build with Potyro already light: one dark splash (the system had not been
+  told yet), a correct Home, and a light splash from the second start. Not seen here: an app with
+  its own theme, and Android 16/17's bars.
 - **Emulator, Android 13, WebView 109, software rendering**, before the signal existed: the debug
   APK, the unsigned release APK and the release bundle build. The icon shows whole in the launcher's
   circle, in the light and the dark drawer; the themed icon and the other mask shapes were only

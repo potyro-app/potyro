@@ -45,6 +45,9 @@
     cap.nativePromise("PotyroAppearance", "show", { dark: dark, look: choice }).catch(quiet);
   }
 
+  // One line in the app's log (Capacitor prints the console), so a start that went wrong can be read.
+  console.log("[potyro] appearance: watching; data-theme=" + root.getAttribute("data-theme") + ", phone dark=" + media.matches + ", look=" + look() + ", bridge=" + !!(window.Capacitor && window.Capacitor.nativePromise));
+
   new MutationObserver(tell).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
   if (media.addEventListener) media.addEventListener("change", tell);
   tell();
