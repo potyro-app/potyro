@@ -32,13 +32,16 @@ export { isSetField, setFieldsOf, foldSet, foldSetFields, setWrites } from "./se
 export { ROOM_THREAD, recordThread } from "./types.js";
 export { MemoryStore } from "./memory-store.js";
 export { LocalStore, QuotaError, type StorageLike } from "./local-store.js";
-export { publishAppToAccount, readAccountApps, publishNameToAccount, readAccountName, removeAppFromAccount, type AccountApp } from "./account-apps.js";
-export { readAccountChat, publishChatMessages, removeChatMessages, watchAccountChats, type AccountChat, type AccountChatMessage } from "./account-chats.js";
+// The half that syncs (the CRDT engine, accounts, spaces, invites) is `@potyro/store/sync`, loaded
+// with `import()` so it is not in the script a first visit waits for (#48, sync.ts). Its types stay
+// here: a type costs nothing.
+export type { AccountApp } from "./account-apps.js";
+export type { AccountChat, AccountChatMessage } from "./account-chats.js";
 export { SqliteStore, type SqliteDbHandle } from "./sqlite-store.js";
-export { JazzStore, SPACE_BUDGET, type JazzStoreDeps } from "./jazz-store.js";
+export type { JazzStoreDeps } from "./jazz-store.js";
 export { deleteWorkerSqlite, isStorageElsewhere, isStorageStuck, isStorageWithheld, onStorageElsewhere, onStorageStuck, openWorkerSqliteHandle, StorageElsewhereError, StorageStuckError, takeOverStorageOnNextLoad, workersAvailable } from "./sqlite-worker-client.js";
-export { createJazzStore, openAccountNode, openAccountNodeInBrowser, warmDeviceDatabase, rememberAppSpace, peekAppSpace, openJazzStore, createSpaceInvite, joinSpace, removeSpaceMember, spaceMembers, myRole, publishName, publishAccountName, readProfileName, subscribeSpace, subscribeMemberProfiles, type CreateJazzStoreOpts, type JazzStoreHandle, type JazzKeyStore } from "./jazz-backend.js";
-export { createJazzSqliteDriver, type SqliteDriverAsync } from "./jazz-sqlite-driver.js";
+export type { CreateJazzStoreOpts, JazzStoreHandle, JazzKeyStore } from "./jazz-backend.js";
+export type { SqliteDriverAsync } from "./jazz-sqlite-driver.js";
 export {
   createSqliteStore,
   createMemorySqliteStore,
@@ -80,4 +83,6 @@ export {
   type UnpackedBundle,
 } from "./export.js";
 export { ulid } from "./ulid.js";
+// The two-device harness stays here for the tests and the generator's check that use it; it reaches
+// the engine itself with `import()`.
 export { createPeerPair, createRelayedPair, type PeerPair } from "./peer-harness.js";

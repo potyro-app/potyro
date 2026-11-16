@@ -14,7 +14,7 @@ import { PageHeader, type PageCta } from "./page-header.js";
 import { PrimaryBar } from "./page-primary.js";
 import { FilterChrome } from "./filter-chrome.js";
 import { SummaryStrip } from "./summary-strip.js";
-import { Studio } from "./studio.js";
+import { Studio } from "./lazy-studio.js";
 import { CaseRecorder } from "./case-recorder.js";
 import { saveCase, hasRecordedActivity, caseLabel } from "./app-cases.js";
 import { CaseReport } from "./case-report.js";

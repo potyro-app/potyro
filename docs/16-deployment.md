@@ -87,7 +87,14 @@ Build-time knobs, all optional:
 | `VITE_POTYRO_GENERATOR` | unset | Only once a deployment can actually reach a model — see [The agent](#the-agent). |
 | `VITE_POTYRO_SITE` | the page's own origin | **Native builds only** (Android, iOS): the site the app belongs to, e.g. `https://potyro.app`. The relay, `/ai`, `/requests`, `/share-api` and the links people send are derived from it (`shell/src/site.ts`, docs/27 §2.1); the per-service variables still win. |
 
-potyro.app's build sets none of them: it is the watcher's plain `vite build` (CONTRIBUTING.md, The gate).
+One more, read by the build itself and not by the app: `POTYRO_PRECOMPRESS=1` writes a brotli and a
+gzip copy beside every text file and Wasm in `dist` (`packages/shell/precompress.ts`), for a server
+that can send them as they are ([Caddy](#4-caddy-in-front) does, with `precompressed br gzip`). It adds a
+minute or two to the build and about 27 MB to `dist`. Leave it unset for a native build: the Android and
+iOS apps would only carry the copies.
+
+potyro.app's build sets none of the first three: it is the watcher's `vite build`
+(CONTRIBUTING.md, The gate), with `POTYRO_PRECOMPRESS=1` (`scripts/ci-local.mjs`).
 
 ## 2. Upload it
 
@@ -276,7 +283,9 @@ potyro.app {
 		@fresh path / /index.html /sw.js /privacy* /terms*
 		header @fresh Cache-Control "no-cache"
 		try_files {path} {path}.html {path}index.html /index.html
-		file_server
+		file_server {
+			precompressed br gzip
+		}
 	}
 }
 ```
@@ -297,6 +306,11 @@ What each part is for:
   `index.html` carries the same as a `<meta>` for the native WebView, which serves no headers.
 - **Cache headers.** Hashed assets are `immutable`; `index.html`, `sw.js` and the legal pages are
   `no-cache`, or a deploy stays invisible until someone clears their cache.
+- **`precompressed br gzip`.** The deploy's build leaves `<file>.br` and `<file>.gz` beside every
+  text file and Wasm (`POTYRO_PRECOMPRESS=1`, [§1](#1-build-the-shell)); Caddy sends the copy the
+  browser accepts instead of compressing each response. The page's first script is about 380 kB as
+  brotli and about 465 kB as gzip. A build without the copies still works: `encode` compresses per
+  request, as before.
 - **`try_files`** sends every path that is not a file to `index.html`, the app. `{path}.html` and
   `{path}index.html` are for the legal pages
   ([below](#the-privacy-page-and-the-terms-117-built-not-yet-served)).
@@ -1126,8 +1140,12 @@ Be straight with anyone you invite:
 - **Anyone with a share link is in.** The invite secret is the whole capability; there is no second
   factor and no way to revoke one link short of rotating the space's keys (KA-17).
 - **No backups yet** ([§6](#6-backups-214)). A lost disk is every shared space and every link.
-- **The first load is ~2.1 MB gzipped.** Not a security issue, but it is what a phone on mobile data
-  will feel first.
+- **A first visit downloads about 1 MB** (brotli; measured on a local build, 2026-11-16): the page's
+  first script 380 kB, SQLite's Wasm 350 kB, the stylesheet 44 kB, fonts and icons. Then the service
+  worker keeps what an app's screen, the Studio and sync need, about 220 kB more. Not a security
+  issue, but it is what a phone on mobile data will feel first; the page shows its wordmark and
+  heading from the HTML while the script arrives (#48). An app's first open adds the bundler's Wasm,
+  about 3.8 MB.
 
 ## Verifying a build before it ships
 

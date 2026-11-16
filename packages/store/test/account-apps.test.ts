@@ -10,7 +10,8 @@
 
 import { beforeAll, describe, expect, it } from "vitest";
 import { WasmCrypto } from "cojson/crypto/WasmCrypto";
-import { createJazzStore, initSqlite, openAccountNode, publishAppToAccount, readAccountApps, removeAppFromAccount, type JazzKeyStore } from "../src/index.js";
+import { initSqlite, type JazzKeyStore } from "../src/index.js";
+import { createJazzStore, openAccountNode, publishAppToAccount, readAccountApps, removeAppFromAccount } from "../src/sync.js";
 
 let crypto: Awaited<ReturnType<typeof WasmCrypto.create>>;
 beforeAll(async () => {

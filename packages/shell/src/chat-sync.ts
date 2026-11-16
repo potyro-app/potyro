@@ -54,7 +54,7 @@ export interface ChatSyncDeps {
 const WAIT_MS = 10_000;
 
 async function liveDeps(): Promise<ChatSyncDeps> {
-  const [{ readAccountChat, publishChatMessages }, { accountNode }] = await Promise.all([import("@potyro/store"), import("./open-store.js")]);
+  const [{ readAccountChat, publishChatMessages }, { accountNode }] = await Promise.all([import("@potyro/store/sync"), import("./open-store.js")]);
   return { node: accountNode, read: readAccountChat, publish: publishChatMessages };
 }
 
@@ -123,7 +123,7 @@ export function followChat(appId: string, onChange: () => void): () => void {
   };
   void (async () => {
     if (!(await follows(appId))) return;
-    const [{ watchAccountChats }, { accountNode }] = await Promise.all([import("@potyro/store"), import("./open-store.js")]);
+    const [{ watchAccountChats }, { accountNode }] = await Promise.all([import("@potyro/store/sync"), import("./open-store.js")]);
     const node = await accountNode();
     if (!node || stopped) return;
     const unwatch = await watchAccountChats(node, pull);
@@ -142,7 +142,7 @@ export function followChat(appId: string, onChange: () => void): () => void {
  * devices said is here before the Studio is opened. Background; never holds anything up.
  */
 export async function syncAllChats(node: unknown): Promise<void> {
-  const [{ readAccountChat, publishChatMessages }, { listUserApps }] = await Promise.all([import("@potyro/store"), import("./user-apps.js")]);
+  const [{ readAccountChat, publishChatMessages }, { listUserApps }] = await Promise.all([import("@potyro/store/sync"), import("./user-apps.js")]);
   const deps: ChatSyncDeps = { node: async () => node, read: readAccountChat, publish: publishChatMessages };
   for (const app of listUserApps()) if (app.sync) await syncChat(app.id, deps);
 }
@@ -157,7 +157,7 @@ export async function forgetChat(
   try {
     let d = deps;
     if (!d) {
-      const [store, open] = await Promise.all([import("@potyro/store"), import("./open-store.js")]);
+      const [store, open] = await Promise.all([import("@potyro/store/sync"), import("./open-store.js")]);
       d = { node: open.accountNode, remove: store.removeChatMessages };
     }
     const node = await d.node();

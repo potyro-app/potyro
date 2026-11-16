@@ -35,6 +35,7 @@ import { restoreVersion } from "./restore-version.js";
 import { NEW_MODULE } from "./code-files.js";
 import { newLine } from "./app-line.js";
 import { loadTrustedModule } from "./trusted-loader.js";
+import { warmBundler } from "./app-bundler.js";
 import { confirmAndRemoveApp } from "./remove-app.js";
 import { navigateTo } from "./router.js";
 import { listVersions, type VersionOrigin } from "./app-history.js";
@@ -722,6 +723,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     setPointing(false);
     setProblem(null);
     setWorking("");
+    // The bundler's Wasm arrives while the model works, not after it has answered (#48).
+    warmBundler();
     try {
       await say({ kind: "ask", text: asked, ...(about ? { point: { label: about.label, words: about.words } } : {}) });
       // Everything said since the app last changed, so an answer reaches the model beside its question;

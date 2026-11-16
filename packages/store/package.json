@@ -6,7 +6,8 @@
   "description": "Store interface + MemoryStore/LocalStore/SqliteStore + JazzStore (CRDT, ADR 0001).",
   "license": "Apache-2.0",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./sync": "./src/sync.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

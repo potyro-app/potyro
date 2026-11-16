@@ -6,19 +6,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { LocalNode } from "cojson";
 import { WasmCrypto } from "cojson/crypto/WasmCrypto";
-import {
-  copyStoreData,
-  createMemorySqliteStore,
-  createPeerPair,
-  fileSpace,
-  FileSpaceError,
-  JazzStore,
-  LocalStore,
-  MemoryStore,
-  normalisePath,
-  type StorageLike,
-  type Store,
-} from "../src/index.js";
+import { copyStoreData, createMemorySqliteStore, createPeerPair, fileSpace, FileSpaceError, LocalStore, MemoryStore, normalisePath, type StorageLike, type Store } from "../src/index.js";
+import { JazzStore } from "../src/sync.js";
 
 let crypto: Awaited<ReturnType<typeof WasmCrypto.create>>;
 beforeAll(async () => {

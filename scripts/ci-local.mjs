@@ -525,7 +525,9 @@ function deploy() {
     process.stdout.write(`✓ ${short} is already live\n`);
     return;
   }
-  const built = run("deploy-build", "pnpm", ["--filter", "@potyro/shell", "exec", "vite", "build"]);
+  // With brotli and gzip copies beside the text files (#48, packages/shell/precompress.ts): the
+  // server sends those instead of compressing per request (deploy/potyro.app.Caddyfile).
+  const built = run("deploy-build", "pnpm", ["--filter", "@potyro/shell", "exec", "vite", "build"], { POTYRO_PRECOMPRESS: "1" });
   if (!built.ok) return record("deploy", built);
   const dist = join(ROOT, "packages/shell/dist");
   writeFileSync(join(dist, "version.json"), `${JSON.stringify({ commit: sha, deployedAt: new Date().toISOString() })}\n`);
