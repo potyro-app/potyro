@@ -103,7 +103,7 @@ Code: `adaptMediated` in `packages/host/src/mediate.ts` (docs/07, "The `ctx` med
   declared every site ask in the same words, and one yes covers every host the manifest allows. The
   sentence is written in `mediate.ts`, not in the i18n catalogs, so it is English on every device
   (camera, location, files and notifications share that gate and its form). The answer, yes or no,
-  holds for the `ctx` that asked — one run of an action, one screen while it is open — and is
+  holds for the `ctx` that asked (a `ctx` is built per pass: one run of an action, for one) and is
   neither kept on the device nor per host.
 - **Live connections are asked properly.** A socket asks once per app and host, names the host, and
   the yes is kept on the device (`packages/host/src/sockets.ts`, the catalog string from
@@ -214,7 +214,8 @@ Read this before you rely on Potyro for something that matters.
 - **The fallback box is tested less than the realm.** It is a supported path (§6) whose browser
   project is outside the gate.
 - **Code a model wrote runs as yours** (§9).
-- **A sealed screen can make the browser look a name up** (§10): __DNS_LINE__
+- **A sealed screen can make the browser look a name up** (§10): in Firefox, measured, it does;
+  the app's logic cannot.
 
 ## 9. Code a model wrote, in your own app
 
@@ -227,7 +228,7 @@ because your own app is not in one.
   source, passages of the reference and the corpus that ship with the release, and the failures its
   own candidates produced. Whatever is in those is input to the program that writes your app:
   instructions in a request pasted from somewhere else, a comment or a string in source you copied
-  in, a record's text inside a failure message. A model can follow such text. The result is not a
+  in. A model can follow such text. The result is not a
   wrong answer in a chat; it is code that runs with your authority on this origin, which includes
   reading every app's data on the device and asking the web vault's key to decrypt (§8).
 - **The engine is trusted with that authority.** Whoever answers for the model — a provider, a
@@ -258,7 +259,49 @@ to run, and an engine as you would the author of your apps.
 
 ## 10. Names leaving a sealed screen (DNS)
 
-__DNS_SECTION__
+CSP governs what a frame may **load**. A browser can also be asked to **look a name up** without
+loading anything: `<link rel="dns-prefetch">`, `<link rel="preconnect">`, a link it expects to be
+followed. The question goes to the device's resolver and from there to whoever runs the name's
+zone. A sealed app's screen writes its own DOM (§3), so it can put such a hint there, and a name
+like `what-it-read.example.org` carries a few dozen bytes out per lookup, with no permission asked
+and nothing in the app's manifest. It is slow, one-way and needs the app's author to run a DNS
+zone; it is also exactly the kind of exit the box exists to close. The app's logic has no such
+exit: a Worker has no document to put a hint in.
+
+Measured on 2026-11-16 with `e2e/dns-prefetch-probe-sandbox.spec.ts` (opt-in,
+`POTYRO_DNS_PROBE=1`), in the browsers Playwright 1.62 installs on Linux (Firefox 153, Chromium
+151). A shared app's own screen puts each hint in its frame's document; a control page with no CSP
+does the same in the same browser. The evidence is the browser's own record of its resolver
+(Firefox's `nsHostResolver` log, Chromium's net-log), not the app's word. "Not measurable" means
+the control made no lookup either, so the method cannot tell there: it is not a pass.
+
+| From a sealed screen | Firefox | Chromium |
+|---|---|---|
+| `<link rel="dns-prefetch">` | **looked up** | not measurable |
+| `<link rel="preconnect">` | **looked up** | not measurable |
+| `<a href>`, hovered | **looked up** | not measurable |
+| `<link rel="prefetch">` | not looked up | not looked up |
+| `<link rel="preload">` | not looked up | not looked up |
+| `<img src>` | not looked up | not looked up |
+| `fetch()` | not looked up | not looked up |
+| `fetch()` from the logic's Worker | not looked up | not looked up |
+
+So: everything CSP names is stopped before a name is resolved, in both engines. **In Firefox, a
+sealed screen's dns-prefetch, preconnect and link hints are resolved**: a shared app with a screen
+of its own can send what it holds to its author's DNS zone from Firefox, a few bytes at a time.
+In Chromium the three are **unmeasured, not safe**: as Playwright runs it (the headless shell, full
+Chromium, and full Chromium with `--disable-background-networking` taken off) the control page
+made no lookup for them either, so the probe cannot see what a person's Chrome does. WebKit and the
+Android WebView are not measured.
+
+**Open.** Nothing in the realm stops this today. Two things to try, neither verified: Firefox
+decides DNS prefetch per document and inherits the decision from the embedding page, so
+`X-DNS-Prefetch-Control: off` on the shell's response, or its `<meta http-equiv>` in the view's
+document (`viewDocument` in `frame.ts`), may cover dns-prefetch and links; preconnect is a
+separate mechanism and may need the browser to honour CSP for it. The probe is the test for any
+fix: it must show the control still looking the names up and the sealed screen not. Until then,
+on Firefox a sealed app that draws its own screen should be counted as able to tell its author a
+little, slowly, without asking.
 
 ## 11. For an audit
 
@@ -282,8 +325,8 @@ The surface a security review should cover, from docs/22 §10.5 and §11.5:
   (`trust-dialog.tsx`, `promotion.ts` in the shell).
 
 The QuickJS marshal and bridge (`packages/host/src/isolate/`) are in scope while the fallback ships,
-which is now: the shell chooses it by itself and the Studio always uses it (§6). The engine is the
-one before its bridge: what the harness (`harness.ts`) hands the host, `bytesOfBase64` and the held
+which is now: the shell chooses it by itself and the Studio's checks always use it (§6). What a
+review covers there: what the harness (`harness.ts`) hands the host, `bytesOfBase64` and the held
 captures in `isolate-host.ts`, and the choice of box (`sandbox-runner.ts`, the fall back on
 `RealmStartError`).
 

@@ -421,7 +421,8 @@ code with ambient authority, and never in the shell's own realm." The mental-mod
   - `postMessage(…, "*")` at init. The ports carry the trust, and a sandboxed frame cannot be
     reached by others.
 - **Channels CSP does not cover.** WebRTC (deleted), DNS prefetch (`<link rel=dns-prefetch>`,
-  hostname-only, not measured), and any new API that opens a connection. Re-check this deny-list on
+  hostname-only; measured 2026-11-16 and open in Firefox, docs/31 §10), and any new API that opens a
+  connection. Re-check this deny-list on
   every engine release.
 - **The shell's CSP and navigation.**
 - **Process models per target.** Chromium's shared sandbox process, and the WebView.
