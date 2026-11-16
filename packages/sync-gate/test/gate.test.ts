@@ -33,7 +33,21 @@ describe("passing a connection through", () => {
     const { url } = await gate(relay);
     await open(url, { ...from("9.9.9.9"), cookie: "a=b", authorization: "Bearer nope" }, [SYNC_PROTOCOL, `${TOKEN_PREFIX}abc123`]);
     const seen = relay.requests[0]!.headers;
-    expect(Object.keys(seen).sort()).toEqual(["connection", "host", "sec-websocket-key", "sec-websocket-version", "upgrade"]);
+    expect(Object.keys(seen).sort()).toEqual(["connection", "host", "sec-websocket-key", "sec-websocket-version", "upgrade", "x-forwarded-for"]);
+    // Where the relay looks for an address there is the connection's name, of the gate's making.
+    expect(seen["x-forwarded-for"]).toMatch(/^gate-[0-9a-f]{12}-1$/);
+    expect(JSON.stringify(seen)).not.toContain("9.9.9.9");
+  });
+
+  it("names every connection differently to the relay, whoever it is from and whichever gate it came through", async () => {
+    // jazz-run takes two peers of one name for one peer and closes the first (real-relay.test.ts).
+    const relay = await fakeRelay();
+    const one = await gate(relay);
+    const two = await gate(relay);
+    await Promise.all([...Array(20)].map((_, i) => open(i % 2 ? one.url : two.url, from(i % 4 < 2 ? "9.9.9.9" : "8.8.8.8"))));
+    const names = relay.requests.map((r) => r.headers["x-forwarded-for"]);
+    expect(new Set(names).size).toBe(20);
+    for (const name of names) expect(name).toMatch(/^gate-[0-9a-f]{12}-\d+$/);
   });
 
   it("closes the client with 1001 when the relay behind goes away", async () => {

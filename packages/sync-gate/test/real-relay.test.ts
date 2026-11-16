@@ -86,6 +86,29 @@ describe("the gate in front of jazz-run", () => {
     expect(gate.stats().closed).toEqual({});
   }, 20_000);
 
+  it("keeps every connection when many arrive at the relay in the same instant: the relay is not told they are one peer", async () => {
+    // jazz-run names a peer by the address it is told and the millisecond it connected, and closes
+    // the peer it already has under a name when another takes it. Behind a gate that told it
+    // nothing, every connection had the gate's address, and two in one millisecond were one peer.
+    const { url, gate } = await gateTo(await realRelay());
+    const sockets = [...Array(40)].map(() => new QuietSocket(url));
+    const closed: number[] = [];
+    const greeted = sockets.map((ws) => {
+      return new Promise<void>((r) => {
+        ws.once("message", () => r());
+        ws.on("close", (code) => {
+          closed.push(code);
+          r();
+        });
+      });
+    });
+    stops.push(() => sockets.forEach((ws) => ws.terminate()));
+    await Promise.all(greeted); // the relay's first ping reached each of them (or it was closed, and the test says so below)
+    await new Promise((r) => setTimeout(r, 200)); // a wait can only miss a fault here, never make one
+    expect(closed).toEqual([]);
+    expect(gate.stats().connections).toBe(40);
+  }, 20_000);
+
   it("keeps syncing while an address is slowed: the relay's pings still reach the client", async () => {
     // 100 kB a second with almost no burst: the 420 kB edit takes seconds, during which the client
     // would drop the connection if it heard nothing for 10 s. Slowing holds only the way up.

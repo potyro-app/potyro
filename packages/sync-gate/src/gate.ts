@@ -22,6 +22,7 @@
 //
 // It cannot count what a SPACE holds: see docs/16 for why, and for what stands in its place.
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { randomBytes } from "node:crypto";
 import { connect, type Socket } from "node:net";
 import type { Duplex } from "node:stream";
 import { addressKey, clientAddress, netKey, type TrustProxy } from "./address.ts";
@@ -169,6 +170,16 @@ export function startSyncGate(opts: GateOptions): Promise<SyncGate> {
   let day = dayOf(now());
   let dayBytes = 0;
   let warnedAt = -Infinity;
+  /**
+   * A name for each connection, for the relay to tell them apart by. `jazz-run` names a peer by the
+   * address it is told and the millisecond it connected, and a second peer of the same name REPLACES
+   * the first: the relay closes it and hands its sync state to the newcomer. Behind the gate every
+   * connection comes from the gate, so without a name of its own any two that reach the relay in the
+   * same millisecond, whoever they are, would be one peer. The name is the gate's (random for this
+   * process, then a count): it says nothing of the client, and the relay's log has no address.
+   */
+  const gateName = `gate-${randomBytes(6).toString("hex")}`;
+  let dialled = 0;
 
   const totals = { accepted: 0, refused: {} as Partial<Record<Refusal, number>>, closed: {} as Partial<Record<number, number>>, bytesUp: 0, bytesDown: 0, heldMs: 0 };
   let reported = JSON.stringify(totals);
@@ -461,10 +472,11 @@ export function startSyncGate(opts: GateOptions): Promise<SyncGate> {
       upstream.once("close", fail);
       upstream.once("connect", () => {
         // A request of the gate's own: nothing the client sent but its key reaches the relay. No
-        // address (the relay would name the peer by it), no subprotocol (the token), no extension.
+        // address, no subprotocol (the token), no extension. Where the relay looks for the client's
+        // address it finds the connection's name instead (`gateName`, above): never the same twice.
         upstream.write(
           `GET / HTTP/1.1\r\nHost: ${opts.upstream.host}:${opts.upstream.port}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n` +
-            `Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: ${key}\r\n\r\n`,
+            `Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: ${key}\r\nX-Forwarded-For: ${gateName}-${++dialled}\r\n\r\n`,
         );
       });
       const onData = (chunk: Buffer): void => {
