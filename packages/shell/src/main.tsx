@@ -1,6 +1,6 @@
 // Shell entry / composition root wiring. Every app — the seeded examples included (#152) — is a
 // saved source: trusted ones run direct, untrusted ones sealed — in the browser realm (#272), or the
-// QuickJS-WASM isolate behind a flag (sandbox-runner.ts). `pnpm dev:sandbox` (mode "sandbox") seeds
+// QuickJS-WASM isolate where no realm can be built (sandbox-runner.ts). `pnpm dev:sandbox` (mode "sandbox") seeds
 // the examples untrusted, which is what exercises the sealed box.
 
 // First, before any module below reads localStorage: the codename-to-product key move (#114).

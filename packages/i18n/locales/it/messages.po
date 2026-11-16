@@ -4067,6 +4067,11 @@ msgstr "In inglese: {0}"
 msgid "In the sealed box it runs and draws its own screens, but reaches your data and this device only through Potyro. Letting it run as yours takes it out of the box, with the same reach as the apps you made. Only do this if you made it, or you know and trust whoever did. <0>{name}</0> asks for:"
 msgstr "Nella scatola sigillata funziona e disegna le sue schermate, ma raggiunge i tuoi dati e questo dispositivo solo attraverso Potyro. Lasciarla eseguire come tua la fa uscire dalla scatola, con la stessa portata delle app che hai fatto tu. Fallo solo se l’hai fatta tu, o se conosci e ti fidi di chi l’ha fatta. <0>{name}</0> chiede:"
 
+#. The trust dialog on a device where the sealed box cannot draw an app's own screens (an older browser)
+#: ../shell/src/trust-dialog.tsx
+msgid "In the sealed box it runs, but on this device it cannot draw its own screens there, and it reaches your data and this device only through Potyro. Letting it run as yours takes it out of the box, with the same reach as the apps you made. Only do this if you made it, or you know and trust whoever did. <0>{name}</0> asks for:"
+msgstr "Nella scatola sigillata funziona, ma su questo dispositivo lì non può disegnare le sue schermate, e raggiunge i tuoi dati e questo dispositivo solo attraverso Potyro. Lasciarla eseguire come tua la fa uscire dalla scatola, con la stessa portata delle app che hai fatto tu. Fallo solo se l’hai fatta tu, o se conosci e ti fidi di chi l’ha fatta. <0>{name}</0> chiede:"
+
 #: ../shell/src/add-app-dialog.tsx
 msgid "In the sealed box it will not open: tick “I wrote this” below to run it as yours."
 msgstr "Nella scatola sigillata non si aprirà: spunta “L’ho scritta io” qui sotto per eseguirla come tua."
@@ -7294,6 +7299,11 @@ msgstr "l’app, non i suoi dati"
 #: ../shell/src/code-tree.tsx
 msgid "The app's files"
 msgstr "I file dell'app"
+
+#. Above buttons that open the other pages of a shared app, on a page whose own screen cannot be drawn on this device
+#: ../views/src/custom.tsx
+msgid "The app’s other pages work here:"
+msgstr "Le altre pagine dell’app funzionano qui:"
 
 #: ../shell/src/studio.tsx
 #: ../shell/src/tile-editor.tsx

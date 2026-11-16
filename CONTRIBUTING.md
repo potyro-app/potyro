@@ -37,6 +37,14 @@ yours. Stop it first.
 The same specs in Firefox: `pnpm test:e2e:firefox`. Engine differences go in `e2e/engines.ts`,
 never in a weaker assertion.
 
+The sealed specs with shared apps in the QuickJS fallback box: `pnpm test:e2e:quickjs` (the
+`sandbox-quickjs` project: every `*-sandbox.spec.ts` but the realm's own, on a dev server of its
+own). The shell chooses that box by itself where a browser cannot build the realm, and the Studio
+always uses it, so a change to `packages/host/src/isolate/`, to `packages/shell/src/isolate-bridge.ts`
+or to what a sealed app's logic can do runs it. It is not part of the gate. What the fallback does
+not do by design (it draws no screens of an app's own) is a skip with the reason in words, from
+`e2e/engines.ts`.
+
 ## The gate
 
 There is no CI on GitHub. The gate is one command, run by hand on the commit to be merged:

@@ -121,7 +121,8 @@ iframe (`sandbox="allow-scripts"`, `REALM_CSP`); each custom view in a frame of 
   place moves, so its height is measured again); `view-watchdog.ts`; `view-guard.ts` (crash-loop
   guard); `form-submit-shim.ts`; `realm-sockets.ts`; `realm-speech.ts`; `port-transport.ts`.
 - `packages/host/src/isolate/isolate-host.ts` `createIsolateLoader`, `IsolateLoadedApp`; `harness.ts`
-  `HARNESS_SOURCE`; `marshal.ts`. (Behind a flag: `localStorage["potyro:sandbox"] = "quickjs"`.)
+  `HARNESS_SOURCE`; `marshal.ts`. (The fallback: chosen by `sandbox-runner.ts` where no realm can be built, always by
+  the Studio's checks, or with `localStorage["potyro:sandbox"] = "quickjs"`; docs/07.)
 - `packages/shell/src/isolate-bridge.ts` `createSandboxLoader`, `createSharedAppLoader`;
   `packages/shell/src/isolate-stubs/` (the `potyro` and React stand-ins inside the box).
 - The shell's own CSP (`frame-src 'none'`): `packages/shell/index.html`, `packages/shell/vite.config.ts`

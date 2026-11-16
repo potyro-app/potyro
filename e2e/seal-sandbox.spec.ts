@@ -1,4 +1,5 @@
 import { test, expect } from "./console-guard";
+import { skipWithoutSealedScreens } from "./engines";
 
 // The "Feito com Potyro" seal (DESIGN.md §6, §8.1, #424): at the foot of every page of an app
 // someone else made — here the examples run sealed, as a shared app does — a surface pill with
@@ -25,7 +26,8 @@ test("a sealed app wears the seal at the foot of its page, linking to Potyro", a
 // A sealed app's own screen fills the page down to the bottom bar. The seal's band used to come after
 // it, so the page scrolled as well as the screen, pushing the app's top under the top bar (owner,
 // Palette Catcher on a phone, 2026-10-25). The screen ends above a slim band instead.
-test("on a phone a sealed app's own screen ends above the seal, and the page does not scroll", async ({ page }) => {
+test("on a phone a sealed app's own screen ends above the seal, and the page does not scroll", async ({ page }, info) => {
+  skipWithoutSealedScreens(info);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/?app=workout");
   await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });

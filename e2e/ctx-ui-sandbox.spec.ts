@@ -1,6 +1,6 @@
 import { test, expect } from "./console-guard";
 import { installQuestions } from "./ui-questions.js";
-import { grantClipboard } from "./engines";
+import { grantClipboard, skipWithoutSealedScreens } from "./engines";
 
 // The structured questions cross the isolate (#112): an untrusted app's form, menu and progress are
 // plain data out and plain data back, with no permission prompt.
@@ -64,7 +64,7 @@ test("Workout's Log set works untrusted", async ({ page }) => {
 // its "Finish workout?" sheet — `ctx.ui.sheet` from the view — is the shell's, over the frame, through
 // the same mediated ctx as the logic's questions.
 test("a sealed screen asks with the shell's sheet, and its answer reaches the screen", async ({ page, consoleGuard, browserName }, info) => {
-  test.skip(info.project.name === "sandbox-quickjs", "the QuickJS fallback has no sealed screens");
+  skipWithoutSealedScreens(info);
   if (browserName === "webkit")
     consoleGuard.allow(/Computed cycle: "session.label"/, "a pre-existing WebKit finding in the LOGIC realm (PR #360): WebKit reads a record's cycle-trap getter while cloning a computed call's arguments; not the sealed screen's");
   await page.goto("/?app=workout");

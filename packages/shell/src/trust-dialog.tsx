@@ -5,6 +5,10 @@
 // added, its tile on your apps, and the Studio. One confirmation, one wording — a warning that reads
 // differently depending on where you tapped would be a warning nobody reads.
 //
+// The one thing that changes the words is the device, never the place: where shared apps run in the
+// QuickJS fallback (sandbox-runner.ts) the box draws no screens of the app's own, and the dialog must
+// not say it does.
+//
 // It is a dialog for mouse, touch and keyboard alike: focus starts on Cancel (the safe answer),
 // Escape cancels, a tap outside cancels.
 //
@@ -17,6 +21,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { UserApp } from "./user-apps.js";
 import { promoteAndOpen } from "./promotion.js";
+import { sandboxRunner } from "./sandbox-runner.js";
 
 export interface TrustDialogProps {
   name: string;
@@ -34,6 +39,8 @@ export function TrustDialog({ name, permissions, trusted, onCancel, onPromote, o
   useEffect(() => cancelRef.current?.focus(), []);
   // A permission key (`camera`) is code; the list says what it means, as precisely as it was declared.
   const asks = permissions ? permissionWords(permissions) : [];
+  // The fallback box has no frame for an app's own screen (docs/07): say what is true on this device.
+  const drawsScreens = sandboxRunner() === "realm";
   // On the page itself: opened from inside another dialog (the Add an app card) or a menu, it must
   // not be placed — or clipped — by them.
   return createPortal(
@@ -75,10 +82,17 @@ export function TrustDialog({ name, permissions, trusted, onCancel, onPromote, o
               <Trans>Let it run as yours?</Trans>
             </h3>
             <p className="k-muted">
-              <Trans>
-                In the sealed box it runs and draws its own screens, but reaches your data and this device only through Potyro. Letting it run as yours takes it out of the box, with the same reach as the apps you made. Only do this if you made it, or you know and trust whoever did.{" "}
-                <strong>{name}</strong> asks for:
-              </Trans>
+              {drawsScreens ? (
+                <Trans>
+                  In the sealed box it runs and draws its own screens, but reaches your data and this device only through Potyro. Letting it run as yours takes it out of the box, with the same reach as the apps you made. Only do this if you made it, or you know and trust whoever did.{" "}
+                  <strong>{name}</strong> asks for:
+                </Trans>
+              ) : (
+                <Trans comment="The trust dialog on a device where the sealed box cannot draw an app's own screens (an older browser)">
+                  In the sealed box it runs, but on this device it cannot draw its own screens there, and it reaches your data and this device only through Potyro. Letting it run as yours takes it out of the box, with the same reach as the apps you made. Only do this if you made it, or you know and trust whoever did.{" "}
+                  <strong>{name}</strong> asks for:
+                </Trans>
+              )}
             </p>
             <ul className="k-trust-caps">
               {permissions === undefined ? (

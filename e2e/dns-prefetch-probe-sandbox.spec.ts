@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { installShared } from "./realm.js";
 
-// A MEASUREMENT, not a gate spec (docs/31 §8, docs/22 §10.5): does a sealed app's screen make the
+// A MEASUREMENT, not a gate spec (docs/31 §10, docs/22 §10.5): does a sealed app's screen make the
 // browser look a hostname up? CSP governs what a frame may load, and a name can leave in a DNS
 // question without anything being loaded: `<link rel=dns-prefetch>`, `<link rel=preconnect>` and the
 // like. Opt-in, because it reads the browser's own network log and sends real questions for names
@@ -131,16 +131,28 @@ function report(engine: string, log: string, nonce: string): Record<string, stri
   return out;
 }
 
-for (const channel of [undefined, "chromium"] as const) {
-  const engine = channel ? "Chromium (full, new headless)" : "Chromium (headless shell)";
+// Playwright starts Chromium with `--disable-background-networking`, which a person's browser does
+// not have; the third run drops it, so the hints that are background work (dns-prefetch, preconnect)
+// are measured as that browser would treat them, if the control shows it does them at all.
+const CHROMIUMS = [
+  { engine: "Chromium (headless shell)", id: "shell", channel: undefined, asAPerson: false },
+  { engine: "Chromium (full, new headless)", id: "full", channel: "chromium", asAPerson: false },
+  { engine: "Chromium (full, background networking left on)", id: "bg", channel: "chromium", asAPerson: true },
+] as const;
+
+for (const { engine, id, channel, asAPerson } of CHROMIUMS) {
   test(`what a sealed screen's hints make ${engine} look up`, async ({}, info) => {
     test.skip(!ON, "a measurement: POTYRO_DNS_PROBE=1");
     test.skip(info.project.name !== "sandbox", "launches its own browsers; once is enough");
     test.setTimeout(120_000);
-    const nonce = `${channel ? "full" : "shell"}${Date.now().toString(36)}`;
+    const nonce = `${id}${Date.now().toString(36)}`;
     const dir = mkdtempSync(join(tmpdir(), "dns-probe-"));
     const netlog = join(dir, "netlog.json");
-    const browser = await chromium.launch({ channel, args: [`--log-net-log=${netlog}`, "--net-log-capture-mode=IncludeSensitive"] });
+    const browser = await chromium.launch({
+      channel,
+      args: [`--log-net-log=${netlog}`, "--net-log-capture-mode=IncludeSensitive"],
+      ...(asAPerson ? { ignoreDefaultArgs: ["--disable-background-networking"] } : {}),
+    });
     try {
       await drive(browser, String(info.project.use.baseURL), zone(nonce));
     } finally {
@@ -149,8 +161,8 @@ for (const channel of [undefined, "chromium"] as const) {
     const log = readFileSync(netlog, "utf8");
     const result = report(engine, log, nonce);
     info.annotations.push({ type: "dns-probe", description: JSON.stringify(result) });
-    // The method must be able to see a lookup at all: the control's dns-prefetch is in the log.
-    expect(log.length).toBeGreaterThan(1000);
+    // The method must be able to see a lookup at all: the control's own fetch is in the log.
+    expect(log).toContain(nameOf("ctl", "fetch", nonce));
   });
 }
 
@@ -172,5 +184,5 @@ test("what a sealed screen's hints make Firefox look up", async ({}, info) => {
   const log = readdirSync(dir).map((f) => readFileSync(join(dir, f), "utf8")).join("\n");
   const result = report("Firefox", log, nonce);
   info.annotations.push({ type: "dns-probe", description: JSON.stringify(result) });
-  expect(log.length).toBeGreaterThan(100);
+  expect(log).toContain(nameOf("ctl", "fetch", nonce));
 });

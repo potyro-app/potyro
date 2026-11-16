@@ -106,8 +106,9 @@ export default defineConfig<{ guardConsole: boolean }>({
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
-    // The QuickJS fallback (#272), only when asked for: `POTYRO_QUICKJS=1 pnpm e2e --project=sandbox-quickjs`
-    // runs every sandbox spec with shared apps in QuickJS, while it is still the flag's other side.
+    // The QuickJS fallback (#272), only when asked for: `pnpm test:e2e:quickjs`
+    // (`POTYRO_QUICKJS=1 pnpm e2e --project=sandbox-quickjs`) runs the sandbox specs with shared apps in
+    // QuickJS — the box the shell takes by itself where it cannot build a realm (docs/07).
     ...(process.env.POTYRO_QUICKJS
       ? [
           {
@@ -203,6 +204,7 @@ export default defineConfig<{ guardConsole: boolean }>({
           {
             name: "sandbox-quickjs",
             // The realm's own specs assert the realm; every other sandbox spec is the shared contract.
+            // What the fallback does not do by design — an app's own screens — skips by name (e2e/engines.ts).
             testMatch: /.*sandbox\.spec\.ts/,
             testIgnore: /(realm|realm-escape)-sandbox\.spec\.ts/,
             use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${QUICKJS_PORT}` },

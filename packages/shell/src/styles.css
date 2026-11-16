@@ -3664,6 +3664,11 @@ th.k-data-raw {
   border-radius: var(--radius);
   color: var(--ink-soft);
 }
+.k-custom-fallback-pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
 
 /* A sealed app's own screen (#267): its sandboxed frame fills the page's content area. The host sets
    its height to the room below it, down to the bottom bar; a taller view scrolls inside the frame.

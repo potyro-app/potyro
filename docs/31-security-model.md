@@ -21,7 +21,7 @@ shell's `packages/shell/src/sandbox-runner.ts`).
 | The app is | Because | It runs |
 |---|---|---|
 | **Yours** (trusted) | you made it in the Studio, or you said "run it as mine" | **direct**, in the shell's page, with every capability and no prompts |
-| **Someone else's** (sealed) | it came from a link, a shared package, a file or a demo | in the **browser realm** (below), with only the capabilities it declared and you allowed |
+| **Someone else's** (sealed) | it came from a link, a shared package, a file or a demo | in the **browser realm** (below) — or, where the browser cannot build one, in the fallback box (§6) — with only the capabilities it declared and you allowed |
 
 Everything comes in sealed. A link never makes an app trusted, and an update from a link puts a
 trusted app back in the box, so a link cannot put new code into an app that runs with your full
@@ -87,10 +87,34 @@ Code: `adaptMediated` in `packages/host/src/mediate.ts` (docs/07, "The `ctx` med
 - A sealed app gets **only the capabilities its `permissions` manifest declares**. Anything else is
   absent or refused.
 - Each sensitive one (camera, location, files, network, notifications, AI, voice) **asks the person
-  first**, in words that name the app and what it wants. Haptics is declared but not asked.
-- Granted capabilities are **scoped**: `network.fetch` only to the hosts the manifest names; file
-  saves under an app-private prefix; a socket only to a named host, asked once per host
-  (docs/28).
+  first**. Haptics is declared but not asked.
+- **What is scoped, and by whom.** The app's manifest sets the limits, not the person's answer:
+  `network.fetch` only to the hosts the manifest names (`networkAllowed`; `network: true` or `{}`
+  names none and means every host); file saves under an app-private prefix; a socket only to a host
+  the manifest names (docs/28). A call outside those limits is refused with no question.
+- **What the person is asked is coarser than those limits.** The declared hosts are shown once,
+  when the app is added and in the trust dialog ("the internet", or each site by name:
+  `packages/shell/src/capability-words.ts`). The question at the moment of use does not repeat them.
+  For `fetch` it is one sentence, built in `makeConsentGate`:
+
+  > Allow “{app}” to use the network?
+
+  It names no host and says nothing of what is sent; an app that declared one site and an app that
+  declared every site ask in the same words, and one yes covers every host the manifest allows. The
+  sentence is written in `mediate.ts`, not in the i18n catalogs, so it is English on every device
+  (camera, location, files and notifications share that gate and its form). The answer, yes or no,
+  holds for the `ctx` that asked — one run of an action, one screen while it is open — and is
+  neither kept on the device nor per host.
+- **Live connections are asked properly.** A socket asks once per app and host, names the host, and
+  the yes is kept on the device (`packages/host/src/sockets.ts`, the catalog string from
+  `packages/shell/src/app-sockets.ts`):
+
+  > “{appName}” wants a live connection to {host}.
+  > While the app is open it can send and receive anything there. Potyro closes the connection when you leave the app.
+
+  **Open:** the `fetch` question should say where the app may go, as the socket's does, go through
+  the catalogs, and be kept per host. Until then, read "allow the network" as "allow every host this
+  app declared".
 - **Data is per app.** The store is opened per app id, and a sealed app only ever holds a `ctx` bound
   to its own store, files and storage. It cannot read another app's records (docs/07).
 - The key that pays for AI is never in reach of app code: the shell holds it, or the free relay
@@ -113,11 +137,33 @@ A shared app cannot hold Potyro hostage by spinning.
 
 ## 6. The fallback box
 
-Where the realm cannot start (no Worker, or a browser where the frame fails), the shell runs shared
-apps in a QuickJS-WASM isolate instead, still sealed, with the same mediated `ctx`
-(`packages/host/src/isolate/`, docs/22 §10.3). It is behind a flag and due to be removed. There
-an app's memory is bounded: its engine lives in a WebAssembly memory of its own that cannot grow
-past 96 MB, and an app that asks for more is stopped and its memory let go (docs/22 §6.1).
+Code: `packages/host/src/isolate/`, `packages/shell/src/sandbox-runner.ts`,
+`packages/shell/src/isolate-bridge.ts` (docs/07, "The QuickJS fallback"; docs/22 §10.3).
+
+The second sealed box is a QuickJS-WASM isolate: a JavaScript engine compiled to WebAssembly, with
+no ambient authority at all and the same mediated `ctx` behind one bridge. It is not behind a
+switch. The product uses it:
+
+- **by itself, where the realm cannot be built or will not start** (no Worker, or a browser where
+  the frame fails: `realmAvailable()`, `RealmStartError`), for every shared app until the page is
+  reloaded;
+- **always, for the Studio's checks**, on every device: a candidate is validated, run on sample
+  records and verified in QuickJS before it is accepted, and someone else's app opened in the Studio
+  is previewed there (your own app is previewed direct, §9);
+- when a device or a build asks for it (`localStorage["potyro:sandbox"]`, `VITE_POTYRO_SANDBOX`).
+
+What it does not do: it draws **no screens of an app's own** (it has no frame; the page says the
+screen runs only when the app runs as yours and names the pages that do work), it has **none of the
+browser's built-ins** (`Intl`, `URL`, timers, `Blob`), and **`ctx.caps.network.fetch` throws**
+there. Sockets, rooms, files, AI and the questions an app asks are carried. So the fallback is
+strictly narrower than the realm in what an app can reach.
+
+Its memory is bounded: the engine lives in a WebAssembly memory of its own that cannot grow past
+96 MB, and an app that asks for more is stopped and its memory let go (docs/22 §6.1).
+
+Its tests: the unit tests in `packages/host/test/`, and one browser project, `sandbox-quickjs`
+(`pnpm test:e2e:quickjs`), which runs the sealed specs in it. **That project is not part of the
+gate**, so a regression in the fallback is found when someone runs it, not on every merge.
 
 ## 7. What our servers see
 
@@ -165,8 +211,56 @@ Read this before you rely on Potyro for something that matters.
   every new API that opens a channel CSP does not govern (docs/22 §10.5).
 - **Android WebView** has not been measured for the realm (docs/22 §5). If the realm will not start
   there, the shell uses the QuickJS box (§6).
+- **The fallback box is tested less than the realm.** It is a supported path (§6) whose browser
+  project is outside the gate.
+- **Code a model wrote runs as yours** (§9).
+- **A sealed screen can make the browser look a name up** (§10): __DNS_LINE__
 
-## 9. For an audit
+## 9. Code a model wrote, in your own app
+
+An app you make in the Studio is yours: it runs **direct**, in the shell's page, with every
+capability and no prompts (§1). Its code was written by a language model, the engine you chose
+(docs/00, "The Studio and the generator"). Two consequences follow, and neither is a bug in the box,
+because your own app is not in one.
+
+- **Text the model reads can end up as code.** The model is given your request, the app's current
+  source, passages of the reference and the corpus that ship with the release, and the failures its
+  own candidates produced. Whatever is in those is input to the program that writes your app:
+  instructions in a request pasted from somewhere else, a comment or a string in source you copied
+  in, a record's text inside a failure message. A model can follow such text. The result is not a
+  wrong answer in a chat; it is code that runs with your authority on this origin, which includes
+  reading every app's data on the device and asking the web vault's key to decrypt (§8).
+- **The engine is trusted with that authority.** Whoever answers for the model — a provider, a
+  gateway, an endpoint you typed in by base URL — returns code that will run as yours. A dishonest
+  or compromised endpoint needs no injection.
+
+What stands between, and what it is worth:
+
+- A candidate is **checked before it is accepted**, and the checks run it sealed, in QuickJS, on a
+  throwaway store with a budget (`packages/shell/src/verify-candidate.ts`, `run-candidate.ts`). The
+  checks ask whether the app still works: it compiles, validates, loses no entity or page, and its
+  pages and actions run on sample records. **They do not ask what the code does with its reach.**
+  Code that works and also sends your records somewhere passes.
+- **The sealed check is not the first time the code runs.** A version of your own app is built the
+  moment it arrives, direct, so the Studio can show it as it will run
+  (`packages/shell/src/studio-preview.tsx`, `loadTrustedModule`). Whatever the module does as it
+  loads has run with your authority by then, before any summary is read.
+- Every accepted change is **a version in History**, and can be undone. Undoing restores the code;
+  it does not take back what the code already did.
+- **A sealed app stays sealed in the Studio.** Opening someone else's app in the Studio, or changing
+  it there, does not make it yours; that takes the trust dialog (§1).
+- `ctx.caps.ai` inside an app is a different thing: its answer is data, checked against the shape
+  the app asked for, never evaluated (docs/23).
+
+There is no review of model-written code for intent, by a person or by a program, between the model
+and your authority. Treat a request you paste from a stranger as you would a script they asked you
+to run, and an engine as you would the author of your apps.
+
+## 10. Names leaving a sealed screen (DNS)
+
+__DNS_SECTION__
+
+## 11. For an audit
 
 The surface a security review should cover, from docs/22 §10.5 and §11.5:
 
@@ -187,10 +281,13 @@ The surface a security review should cover, from docs/22 §10.5 and §11.5:
 - the mediation (`mediate.ts`, `make-ctx.ts`, `values-gate.ts`) and trust at install
   (`trust-dialog.tsx`, `promotion.ts` in the shell).
 
-The QuickJS marshal and bridge (`packages/host/src/isolate/`) are in scope only while the fallback
-ships.
+The QuickJS marshal and bridge (`packages/host/src/isolate/`) are in scope while the fallback ships,
+which is now: the shell chooses it by itself and the Studio always uses it (§6). The engine is the
+one before its bridge: what the harness (`harness.ts`) hands the host, `bytesOfBase64` and the held
+captures in `isolate-host.ts`, and the choice of box (`sandbox-runner.ts`, the fall back on
+`RealmStartError`).
 
-## 10. Reporting a hole
+## 12. Reporting a hole
 
 Privately, never in a public issue: GitHub's private vulnerability reporting on this repository, or
 the address in `SECURITY.md`. We acknowledge within 7 days. There is no bounty. `SECURITY.md` says

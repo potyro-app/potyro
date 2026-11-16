@@ -7,7 +7,7 @@
 //
 // What this file decides is narrower: whether a failure to open is one that running as yours FIXES.
 // The sealed box is the browser realm (docs/22): a Worker with no page, so `window` and `document`
-// are not there (QuickJS, the fallback behind a flag, lacks more — sandbox-runner.ts). An app or a
+// are not there (QuickJS, the fallback where no realm can be built, lacks more — sandbox-runner.ts). An app or a
 // library that needs a page or a feature the box lacks (missing-features.ts) only works direct, so
 // the failure screen offers that as the way out. Nothing else is: code that does not compile or an app's own mistake fails direct too, and a
 // library or module that does not match its lock must never be one tap from full authority. Such an

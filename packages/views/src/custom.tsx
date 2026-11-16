@@ -35,24 +35,7 @@ export function CustomView(props: BuiltinViewProps) {
 
   if (sealed) return <SealedCustomView sealed={sealed} props={viewProps} pageId={pageId} runtime={runtime} navigate={navigate} />;
 
-  if (!Component && !mount) {
-    // A dead end otherwise: the screen the user came for is blank, and the only way forward is a
-    // control in the header they have no reason to associate with it. Say what to press.
-    return (
-      <div className="k-custom-fallback">
-        <p>
-          <Trans>This screen is built with the app’s own code, so it only runs when the app runs as yours.</Trans>
-        </p>
-        <p>
-          {/* The shell owns the decision (views never change trust): this asks it to open its own
-              dialog, the same one the 🛡 mark at the top opens. */}
-          <button type="button" className="k-add k-primary-action" onClick={() => globalThis.dispatchEvent(new CustomEvent(TRUST_REQUEST))}>
-            <Trans>Run it as mine</Trans>
-          </button>
-        </p>
-      </div>
-    );
-  }
+  if (!Component && !mount) return <NoScreenHere runtime={runtime} pageId={pageId} navigate={navigate} />;
 
   // The framework-neutral form: hand over a container and keep the teardown. The host does not know
   // or care what rendered into it — the same deal MapLibre gets.
@@ -62,6 +45,48 @@ export function CustomView(props: BuiltinViewProps) {
   // (rather than being called inline as a plain function).
   const Rendered = Component as unknown as FC<ViewProps>;
   return <Rendered {...viewProps} />;
+}
+
+/**
+ * Where a sealed app's own screen cannot be drawn at all: the QuickJS fallback, which has no frame to
+ * put it in (docs/07), and the Studio's preview. A dead end otherwise — the screen the person came
+ * for is blank, and the only way forward is a control in the header they have no reason to associate
+ * with it. So it says why, what still works here (the app's other pages, each a button), and what to
+ * press to see this one.
+ */
+function NoScreenHere({ runtime, pageId, navigate }: { runtime: BuiltinViewProps["runtime"]; pageId: string; navigate: BuiltinViewProps["navigate"] }) {
+  const titles = usePageTitles(runtime);
+  const here = pageId.split("#")[0];
+  // Pages a person can open from anywhere and that draw without the app's own code.
+  const plain = runtime.definition.pages.filter((p) => p.id !== here && !p.hidden && (p.view ?? p.layout?.items[0]?.view)?.type !== "custom");
+  return (
+    <div className="k-custom-fallback">
+      <p>
+        <Trans>This screen is built with the app’s own code, so it only runs when the app runs as yours.</Trans>
+      </p>
+      {plain.length > 0 && (
+        <>
+          <p>
+            <Trans comment="Above buttons that open the other pages of a shared app, on a page whose own screen cannot be drawn on this device">The app’s other pages work here:</Trans>
+          </p>
+          <p className="k-custom-fallback-pages">
+            {plain.map((p) => (
+              <button key={p.id} type="button" className="k-add" onClick={() => navigate(p.id)}>
+                {titles[p.id] ?? p.id}
+              </button>
+            ))}
+          </p>
+        </>
+      )}
+      <p>
+        {/* The shell owns the decision (views never change trust): this asks it to open its own
+            dialog, the same one the 🛡 mark at the top opens. */}
+        <button type="button" className="k-add k-primary-action" onClick={() => globalThis.dispatchEvent(new CustomEvent(TRUST_REQUEST))}>
+          <Trans>Run it as mine</Trans>
+        </button>
+      </p>
+    </div>
+  );
 }
 
 function MountedView({ mount, props, what, host }: { mount: CustomViewMount; props: ViewProps; what: string; host: BuiltinViewProps["runtime"] }) {

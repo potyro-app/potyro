@@ -1,6 +1,7 @@
 import { test, expect, type Frame, type Page } from "./console-guard";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { skipWithoutSealedScreens } from "./engines";
 import { installShared, startGapMeter, startProbe, type Probe } from "./realm.js";
 
 // Sealed apps draw their own screens (#267, docs/22 §11): a shared app's custom view renders in a
@@ -13,6 +14,9 @@ import { installShared, startGapMeter, startProbe, type Probe } from "./realm.js
 // of process, which is where an endless loop is survivable (docs/22 §4.2).
 
 test.use({ viewport: { width: 1280, height: 800 } });
+
+// Every test here is about the app's own screen in its frame.
+test.beforeEach(({}, info) => skipWithoutSealedScreens(info));
 
 const FIXTURE = readFileSync(fileURLToPath(new URL("./fixtures/sealed-views.app.tsx", import.meta.url)), "utf8");
 

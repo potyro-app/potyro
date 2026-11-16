@@ -3,7 +3,8 @@
 // and the app's Store. Loaded lazily so the trusted path (`pnpm dev`) pulls in neither.
 //
 // `createSharedAppLoader` is how a shared app runs, and how the Add-an-app card tries one (#271): in
-// the browser realm (#272), or QuickJS where the flag says so (sandbox-runner.ts). `createSandboxLoader`
+// the browser realm (#272), or QuickJS where sandbox-runner.ts says so (no realm can be built here, or
+// it was asked for). `createSandboxLoader`
 // is QuickJS itself, which verification and the Studio still use until they move (docs/22 §8 phase 2).
 
 import type { CreateHostOptions } from "@potyro/host";
@@ -47,7 +48,8 @@ export async function createSandboxLoader(store: Store, opts?: SandboxOptions): 
 
 
 /**
- * The loader a shared app runs with: the browser realm, or QuickJS behind the flag. `views` lets the
+ * The loader a shared app runs with: the browser realm, or QuickJS where the realm cannot be built
+ * or was not asked for (sandbox-runner.ts). `views` lets the
  * realm draw its custom views in sandboxed frames (#267); QuickJS cannot, and leaves them off.
  */
 export async function createSharedAppLoader(store: Store, opts?: SandboxOptions, views?: SealedViewSource): Promise<LoadIsolated> {

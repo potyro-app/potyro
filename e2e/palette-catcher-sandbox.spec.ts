@@ -1,4 +1,5 @@
 import { test, expect, type Frame, type Page } from "./console-guard";
+import { skipWithoutSealedScreens } from "./engines";
 import { packApp } from "./library-demos";
 import { addPackage } from "./live-apps";
 
@@ -9,6 +10,9 @@ import { addPackage } from "./live-apps";
 // `<img>` when the bitmap path fails. The second test forces that path, in every engine this runs in.
 
 test.use({ viewport: { width: 1280, height: 900 }, colorScheme: "light" });
+
+// Every test here is about the app's own screen in its frame.
+test.beforeEach(({}, info) => skipWithoutSealedScreens(info));
 
 /** A 800×600 PNG: four vertical bands of known colour. */
 async function bandsPng(page: Page): Promise<Buffer> {

@@ -7,7 +7,7 @@
 // own prefs instead, set once for its projects in playwright.config.ts (firefox-prefs.ts): the
 // async clipboard reads without its paste prompt, and getUserMedia gets a fake camera without asking.
 
-import { expect, test, type BrowserContext, type Page } from "./console-guard";
+import { expect, test, type BrowserContext, type Page, type TestInfo } from "./console-guard";
 
 export { FIREFOX_PREFS } from "./firefox-prefs";
 
@@ -62,4 +62,22 @@ export async function skipWithoutMaps(page: Page): Promise<void> {
 export async function expectMapPage(page: Page): Promise<void> {
   if (await hasWebGL2(page)) await expect(page.locator(".k-map-canvas")).toBeVisible();
   else await expect(page.locator(".k-map-list")).toBeVisible();
+}
+
+/** The project that runs the sandbox specs with shared apps in the QuickJS fallback (`pnpm test:e2e:quickjs`). */
+export const QUICKJS_PROJECT = "sandbox-quickjs";
+
+/**
+ * Why a test of a sealed app's OWN screen skips in the QuickJS fallback. A custom view is drawn in a
+ * sandboxed frame the browser realm builds (docs/22 §11); QuickJS is an engine with no page, so it
+ * has nowhere to draw one, by design. A person there reads that the screen runs only when the app
+ * runs as theirs, with the button for it, and the app's other pages work —
+ * sealed-views-fallback-sandbox.spec.ts proves that, in every project.
+ */
+export const NO_SEALED_SCREENS =
+  "the QuickJS fallback draws no sealed screens: it has no frame to put an app's own screen in (docs/07) — sealed-views-fallback-sandbox.spec.ts covers what a person sees there";
+
+/** Skip a test that needs a sealed app's own screen where shared apps run in the QuickJS fallback. */
+export function skipWithoutSealedScreens(info: TestInfo): void {
+  test.skip(info.project.name === QUICKJS_PROJECT, NO_SEALED_SCREENS);
 }
