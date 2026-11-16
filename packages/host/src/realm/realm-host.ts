@@ -14,11 +14,12 @@
 import type { AppDefinition, Ctx, FieldRefusal, PermissionManifest, Resolved, UiProgress, UiTimer, Value } from "potyro";
 import type { TimerData } from "../timers.js";
 import { AppCodeError, HostFault, thrownFrom, thrownOf, type FaultWhy } from "../app-error.js";
-import type { BindingRef, LoadedApp, Provenance, SealedView } from "../types.js";
+import type { AppRest, BindingRef, LoadedApp, Provenance, SealedView } from "../types.js";
 import { OPS, VIEW_OPS, type CallKind, type CtxBase, type FetchAnswer, type Op, type RealmToHost, type ViewOp } from "./protocol.js";
 import { SocketBridge, type BoxSocketInfo } from "../socket-bridge.js";
 import { SpeechBridge, type BoxSpeechInfo } from "../speech-bridge.js";
 import type { Channel } from "./channel.js";
+import { HeldBudget, REALM_LIMITS, RealmLimitError, checkOpSize, readBody, sizeOf } from "./limits.js";
 import { SealedViewController } from "./sealed-view.js";
 import type { ViewGuard } from "./view-guard.js";
 import type { ViewWatchdogOptions } from "./view-watchdog.js";
@@ -95,6 +96,15 @@ const CHECK_MS = 50;
 const MAX_BURST = 2000;
 /** How many ctxs a realm can still name. Older ones answer "no such ctx": their pass is long over. */
 const CTX_WINDOW = 512;
+/**
+ * A realm the watchdog had to stop this many times within `REST_WINDOW_MS` is not started again by
+ * itself (#90): whatever ended it — a loop, a flood, memory the browser took its process for — the
+ * next start would walk into the same thing, at the person's cost each time. The app rests until the
+ * person starts it again (`LoadedApp.rest`). One stop, or two, is an accident: the next call starts
+ * a fresh realm as before.
+ */
+export const REST_AFTER_STOPS = 3;
+export const REST_WINDOW_MS = 120_000;
 
 export function createRealmLoader(opts: RealmLoaderOptions) {
   const o: ResolvedOptions = {
@@ -140,7 +150,8 @@ export async function releaseSharedProcess(reason: string): Promise<boolean> {
   const realms = [...LIVE];
   const answers = await Promise.all(realms.map((r) => r.probe(PROBE_MS)));
   if (answers.every(Boolean)) return false;
-  for (const r of realms) r.kill(`the sandbox's process was still busy after a screen was stopped (${reason})`);
+  // Not held against any of them: they were well, and are restarted to free the process another's screen held.
+  for (const r of realms) r.kill(`the sandbox's process was still busy after a screen was stopped (${reason})`, "stopped", false);
   return true;
 }
 
@@ -156,6 +167,7 @@ interface Pending {
 }
 
 const now = (): number => performance.now();
+const FLOOD_BYTES = `it sent more than ${Math.round(REALM_LIMITS.burstBytes / 1048576)} MB in ${CHECK_MS} ms`;
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
 export class RealmLoadedApp implements LoadedApp {
@@ -229,6 +241,31 @@ export class RealmLoadedApp implements LoadedApp {
    * nameable while it is open: its callbacks still use it.
    */
   private pinnedBy = new Map<number, number>();
+  /** What the host holds for this app right now, its logic's and its screens' together (limits.ts). */
+  private readonly budget = new HeldBudget();
+  /** Questions to the person that are open (a dialog, a sheet, a picker): bounded, `ask`. */
+  private asking = 0;
+  /** When the watchdog stopped this app's realm, lately. */
+  private stops: number[] = [];
+  private resting = false;
+  private readonly restListeners = new Set<() => void>();
+  /**
+   * The app at rest (#90): stopped `REST_AFTER_STOPS` times in a row, it is not started again until the
+   * person says so. Calls meanwhile are refused at once as "stopped".
+   */
+  readonly rest: AppRest = {
+    resting: () => this.resting,
+    subscribe: (listener) => {
+      this.restListeners.add(listener);
+      return () => void this.restListeners.delete(listener);
+    },
+    wake: () => {
+      if (!this.resting) return;
+      this.resting = false;
+      this.stops = [];
+      this.tellRest();
+    },
+  };
   /** The logic's port as `answer` sees it; null while no realm is up. */
   private logic: Channel | null = null;
   /** The app's custom views, one controller per page reference (#267). */
@@ -246,7 +283,15 @@ export class RealmLoadedApp implements LoadedApp {
   /** Start (or restart, after a kill) the realm and load the app into it. */
   start(): Promise<void> {
     if (this.disposed) return Promise.reject(new HostFault("this app was closed", "closed"));
-    this.starting ??= this.spawn().finally(() => (this.starting = null));
+    this.starting ??= this.spawn()
+      .catch((e: unknown) => {
+        // A realm that will not come up AGAIN (it did once: there is a definition) is a stop like any
+        // other — its top level runs away now, or its process is taken as it loads — and counts
+        // towards the app's rest. Once per start, however many calls were waiting on it.
+        if (this.definition && !this.disposed) this.stopped();
+        throw e;
+      })
+      .finally(() => (this.starting = null));
     return this.starting;
   }
 
@@ -269,7 +314,11 @@ export class RealmLoadedApp implements LoadedApp {
         port.onmessage = (e: MessageEvent) => {
           const m = e.data as RealmToHost;
           if (m?.t === "up") up = true;
-          else if (m?.t === "ready") (m.error != null ? reject(m.start ? new RealmStartError(m.error) : new Error(m.error)) : resolve(String(m.definition)));
+          else if (m?.t === "ready") {
+            if (m.error != null) reject(m.start ? new RealmStartError(m.error) : new Error(String(m.error).slice(0, 2000)));
+            else if (String(m.definition).length * 2 > REALM_LIMITS.definitionBytes) reject(new Error("the app's definition is larger than a shared app's may be"));
+            else resolve(String(m.definition));
+          }
         };
       });
       port.postMessage({ t: "load", code: this.code, ...(this.catalogs ? { catalogs: this.catalogs } : {}) });
@@ -296,15 +345,38 @@ export class RealmLoadedApp implements LoadedApp {
   }
 
   /** Stop the realm now; what was waiting on it is rejected. The next call starts a fresh one. */
-  kill(reason: string, why: FaultWhy = "stopped"): void {
+  kill(reason: string, why: FaultWhy = "stopped", counts = true): void {
     if (!this.realm) return;
     this.o.onKill?.(reason);
+    if (counts) this.stopped();
     // The new realm will not know these connections' numbers: they end with the old one.
     this.sockets.endAll("stopped", "the app was stopped");
     this.speech.endAll();
     this.teardown();
     for (const [, p] of this.pending) p.reject(new HostFault(`stopped: ${reason}`, why));
     this.pending.clear();
+  }
+
+  /** The watchdog stopped the realm: often enough in a row, and the app rests (`REST_AFTER_STOPS`). */
+  private stopped(): void {
+    const t = now();
+    this.stops = [...this.stops.filter((at) => t - at <= REST_WINDOW_MS), t];
+    if (this.resting || this.stops.length < REST_AFTER_STOPS) return;
+    this.resting = true;
+    this.tellRest();
+  }
+
+  /** Tell whoever shows the rest. A listener that throws must not keep a stop from finishing: its error surfaces on its own. */
+  private tellRest(): void {
+    for (const listener of [...this.restListeners]) {
+      try {
+        listener();
+      } catch (e) {
+        queueMicrotask(() => {
+          throw e;
+        });
+      }
+    }
   }
 
   /** Whether this realm's frame thread answers (see `releaseSharedProcess`). No realm up: nothing to hold. */
@@ -321,6 +393,7 @@ export class RealmLoadedApp implements LoadedApp {
       sockets: this.sockets,
       pinnedBy: this.pinnedBy,
       progress: "",
+      flood: (reason) => this.port === port && this.kill(reason),
     };
   }
 
@@ -398,6 +471,8 @@ export class RealmLoadedApp implements LoadedApp {
     const answers = Boolean(m && typeof m === "object" && m.t === "result" && this.pending.has(m.id));
     if (!answers && ++this.burst > MAX_BURST) return this.kill(`it sent more than ${MAX_BURST} messages in ${CHECK_MS} ms`);
     if (!m || typeof m !== "object") return;
+    // Bytes count as messages do: an op's are counted where it is answered, anything else's here.
+    if (m.t !== "op" && this.budget.arrived(this.budget.measure(m, REALM_LIMITS.opBytes))) return this.kill(FLOOD_BYTES);
     if (m.t === "hb") {
       this.lastBeat = now();
       this.stalledAtBeat = this.stalledMs;
@@ -411,7 +486,10 @@ export class RealmLoadedApp implements LoadedApp {
       const p = this.pending.get(m.id);
       if (!p) return;
       this.pending.delete(m.id);
-      if (m.ok) p.resolve(m.value);
+      if (m.ok && sizeOf(m.value, REALM_LIMITS.resultBytes) > REALM_LIMITS.resultBytes) {
+        // Kept by the page that asked, for as long as it shows: one answer is bounded.
+        p.reject(new AppCodeError({ message: `the ${p.label} handed back more than a shared app's may (at most ${Math.round(REALM_LIMITS.resultBytes / 1048576)} MB)`, name: "RangeError" }));
+      } else if (m.ok) p.resolve(m.value);
       // What the app's code threw, as it said it: no prefix naming the box (#76). Never trusted to be well-formed.
       else p.reject(new AppCodeError(thrownFrom(m)));
       return;
@@ -434,15 +512,26 @@ export class RealmLoadedApp implements LoadedApp {
         ch.post({ t: "reply", id, ok: false, error: `the answer cannot be sent into the app: ${message(e)}` });
       }
     };
+    // What the host holds for this op until it is answered: given back below, whatever happens.
+    const held: Array<() => void> = [];
     try {
+      // Measured first, whatever it is: the bytes arrived either way, and a realm that sends too many
+      // in one go is stopped like one that sends too many messages.
+      // The whole message, not its arguments alone: whatever else it carries is held as long.
+      const size = this.budget.measure(m, REALM_LIMITS.opBytes);
+      if (this.budget.arrived(size)) return void ch.flood?.(FLOOD_BYTES);
       const op = typeof m.op === "string" ? m.op : "";
       const isView = Boolean(ch.viewOp) && (VIEW_OPS as readonly string[]).includes(op);
       if (!isView && !(OPS as readonly string[]).includes(op)) throw new Error(`op not allowed: ${String(m.op).slice(0, 40)}`);
+      checkOpSize(op, size);
+      // One at a time: what the first returns must be kept when the second refuses.
+      held.push(this.budget.begin());
+      held.push(this.budget.take(size, `ctx.${op}`));
       const ctxId = Number(m.ctxId);
       const ctx = ch.ctx(ctxId);
       if (!ctx) throw new Error("no such ctx");
       const args = Array.isArray(m.args) ? m.args : [];
-      let value = isView ? await ch.viewOp!(op as ViewOp, args) : await this.route(ctx, op as Op, args, ch);
+      let value = isView ? await ch.viewOp!(op as ViewOp, args) : await this.route(ctx, op as Op, args, ch, held);
       if (!isView && ch.adapt) value = await ch.adapt(op as Op, value);
       const opened = (op === "caps.network.socket" || op === "caps.network.room") && ch.alive() ? (value as BoxSocketInfo) : null;
       if (opened) ch.pinnedBy.set(opened.sid, ctxId);
@@ -468,6 +557,8 @@ export class RealmLoadedApp implements LoadedApp {
       // whoever tells the person, if the app lets it go — reads what a trusted app would (#76).
       const { name, code, refusal } = thrownOf(e);
       reply(false, undefined, message(e), { ...(code ? { code } : {}), ...(name !== "Error" ? { name } : {}), ...(refusal ? { refusal } : {}) });
+    } finally {
+      for (const give of held) give();
     }
   }
 
@@ -478,6 +569,20 @@ export class RealmLoadedApp implements LoadedApp {
       return await run();
     } finally {
       this.questionClosed();
+    }
+  }
+
+  /**
+   * A question the person answers on screen — a dialog, a sheet, a picker. Only so many are open at
+   * once: each is the shell's to hold and to draw, and an app could ask without end.
+   */
+  private async ask<T>(run: () => Promise<T>): Promise<T> {
+    if (this.asking >= REALM_LIMITS.questions) throw new RealmLimitError(`too many questions are open at once (at most ${REALM_LIMITS.questions}): wait for an answer`);
+    this.asking += 1;
+    try {
+      return await this.question(run);
+    } finally {
+      this.asking -= 1;
     }
   }
 
@@ -494,7 +599,7 @@ export class RealmLoadedApp implements LoadedApp {
    * app holds, with mediated caps. No check is repeated here, so there is nothing here to keep in step.
    * Arguments are untrusted values; each is coerced to the type the method takes.
    */
-  private async route(ctx: Ctx, op: Op, a: unknown[], ch: Channel): Promise<unknown> {
+  private async route(ctx: Ctx, op: Op, a: unknown[], ch: Channel, held: Array<() => void>): Promise<unknown> {
     const s = (i: number) => String(a[i]);
     const opt = (i: number) => (a[i] == null ? undefined : String(a[i]));
     const x = (i: number) => a[i] as never;
@@ -557,29 +662,31 @@ export class RealmLoadedApp implements LoadedApp {
         return ctx.files.remove(x(0));
       // A system dialog the person answers is the consent (make-ctx.ts filesFor): the budget pauses.
       case "files.import":
-        return this.question(() => ctx.files.import(x(0)));
+        return this.ask(() => ctx.files.import(x(0)));
       case "files.export":
-        return this.question(() => ctx.files.export(x(0)));
+        return this.ask(() => ctx.files.export(x(0)));
       case "ui.toast":
         return ctx.ui.toast(x(0));
       case "ui.confirm":
-        return this.question(() => ctx.ui.confirm(x(0), x(1)));
+        return this.ask(() => ctx.ui.confirm(x(0), x(1)));
       case "ui.prompt":
-        return this.question(() => ctx.ui.prompt(x(0), x(1)));
+        return this.ask(() => ctx.ui.prompt(x(0), x(1)));
       case "ui.pick":
-        return this.question(() => ctx.ui.pick(Array.isArray(a[0]) ? (a[0] as unknown[]) : [], x(1)));
+        return this.ask(() => ctx.ui.pick(Array.isArray(a[0]) ? (a[0] as unknown[]) : [], x(1)));
       case "ui.sheet":
-        return this.question(() => ctx.ui.sheet(x(0)));
+        return this.ask(() => ctx.ui.sheet(x(0)));
       case "ui.menu":
-        return this.question(() => ctx.ui.menu(x(0)));
+        return this.ask(() => ctx.ui.menu(x(0)));
       case "ui.form":
-        return this.question(() => ctx.ui.form(x(0)));
+        return this.ask(() => ctx.ui.form(x(0)));
       case "ui.share":
-        return this.question(() => ctx.ui.share(x(0)));
+        return this.ask(() => ctx.ui.share(x(0)));
       case "ui.progress": {
         const [pid, what, arg, detail] = [`${ch.progress}${s(0)}`, s(1), a[2], a[3]];
+        if (pid.length > REALM_LIMITS.nameChars) return null;
         const bar = this.progress.get(pid);
-        if (what === "open" && !bar) this.progress.set(pid, ctx.ui.progress(arg as never));
+        // Only so many at once, like the holds below: past that a bar is simply not shown.
+        if (what === "open" && !bar && this.progress.size < REALM_LIMITS.progressBars) this.progress.set(pid, ctx.ui.progress(arg as never));
         else if (bar && what === "update") bar.update(Number(arg), detail == null ? undefined : String(detail));
         else if (bar && what === "done") {
           bar.done();
@@ -590,6 +697,7 @@ export class RealmLoadedApp implements LoadedApp {
       case "ui.drawsTimer": {
         // Under the asking port's names, as keepAwake: a screen that goes lets its chips show again.
         const [hid, what] = [`${ch.progress}${s(0)}`, s(1)];
+        if (hid.length > REALM_LIMITS.nameChars) return null;
         if (what === "hold" && !this.awake.has(hid) && this.awake.size < 64) this.awake.set(hid, ctx.ui.drawsTimer(s(2)));
         else if (what === "release") {
           this.awake.get(hid)?.release();
@@ -600,6 +708,7 @@ export class RealmLoadedApp implements LoadedApp {
       case "ui.keepAwake": {
         // Each port's holds by its own names (a view's are prefixed): a screen let go of lets its holds go.
         const [hid, what] = [`${ch.progress}${s(0)}`, s(1)];
+        if (hid.length > REALM_LIMITS.nameChars) return null;
         if (what === "hold" && !this.awake.has(hid) && this.awake.size < 32) this.awake.set(hid, ctx.ui.keepAwake());
         else if (what === "release") {
           this.awake.get(hid)?.release();
@@ -639,7 +748,7 @@ export class RealmLoadedApp implements LoadedApp {
       case "caps.camera.capture": {
         const camera = ctx.caps.camera;
         if (!camera) throw new Error("Permission denied: camera");
-        return this.question(() => camera.capture(x(0)));
+        return this.ask(() => camera.capture(x(0)));
       }
       case "caps.geo.current": {
         const geo = ctx.caps.geo;
@@ -662,14 +771,14 @@ export class RealmLoadedApp implements LoadedApp {
       case "caps.filesystem.pick": {
         const fs = ctx.caps.filesystem;
         if (!fs) throw new Error("Permission denied: filesystem");
-        return this.question(() => fs.pick());
+        return this.ask(() => fs.pick());
       }
       case "caps.filesystem.save": {
         const fs = ctx.caps.filesystem;
         if (!fs) throw new Error("Permission denied: filesystem");
         if (!(a[1] instanceof Blob)) throw new Error("caps.filesystem.save takes a Blob");
         const data = a[1];
-        return this.question(() => fs.save(s(0), data));
+        return this.ask(() => fs.save(s(0), data));
       }
       // AI (docs/23): `mediateCaps` put it here only if the manifest asked; the shape is checked, the
       // person asked and the answer validated in ai.ts. The wait is the network's, not the app's.
@@ -711,7 +820,10 @@ export class RealmLoadedApp implements LoadedApp {
         const init = (a[1] ?? undefined) as RequestInit | undefined;
         return this.question(async (): Promise<FetchAnswer> => {
           const res = await network.fetch(s(0), init && { method: init.method, headers: init.headers, body: init.body });
-          return { status: res.status, statusText: res.statusText, headers: [...res.headers.entries()], body: await res.arrayBuffer() };
+          // Read by parts and held to the app's account: a download without end is cut off, not kept.
+          const read = await readBody(res, this.budget);
+          held.push(read.release);
+          return { status: res.status, statusText: res.statusText, headers: [...res.headers.entries()], body: read.body };
         });
       }
     }
@@ -762,6 +874,8 @@ export class RealmLoadedApp implements LoadedApp {
 
   private async invoke(kind: CallKind, args: unknown[], ctx: Ctx): Promise<Value> {
     if (this.disposed) throw new HostFault("this app was closed", "closed");
+    // At rest: not started again by a call, only by the person (`rest.wake`).
+    if (this.resting) throw new HostFault("stopped: this app stopped several times in a row and is resting", "stopped");
     if (!this.port) await this.start();
     const port = this.port!;
     const id = ++this.seq;
@@ -857,6 +971,7 @@ export class RealmLoadedApp implements LoadedApp {
         baseOf: (ctx, id) => this.baseOf(ctx, id),
         catalogFor: (language) => (language ? this.catalogs?.[language] : undefined),
         answer: (m, ch) => void this.answer(m, ch),
+        arrived: (m) => this.budget.arrived(this.budget.measure(m, REALM_LIMITS.opBytes)),
         releaseHolds: (prefix) => this.releaseHolds(prefix),
         stopped: (kind, reason) => {
           // Out of process and silent: the view may still spin there, holding every realm frame of the

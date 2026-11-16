@@ -2032,6 +2032,7 @@ msgid "Back to a working page"
 msgstr "Back to a working page"
 
 #: ../shell/src/splash.tsx
+#: ../shell/src/splash.tsx
 msgid "Back to my apps"
 msgstr "Back to my apps"
 
@@ -5897,6 +5898,11 @@ msgstr "Potyro passes all of this to OpenRouter and the model it picks."
 msgid "Potyro pink"
 msgstr "Potyro pink"
 
+#. Shown instead of opening a shared app, after the browser tab crashed or froze the last time this app was open. Calm: it may or may not have been the app's doing.
+#: ../shell/src/splash.tsx
+msgid "Potyro stopped working the last time this app was open, so it has not been started. What you saved in it is still here."
+msgstr "Potyro stopped working the last time this app was open, so it has not been started. What you saved in it is still here."
+
 #: ../shell/src/app-ai.ts
 msgid "Potyro's free AI is used up for everyone for now. It's back next month, or add your own OpenRouter key in Model settings."
 msgstr "Potyro's free AI is used up for everyone for now. It's back next month, or add your own OpenRouter key in Model settings."
@@ -6865,6 +6871,16 @@ msgstr "Start a new app"
 msgid "Start from an app in the gallery"
 msgstr "Start from an app in the gallery"
 
+#. A button: start an app that Potyro did not start by itself
+#: ../shell/src/splash.tsx
+msgid "Start it"
+msgstr "Start it"
+
+#. A button on the notice of a paused app: run the app again
+#: ../shell/src/rest-banner.tsx
+msgid "Start it again"
+msgstr "Start it again"
+
 #: ../shell/src/ask-panel.tsx
 #: ../views/src/steps.tsx
 msgid "Start over"
@@ -7737,6 +7753,11 @@ msgstr "This app isn't saved on this device, so it can't be changed here."
 #: ../shell/src/inline-edit.tsx
 msgid "This app isn't written in a way that can be changed in place."
 msgstr "This app isn't written in a way that can be changed in place."
+
+#. A notice at the top of a shared app that Potyro had to stop several times in a row (it froze or used too much memory) and has now paused. Calm, not an error.
+#: ../shell/src/rest-banner.tsx
+msgid "This app stopped several times in a row, so Potyro paused it. What you saved in it is still here."
+msgstr "This app stopped several times in a row, so Potyro paused it. What you saved in it is still here."
 
 #: ../shell/src/open-store.ts
 msgid "This app’s data is open in another Potyro tab or window, so it cannot be opened here as well. Close it there, then try again."

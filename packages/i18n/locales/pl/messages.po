@@ -2032,6 +2032,7 @@ msgid "Back to a working page"
 msgstr "Wróć do działającej strony"
 
 #: ../shell/src/splash.tsx
+#: ../shell/src/splash.tsx
 msgid "Back to my apps"
 msgstr "Wróć do moich aplikacji"
 
@@ -5897,6 +5898,11 @@ msgstr "Potyro przekazuje to wszystko do OpenRouter i do modelu, który wybiera.
 msgid "Potyro pink"
 msgstr "Róż Potyro"
 
+#. Shown instead of opening a shared app, after the browser tab crashed or froze the last time this app was open. Calm: it may or may not have been the app's doing.
+#: ../shell/src/splash.tsx
+msgid "Potyro stopped working the last time this app was open, so it has not been started. What you saved in it is still here."
+msgstr "Potyro przestało działać, gdy ta aplikacja była ostatnio otwarta, więc nie została uruchomiona. To, co w niej zapisano, nadal tu jest."
+
 #: ../shell/src/app-ai.ts
 msgid "Potyro's free AI is used up for everyone for now. It's back next month, or add your own OpenRouter key in Model settings."
 msgstr "Darmowa AI Potyro na razie wyczerpała się dla wszystkich. Wróci w przyszłym miesiącu, albo dodaj własny klucz OpenRouter w ustawieniach modelu."
@@ -6865,6 +6871,16 @@ msgstr "Zacznij nową aplikację"
 msgid "Start from an app in the gallery"
 msgstr "Zacznij od aplikacji z galerii"
 
+#. A button: start an app that Potyro did not start by itself
+#: ../shell/src/splash.tsx
+msgid "Start it"
+msgstr "Uruchom ją"
+
+#. A button on the notice of a paused app: run the app again
+#: ../shell/src/rest-banner.tsx
+msgid "Start it again"
+msgstr "Uruchom ją ponownie"
+
 #: ../shell/src/ask-panel.tsx
 #: ../views/src/steps.tsx
 msgid "Start over"
@@ -7737,6 +7753,11 @@ msgstr "Ta aplikacja nie jest zapisana na tym urządzeniu, więc nie można jej 
 #: ../shell/src/inline-edit.tsx
 msgid "This app isn't written in a way that can be changed in place."
 msgstr "Ta aplikacja nie jest napisana tak, by dało się ją zmienić na miejscu."
+
+#. A notice at the top of a shared app that Potyro had to stop several times in a row (it froze or used too much memory) and has now paused. Calm, not an error.
+#: ../shell/src/rest-banner.tsx
+msgid "This app stopped several times in a row, so Potyro paused it. What you saved in it is still here."
+msgstr "Ta aplikacja zatrzymała się kilka razy z rzędu, więc Potyro ją wstrzymało. To, co w niej zapisano, nadal tu jest."
 
 #: ../shell/src/open-store.ts
 msgid "This app’s data is open in another Potyro tab or window, so it cannot be opened here as well. Close it there, then try again."

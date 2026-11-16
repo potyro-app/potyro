@@ -43,6 +43,8 @@ export interface SealedViewDeps {
   catalogFor?(language: string | undefined): Readonly<Record<string, string>> | undefined;
   /** Answer one op through the app's op table (realm-host.ts). */
   answer(m: Extract<ViewToHost, { t: "op" }>, ch: Channel): void;
+  /** A message arrived on the view's port: true when the app has sent more bytes than it may in one go (limits.ts). */
+  arrived?(m: unknown): boolean;
   /** Let go of what a port holds by name (its screen keep-awakes), when its view goes. */
   releaseHolds?(prefix: string): void;
   /** The watchdog stopped the view: `kind` says how it knew (realm-host.ts escalates on "silent"). */
@@ -410,11 +412,14 @@ export class SealedViewController implements SealedView {
       progress: `v${viewCtxId}:`,
       viewOp,
       adapt,
+      flood: (reason) => stop("silent", `its screen ${reason.replace(/^it /, "")}`),
     };
 
     const onMessage = (m: ViewToHost): void => {
       if (over || !m || typeof m !== "object") return;
       if (++burst > MAX_BURST) return stop("silent", `its screen sent more than ${MAX_BURST} messages in ${VIEW_CHECK_MS} ms`);
+      // An op's bytes are counted where it is answered (realm-host.ts `answer`); anything else's here.
+      if (m.t !== "op" && d.arrived?.(m)) return stop("silent", "its screen sent more bytes at once than a shared app may");
       switch (m.t) {
         case "pong":
           dog?.pong(Number(m.n));

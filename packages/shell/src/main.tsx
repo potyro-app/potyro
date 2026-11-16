@@ -770,15 +770,32 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
       toaster.push((why ? t`Couldn’t run “${name}” as yours, so it opens sealed. ${why}` : t`Couldn’t run “${name}” as yours, so it opens sealed.`).trim());
     }
   }
+  // A sealed app is marked as open while this tab shows it (#90): see sealed-open-guard.ts.
+  let unwatchOpen: (() => void) | undefined;
   if (provenance === "untrusted") {
-    const [{ createAppBundler }, { createSharedAppLoader }] = await Promise.all([
+    const [{ createAppBundler }, { createSharedAppLoader }, { sealedOpenPaused, startSealedAgain, watchSealedOpen }] = await Promise.all([
       import("./app-bundler.js"),
       import("./isolate-bridge.js"),
+      import("./sealed-open-guard.js"),
     ]);
+    // A tab died or froze the last time this app was open: it is not started again by itself.
+    if (sealedOpenPaused(id)) {
+      const start = (): void => {
+        startSealedAgain(id);
+        location.reload();
+      };
+      mount(root, <Splash id={id} name={saved.name} source={saved.source} paused={{ start }} />);
+      await rawStore.close();
+      void appClosed(id);
+      return null;
+    }
+    // Before any of its code runs anywhere.
+    unwatchOpen = watchSealedOpen(id);
     try {
       appSource = await (await createAppBundler())(saved.source, modules);
       composed = await compose({ provenance: "untrusted", bundleCode: appSource, store, caps: appCaps, ui, nav, me, space, loadIsolated: await createSharedAppLoader(store, undefined, { source: saved.source, modules, appKey: id, name: saved.name }) });
     } catch (e) {
+      unwatchOpen();
       return failed(e);
     }
   }
@@ -809,6 +826,7 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
   // Everything this app started that outlives a render, so switching away can stop it (#89). The
   // page dying used to do this for free.
   const stops: Array<() => void> = gate ? [gate.stop] : [];
+  if (unwatchOpen) stops.push(unwatchOpen);
   stops.push(startReminderSync(composed!.runtime, store));
   // The person's language changed (You → Language, or the device's): the app reads differently now —
   // its words, its formats, its reminders' titles (#302). The App re-renders on the invalidation.

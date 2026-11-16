@@ -204,9 +204,13 @@ Read this before you rely on Potyro for something that matters.
   of rotating the space's keys (docs/16).
 - **Rooms frames are plain text to the relay** (docs/26 §4). An app that needs more encrypts its
   messages itself, with a key in the link's fragment.
-- **A sealed app's memory is not capped in the realm** (a Worker has no limit of its own; the
-  fallback box has one, §6), and it may start nested Workers from `blob:`; they end with its frame
-  (docs/22 §6.1, §10.5).
+- **A sealed app's memory is not capped in the realm**, and no browser offers a way to cap it (the
+  fallback box has a cap, §6). The effect is on availability only. Measured: desktop Chromium ends
+  the sealed frames' process and the shell lives; Firefox, and Chromium without site isolation, can
+  end or hang the tab. What the shell itself keeps for a sealed app is bounded; an app stopped three
+  times in two minutes is paused until the person starts it; an app that was open when a tab died
+  is not started again by itself. WebKit and Android are not measured (docs/22 §7.1). An app may
+  start nested Workers from `blob:`; they end with its frame (docs/22 §6.1, §10.5).
 - **The WebRTC removal is a deny-list.** It has to be checked again on every engine release and for
   every new API that opens a channel CSP does not govern (docs/22 §10.5).
 - **Android WebView** has not been measured for the realm (docs/22 §5). If the realm will not start
