@@ -134,21 +134,21 @@ describe("a request done in part says what was not done (#73)", () => {
   beforeEach(() => mocks.chatCreate.mockReset());
   const prose = ["Grape now takes any text, so a grape that is not in the list no longer fails.", "", "Not done:", "- Country still takes only the countries in its list, because a list cannot learn new values"].join("\n");
 
-  it("the Not done lines reach the card, once, after what was done", async () => {
+  it("the Not done lines ride beside what was done, and are not said twice", async () => {
     mocks.chatCreate.mockResolvedValue(reply(edit(prose, GRAPE, '        grape: { type: "text" },')));
     const out = await modify("do not fail on an unknown grape or country; add new values to the list");
     expect(out?.notDone).toEqual(["Country still takes only the countries in its list, because a list cannot learn new values"]);
-    expect(out?.summary).toBe(
-      "Grape now takes any text, so a grape that is not in the list no longer fails. Changed in “Bottle”: the “Grape” field. " +
-        "Not done yet: Country still takes only the countries in its list, because a list cannot learn new values",
-    );
+    // Beside what was done, not inside it: the card lists the parts under the explanation (studio-thread-view.tsx).
+    expect(out?.summary).toBe("Grape now takes any text, so a grape that is not in the list no longer fails. Changed in “Bottle”: the “Grape” field.");
   }, 60_000);
 
   it("left out of a reply with no words, it is asked for — and what comes back is on the card", async () => {
     mocks.chatCreate.mockResolvedValueOnce(reply(edit("", GRAPE, '        grape: { type: "text" },'))).mockResolvedValue(reply(prose));
     const out = await modify("do not fail on an unknown grape or country; add new values to the list");
     expect(out?.notDone).toHaveLength(1);
-    expect(out?.summary).toMatch(/^Grape now takes any text.* Not done yet: Country still takes only/);
+    expect(out?.notDone?.[0]).toMatch(/^Country still takes only/);
+    expect(out?.summary).toMatch(/^Grape now takes any text/);
+    expect(out?.summary).not.toMatch(/Not done/);
     expect(out?.source).toContain('grape: { type: "text" }');
   }, 60_000);
 });

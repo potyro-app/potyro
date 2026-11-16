@@ -65,7 +65,7 @@ import {
 } from "./studio-chat.js";
 import { dropPaused, holdPaused, takePaused } from "./studio-paused.js";
 import { goWith, planFor, refineInstruction, type Planned } from "./studio-plan.js";
-import { describedIn } from "./studio-summary.js";
+import { describedIn, withNotDoneLine } from "./studio-summary.js";
 import { openStore } from "./open-store.js";
 import { shapeOrEmpty, studioEngine, type Outcome, type TurnRun } from "./studio-engine.js";
 import { draftIsSaved } from "./studio-draft.js";
@@ -475,7 +475,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     note: string,
     origin?: VersionOrigin,
     libraries?: StudioLibraries | null,
-    extra: Pick<NewMessage, "platform" | "assumed"> = {},
+    extra: Pick<NewMessage, "platform" | "assumed" | "notDone"> = {},
     /** Modules edited by hand (#448): their files go on this device first, and their lock with the version. */
     own?: OwnEdit,
     /** A new app's sample records (#486): its demo records. A changed app keeps the ones it has, as they are. */
@@ -500,7 +500,8 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
         lock,
         ...(existing && own ? { modules: own.texts } : {}),
         note: note || undefined,
-        rationale: summary || undefined,
+        // The version's own note says what was not done too (#73); its card lists those parts instead.
+        rationale: withNotDoneLine(summary, extra.notDone) || undefined,
         origin,
         ...(existing ? {} : { line: newLine() }),
         // Stored as it came: each use fits it to the version at hand (app-seed.ts).
@@ -572,7 +573,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
     summary: string,
     note: string,
     loss: string | null,
-    extra: Pick<NewMessage, "platform" | "assumed"> = {},
+    extra: Pick<NewMessage, "platform" | "assumed" | "notDone"> = {},
     /** The app's own modules, when the change edited any (#448): checked and kept with it. */
     modules?: Record<string, string>,
     /** A new app's sample records (#486). */
@@ -705,7 +706,9 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
       outcome.summary,
       note,
       outcome.kind === "loss" ? outcome.loss : null,
-      outcome.kind === "source" ? { ...platformAsk(outcome.platformRequest), ...(outcome.assumed?.length ? { assumed: outcome.assumed } : {}) } : {},
+      outcome.kind === "source"
+        ? { ...platformAsk(outcome.platformRequest), ...(outcome.assumed?.length ? { assumed: outcome.assumed } : {}), ...(outcome.notDone?.length ? { notDone: outcome.notDone } : {}) }
+        : {},
       // A plan refined without touching its modules still carries the edits it had made to them.
       outcome.modules ?? refined?.own?.texts,
       outcome.kind === "source" ? outcome.seed : undefined,
@@ -1159,7 +1162,7 @@ export function Studio({ onClose, initialDescription, initialAppId, initialDraft
               onSuggest={noWay ? undefined : (s) => setDescription(s)}
               onAnswer={ready ? (choice) => void send(choice) : undefined}
               onAssumption={noWay ? undefined : assume}
-              plan={plan ? { name: appName, summary: plan.summary, consequences: plan.consequences } : null}
+              plan={plan ? { name: appName, summary: plan.summary, consequences: plan.consequences, ...(plan.extra.notDone?.length ? { notDone: plan.extra.notDone } : {}) } : null}
               onGo={() => void goPlan()}
               onChangePlan={changePlan}
               existing={hasApp}

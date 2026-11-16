@@ -250,13 +250,6 @@ export function studioEngine(
   /** Which language to answer in, and which the app's words are in (read off the source until #302 declares it). */
   const languageOf = (source: string): ModifyContext => ({ language: { person: language, app: appLanguage(source) } });
 
-  // Said to the person only: nothing parses this line (the model's own `Not done:` is read from its reply).
-  const describeNotDone = (applied: string, notDone: readonly string[] | undefined): string => {
-    if (!notDone?.length) return applied;
-    const parts = notDone.join("; ");
-    return t`${applied} Not done yet: ${parts}`;
-  };
-
   /** An app as a card describes it (#72), its words in the person's language; null when it does not load. */
   const described = async (src: string, mods?: ModuleSource): Promise<Described | null> => {
     try {
@@ -335,8 +328,8 @@ export function studioEngine(
       return {
         kind: "source",
         source: result.source,
-        // What it said it could not do as asked follows what it made, as on a change (#75).
-        summary: describeNotDone(await made(result.source), result.notDone),
+        // What it said it could not do as asked rides beside what it made, as on a change (#73, #75).
+        summary: await made(result.source),
         ...(result.notDone?.length ? { notDone: result.notDone } : {}),
         ...(result.assumed?.length ? { assumed: result.assumed } : {}),
         ...(result.platformRequest ? { platformRequest: result.platformRequest } : {}),
@@ -408,13 +401,13 @@ export function studioEngine(
        */
       const explain = async (
         now: { source: string; have: ModuleSource | undefined },
-        result: { via: "edits" | "whole-file"; applied: number; rationale?: string; notDone?: string[] },
+        result: { via: "edits" | "whole-file"; applied: number; rationale?: string },
         wholeFile: string,
       ): Promise<string> => {
         const [was, is] = await Promise.all([described(source, modules), described(now.source, now.have)]);
         const told = explainChange(proseForCard(result.rationale), was && is ? describeChange(was, is) : []);
-        const applied = result.via === "edits" ? told || appliedEdits(result.applied) : [told, wholeFile].filter(Boolean).join(" ");
-        return describeNotDone(applied, result.notDone);
+        // What was NOT done is not in these words: it rides on the outcome (`notDone`) and the card lists it (#73).
+        return result.via === "edits" ? told || appliedEdits(result.applied) : [told, wholeFile].filter(Boolean).join(" ");
       };
       /** One turn through the edit guard: every engine but a chat engine, and an endpoint that takes no tools. */
       const oneTurn = async (): Promise<Outcome> => {

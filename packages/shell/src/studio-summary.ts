@@ -299,6 +299,17 @@ export function describeNewApp(app: Described): string {
 }
 
 /**
+ * What a change did, followed by what it did not, in one line: what a saved version keeps as its
+ * note (#73). A version's card in the conversation lists the parts on their own instead
+ * (studio-thread-view.tsx); nothing parses this line.
+ */
+export function withNotDoneLine(applied: string, notDone: readonly string[] | undefined): string {
+  if (!notDone?.length) return applied;
+  const parts = notDone.join("; ");
+  return t`${applied} Not done yet: ${parts}`;
+}
+
+/**
  * The model's own explanation as a card shows it: one paragraph, without the `Not done:` list (said
  * on its own, after), without the `Assumed:` list (shown under it, each guess to tap, #75) and without
  * the lines addressed to the loop.
