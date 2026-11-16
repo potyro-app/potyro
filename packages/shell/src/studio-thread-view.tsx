@@ -37,6 +37,32 @@ export interface PlanCard {
   summary: string;
   /** What happens to the records already there, a sentence each. */
   consequences: readonly string[];
+  /** The parts of what was asked that the change does not do (#73). */
+  notDone?: readonly string[];
+}
+
+/**
+ * What a version did not do of what was asked (#73), under what it did: each part in the words the
+ * model wrote for the person, the words around them Potyro's own. On every version's card, not only
+ * the current one: it is a fact about that version.
+ */
+function NotDone({ parts }: { parts: readonly string[] | undefined }): JSX.Element | null {
+  const { t } = useLingui();
+  if (!parts?.length) return null;
+  return (
+    <div className="k-notdone">
+      <p className="k-notdone-label">
+        <Trans comment="On a version's card in the Studio, above the list of the parts of the request that were not done">Not done, from what you asked:</Trans>
+      </p>
+      <ul className="k-notdone-list" aria-label={t({ message: "What was not done", comment: "The list, on a version's card, of the parts of the request that were not done" })}>
+        {parts.map((part) => (
+          <li key={part} className="k-notdone-item">
+            {part}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 export interface ThreadViewProps {
@@ -161,6 +187,7 @@ export function ThreadView({
           </span>
         </p>
         <p className="k-card-what k-plan-what">{plan.summary}</p>
+        <NotDone parts={plan.notDone} />
         {plan.consequences.length ? (
           <ul className="k-plan-consequences" aria-label={t({ message: "What happens to what you have entered", comment: "Studio plan card: the list of what a change does to the records already in the app" })}>
             {plan.consequences.map((c) => (
@@ -336,6 +363,7 @@ export function ThreadView({
                   {item.seq ? <span className="k-thread-seq k-card-seq">v{item.seq}</span> : null}
                 </p>
                 <p className="k-card-what k-thread-answer">{item.text}</p>
+                <NotDone parts={item.notDone} />
                 {item.current && item.assumed?.length ? (
                   // What was guessed while making it (#75): a wrong guess is one tap from the sentence that fixes it.
                   <div className="k-assumed">

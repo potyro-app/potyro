@@ -46,6 +46,12 @@
 // and where to find it, and which parts of the request it left out (`Not done:`). Whatever comes back,
 // the accepted change stands: the answer can add words to it, never take it away.
 //
+// #73, the rest: the accepted change is also held against the request's own parts, where the app's
+// structure can tell (request-parts.ts). A field or a button the request names that the reply neither
+// changed nor spoke of under `Not done:`, and a rule lifted from one field while fields of the same
+// shape kept it, are named to the model in that same ONE note. It may send a different change (which
+// passes the gates like any other) or say what was left out; the change that passed stands either way.
+//
 // #75: a question is a tool with choices, and the run WAITS for the answer. `ask_person` pauses the
 // loop: the `question` outcome holds the transcript and the call's id, and the answer comes back as
 // that call's result in a run resumed from it (`resumeFrom`, tools.ts `resumeWith`) — inside the same
@@ -63,7 +69,7 @@ import { structuralLoss } from "@potyro/runtime";
 import type { ChatEngine, ChatMessage } from "../chat-backend.js";
 import { readEditsOrFile, retryInstruction } from "../guarded-modify.js";
 import { describeEditFailures } from "../edits.js";
-import { NOT_DONE, NOT_IN_APP, buildModifyMessage, buildModifyOpener, splitQuestion, withNotDone, type ModifyContext } from "../prompt.js";
+import { MAX_ASSUMED, NOT_DONE, NOT_IN_APP, buildModifyMessage, buildModifyOpener, splitQuestion, withNotDone, type ModifyContext } from "../prompt.js";
 import { primeCorpus, type Corpus } from "../corpus.js";
 import { appLanguage, type Language } from "../language.js";
 import { describeRun, type GatedRun, type RunGate } from "../run-report.js";
@@ -73,7 +79,8 @@ import { describeToolTurn, freshStartNote, oneLine, rollbackNote, toolTurnSignat
 import type { TranslationDraft } from "./translate-tool.js";
 import { DEFAULT_RECAP_ROUNDS, buildConversationTool, conversationRecap, recapStartsAt, type ConversationEntry } from "./conversation.js";
 import { NEEDS_PLATFORM, askAfterGiveUp, platformLineIn, platformOffer, platformSignal, writePlatformRequest, type PlatformRequest } from "./platform-request.js";
-import { describeWordsReport, wordsReport } from "../source-words.js";
+import { describeWordsReport, readSourceWords, wordsReport, type SourceWords } from "../source-words.js";
+import { partsNote, siblingFaults, siblingsNote, unansweredParts } from "../request-parts.js";
 
 export type ModifyLoopOutcome =
   | {
@@ -88,6 +95,11 @@ export type ModifyLoopOutcome =
       assumed?: string[];
       /** What Potyro itself would need for the rest, written for the Potyro team (#263). */
       platformRequest?: PlatformRequest;
+      /**
+       * What the loop asked about before handing it over (#73), for a log and the eval: the request's
+       * parts the reply had left unanswered, and the fields left with a rule the change lifted elsewhere.
+       */
+      review?: ReviewAsked;
     }
   | { kind: "diagnosis"; text: string }
   /** Nothing could be done: it needs something Potyro itself lacks (#263). `said` is the model's marker line. */
@@ -178,6 +190,17 @@ export interface ModifyLoopDeps {
   conversation?: readonly ConversationEntry[];
   /** How it reaches the model — for the eval's ablations. Default: a recap of DEFAULT_RECAP_ROUNDS, and the tool. */
   conversationAccess?: { recapRounds?: number; tool?: boolean };
+  /**
+   * Hold an accepted change against the request's parts (#73) and ask once about what it left
+   * unanswered. On unless turned off — for the eval's ablation, which is how its worth gets measured.
+   */
+  reviewParts?: boolean;
+}
+
+/** What the one review note asked about: each a line a developer can read. */
+export interface ReviewAsked {
+  parts: string[];
+  siblings: string[];
 }
 
 // Raised from 8 with #262: reading the corpus and fixing what a run reports both take steps, and a
@@ -201,6 +224,47 @@ export const EXPLAIN_NOTE = [
   "in their language: what is new or different in the app, and where to find it (which page, which button).",
   `If any part of what they asked was not done, list it under "${NOT_DONE}" as the request says — one bullet per part.`,
 ].join("\n");
+
+/** The one review note's opening when the change came with its explanation (#73). */
+export const REVIEW_HEAD = "Your change passed every check, and it is kept as it is unless you now send a different one. One thing before it is handed over.";
+/** How the review note ends: the three ways to answer it. */
+export const REVIEW_WAYS = [
+  "For what is named above, answer in ONE of these ways:",
+  "- If the request asked for it and it can be done: send the complete set of edits again, against the app as first shown, with it included.",
+  `- If the request asked for it and it cannot be done: reply with prose only, in the person's language, one bullet for each under "${NOT_DONE}" saying what it would need.`,
+  "- If the request did not ask for it: reply with one short sentence saying so. Nothing else is needed, and the person is shown nothing more.",
+].join("\n");
+/** `ask_person` in answer to the review or explain note: the run cannot pause there without losing the change that passed. */
+export const KEPT_NO_QUESTION_NOTE = "The change that passed is already kept, so the person cannot be asked now. Decide, and answer the note above: a fuller change, or prose.";
+/** Added when the change also came without a word: the explanation is asked for in the same note. */
+export const REVIEW_EXPLAIN =
+  "Whichever it is: you sent the change without a word of explanation, and the person who asked does not read code. Say, in their language, what is new or different in the app and where to find it (which page, which button).";
+
+/**
+ * What an accepted change leaves unanswered of the request (#73), as the sections of the review note.
+ * Null when there is nothing to ask, and whenever the sources cannot be read as data: a check that
+ * cannot be made is not made.
+ */
+async function reviewOf(deps: ModifyLoopDeps, base: string, accepted: Accepted): Promise<{ sections: string[]; asked: ReviewAsked } | null> {
+  if (deps.reviewParts === false) return null;
+  try {
+    const [was, is]: Array<SourceWords | null> = [await readSourceWords(base), await readSourceWords(accepted.source)];
+    if (!was || !is) return null;
+    const answered = { before: was, after: is, said: [...(accepted.notDone ?? []), ...(accepted.assumed ?? [])] };
+    const parts = unansweredParts(deps.instruction, answered);
+    // Pointing at a part names it (#284): the change is about that part, and its neighbours are not asked about.
+    const siblings = deps.context?.pointedAt ? [] : siblingFaults(deps.instruction, answered);
+    if (!parts.length && !siblings.length) return null;
+    return {
+      sections: [...(parts.length ? [partsNote(parts, NOT_DONE)] : []), ...(siblings.length ? [siblingsNote(siblings)] : [])],
+      asked: { parts: parts.map((m) => m.name), siblings: siblings.flatMap((f) => f.siblings.map((s) => s.ref)) },
+    };
+  } catch {
+    return null;
+  }
+}
+
+const distinct = (items: readonly string[]): string[] => [...new Set(items)];
 
 /** A tool call's arguments as the model wrote them; nothing when they are not JSON. */
 function argsOf(raw: string): Record<string, unknown> {
@@ -314,9 +378,11 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
   /** Every candidate the gate turned back, with why: sent again — in this chain or a later one — it is a repeat. */
   const refused = new Map<string, TurnedBack>();
   const turnedBack: TurnedBack[] = [];
-  /** A change that passed every gate but came without a word: the next reply is its explanation (#72, #73). */
+  /** A change that passed every gate and was asked about once — no explanation, or parts of the request left unanswered: the next reply answers that (#72, #73). */
   let unexplained: Accepted | null = null;
   let askedToExplain = false;
+  /** What the review note asked about, when it was sent (#73): it rides on whatever change is handed over. */
+  let reviewAsked: ReviewAsked | null = null;
   /** The next model call thinks hard: the loop just rolled a repeat back or started afresh. */
   let stuck = false;
   /** What, in a failure, named something Potyro lacks (#263); the marker is offered beside the first. */
@@ -355,7 +421,8 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
   /** An accepted change, with the request when its prose said NEEDS-PLATFORM (#263). */
   const finish = async (accepted: Accepted, said: string): Promise<Accepted> => {
     const seed = platformLineIn(said);
-    return seed ? { ...accepted, platformRequest: await request(seed) } : accepted;
+    const out: Accepted = reviewAsked ? { ...accepted, review: reviewAsked } : accepted;
+    return seed ? { ...out, platformRequest: await request(seed) } : out;
   };
 
   const gaveUp = async (cause: GiveUp, why: string): Promise<ModifyLoopOutcome> => {
@@ -411,7 +478,7 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
     if (calls.length) {
       // A question that will be put to the person (#75) is not the model going round: the turn pauses
       // the run, and counts as the one step it took. Past the limit it is a tool turn like any other.
-      const asks = asked < MAX_QUESTIONS && calls.some((c) => c.function.name === ASK_PERSON && readAsk(argsOf(c.function.arguments)) !== null);
+      const asks = !unexplained && asked < MAX_QUESTIONS && calls.some((c) => c.function.name === ASK_PERSON && readAsk(argsOf(c.function.arguments)) !== null);
       const sig = toolTurnSignature(calls);
       if (asks) toolStreak = null;
       else if (toolStreak?.sig === sig) toolStreak.count += 1;
@@ -434,7 +501,8 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
         if (c.function.name === ASK_PERSON) {
           const question = readAsk(args);
           // Its result is the person's answer, which only they can give: every other answer is said now.
-          const refusal = !question ? "ask_person needs a `question`: one sentence, in plain words." : asked >= MAX_QUESTIONS ? ASK_LIMIT_NOTE : waiting ? ONE_QUESTION_NOTE : null;
+          // A change that passed is waiting on this reply (#73): a pause would drop it, so nothing is asked now.
+          const refusal = !question ? "ask_person needs a `question`: one sentence, in plain words." : unexplained ? KEPT_NO_QUESTION_NOTE : asked >= MAX_QUESTIONS ? ASK_LIMIT_NOTE : waiting ? ONE_QUESTION_NOTE : null;
           if (question && refusal === null) {
             waiting = { id: c.id, question };
             deps.onStep?.({ kind: "tool", name: ASK_PERSON, ok: true, detail: question.question });
@@ -469,7 +537,15 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
       if (!resent || again.source === pending.source) {
         const opening = text.trimStart();
         const prose = resent ? again.rationale : again.kind === "unusable" && !opening.startsWith(ASK) && !opening.startsWith(NOT_IN_APP) ? text.trim() : "";
-        return finish(prose ? withNotDone({ ...pending, rationale: prose }) : pending, prose ?? "");
+        if (!prose) return finish(pending, "");
+        // It came without a word: what is said now is its explanation.
+        if (!pending.rationale) return finish(withNotDone({ ...pending, rationale: prose }), prose);
+        // It had its explanation, and was asked about parts left unanswered (#73): only what is now
+        // listed as not done or guessed is added. "The request did not ask for that" adds nothing.
+        const more = withNotDone({ rationale: prose });
+        const notDone = distinct([...(pending.notDone ?? []), ...(more.notDone ?? [])]);
+        const assumed = distinct([...(pending.assumed ?? []), ...(more.assumed ?? [])]).slice(0, MAX_ASSUMED);
+        return finish({ ...pending, ...(notDone.length ? { notDone } : {}), ...(assumed.length ? { assumed } : {}) }, `${pending.rationale}\n${prose}`);
       }
     }
 
@@ -591,15 +667,22 @@ export async function runModifyLoop(deps: ModifyLoopDeps): Promise<ModifyLoopOut
         const said = { ...(before.notDone?.length ? { notDone: before.notDone } : {}), ...(before.assumed?.length ? { assumed: before.assumed } : {}) };
         return finish({ ...accepted, rationale: before.rationale, ...said }, before.rationale ?? "");
       }
-      if (!accepted.rationale && !askedToExplain && step < maxSteps - 1) {
+      // Once in the loop, and only with a step left to hear the answer (#72, #73): no explanation, or
+      // parts of the request the change left unanswered.
+      const canAsk = !askedToExplain && step < maxSteps - 1;
+      const review = canAsk ? await reviewOf(deps, base, accepted) : null;
+      if (canAsk && (!accepted.rationale || review)) {
         askedToExplain = true;
-        unexplained = accepted;
+        reviewAsked = review?.asked ?? null;
+        const pending: Accepted = reviewAsked ? { ...accepted, review: reviewAsked } : accepted;
+        unexplained = pending;
         // Kept whatever happens next: a give-up from here on hands this change over.
-        held = accepted;
+        held = pending;
         heldOn = candidates;
         messages.push({ role: "assistant", content: text });
-        messages.push({ role: "user", content: EXPLAIN_NOTE });
-        previousAnswer = "it passed, and was asked for its explanation";
+        const note = review ? [REVIEW_HEAD, ...review.sections, REVIEW_WAYS, ...(accepted.rationale ? [] : [REVIEW_EXPLAIN])].join("\n\n") : EXPLAIN_NOTE;
+        messages.push({ role: "user", content: note });
+        previousAnswer = review ? "it passed, and was asked about parts of the request it left unanswered" : "it passed, and was asked for its explanation";
         continue;
       }
       return finish(accepted, read.rationale ?? text);

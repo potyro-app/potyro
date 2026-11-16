@@ -193,8 +193,8 @@ export interface Planned<Built = unknown> {
   libraries: StudioLibraries | null;
   /** The modules it edited (#448): every module's text, and the files and lock entries they make. */
   own?: { texts: Record<string, string>; code: { lock: AppLock; files: PackagedFile[] } };
-  /** What rides on its card when it is kept: a request to the Potyro team, the guesses it made. */
-  extra: { platform?: PlatformAsk; assumed?: string[] };
+  /** What rides on its card when it is kept: a request to the Potyro team, the guesses it made, what it did not do. */
+  extra: { platform?: PlatformAsk; assumed?: string[]; notDone?: string[] };
 }
 
 /** Go: exactly what was made is what is saved — the same source, the same words, nothing asked of a model. */

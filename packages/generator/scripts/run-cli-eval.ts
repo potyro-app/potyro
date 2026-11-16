@@ -11,7 +11,11 @@
 //                                                    come out of the same budget as the answer and
 //                                                    their size is wildly unpredictable, see
 //                                                    DEFAULT_REASONING in openrouter-backend.ts)
-//        --corpus wild|core|both  --limit N  --concurrency N  --repairs N
+//        --corpus wild|core|both|main-path  --limit N  --concurrency N  --repairs N
+//                                 main-path (#78): requests that name a photo or a scan as the point of
+//                                 the app (main-path.ts); the report adds WHERE that feature sits in
+//                                 each app — on the form, on the first page, or somewhere a person
+//                                 finds last. Not part of `both`: it is run when that is the question.
 //        --only id1,id2           --out <dir>
 //        --prompts <file.json>    an ad-hoc corpus ([{ id, description, tags? }]) instead of the built-in ones
 //        --language pl|pt-BR      (#301) each prompt is its hand-checked translation (translated-cases.ts),
@@ -55,6 +59,7 @@ import { createCase } from "../src/create-eval.js";
 import { meteredEngine, newMeter, rate, SCRIPTED_CREATE_KINDS, scriptedCreateEngine, summarizeLoop, type LoopRecord, type Meter, type ScriptedCreateKind } from "../src/loop-eval.js";
 import { PROMPTS } from "../src/prompts.js";
 import { WILD_PROMPTS, type WildPrompt } from "../src/wild-prompts.js";
+import { MAIN_PATH_PROMPTS, featurePlacement, summarizeMainPath, type MainPathCheck, type MainPathPrompt } from "../src/main-path.js";
 import { loadApp, scoreSource, type ScoreResult } from "../src/score.js";
 import { smokeApp, smokePassed, type SmokeResult } from "../src/smoke.js";
 import type { GenPrompt, ModelBackend } from "../src/backend.js";
@@ -65,7 +70,9 @@ import { checkLabels, newLabels, summarizeLanguage, type LabelCheck } from "../s
 
 interface Outcome {
   prompt: GenPrompt;
-  corpus: "wild" | "core";
+  corpus: "wild" | "core" | "main-path";
+  /** `--corpus main-path` only (#78): where the feature the request names sits. Null when the app could not be read. */
+  placement?: MainPathCheck | null;
   singlePass: ScoreResult;
   repairsUsed: number;
   final: ScoreResult;
@@ -210,7 +217,7 @@ function costOf(o: Pick<Outcome, "loop" | "meter">): Meter | null {
 }
 
 async function main(): Promise<void> {
-  const corpus = (arg("corpus", "wild") ?? "wild") as "wild" | "core" | "both";
+  const corpus = (arg("corpus", "wild") ?? "wild") as "wild" | "core" | "both" | "main-path";
   const limit = Number(arg("limit", "0"));
   const concurrency = Number(arg("concurrency", "4"));
   const maxRepairs = Number(arg("repairs", "2"));
@@ -222,12 +229,16 @@ async function main(): Promise<void> {
   // the built-in ones, for a measurement on requests the model has never seen in the Studio's corpus.
   const promptsFile = arg("prompts");
   const adHoc: GenPrompt[] | null = promptsFile ? (JSON.parse(readFileSync(resolve(promptsFile), "utf8")) as GenPrompt[]) : null;
-  const tagged: Array<{ prompt: GenPrompt; corpus: "wild" | "core" }> = adHoc
+  const tagged: Array<{ prompt: GenPrompt; corpus: "wild" | "core" | "main-path" }> = adHoc
     ? adHoc.map((p) => ({ prompt: p, corpus: "wild" as const }))
-    : [
-        ...(corpus !== "core" ? WILD_PROMPTS.map((p) => ({ prompt: p as GenPrompt, corpus: "wild" as const })) : []),
-        ...(corpus !== "wild" ? PROMPTS.map((p) => ({ prompt: p, corpus: "core" as const })) : []),
-      ];
+    : corpus === "main-path"
+      ? MAIN_PATH_PROMPTS.map((p) => ({ prompt: p as GenPrompt, corpus: "main-path" as const }))
+      : [
+          ...(corpus !== "core" ? WILD_PROMPTS.map((p) => ({ prompt: p as GenPrompt, corpus: "wild" as const })) : []),
+          ...(corpus !== "wild" ? PROMPTS.map((p) => ({ prompt: p, corpus: "core" as const })) : []),
+        ];
+  // The main-path requests say their own language; they have no hand-checked translations.
+  if (corpus === "main-path" && arg("language")) throw new Error("--corpus main-path takes no --language: each request is in the language it was written in");
   // #301: the person's language. English (or no flag) is today's run, byte for byte.
   const languageArg = arg("language");
   const language: Language | null = languageArg ? matchLanguage(languageArg) : null;
@@ -311,6 +322,10 @@ async function main(): Promise<void> {
       }
       const works = Boolean(smoke && smokePassed(smoke));
       const labels = language ? checkLabels(newLabels(source), language) : undefined;
+      // #78: where the feature the request names sits, read from the source. Judged on any app that
+      // was made, working or not: where a model PUT the feature does not depend on a later bug.
+      const uses = (prompt as Partial<MainPathPrompt>).uses;
+      const placement = uses && source ? await featurePlacement(source, uses) : undefined;
 
       const o: Outcome = {
         prompt,
@@ -321,6 +336,7 @@ async function main(): Promise<void> {
         smoke,
         works,
         ...(labels ? { labels } : {}),
+        ...(placement !== undefined ? { placement } : {}),
         source,
         file,
         ms: Date.now() - started,
@@ -330,10 +346,11 @@ async function main(): Promise<void> {
       const mark = works ? "✓" : final.renders ? "~" : "✗";
       const why = works ? "" : ` — ${(smoke?.errors[0] ?? final.errors[0] ?? "").split("\n")[0].slice(0, 70)}`;
       const lang = labels ? ` · labels ${labels.passed === null ? "—" : labels.passed ? "ok" : `NOT ${LANGUAGE_NAMES[labels.expected]}: ${labels.offenders.join(", ")}`}` : "";
+      const put = placement ? ` · feature ${placement.onMainPath ? "on the main path" : "NOT on the main path"}: ${placement.where}${placement.found.length ? ` (${placement.found.join(", ")})` : ""}` : "";
       const spent = costOf(o);
       const paid = spent ? `, ${spent.calls} call${spent.calls === 1 ? "" : "s"}, ${money(spent.cost)}` : "";
       const steps = loopRecord ? `${loopRecord.ended}${loopRecord.cause ? `:${loopRecord.cause}` : ""}, candidate ${loopRecord.passedOn ?? "—"} of ${loopRecord.candidates}, draft ${loopRecord.passedOnDraft ?? "—"}` : `repairs=${repairsUsed}`;
-      console.log(`${mark} [${++done}/${selected.length}] ${prompt.id} (${steps}${paid}, ${Math.round(o.ms / 1000)}s)${why}${lang}`);
+      console.log(`${mark} [${++done}/${selected.length}] ${prompt.id} (${steps}${paid}, ${Math.round(o.ms / 1000)}s)${why}${lang}${put}`);
       return o;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -367,12 +384,14 @@ async function main(): Promise<void> {
         : {}),
       ...(loop ? { loop: summarizeLoop(rows.flatMap((o) => (o.loop ? [o.loop] : []))) } : {}),
       ...(language ? { language: summarizeLanguage(rows.map((o) => ({ labels: o.labels ?? null }))) } : {}),
+      ...(rows.some((o) => o.placement !== undefined) ? { mainPath: summarizeMainPath(rows.flatMap((o) => (o.placement !== undefined ? [o.placement] : []))) } : {}),
     };
   };
 
   const groups = [
     ["wild", outcomes.filter((o) => o.corpus === "wild")],
     ["core", outcomes.filter((o) => o.corpus === "core")],
+    ["main-path", outcomes.filter((o) => o.corpus === "main-path")],
   ] as const;
 
   const lines: string[] = ["", "=".repeat(60)];
@@ -401,6 +420,13 @@ async function main(): Promise<void> {
             `  model calls:       ${s.cost.calls} (${(s.cost.calls / s.n).toFixed(1)} a case)`,
             `  tokens:            ${s.cost.promptTokens} in + ${s.cost.completionTokens} out`,
             `  cost:              ${money(s.cost.usd)} (${money(s.cost.perCase)} a case)${s.cost.unpriced ? `   ← ${s.cost.unpriced} calls carried no cost: a floor` : ""}`,
+          ]
+        : []),
+      ...(s.mainPath
+        ? [
+            `  FEATURE ON THE MAIN PATH: ${rate(s.mainPath.onMainPath, s.mainPath.checked)} of apps that could be read   ← #78`,
+            `    form fill ${s.mainPath.where["form-fill"]} · first page's action ${s.mainPath.where["first-page-action"]} · first page's own view ${s.mainPath.where["first-page-view"]}` +
+              ` · a later button ${s.mainPath.where["first-page-button"]} · elsewhere ${s.mainPath.where.elsewhere} · nowhere ${s.mainPath.where.absent}`,
           ]
         : []),
       ...(s.language && language
@@ -468,6 +494,7 @@ async function main(): Promise<void> {
       "",
       `- **Automated:** ${gate} · ${o.loop ? `loop ended ${o.loop.ended}${o.loop.cause ? ` (${o.loop.cause})` : ""}, passed on candidate ${o.loop.passedOn ?? "—"}` : `repairs used: ${o.repairsUsed}`}`,
       ...(w.risk ? [`- **Suspected gap:** ${w.risk}`] : []),
+      ...(o.placement ? [`- **The feature it names** (${(o.prompt as Partial<MainPathPrompt>).feature ?? "?"}): ${o.placement.onMainPath ? "on the main path" : "NOT on the main path"} — ${o.placement.where}${o.placement.found.length ? `, at ${o.placement.found.join(", ")}` : ""}`] : []),
       ...(o.smoke?.errors.length ? [`- **Runtime errors:** ${o.smoke.errors.slice(0, 4).map((e) => e.split("\n")[0]).join(" · ")}`] : []),
       ...(o.final.errors.length ? [`- **Errors:** ${o.final.errors.map((e) => e.split("\n")[0]).join(" · ")}`] : []),
       `- **Source:** \`${o.file.replace(process.cwd() + "/", "")}\``,

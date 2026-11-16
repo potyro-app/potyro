@@ -71,6 +71,8 @@ export interface ChatMessage {
   allowOther?: boolean;
   /** For a `version` (#75): what the model said it guessed while making it, each a sentence to tap. */
   assumed?: string[];
+  /** For a `version` (#73): the parts of what was asked that it did not do, each in the model's words to the person. */
+  notDone?: string[];
   /**
    * For an `answer` (#75): it is a PLAN — a change that was made and is not saved until the person says
    * Go. The candidate itself lives only in the open Studio; this is what was said of it.
@@ -104,7 +106,7 @@ export interface MessagePoint {
 }
 
 export type NewMessage = Pick<ChatMessage, "kind" | "text"> &
-  Partial<Pick<ChatMessage, "seq" | "name" | "detail" | "point" | "platform" | "request" | "options" | "allowOther" | "assumed" | "plan">>;
+  Partial<Pick<ChatMessage, "seq" | "name" | "detail" | "point" | "platform" | "request" | "options" | "allowOther" | "assumed" | "notDone" | "plan">>;
 
 export interface DraftChat {
   id: string;
@@ -135,7 +137,7 @@ function announce(): void {
 
 /** A stored record — or one that arrived from your account (#283) — as a message, or null when it is not one. */
 export function readChatMessage(record: Record<string, unknown>): ChatMessage | null {
-  const { id, chatId, n, at, kind, text, seq, name, detail, point, platform, request, options, allowOther, assumed, plan } = record as Partial<ChatMessage>;
+  const { id, chatId, n, at, kind, text, seq, name, detail, point, platform, request, options, allowOther, assumed, notDone, plan } = record as Partial<ChatMessage>;
   if (typeof id !== "string" || typeof chatId !== "string" || typeof n !== "number" || typeof text !== "string") return null;
   if (typeof kind !== "string" || !KINDS.has(kind)) return null;
   return {
@@ -154,6 +156,7 @@ export function readChatMessage(record: Record<string, unknown>): ChatMessage | 
     // #75. A conversation kept before these existed has none of them, and reads as it always did.
     ...(kind === "question" && strings(options).length >= 2 ? { options: strings(options), ...(allowOther === false ? { allowOther: false } : {}) } : {}),
     ...(kind === "version" && strings(assumed).length ? { assumed: strings(assumed) } : {}),
+    ...(kind === "version" && strings(notDone).length ? { notDone: strings(notDone) } : {}),
     ...(kind === "answer" && plan && typeof plan === "object" ? { plan: { consequences: strings((plan as PlanNote).consequences) } } : {}),
   };
 }
@@ -218,6 +221,7 @@ export async function appendMessage(chatId: string, message: NewMessage, now: st
     ...(message.options?.length ? { options: message.options } : {}),
     ...(message.allowOther !== undefined ? { allowOther: message.allowOther } : {}),
     ...(message.assumed?.length ? { assumed: message.assumed } : {}),
+    ...(message.notDone?.length ? { notDone: message.notDone } : {}),
     ...(message.plan !== undefined ? { plan: message.plan } : {}),
   });
   if (isDraftId(chatId) && mine.length === 0) announce();
@@ -312,7 +316,7 @@ export type ChatItem =
       /** A plan (#75): a change made and not saved until the person says Go. */
       plan?: PlanNote;
     }
-  | { type: "version"; id: string; text: string; seq?: number; name?: string; current: boolean; platform?: PlatformAsk; assumed?: string[] }
+  | { type: "version"; id: string; text: string; seq?: number; name?: string; current: boolean; platform?: PlatformAsk; assumed?: string[]; notDone?: string[] }
   | { type: "event"; id: string; text: string; seq?: number; request?: SentRequest };
 
 type Timed = { at: string; order: number; items: ChatItem[] };
@@ -320,7 +324,7 @@ type Timed = { at: string; order: number; items: ChatItem[] };
 function fromMessage(m: ChatMessage): ChatItem {
   if (m.kind === "ask") return { type: "ask", id: m.id, text: m.text, ...(m.point ? { point: m.point } : {}) };
   const platform = m.platform ? { platform: m.platform } : {};
-  if (m.kind === "version") return { type: "version", id: m.id, text: m.text, seq: m.seq, name: m.name, current: false, ...platform, ...(m.assumed?.length ? { assumed: m.assumed } : {}) };
+  if (m.kind === "version") return { type: "version", id: m.id, text: m.text, seq: m.seq, name: m.name, current: false, ...platform, ...(m.assumed?.length ? { assumed: m.assumed } : {}), ...(m.notDone?.length ? { notDone: m.notDone } : {}) };
   if (m.kind === "event") return { type: "event", id: m.id, text: m.text, seq: m.seq, ...(m.request ? { request: m.request } : {}) };
   return {
     type: "agent",
@@ -439,7 +443,8 @@ export function earlierConversation(messages: readonly ChatMessage[], versions: 
       if (i.plan && earlier[n + 1]?.type === "version") return [];
       return [{ kind: i.tone, text: i.plan ? `${i.text} (Shown as a plan; it was not saved.)` : i.text }];
     }
-    if (i.type === "version") return [{ kind: "version", text: i.text, ...(n === lastVersion && i.assumed?.length ? { assumed: i.assumed } : {}) }];
+    // What a version left undone (#73) is told to the model with it, in the loop's own word for it.
+    if (i.type === "version") return [{ kind: "version", text: i.notDone?.length ? `${i.text} Not done: ${i.notDone.join("; ")}` : i.text, ...(n === lastVersion && i.assumed?.length ? { assumed: i.assumed } : {}) }];
     return SYSTEM_NOTES.some((re) => re.test(i.text)) ? [] : [{ kind: "event", text: i.text }];
   });
 }

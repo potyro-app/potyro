@@ -448,7 +448,7 @@ msgstr "{0}, a change not saved yet"
 msgid "{0}, not saved"
 msgstr "{0}, not saved"
 
-#: ../shell/src/studio-engine.ts
+#: ../shell/src/studio-summary.ts
 msgid "{applied} Not done yet: {parts}"
 msgstr "{applied} Not done yet: {parts}"
 
@@ -5188,6 +5188,11 @@ msgstr "not available in this browser"
 msgid "Not confirmed"
 msgstr "Not confirmed"
 
+#. On a version's card in the Studio, above the list of the parts of the request that were not done
+#: ../shell/src/studio-thread-view.tsx
+msgid "Not done, from what you asked:"
+msgstr "Not done, from what you asked:"
+
 #: ../views/src/media-input.tsx
 msgid "Not downloaded — tap to get it"
 msgstr "Not downloaded — tap to get it"
@@ -8606,6 +8611,11 @@ msgstr "What to add"
 #: ../shell/src/studio-thread-view.tsx
 msgid "What was guessed"
 msgstr "What was guessed"
+
+#. The list, on a version's card, of the parts of the request that were not done
+#: ../shell/src/studio-thread-view.tsx
+msgid "What was not done"
+msgstr "What was not done"
 
 #. Share dialog: the files an app hands over
 #. Share dialog: the words an app hands over, read-only

@@ -351,6 +351,27 @@ renders, and the values sit in the store where nothing will ever show them again
 Where nothing can be decided mechanically (a migration that ran a `transform`, an unattributable
 value change) the verdict is **review**, not pass, and a person fills in the score.
 
+### The main-path scenario — is the point of the app the first thing a person finds?
+
+`eval:cli -- --corpus main-path` makes the apps of `packages/generator/src/main-path.ts`: requests
+that name a photo or a scan as the point ("an app where I take a photo of a wine bottle and it
+extracts the details"). Beside the usual gates the report says where the code that takes the picture
+is reachable from, read from the source and never run:
+
+| Where | On the main path |
+|---|---|
+| **form fill** — the main kind of record has a `fill` button that does it | yes |
+| **first page's action** — the first page's `primaryAction`, its `add`, or the first of its `actions` | yes |
+| **first page's own view** — the first page is a custom view that does it | yes |
+| **a later button** of the first page | no |
+| **elsewhere** — a saved record's action, another page, another kind of record's form | no |
+| **nowhere** | no |
+
+The main kind of record is the one the first page shows. A function counts when its own text, or
+any top-level function or const it names however far down, reaches the camera; code in another
+module of the app is not seen. The checker has unit tests on fixture apps
+(`packages/generator/test/main-path.test.ts`); the run itself is paid.
+
 ### The edits eval — does the model edit, and does it refuse what it could do?
 
 `eval:modify:edits` is the sibling: one change against a fixed corpus (`modify-corpus.ts`), through

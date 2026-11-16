@@ -1184,8 +1184,22 @@ carries a guide (docs/04 §Guide), the app's own steps in place of that guess: "
 “Scan label”… 2. Check…". A change that touches the guide says so in one sentence, with where it is
 read. A change that passes
 every gate but came without a word is asked once, the change already accepted, what it changed and
-which parts of the request it left out; what it lists under `Not done:` follows on the card. The
-count of edits is said only when neither the model nor the app has anything to show. Code saved by
+which parts of the request it left out. The count of edits is said only when neither the model nor
+the app has anything to show.
+
+**A request done in part says so** (`packages/generator/src/request-parts.ts`). What the model lists
+under `Not done:` is kept with the version and listed on its card, under what it did, on every
+version's card and on a plan's. The loop does not only wait for the model to own up. Before it hands
+a change over it holds it against the request, where the app's own structure can tell, and asks the
+model once, in the same note as the explanation: about a field or a button the request names by the
+app's words for it that the change neither touched nor listed, when another part it names was
+changed; and about a rule lifted from one field (`required`, `options`, `min`, `max`, `integer` or `accept` gone,
+as when a list is made free text) while fields of the same kind in the same kind of record kept it,
+when the request named no field. The model may send a fuller change, which passes the gates like any
+other, or say what was left out; the change that passed stands either way. Naming is matched
+strictly (the app's exact words, case and accents aside), so an inflected form or a request in
+another language than the app's words is not checked, and what answers a part is matched loosely:
+the check can miss, and is built not to accuse. Code saved by
 hand with nothing changed records no version.
 
 **A session, not one shot** (#75). A request used to end in a version or a failure, with nothing in

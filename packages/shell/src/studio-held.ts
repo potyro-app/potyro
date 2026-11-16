@@ -24,6 +24,8 @@ export interface Held {
   own?: OwnEdit;
   /** A new app's sample records (#486), kept with it through Fix it or Keep it anyway. */
   made?: AppSeed;
+  /** The parts of what was asked that it did not do (#73): on its card if it is kept or fixed. */
+  notDone?: string[];
 }
 
 /** What a repair of a held version lands as: the repair's source, with what the held version carried. */
@@ -34,6 +36,7 @@ export interface Landing {
   loss: string | null;
   modules?: Record<string, string>;
   made?: AppSeed;
+  notDone?: string[];
 }
 
 /** Fix it: the repaired source lands like any answer, carrying the held version's modules and sample records. */
@@ -46,6 +49,7 @@ export function fixedLanding(held: Held, fixed: { source: string; summary: strin
     loss: fixed.loss,
     ...(modules ? { modules } : {}),
     ...(held.made ? { made: held.made } : {}),
+    ...(held.notDone?.length ? { notDone: held.notDone } : {}),
   };
 }
 
@@ -57,6 +61,7 @@ export interface KeptAnyway {
   libraries: StudioLibraries | null;
   own?: OwnEdit;
   made?: AppSeed;
+  notDone?: string[];
 }
 
 /** Keep it anyway: `kept` is the words said beside it ("Kept with problems."). */
@@ -68,6 +73,7 @@ export function keptAnyway(held: Held, kept: string): KeptAnyway {
     libraries: held.libraries,
     ...(held.own ? { own: held.own } : {}),
     ...(held.made ? { made: held.made } : {}),
+    ...(held.notDone?.length ? { notDone: held.notDone } : {}),
   };
 }
 
