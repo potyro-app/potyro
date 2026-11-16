@@ -164,6 +164,7 @@ In dependency order, lowest first:
 | `packages/share-links` | the share service for demo links: encrypted packages and their preview cards | nothing |
 | `packages/ai-relay` | the relay that pays for the free AI allowance with Potyro's key, with caps | nothing |
 | `packages/platform-requests` | the relay that files "Potyro lacks this" requests as GitHub issues | nothing |
+| `packages/sync-gate` | the gate in front of the sync relay: limits per address, and for the whole relay | nothing |
 | `packages/shell` | the product: launcher, navigation, panels, the Studio, trust prompts, import and export, sharing, the composition root, the PWA build | everything above |
 | `packages/create-potyro` | `npm create potyro <dir>`: a starter for writing an app outside this repo | nothing |
 
@@ -182,7 +183,7 @@ convention held by review:
   implementation. The implementations are chosen once, at the composition root in the shell.
 - App code reaches host power only through `ctx`. An app module may import `potyro`; it never
   imports a host, store or capabilities package.
-- The four servers (`rooms`, `share-links`, `ai-relay`, `platform-requests`) depend on no Potyro
+- The five servers (`rooms`, `share-links`, `ai-relay`, `platform-requests`, `sync-gate`) depend on no Potyro
   package. What depends on them (the shell, and the host for the rooms protocol) imports only their
   browser-safe wire formats.
 
@@ -210,6 +211,7 @@ flowchart BT
     sharelinks[share-links]
     airelay[ai-relay]
     platreq[platform-requests]
+    syncgate[sync-gate]
     rooms
   end
   servers -. wire formats .-> shell
@@ -543,6 +545,9 @@ reads the map, and asks for the spaces it names.
 
 The relay is a dumb, encrypted store-and-forward server: an append-only log of opaque update blobs
 per space, which it can never decrypt. It is `jazz-run sync` with a SQLite file, run in a container.
+It asks nobody who they are and keeps everything it is sent, so on a public site a small gate stands
+in front of it (`packages/sync-gate`): what one address, and everyone together, may send it in a day,
+without reading any of it (docs/16).
 Peer-to-peer was considered and rejected as the primary transport, because the use cases are
 asynchronous (you add an expense at dinner, your flatmate reconciles on Sunday), a backgrounded phone
 app is not a peer, and NAT traversal needs a TURN server, which is a hosted relay by another name.
@@ -1377,6 +1382,7 @@ services sit beside them, each a Node process with no dependency on any Potyro p
 | Service | Package | What it holds | What it cannot do |
 |---|---|---|---|
 | sync relay | `jazz-run sync` in a container, docs/16 | an append-only log of encrypted updates per space, in SQLite | read any of it |
+| the relay's gate | `packages/sync-gate` | per address, counts for the day; nothing on disk | read what it passes on, or tell one space from another |
 | share service | `packages/share-links` | a demo link's encrypted package, its title and preview image | decrypt a package or run app code |
 | rooms relay | `packages/rooms` | messages in flight; nothing on disk | see who anyone is, or keep history |
 | AI relay | `packages/ai-relay` | Potyro's OpenRouter key and the meters; no content | exceed the monthly cap, or see more than the app sent |
@@ -1391,7 +1397,7 @@ each is built, run and checked, and `deploy/` holds the Caddyfile and the contai
 
 - `packages/shell/src/main.tsx` — the composition root; `packages/shell/index.html` — the shell's CSP
 - `packages/native/src/capacitor-capabilities.ts`, `packages/native/src/secure-vault.ts`, `packages/native/src/deep-links.ts` — the native target
-- `packages/share-links/src/server.ts`, `packages/rooms/src/server.ts`, `packages/ai-relay/src/server.ts`, `packages/platform-requests/src/server.ts` — the four services
+- `packages/share-links/src/server.ts`, `packages/rooms/src/server.ts`, `packages/ai-relay/src/server.ts`, `packages/platform-requests/src/server.ts` — the four services; `packages/sync-gate/src/gate.ts` — the gate in front of the sync relay
 - Deep docs: docs/13 (Android), docs/27 (iOS), docs/16 (deployment)
 
 </details>

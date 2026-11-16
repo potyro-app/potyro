@@ -42,8 +42,11 @@ a root CoMap per app, one CoMap per record; Potyro's relay is pinned `jazz-run s
 - `packages/identity/src/identity.ts` — `ensureIdentity`, `peekIdentity`, `recoveryPassphrase`,
   `signInWithPassphrase`, `portableIdentity`; `packages/identity/src/vault.ts` — the secret vault.
 - The relay: dev `pnpm relay` (root `package.json`, `jazz-run sync --port 4201 --in-memory`); prod
-  `deploy/containers.sh` `relay()` behind `deploy/potyro.app.Caddyfile`; docs/16 §3. Override with
-  `VITE_POTYRO_RELAY`. (`packages/rooms`, `ai-relay`, `platform-requests` are other servers.)
+  `deploy/containers.sh` `relay()` behind its gate (`gate()`, `packages/sync-gate/src/gate.ts`: the
+  limits per address; `token.ts`: where a plan token will be checked) behind
+  `deploy/potyro.app.Caddyfile`; docs/16 §3. Override with `VITE_POTYRO_RELAY`. (`packages/rooms`,
+  `ai-relay`, `platform-requests` are other servers. Each server has its own copy of `src/address.ts`,
+  the trusted-proxy rule: change them together.)
 
 ## A record shared on its own
 

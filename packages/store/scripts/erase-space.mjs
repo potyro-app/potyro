@@ -23,6 +23,14 @@
 // once they agree). Its edits inside other people's spaces are never touched: they are part of those
 // spaces, and removing them would break them for everyone else.
 //
+// `--sizes` erases nothing: it lists the spaces that hold the most on the relay, by the bytes of their
+// edits (records, chat, every file's bytes — history included, since the relay keeps it). The relay
+// has no quota per space (docs/16, "What the gate cannot do"); this is how an operator sees which
+// space outgrew the 200 MB the app holds its files to, before deciding what to do about it. It only
+// reads, so it may run while the relay does, or on a backup's copy.
+//
+//   node scripts/erase-space.mjs --db /var/lib/potyro/sync.db --sizes [--top 20] [--json]
+//
 // What this cannot do, and the docs say so: a device that still holds the space sends it back the
 // next time it connects (sync is two-way, and the relay cannot tell a returning copy from a new one),
 // and backups of sync.db still hold it. So: the person removes the app from their devices (every
@@ -35,7 +43,8 @@ const ID_RE = /^co_z[1-9A-HJ-NP-Za-km-z]{8,64}$/;
 const BATCH = 400;
 const USAGE = `Usage:
   node scripts/erase-space.mjs --db <sync.db> --space <co_z…> [--dry-run] [--json] [--no-vacuum]
-  node scripts/erase-space.mjs --db <sync.db> --account <co_z…> [--dry-run] [--json] [--no-vacuum]`;
+  node scripts/erase-space.mjs --db <sync.db> --account <co_z…> [--dry-run] [--json] [--no-vacuum]
+  node scripts/erase-space.mjs --db <sync.db> --sizes [--top 20] [--json]`;
 
 class Refusal extends Error {
   /** @param {string} message @param {number} code */
@@ -48,12 +57,14 @@ class Refusal extends Error {
 /** @param {string[]} argv */
 function parse(argv) {
   /** @type {{ db?: string, space?: string, account?: string, dryRun: boolean, json: boolean, vacuum: boolean, help: boolean, rest: string[] }} */
-  const out = { dryRun: false, json: false, vacuum: true, help: false, rest: [] };
+  const out = { dryRun: false, json: false, vacuum: true, help: false, sizes: false, top: 20, rest: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--db") out.db = argv[++i];
     else if (a === "--space") out.space = argv[++i];
     else if (a === "--account") out.account = argv[++i];
+    else if (a === "--sizes") out.sizes = true;
+    else if (a === "--top") out.top = Number(argv[++i]);
     else if (a === "--dry-run") out.dryRun = true;
     else if (a === "--json") out.json = true;
     else if (a === "--no-vacuum") out.vacuum = false;
@@ -136,6 +147,53 @@ function measure(db, rowIDs) {
     bytes += Number(t.b);
   }
   return { sessions, transactions, bytes };
+}
+
+/**
+ * What every space holds, biggest first: one pass over the file. A CoValue's bytes go to the group
+ * that owns it; a group's own edits (its members, its keys) go to itself. Accounts are groups too, and
+ * are left out unless they own something besides themselves — a person's own, unshared apps do not
+ * sync and are not here. Returns `{ spaces, total }`, `total` being every edit in the file.
+ */
+function sizes(db) {
+  const statement = db.prepare(
+    `SELECT c.id AS id, c.header AS header, COUNT(t.idx) AS edits, COALESCE(SUM(LENGTH(t.tx)), 0) AS bytes
+       FROM coValues c LEFT JOIN sessions s ON s.coValue = c.rowID LEFT JOIN transactions t ON t.ses = s.rowID
+      GROUP BY c.rowID`,
+  );
+  /** @type {Map<string, { id: string, kind: string, coValues: number, edits: number, bytes: number }>} */
+  const byOwner = new Map();
+  const total = { coValues: 0, edits: 0, bytes: 0 };
+  const entry = (id) => {
+    let e = byOwner.get(id);
+    if (!e) byOwner.set(id, (e = { id, kind: "group", coValues: 0, edits: 0, bytes: 0 }));
+    return e;
+  };
+  for (const row of typeof statement.iterate === "function" ? statement.iterate() : statement.all()) {
+    const header = headerOf(row);
+    const rule = header?.ruleset;
+    const owner = rule?.type === "ownedByGroup" ? rule.group : row.id;
+    const e = entry(owner);
+    if (owner === row.id) e.kind = rule?.type === "group" ? (header?.meta?.type === "account" ? "account" : "group") : "other";
+    e.coValues++;
+    e.edits += Number(row.edits);
+    e.bytes += Number(row.bytes);
+    total.coValues++;
+    total.edits += Number(row.edits);
+    total.bytes += Number(row.bytes);
+  }
+  const spaces = [...byOwner.values()].filter((e) => e.kind === "group" || e.coValues > 1).sort((a, b) => b.bytes - a.bytes);
+  return { spaces, total };
+}
+
+const mb = (bytes) => (bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 2 : 0);
+
+function describeSizes(report, opts) {
+  const shown = report.spaces.slice(0, opts.top);
+  const lines = [`${report.spaces.length} spaces in ${opts.db}: ${mb(report.total.bytes)} MB of edits in ${report.total.coValues} CoValues. The ${shown.length} that hold the most:`];
+  for (const e of shown) lines.push(`  ${e.id}  ${mb(e.bytes).padStart(8)} MB  ${String(e.coValues).padStart(7)} CoValues  ${String(e.edits).padStart(8)} edits${e.kind === "account" ? "  (an account's own)" : ""}`);
+  lines.push("  Nothing was changed. To erase one: --space <id> (docs/16, \"Erasing a space or an account from the relay\").");
+  return lines.join("\n");
 }
 
 const kindOf = (c) => (c.header?.ruleset?.type === "group" ? (c.header?.meta?.type === "account" ? "account" : "group") : c.header?.meta?.type === "binary" ? "file bytes" : c.header?.type ?? "unknown");
@@ -284,9 +342,27 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(USAGE);
     return 0;
   }
+  if (opts.sizes) {
+    if (!opts.db || opts.space || opts.account || opts.rest.length || !Number.isInteger(opts.top) || opts.top < 1) {
+      console.error(`Give --db with --sizes, and a whole number above 0 for --top.\n${USAGE}`);
+      return 2;
+    }
+    let db;
+    try {
+      db = await openDb(opts.db, true);
+      const report = sizes(db);
+      console.log(opts.json ? JSON.stringify({ total: report.total, spaces: report.spaces.slice(0, opts.top) }) : describeSizes(report, opts));
+      return 0;
+    } catch (e) {
+      console.error(e instanceof Error ? e.message : String(e));
+      return e instanceof Refusal ? e.code : 1;
+    } finally {
+      db?.close();
+    }
+  }
   const id = opts.space ?? opts.account;
   if (!opts.db || !id || (opts.space && opts.account) || opts.rest.length) {
-    console.error(`Give --db and one of --space or --account.\n${USAGE}`);
+    console.error(`Give --db and one of --space, --account or --sizes.\n${USAGE}`);
     return 2;
   }
   if (!ID_RE.test(id)) {

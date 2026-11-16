@@ -43,7 +43,7 @@ const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** Everything the browser suite boots: a change here can break any spec. */
 const EVERYWHERE = /^(packages\/(shell|views|runtime|host|store|schema|i18n|capabilities|identity|share-links)\/|playwright\.config\.ts|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|vitest\.workspace\.ts|tsconfig|e2e\/[^/]+\.ts$|e2e\/fixtures\/|scripts\/ci-local\.mjs)/;
 /** Nothing the browser suite can see. */
-const NOWHERE = /^(docs\/|.*\.md$|brand\/|deploy\/|LICENSE|\.gitignore|\.github\/|scripts\/(ship|ci-watch|ci-select|bench-ci|pack-app)\.|packages\/(native|ai-relay)\/|.*\.generated\.ts$|e2e\/timings\.json$|\.ci-local\/)/;
+const NOWHERE = /^(docs\/|.*\.md$|brand\/|deploy\/|LICENSE|\.gitignore|\.github\/|scripts\/(ship|ci-watch|ci-select|bench-ci|pack-app)\.|packages\/(native|ai-relay|sync-gate)\/|.*\.generated\.ts$|e2e\/timings\.json$|\.ci-local\/)/;
 
 /** @returns {"full" | string[]} the specs a changed path needs */
 function needs(path) {

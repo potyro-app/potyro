@@ -80,7 +80,7 @@ the full table with what each depends on is docs/00 §The package map.
 - `packages/views`: the view registry, the built-in views, the host for custom views
 - `packages/generator`: model backends, the prompt and its generated reference, the corpus, the create/modify/fix loops, Ask, the evals
 - `packages/native`: the Capacitor target — native capabilities and the native vault
-- `packages/share-links`, `packages/ai-relay`, `packages/platform-requests`: servers (demo links, the free AI allowance, "Potyro lacks this" requests); they depend on no Potyro package
+- `packages/share-links`, `packages/ai-relay`, `packages/platform-requests`, `packages/sync-gate`: servers (demo links, the free AI allowance, "Potyro lacks this" requests, the limits in front of the sync relay); they depend on no Potyro package
 - `packages/shell`: the product — launcher, navigation, panels, Studio, trust, import/export, sharing, the composition root (`main.tsx`), the PWA build
 - `packages/create-potyro`: `npm create potyro <dir>`
 - `packages/legal`: the privacy and terms pages, built from `docs/legal/`

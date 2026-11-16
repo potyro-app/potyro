@@ -1,0 +1,26 @@
+{
+  "name": "@potyro/sync-gate",
+  "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
+  "type": "module",
+  "private": true,
+  "description": "The gate in front of the sync relay (docs/16 \"The gate in front of the relay\"): a websocket proxy that holds each address to a number of connections, a rate of connections, a rate of bytes and frames (by slowing it, not closing it) and a number of bytes a day, holds the whole relay to bytes a day and a floor of free disk, and has the place where a plan token will be checked. It never reads what it forwards. No dependencies; depends on no Potyro package.",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./src/gate.ts"
+  },
+  "types": "./src/gate.ts",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "start": "node --experimental-strip-types src/server.ts"
+  },
+  "devDependencies": {
+    "@types/ws": "8.18.1",
+    "cojson": "0.20.19",
+    "cojson-transport-ws": "0.20.19",
+    "jazz-run": "0.20.19",
+    "ws": "8.21.1"
+  }
+}

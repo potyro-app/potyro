@@ -1,7 +1,7 @@
 // scripts/takedown.mjs, run as the operator runs it: a separate Node process.
 import { afterEach, describe, expect, it } from "vitest";
 import { execFile } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -88,6 +88,41 @@ describe("scripts/takedown.mjs", () => {
     const missing = await run(["B".repeat(22), "--reason", "x", "--dir", dir], {}, ["--experimental-strip-types", "--no-warnings"]);
     expect(missing.code).toBe(1);
     expect(missing.err).toMatch(/No link/);
+  });
+
+  it.skipIf(!stripsTypes)("erases a link on the server for the person who made it: 404, and nothing of it left on disk", async () => {
+    dir = mkdtempSync(join(tmpdir(), "shares-"));
+    const handle = createShareHandler({ store: diskShareStore(dir), indexHtml: async () => INDEX });
+    const id = await makeShare(handle);
+    const flags = ["--experimental-strip-types", "--no-warnings"];
+
+    const ok = await run([`https://potyro.app/s/${id}#k=the-secret-key`, "--erase", "--dir", dir], {}, flags);
+    expect(ok.err).toBe("");
+    expect(ok.out).toContain(`Erased: ${id}.`);
+    expect((await handle(req({ path: `/share-api/shares/${id}/payload` }))).status).toBe(404);
+    expect(readdirSync(join(dir, id.slice(0, 2)))).toEqual([]); // the link's folder went with it
+    expect(await diskShareStore(dir).takenDown(id)).toBeNull(); // not a takedown: no record
+
+    const again = await run([id, "--erase", "--dir", dir], {}, flags);
+    expect(again.code).toBe(1);
+    expect(again.err).toMatch(/No link/);
+    const remote = await run([id, "--erase", "--site", "https://potyro.app"], { SHARE_ADMIN_TOKEN: ADMIN });
+    expect(remote.code).toBe(2);
+    expect(remote.err).toMatch(/on the server only/);
+  });
+
+  it.skipIf(!stripsTypes)("erases a link whose making was cut short: a package with no title beside it is not left behind", async () => {
+    dir = mkdtempSync(join(tmpdir(), "shares-"));
+    const id = "C".repeat(22);
+    const at = join(dir, id.slice(0, 2), id);
+    mkdirSync(at, { recursive: true });
+    writeFileSync(join(at, "payload.bin"), "the package, and nothing else");
+    writeFileSync(join(at, "preview"), "a picture");
+
+    const ok = await run([id, "--erase", "--dir", dir], {}, ["--experimental-strip-types", "--no-warnings"]);
+    expect(ok.err).toBe("");
+    expect(ok.out).toContain(`Erased: ${id}.`);
+    expect(readdirSync(join(dir, id.slice(0, 2)))).toEqual([]);
   });
 
   it("sends the token only over https, or to this machine", async () => {

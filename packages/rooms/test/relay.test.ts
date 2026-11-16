@@ -204,6 +204,23 @@ describe("refusals", () => {
     await expect(join(url(newRoomId()), { origin: "https://potyro.app", "x-forwarded-for": "203.0.113.7, 198.51.100.1" })).resolves.toBeTruthy();
   });
 
+  it("counts a forged X-Forwarded-For against the real client address, an IPv6 address as its /64, and the socket's peer when no proxy is believed", async () => {
+    const forged = (first: string, real: string) => ({ origin: "https://potyro.app", "x-forwarded-for": `${first}, ${real}` });
+    const behind = await relay({ limits: { connectionsPerAddress: 1 } });
+    const room = newRoomId();
+    await join(behind.url(room), forged("6.6.6.1", "9.9.9.9"));
+    const again = await connect(behind.url(room), forged("6.6.6.2", "9.9.9.9"));
+    expect((await again.closed).code).toBe(CLOSE.tooManyRooms);
+    await join(behind.url(room), forged("9.9.9.9", "2001:db8:1:2::1"));
+    const neighbour = await connect(behind.url(room), forged("9.9.9.9", "2001:db8:1:2:ffff::2"));
+    expect((await neighbour.closed).code).toBe(CLOSE.tooManyRooms);
+
+    const direct = await relay({ trustProxy: "none", limits: { connectionsPerAddress: 1 } });
+    await join(direct.url(room), forged("6.6.6.1", "9.9.9.9"));
+    const second = await connect(direct.url(room), forged("6.6.6.2", "8.8.8.8")); // both are this machine
+    expect((await second.closed).code).toBe(CLOSE.tooManyRooms);
+  });
+
   it("closes an address past connectionsPerAddress with 4003", async () => {
     const { url } = await relay({ limits: { connectionsPerAddress: 2 } });
     const room = newRoomId();

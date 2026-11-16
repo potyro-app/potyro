@@ -3,7 +3,9 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { startServer } from "../src/server.ts";
 import { githubIssues } from "../src/github.ts";
-import type { RelayRequest } from "../src/relay.ts";
+import { createRelay, type RelayRequest } from "../src/relay.ts";
+import { addressKey } from "../src/address.ts";
+import { REQUEST_FORMAT } from "../src/request.ts";
 
 let server: Server | null = null;
 afterEach(() => new Promise<void>((done) => (server ? server.close(() => done()) : done())));
@@ -17,6 +19,40 @@ describe("the relay's HTTP side", () => {
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({ ok: true });
     expect(seen[0]).toMatchObject({ method: "POST", path: "/platform-requests", body: "{}", ip: "9.9.9.9" });
+  });
+
+  it("counts a forged X-Forwarded-For against the real client address: each new forged entry is the same sender", async () => {
+    const filed: string[] = [];
+    const issues = {
+      listOpen: async () => [],
+      create: async (i: { title: string }) => (filed.push(i.title), { number: filed.length, title: i.title, url: "u" }),
+      comment: async () => {},
+    };
+    const relay = createRelay({ issues, now: Date.now, limits: { perDevice: 100, perAddress: 2, windowMs: 86_400_000 } });
+    server = await startServer({ handle: relay.handle, port: 0, host: "127.0.0.1", trustProxy: "caddy" });
+    const { port } = server.address() as AddressInfo;
+    const send = (n: number, forwarded: string) =>
+      fetch(`http://127.0.0.1:${port}/platform-requests`, {
+        method: "POST",
+        headers: { "x-forwarded-for": forwarded },
+        body: JSON.stringify({ format: REQUEST_FORMAT, id: `id-${n}`, device: `device-${n}`, title: `Reading barcode kind ${n}`, body: "It would help to have it.", language: "en" }),
+      });
+    // What Caddy passes on when the client sent its own header through a trusted hop: the client's
+    // text first, the peer Caddy saw last. A new device id and a new forged address each time.
+    expect((await send(1, "6.6.6.1, 9.9.9.9")).status).toBe(201);
+    expect((await send(2, "6.6.6.2, 9.9.9.9")).status).toBe(201);
+    expect((await send(3, "6.6.6.3, 9.9.9.9")).status).toBe(429);
+    // Another real address is not held back, whatever it claims to be.
+    expect((await send(4, "9.9.9.9, 8.8.8.8")).status).toBe(201);
+  });
+
+  it("believes no header with trustProxy none, and counts an IPv6 address as its /64", async () => {
+    const seen: RelayRequest[] = [];
+    server = await startServer({ handle: async (r) => (seen.push(r), { status: 201, body: { ok: true } }), port: 0, host: "127.0.0.1", trustProxy: "none" });
+    const { port } = server.address() as AddressInfo;
+    await fetch(`http://127.0.0.1:${port}/platform-requests`, { method: "POST", body: "{}", headers: { "x-forwarded-for": "6.6.6.6" } });
+    expect(seen[0]!.ip).not.toBe("6.6.6.6");
+    expect(addressKey("2001:db8:1:2:aaaa::1")).toBe(addressKey("2001:db8:1:2:bbbb::2"));
   });
 
   it("stops reading a body that is too big", async () => {

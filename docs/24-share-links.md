@@ -144,7 +144,7 @@ A small Node process beside the relay, same shape as `platform-requests` (#263):
 Caps: payload ≤ 2 MiB, image ≤ 300 KB (JPEG or PNG, checked by magic bytes), title ≤ 80 and
 description ≤ 200 characters, checked before anything is written. Per address (an IPv6 address
 counts as its /64) and per day (UTC): 30 links made, 300 packages fetched, 2000 link pages and
-pictures, and an IPv6 /48 eight times that; for the whole service, 2 GB of new links a day and
+pictures, and an IPv6 /48 eight times that; 300 requests of any kind a minute; for the whole service, 2 GB of new links a day and
 none while the disk would have under 1 GB free. A refusal is JSON with a `code` and a sentence,
 except on a link's own page, which is a few lines in the visitor's language; the shell says "Too
 many apps were opened from this network today" with Try again, never that the link is damaged

@@ -409,6 +409,27 @@ describe("per-address limits a day (#119)", () => {
     expect((await create(handle)).res.status).toBe(201);
   });
 
+  it("holds one address to a number of requests a minute, of any kind: malformed uploads and wrong delete tokens too", async () => {
+    let t = 20 * DAY + 5_000; // five seconds into a clock minute
+    const { handle } = service({ now: () => t, limits: { requestsPerMinute: 4 } });
+    const { out } = await create(handle, upload(), "9.9.9.9");
+    const junk = () => handle(req({ method: "POST", path: "/share-api/shares", body: enc({ nothing: true }), ip: "9.9.9.9" }));
+    const guess = () => handle(req({ method: "DELETE", path: `/share-api/shares/${out.id}`, headers: { "x-delete-token": "a-guess" }, ip: "9.9.9.9" }));
+    expect((await junk()).status).toBe(400);
+    expect((await guess()).status).toBe(403);
+    expect((await handle(req({ path: "/nowhere", ip: "9.9.9.9" }))).status).toBe(404);
+    // The fifth request of the minute, whatever it is — the right delete token too.
+    const fifth = await handle(req({ method: "DELETE", path: `/share-api/shares/${out.id}`, headers: { "x-delete-token": out.deleteToken }, ip: "9.9.9.9" }));
+    expect(fifth.status).toBe(429);
+    expect(fifth.headers["retry-after"]).toBe("55");
+    expect(JSON.parse(String(fifth.body))).toMatchObject({ ok: false, code: "too-fast" });
+    // The health check is never counted or refused; another address is not held back; the minute ends.
+    expect((await handle(req({ path: "/share-api/health", ip: "9.9.9.9" }))).status).toBe(200);
+    expect((await handle(req({ path: `/s/${out.id}`, ip: "8.8.8.8" }))).status).toBe(200);
+    t += 55_000;
+    expect((await handle(req({ path: `/s/${out.id}`, ip: "9.9.9.9" }))).status).toBe(200);
+  });
+
   it("holds a bounded number of addresses", () => {
     const counts = dayCounts(() => DAY, 3);
     for (const k of ["a", "b", "c", "d"]) expect(counts.take(k, 1)).toBe(true);

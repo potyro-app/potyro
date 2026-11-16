@@ -14,6 +14,15 @@
 //   # on the server, straight into the shares folder (no token; e.g. inside the service's container)
 //   node --experimental-strip-types scripts/takedown.mjs <id or link> --reason "…" --dir /data
 //
+// ERASING a link is the other thing an operator is asked for: the person who made it wants it gone
+// (docs/16, "Erasing a link on request"; the app has no button of its own for it yet). That is
+// not a takedown — nothing was wrong with the link, and no record of it is kept:
+//
+//   node --experimental-strip-types scripts/takedown.mjs <id or link> --erase --dir /data
+//
+// removes the link's title, picture and package, as the sharer's own "stop sharing" does; the link
+// then answers 404. On the server only: there is no route for it.
+//
 // A whole link (`https://potyro.app/s/<id>#k=…`) may be given: only the id is used, and the key after
 // `#` is never sent anywhere. The token is read from the environment, never from the command line,
 // so it is not left in the shell's history or the process list, and it is never printed.
@@ -24,7 +33,8 @@ const ID_RE = /^[A-Za-z0-9_-]{22}$/;
 const USAGE = `Usage:
   read -rs SHARE_ADMIN_TOKEN && export SHARE_ADMIN_TOKEN
   node scripts/takedown.mjs <id or link> --reason "why" [--site https://potyro.app]
-  node --experimental-strip-types scripts/takedown.mjs <id or link> --reason "why" --dir <shares folder>`;
+  node --experimental-strip-types scripts/takedown.mjs <id or link> --reason "why" --dir <shares folder>
+  node --experimental-strip-types scripts/takedown.mjs <id or link> --erase --dir <shares folder>`;
 
 /** The share id in what was given: an id, or a link to one (its fragment ignored). */
 export function shareIdOf(text) {
@@ -39,6 +49,7 @@ function parse(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--reason" || a === "--site" || a === "--dir") out[a.slice(2)] = argv[++i];
+    else if (a === "--erase") out.erase = true;
     else if (a === "--help" || a === "-h") out.help = true;
     else out.positional.push(a);
   }
@@ -75,14 +86,36 @@ async function overHttp(id, reason, site, token) {
   throw new Error(`${base} answered ${res.status}${body.error ? `: ${body.error}` : ""}`);
 }
 
-async function onDisk(id, reason, dir) {
-  let diskShareStore;
+async function storeIn(dir) {
   try {
-    ({ diskShareStore } = await import("../src/disk.ts"));
+    const { diskShareStore } = await import("../src/disk.ts");
+    return diskShareStore(dir);
   } catch {
     throw new Error("Writing to the shares folder needs Node 22 with --experimental-strip-types: node --experimental-strip-types scripts/takedown.mjs …");
   }
-  const store = diskShareStore(dir);
+}
+
+/**
+ * The sharer's own "stop sharing", done for them: the link's title, picture and package go; nothing is kept.
+ * Whatever is there goes, whole link or not: a link is written package first and title last, so one
+ * whose making was cut short has a package and no title, and "there is no such link" would leave it.
+ */
+async function eraseOnDisk(id, dir) {
+  const store = await storeIn(dir);
+  const anything = async () => Boolean((await store.get(id)) || (await store.payload(id)) || (await store.image(id)));
+  if (!(await anything())) {
+    if (await store.takenDown(id)) return `Nothing left to erase: ${id} was taken down, and only the time and the reason of that are kept.`;
+    throw new Error(`No link ${id} in ${dir}: it was never made here, or it is already gone.`);
+  }
+  await store.remove(id);
+  // Once more, for a link that was being written at that very moment.
+  if (await anything()) await store.remove(id);
+  if (await anything()) throw new Error(`${id} is still being written in ${dir}: run this again.`);
+  return `Erased: ${id}. The link now answers 404, and nothing of it is kept.`;
+}
+
+async function onDisk(id, reason, dir) {
+  const store = await storeIn(dir);
   if (await store.takenDown(id)) return `Already taken down: ${id}.`;
   if (!(await store.get(id))) throw new Error(`No link ${id} in ${dir}: it was never made here, or whoever made it removed it.`);
   await store.takeDown(id, { at: new Date().toISOString(), reason });
@@ -99,6 +132,19 @@ export async function main(argv = process.argv.slice(2), env = process.env) {
   if (!id || args.positional.length !== 1) {
     console.error(`Give one link or link id.\n${USAGE}`);
     return 2;
+  }
+  if (args.erase) {
+    if (!args.dir) {
+      console.error(`--erase works on the server only, with --dir: there is no route for it.\n${USAGE}`);
+      return 2;
+    }
+    try {
+      console.log(await eraseOnDisk(id, args.dir));
+      return 0;
+    } catch (e) {
+      console.error(`Not erased: ${e instanceof Error ? e.message : e}`);
+      return 1;
+    }
   }
   const reason = String(args.reason ?? "").trim();
   if (!reason) {

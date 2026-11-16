@@ -12,6 +12,7 @@
 //   SHARE_PAYLOAD_PER_ADDRESS_DAY  default 300 — packages it fetches a day: one per demo opened
 //   SHARE_PAGE_PER_ADDRESS_DAY     default 2000 — link pages and preview pictures it fetches a day
 //                                  (an IPv6 /48 gets eight times each of these three, all its /64s together)
+//   SHARE_REQUESTS_PER_ADDRESS_MINUTE  default 300 — requests of any kind from one address a clock minute
 //   SHARE_STORED_BYTES_DAY         default 2000000000 — bytes of new links the whole service keeps a day
 //   SHARE_MIN_FREE_BYTES           default 1000000000 — no new link while the disk would have less free
 //   TRUST_PROXY                    default caddy — whose X-Forwarded-For to believe (address.ts); `none` for none
@@ -94,6 +95,7 @@ export function readLimits(env: Record<string, string | undefined>): Partial<Lim
     ["createsPerDay", "SHARE_CREATE_PER_ADDRESS_DAY"],
     ["payloadsPerDay", "SHARE_PAYLOAD_PER_ADDRESS_DAY"],
     ["pagesPerDay", "SHARE_PAGE_PER_ADDRESS_DAY"],
+    ["requestsPerMinute", "SHARE_REQUESTS_PER_ADDRESS_MINUTE"],
     ["storedBytesPerDay", "SHARE_STORED_BYTES_DAY"],
     ["minFreeBytes", "SHARE_MIN_FREE_BYTES"],
   ];

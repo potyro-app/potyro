@@ -11,7 +11,8 @@
 //
 // A link the operator took down answers 410 on every one of these, with nothing of what it was
 // (docs/16, "Taking a link down"). Making links, opening packages and loading link pages are each
-// limited per address per day (IPv6: per /64, and its /48 at eight times as much); a refusal is JSON
+// limited per address per day (IPv6: per /64, and its /48 at eight times as much), and every request
+// but the health check counts against a rate per address a minute; a refusal is JSON
 // with a `code` and a sentence, except on a link's own page, which a person opened in a browser: that
 // one is a short page in their language. What the whole service keeps a day is capped too, and it
 // stops making links before the disk fills.
@@ -52,6 +53,11 @@ export interface Limits {
   pagesPerDay: number;
   /** Takedowns sent with a wrong operator token. */
   adminFailuresPerDay: number;
+  /**
+   * Requests of any kind one address may send in a clock minute, the health check aside: what holds
+   * the routes the day limits do not count (a malformed upload, a delete with a wrong token).
+   */
+  requestsPerMinute: number;
   /** Bytes of new links (package + picture) the whole service keeps a day, from every address together. */
   storedBytesPerDay: number;
   /** No new link is kept while the disk would have less than this free after it. */
@@ -63,6 +69,7 @@ export const DEFAULT_LIMITS: Limits = {
   payloadsPerDay: 300,
   pagesPerDay: 2000,
   adminFailuresPerDay: 10,
+  requestsPerMinute: 300,
   storedBytesPerDay: 2_000_000_000,
   minFreeBytes: 1_000_000_000,
 };
@@ -126,17 +133,19 @@ export function sameSecret(given: string, kept: string): boolean {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
 
 /**
  * Counts per key for the current calendar day (UTC), in memory. A new day starts every count again.
  * Holds at most `maxKeys` keys: past that, the key first counted longest ago is let go, which can only
- * let an old key start its day again, never hold back a new one.
+ * let an old key start its day again, never hold back a new one. (`windowMs` makes the "day" another
+ * length: the rate a minute is the same counter over a clock minute.)
  */
-export function dayCounts(now: () => number, maxKeys = MAX_COUNTED) {
-  let day = Math.floor(now() / DAY_MS);
+export function dayCounts(now: () => number, maxKeys = MAX_COUNTED, windowMs = DAY_MS) {
+  let day = Math.floor(now() / windowMs);
   const counts = new Map<string, number>();
   const roll = (): void => {
-    const today = Math.floor(now() / DAY_MS);
+    const today = Math.floor(now() / windowMs);
     if (today !== day) {
       day = today;
       counts.clear();
@@ -159,7 +168,7 @@ export function dayCounts(now: () => number, maxKeys = MAX_COUNTED) {
     },
     /** Seconds until the counts start again: what `retry-after` says. */
     secondsLeft(): number {
-      return Math.max(1, Math.ceil(((Math.floor(now() / DAY_MS) + 1) * DAY_MS - now()) / 1000));
+      return Math.max(1, Math.ceil(((Math.floor(now() / windowMs) + 1) * windowMs - now()) / 1000));
     },
     size: () => counts.size,
   };
@@ -186,6 +195,7 @@ export function createShareHandler(deps: HandlerDeps): (req: ShareRequest) => Pr
   const counts = dayCounts(now);
   // Its own counter, with one key: in `counts` it would be the first let go when that one fills.
   const stored = dayCounts(now, 1);
+  const minute = dayCounts(now, MAX_COUNTED, MINUTE_MS);
   let warnedAt = -Infinity;
   /** Tell the operator, at most once an hour: every refused link would otherwise fill the log. */
   const warn = (message: string): void => {
@@ -367,9 +377,15 @@ export function createShareHandler(deps: HandlerDeps): (req: ShareRequest) => Pr
     try {
       const method = req.method.toUpperCase();
       const api = /^(.*)\/share-api(\/.*)$/.exec(req.path);
+      const health = api?.[2] === "/health" && method === "GET";
+      // Every request counts here, the refused ones too: this is the one limit a wrong path, a
+      // malformed upload or a guessed delete token cannot get around.
+      if (!health && !minute.take(addressKey(req.ip), limits.requestsPerMinute)) {
+        return refused(429, "too-fast", "Too many requests from this address. Try again in a minute.", { "retry-after": String(minute.secondsLeft()) });
+      }
       if (api) {
         const rest = api[2]!;
-        if (rest === "/health" && method === "GET") return json(200, { ok: true });
+        if (health) return json(200, { ok: true });
         if (rest === "/shares" && method === "POST") return await create(req);
         const admin = /^\/admin\/shares\/([^/]+)$/.exec(rest);
         if (admin && ID_RE.test(admin[1]!) && method === "DELETE") return await takeDown(req, admin[1]!);
