@@ -18,6 +18,8 @@
 //   system-prompt.ts -> ../edits.js (EDIT_FORMAT), ../prompt.js (SYSTEM_PROMPT)
 //   modify-loop.ts   -> tools.ts, ../guarded-modify.js, ../edits.js, ../prompt.js, @potyro/runtime
 //                       (structuralLoss) — the modify loop (#131), same edges as loop.ts
+//   modify-loop.ts   -> ../request-parts.js -> potyro (humanizeKey), ../source-words.js (below) — which
+//                       parts of the request an accepted change left unanswered (#73)
 //   discovery-tools.ts -> ../reference.generated.js (a string), ../prompt.js (the examples), potyro
 //                       (VIEW_FIELDS), and `import type` from tools.ts
 //   modify-system-prompt.ts -> ../prompt.js (SYSTEM_PROMPT)
