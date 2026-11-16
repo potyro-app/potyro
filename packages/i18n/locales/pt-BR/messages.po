@@ -1864,6 +1864,7 @@ msgstr "Prévia do app"
 msgid "App source"
 msgstr "Código do app"
 
+#: ../shell/src/lazy-studio.tsx
 #: ../shell/src/studio.tsx
 msgid "App studio"
 msgstr "Studio de apps"
@@ -2592,6 +2593,7 @@ msgstr "Fechar a tela de apps"
 msgid "Close model settings"
 msgstr "Fechar ajustes do modelo"
 
+#: ../shell/src/lazy-studio.tsx
 #: ../shell/src/studio.tsx
 msgid "Close studio"
 msgstr "Fechar o Studio"
@@ -6938,6 +6940,8 @@ msgid "Stronger sibling, still ~50× cheaper than a frontier model"
 msgstr "Mais forte, e ainda bem mais barato que os modelos maiores"
 
 #. The Studio's name, above the app's: where apps are made by talking
+#. The Studio's name, above the app's: where apps are made by talking
+#: ../shell/src/lazy-studio.tsx
 #: ../shell/src/studio.tsx
 #: ../shell/src/studio.tsx
 msgid "Studio"

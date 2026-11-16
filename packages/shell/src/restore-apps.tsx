@@ -12,7 +12,7 @@ import { useState } from "react";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { fmt } from "@potyro/i18n";
-import { rememberAppSpace, type AccountApp } from "@potyro/store";
+import { rememberAppSpace, type AccountApp } from "@potyro/store/sync";
 import { saveUserApp, getUserApp } from "./user-apps.js";
 import { receiveCode } from "./app-modules.js";
 import { Glyph } from "@potyro/views";

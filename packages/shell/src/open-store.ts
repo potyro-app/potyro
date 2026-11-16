@@ -27,7 +27,7 @@ import { copyStoreData, createSqliteStore, isStorageWithheld, LocalStore, Sqlite
  * and its `Store` return type is deliberately engine-free — widening it would leak Jazz into every
  * call site for the benefit of one. Read immediately after the call that set it.
  */
-let lastSyncHandle: Awaited<ReturnType<typeof import("@potyro/store").openJazzStore>> | null = null;
+let lastSyncHandle: Awaited<ReturnType<typeof import("@potyro/store/sync").openJazzStore>> | null = null;
 
 type SpaceShape = {
   id: string;
@@ -83,7 +83,7 @@ export async function watchSpace(): Promise<void> {
   const handle = lastSyncHandle;
   if (!handle) return;
 
-  const { subscribeSpace, subscribeMemberProfiles } = await import("@potyro/store");
+  const { subscribeSpace, subscribeMemberProfiles } = await import("@potyro/store/sync");
 
   let stopProfiles: (() => void) | null = null;
   /** Whose profiles are currently watched, so the set is only rebuilt when the PEOPLE change. */
@@ -128,7 +128,7 @@ export async function watchSpace(): Promise<void> {
 export async function republishName(name: string): Promise<void> {
   const handle = lastSyncHandle;
   if (handle) {
-    const { publishName, publishNameToAccount } = await import("@potyro/store");
+    const { publishName, publishNameToAccount } = await import("@potyro/store/sync");
     await publishName(handle, name);
     // And on the account's registry, which is the copy a device linked later actually finds.
     const node = await openAccountNodeForDevice();
@@ -140,7 +140,7 @@ export async function republishName(name: string): Promise<void> {
   // and nothing else, and the next device to be linked introduces you as "Me".
   const node = await openAccountNodeForDevice();
   if (!node) return;
-  const { publishAccountName, publishNameToAccount } = await import("@potyro/store");
+  const { publishAccountName, publishNameToAccount } = await import("@potyro/store/sync");
   // Both channels: the profile, which is what members of a shared space read, and the account's own
   // registry, which is what a newly linked device reads before it has anything else.
   await publishAccountName(node, name);
@@ -153,7 +153,7 @@ export async function republishName(name: string): Promise<void> {
 export async function removeMember(accountId: string): Promise<{ invitesRevoked: number }> {
   const handle = lastSyncHandle;
   if (!handle) throw new Error(t`This app is not shared.`);
-  const { removeSpaceMember } = await import("@potyro/store");
+  const { removeSpaceMember } = await import("@potyro/store/sync");
   const result = removeSpaceMember(handle, accountId);
   await handle.whenDurable();
   return result;
@@ -165,7 +165,7 @@ export async function currentSpace(): Promise<
 > {
   const handle = lastSyncHandle;
   if (!handle) return null;
-  const { spaceMembers, myRole } = await import("@potyro/store");
+  const { spaceMembers, myRole } = await import("@potyro/store/sync");
   const raw = await spaceMembers(handle);
   return {
     id: handle.groupID,
@@ -289,7 +289,7 @@ export async function openStore(namespace: string, opts?: OpenStoreOpts): Promis
     // synced — and `ctx.me` therefore names the same person before and after sync is switched on.
     // An id that changed on toggle would orphan every `createdBy` already stamped.
     const [{ openJazzStore }, identity] = await Promise.all([
-      import("@potyro/store"),
+      import("@potyro/store/sync"),
       import("@potyro/identity"),
     ]);
     // Awaited before the name is read, not inline: `identityAccount()` mints the identity on a
@@ -465,7 +465,7 @@ export async function rememberAppOnAccount(app: { id: string; name: string; icon
   const handle = lastSyncHandle;
   if (!handle) return false;
   try {
-    const { publishAppToAccount } = await import("@potyro/store");
+    const { publishAppToAccount } = await import("@potyro/store/sync");
     const code = await accountCode(app.id, handle.store);
     return await publishAppToAccount(handle.node, {
       ...code,
@@ -505,7 +505,7 @@ export async function forgetAppOnAccount(appId: string): Promise<boolean> {
   try {
     const node = lastSyncHandle?.node ?? (await accountNode());
     if (!node) return false;
-    const { removeAppFromAccount } = await import("@potyro/store");
+    const { removeAppFromAccount } = await import("@potyro/store/sync");
     return await removeAppFromAccount(node, appId, { waitMs: 8_000 });
   } catch {
     return false;
@@ -521,7 +521,7 @@ export async function forgetAppOnAccount(appId: string): Promise<boolean> {
 export async function openAccountNodeForDevice(): Promise<unknown | null> {
   if (!canSync()) return null;
   try {
-    const [{ openAccountNodeInBrowser }, identity] = await Promise.all([import("@potyro/store"), import("@potyro/identity")]);
+    const [{ openAccountNodeInBrowser }, identity] = await Promise.all([import("@potyro/store/sync"), import("@potyro/identity")]);
     const saved = identity.peekIdentity();
     if (!saved) return null;
     const opened = await openAccountNodeInBrowser({
@@ -571,7 +571,7 @@ export async function accountNode(): Promise<unknown | null> {
  */
 export async function publishAppListToAccount(node: unknown): Promise<number> {
   try {
-    const [{ publishAppToAccount }, { listUserApps }] = await Promise.all([import("@potyro/store"), import("./user-apps.js")]);
+    const [{ publishAppToAccount }, { listUserApps }] = await Promise.all([import("@potyro/store/sync"), import("./user-apps.js")]);
     const { getEntry, appKey } = await import("./launcher-store.js");
     const now = new Date().toISOString();
     let recorded = 0;

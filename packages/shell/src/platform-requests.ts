@@ -16,7 +16,6 @@
 
 import { t } from "@lingui/core/macro";
 import { REQUEST_FORMAT, type PlatformRequestPayload } from "@potyro/platform-requests";
-import { appStructure } from "@potyro/generator/agent";
 import type { PlatformAsk } from "./studio-chat.js";
 import { deviceId, randomId } from "./device-id.js";
 import { currentSite } from "./site.js";
@@ -51,6 +50,9 @@ export function requestsEndpoint(): string {
 
 /** The request exactly as it will be sent — what the review shows, word for word. */
 export async function buildRequest(ask: PlatformAsk, opts: { source: string; app?: string; language: string }): Promise<PlatformRequestPayload> {
+  // Loaded with the request, not with Home: You's language picker reaches this file, and the agent's
+  // code is the Studio's (#48).
+  const { appStructure } = await import("@potyro/generator/agent");
   return {
     format: REQUEST_FORMAT,
     id: ask.id,

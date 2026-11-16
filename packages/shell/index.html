@@ -36,7 +36,10 @@
     <meta name="application-name" content="Potyro" />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Home's own top, drawn by the stylesheet before the script has arrived (#48): the wordmark and,
+         on a first visit, the heading. The build writes it here from the catalogs and the designer's
+         logo (first-screen.ts); React's first render takes its place. -->
+    <div id="root"><!--potyro:first-screen--></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

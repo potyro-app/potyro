@@ -17,6 +17,10 @@ import { memoryShareStore } from "../share-links/src/store.ts";
 import { LIMITS as SHARE_LIMITS } from "../share-links/src/wire.ts";
 import { FACES_DIR, FACES_MODEL, FACES_RUNTIME } from "./src/faces/faces-assets.ts";
 import { stampServiceWorker } from "./src/sw-stamp.ts";
+// `<file>.br` and `<file>.gz` beside the build's text files, when the deploy asks (#48).
+import { precompress } from "./precompress.ts";
+// Home's top in the page itself, so a first visit sees something before the script runs (#48).
+import { firstScreen } from "./first-screen.ts";
 // The privacy page and the terms of use (#117): plain .mjs, read by the gallery's build too.
 import { legalPagesPlugin } from "../legal/src/vite.mjs";
 
@@ -231,7 +235,8 @@ const PUBLIC_BOOT = ["manifest.webmanifest", "favicon.svg", "icon-192.png", "ico
  * the first time on a plane failed as well.
  *
  * Two lists. `boot` is the page's entry and everything it imports statically, with their styles and
- * fonts: without these nothing shows, so the worker's install fetches them. `rest` is every other file the
+ * fonts, and the code an app's screen, the Studio and sync load on first use (`KEPT_WITH_BOOT`):
+ * without the first nothing shows, without the rest no app opens, so the worker's install fetches them. `rest` is every other file the
  * build emitted under assets/: the worker fetches those when the page asks (`warm`), a few at a time.
  * Content-hashed names, known only after the build, hence a file rather than a list in sw.js.
  *
@@ -240,6 +245,34 @@ const PUBLIC_BOOT = ["manifest.webmanifest", "favicon.svg", "icon-192.png", "ico
  * release, with a cache of its own, instead of one worker mixing every build into one cache. `entry`
  * is the page's entry script, which is how the worker tells its own page from another build's.
  */
+/**
+ * Code the page loads on first use, not as it boots (#48), that the worker's install keeps all the
+ * same: an app's own screen, the Studio, the half of the store that syncs, the check before a first
+ * share. They were part of the page's entry script until it was split, so one visit online left
+ * them on the device; this is what keeps that true. "Open an app offline after one visit" depends
+ * on the first of them (e2e/pwa-install-prod.spec.ts).
+ *
+ * Each is a module; the chunk that holds it goes on the `boot` list with everything that chunk
+ * imports statically. Taking something else out of the entry that must work offline after one
+ * visit? Add its module here. The build fails on a pattern no chunk holds.
+ */
+const KEPT_WITH_BOOT = [
+  /[\\/]shell[\\/]src[\\/]App\.tsx$/,
+  /[\\/]shell[\\/]src[\\/]studio\.tsx$/,
+  /[\\/]store[\\/]src[\\/]sync\.ts$/,
+  /[\\/]shell[\\/]src[\\/]check-concurrency\.ts$/,
+  /[\\/]generator[\\/]src[\\/]agent[\\/]index\.ts$/,
+];
+
+/**
+ * Files no chunk imports, that nothing opens without: the storage worker, SQLite's Wasm and the
+ * helper that reaches the device's files for it. Home fetches them on every visit, but the first
+ * time before the service worker is in charge, so it never saw them; until they were listed here an
+ * app opened offline after one visit only where the browser's own cache still had them (a server
+ * that sends `immutable`), and answered "open in another tab" where it did not.
+ */
+const KEPT_FILES = [/^assets\/sqlite-worker-[^/]+\.js$/, /^assets\/sqlite3-[^/]+\.wasm$/, /^assets\/sqlite3-opfs-async-proxy-[^/]+\.js$/];
+
 function precacheShell(): Plugin {
   let base = "/";
   let publicDir = "";
@@ -267,6 +300,17 @@ function precacheShell(): Plugin {
       };
       const entries = Object.values(bundle).filter((item) => item.type === "chunk" && item.isEntry);
       for (const item of entries) visit(item.fileName);
+      // And what one visit must leave behind although Home does not load it (KEPT_WITH_BOOT).
+      for (const kept of KEPT_WITH_BOOT) {
+        const holder = Object.values(bundle).find((item) => item.type === "chunk" && item.moduleIds.some((id) => kept.test(id)));
+        if (!holder) throw new Error(`precacheShell: no chunk holds ${kept}; was the file renamed? (KEPT_WITH_BOOT, vite.config.ts)`);
+        visit(holder.fileName);
+      }
+      for (const kept of KEPT_FILES) {
+        const files = Object.keys(bundle).filter((f) => kept.test(f));
+        if (!files.length) throw new Error(`precacheShell: the build made no file like ${kept} (KEPT_FILES, vite.config.ts)`);
+        for (const file of files) boot.add(file);
+      }
       const entry = entries.find((item) => item.type === "chunk" && /[\\/]src[\\/]main\.tsx$/.test(item.facadeModuleId ?? "")) ?? entries[0];
       if (!entry) throw new Error("precacheShell: the build has no entry chunk");
       const rest = Object.keys(bundle).filter((f) => f.startsWith("assets/") && !boot.has(f) && !f.endsWith(".map"));
@@ -325,7 +369,9 @@ export default defineConfig({
   // `realmViewPlugin` the sealed custom views' frame runtime as `virtual:potyro-realm-view` (#267).
   // `legalPagesPlugin` serves and emits /privacy and /terms from docs/legal, and sets
   // `import.meta.env.VITE_POTYRO_LEGAL` — only while no text there waits for its placeholders (#117).
-  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), precacheShell(), claudeCliPlugin(), realmWorkerPlugin(), realmViewPlugin(), shareLinksPlugin(), facesAssets(), legalPagesPlugin()],
+  // `firstScreen` writes Home's top into index.html, in every language, for the first paint (#48).
+  // `precompress` writes brotli and gzip copies for the server to pick from, with POTYRO_PRECOMPRESS=1.
+  plugins: [react({ babel: { plugins: [linguiBabelPlugin()] } }), linguiVitePlugins(), precacheCatalogs(), precacheShell(), claudeCliPlugin(), realmWorkerPlugin(), realmViewPlugin(), shareLinksPlugin(), facesAssets(), legalPagesPlugin(), precompress(), firstScreen()],
   // The browser suite's parallel shards each start their own dev servers from this one checkout
   // (docs/16 §8). Each shard gets its own dependency cache, so one server re-optimising never
   // rewrites the `deps` another is serving from. Unset: Vite's default, `node_modules/.vite`.

@@ -79,7 +79,13 @@ potyro.app {
 		@icons path /favicon.svg /apple-touch-icon.png /icon-*.png /manifest.webmanifest /robots.txt
 		header @icons Cache-Control "public, max-age=86400"
 		try_files {path} {path}.html {path}index.html /index.html
-		file_server
+		# The deploy's build leaves a brotli and a gzip copy beside each text file (#48,
+		# packages/shell/precompress.ts). Sent as they are to a browser that accepts them: smaller than
+		# what `encode` makes per request, and no work per request. A file with no copy is still
+		# compressed by `encode` above.
+		file_server {
+			precompressed br gzip
+		}
 	}
 }
 

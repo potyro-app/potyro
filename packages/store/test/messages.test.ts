@@ -14,7 +14,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { LocalNode, cojsonInternals } from "cojson";
 import { WasmCrypto } from "cojson/crypto/WasmCrypto";
-import { JazzStore, MemoryStore, ROOM_THREAD, recordThread, type Store } from "../src/index.js";
+import { MemoryStore, ROOM_THREAD, recordThread, type Store } from "../src/index.js";
+import { JazzStore } from "../src/sync.js";
 
 let crypto: Awaited<ReturnType<typeof WasmCrypto.create>>;
 beforeAll(async () => {

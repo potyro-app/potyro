@@ -7801,6 +7801,36 @@ body:has(.k-tabbar) .k-toasts {
   display: flex;
   flex-direction: column;
 }
+/* The Studio's frame while its code arrives (lazy-studio.tsx, #48): the same paper and bar, and a
+   thin line under the bar that says something is coming. The wrapper is not a box. */
+.k-studio-door {
+  display: contents;
+}
+.k-studio-door[data-waited] > .k-studio:not([aria-busy]) {
+  animation: none;
+}
+.k-studio-arriving {
+  position: relative;
+  display: block;
+  height: 2px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--traco, var(--accent)) 16%, transparent);
+}
+.k-studio-arriving::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: var(--traco, var(--accent));
+  animation: k-splash-slide 1.2s var(--ease) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-studio-arriving::after {
+    width: 100%;
+    opacity: 0.6;
+    animation: none;
+  }
+}
 .k-studio-bar {
   display: flex;
   align-items: center;
@@ -9847,6 +9877,16 @@ button.k-assumed-item:focus-visible {
 .k-splash {
   animation: k-route-in var(--dur) var(--ease);
 }
+/* The page's first screen (first-screen.ts, #48) is Home's top, already drawn: neither it nor the
+   Home that takes its place fades in. main.tsx takes the mark off <html> once that Home is up. */
+:root[data-first-screen] .k-launcher-home {
+  animation: none;
+}
+/* It is Home's box (`.k-first` sits beside `.k-launcher` and `.k-launcher-home` wherever those size
+   the box) under a name of its own, so nothing that looks for Home finds this instead. */
+.k-first {
+  pointer-events: none;
+}
 
 /* Opening an app (#89). Centred, in the app's own colours, because this is the app arriving — not
    a page that failed to load, which is what a line of text in the corner looked like. */
@@ -10044,12 +10084,14 @@ button.k-assumed-item:focus-visible {
 
 /* tokens-only: start — launcher */
 /* Launcher — home surface + slide-in overlay */
-.k-launcher {
+.k-launcher,
+.k-first {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
-.k-launcher-home {
+.k-launcher-home,
+.k-first {
   max-width: 860px;
   margin: 0 auto;
   /* The status bar and the camera cut into the top of a phone screen, and this surface is the one
@@ -10785,7 +10827,8 @@ button.k-assumed-item:focus-visible {
     display: inline-flex;
   }
   /* Room under the last row for the floating button. */
-  .k-launcher-home {
+  .k-launcher-home,
+  .k-first {
     padding-bottom: 6rem;
   }
 }
@@ -16915,10 +16958,12 @@ body:has(.k-app-phone .k-tabbar) .k-timer-dock:not([data-home]) {
    The home screen composed from the system: the prompt box first, then the apps as cards, each a
    block of its own hour with its mark on it and its name under it. These rules come last and win
    over the launcher's older ones above. */
-.k-launcher-home {
+.k-launcher-home,
+.k-first {
   max-width: 1120px;
 }
-.k-launcher {
+.k-launcher,
+.k-first {
   gap: var(--space-6);
 }
 .k-launcher-head .k-brand .k-muted {

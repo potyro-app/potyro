@@ -12,6 +12,8 @@
 
 import { Trans } from "@lingui/react/macro";
 import { createRoot } from "react-dom/client";
+// These are screens the person must see: whoever holds a splash over the page lets go (first-ready.tsx).
+import { Ready } from "./first-ready.js";
 import { onStorageElsewhere, onStorageStuck, takeOverStorageOnNextLoad } from "@potyro/store";
 
 const HOST = "k-elsewhere-host";
@@ -24,7 +26,12 @@ export function watchStorageOwner(): void {
     const host = document.createElement("div");
     host.className = HOST;
     document.body.append(host);
-    createRoot(host).render(<ElsewhereScreen />);
+    createRoot(host).render(
+      <>
+        <ElsewhereScreen />
+        <Ready />
+      </>,
+    );
   });
   // The browser will not open its own storage (packages/store/src/storage-rescue.ts). The same kind
   // of screen for the same reason — nothing behind it has storage to read or write — but not the
@@ -35,7 +42,12 @@ export function watchStorageOwner(): void {
     const host = document.createElement("div");
     host.className = HOST;
     document.body.append(host);
-    createRoot(host).render(<StuckScreen />);
+    createRoot(host).render(
+      <>
+        <StuckScreen />
+        <Ready />
+      </>,
+    );
   });
 }
 

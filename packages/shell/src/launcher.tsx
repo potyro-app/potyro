@@ -35,7 +35,6 @@ import { DatabaseIcon } from "./data-icon.js";
 import { DEFAULT_NAME, peekIdentity } from "@potyro/identity";
 import { canSync, cannotSyncMessage } from "./open-store.js";
 import { askToSync } from "./sync-consent.js";
-import { checkConcurrency, describeHazards } from "./check-concurrency.js";
 import { History } from "./history.js";
 import { navigateTo } from "./router.js";
 import { AddAppDialog } from "./add-app-dialog.js";
@@ -621,6 +620,8 @@ export function Launcher({ variant, selected, onOpen, onNewApp, onResumeDraft, o
       // user; from here it has two, and the failures are silent (KA-38). Checked HERE rather than on
       // every save because this is the only point where the answer changes what a person should do.
       setBusy(a.id);
+      // Loaded now, not with Home: the check brings the bundler's and the sealed box's wiring (#48).
+      const { checkConcurrency, describeHazards } = await import("./check-concurrency.js");
       const risk = await checkConcurrency(a.source, a.id);
       setBusy(null);
       const hazards = describeHazards(risk);

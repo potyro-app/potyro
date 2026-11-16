@@ -18,7 +18,9 @@
 // would be the tool substituting its judgement for the user's — so this reports, and the user
 // decides. Sharing is where it is worth being loud.
 
-import type { ConcurrencyResult } from "@potyro/generator/backends";
+// Named, never `import()` of the barrel: that is the whole barrel as one object, which keeps every
+// export of it (the prompt, the reference) in the script a first visit waits for (#48).
+import { concurrencyChecks, seedRecords, type ConcurrencyResult } from "@potyro/generator/backends";
 import { createAppBundler } from "./app-bundler.js";
 import { createSandboxLoader } from "./isolate-bridge.js";
 import { compose } from "./compose.js";
@@ -49,10 +51,7 @@ export async function checkConcurrency(source: string, appId: string): Promise<C
 }
 
 async function run(source: string, appId: string): Promise<ConcurrencyResult | null> {
-  const [{ concurrencyChecks, seedRecords }, { createPeerPair }] = await Promise.all([
-    import("@potyro/generator/backends"),
-    import("@potyro/store"),
-  ]);
+  const { createPeerPair } = await import("@potyro/store/sync");
 
   const bundle = await createAppBundler();
   const { modulesOf } = await import("./app-modules.js");

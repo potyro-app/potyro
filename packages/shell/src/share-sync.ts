@@ -21,7 +21,6 @@
 // whether their CODE should run with ambient authority — those are two different axes.
 
 import { t } from "@lingui/core/macro";
-import { createSpaceInvite, joinSpace, openJazzStore } from "@potyro/store";
 import { linkedDevice, syncRelayUrl } from "./open-store.js";
 import { freeAppId, getUserApp, listUserApps, saveUserApp, setUserAppTrusted } from "./user-apps.js";
 import { currentSite } from "./site.js";
@@ -62,6 +61,8 @@ export async function createShareLink(appId: string, role: "writer" | "reader" =
   // never had one, and `peekIdentity` answers null until it has. See `acceptInvite` for the bug this
   // ordering fixes.
   const account = await identityAccount();
+  // The engine arrives here, with the first share, never with Home (#48, @potyro/store/sync).
+  const { createSpaceInvite, openJazzStore } = await import("@potyro/store/sync");
   const handle = await openJazzStore(`user:${appId}`, {
     relay: syncRelayUrl(),
     account,
@@ -137,7 +138,7 @@ export async function acceptInvite(payload: InvitePayload, trust = false): Promi
   // So: the same id only when nothing is there, or when what is there is already THIS space (the
   // same link opened twice must not breed a second copy). Otherwise the shared app arrives beside
   // the one you have, and yours is untouched.
-  const { peekAppSpace } = await import("@potyro/store");
+  const { peekAppSpace } = await import("@potyro/store/sync");
   const existing = listUserApps().find((a) => a.id === payload.appId);
   const here = existing ? peekAppSpace(`user:${payload.appId}`) : null;
   const rejoining = Boolean(here && here.group === payload.group && here.root === payload.root);
@@ -158,6 +159,7 @@ export async function acceptInvite(payload: InvitePayload, trust = false): Promi
   // `identityAccount()` is awaited first because it MINTS the identity on a device that has never
   // had one; `peekIdentity` answers null before that.
   const account = await identityAccount();
+  const { joinSpace } = await import("@potyro/store/sync");
   const joined = await joinSpace(`user:${appId}`, payload, {
     relay: syncRelayUrl(),
     account,

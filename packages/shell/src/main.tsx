@@ -6,7 +6,7 @@
 // First, before any module below reads localStorage: the codename-to-product key move (#114).
 import { plural, t } from "@lingui/core/macro";
 import "./rename-migration.js";
-import { StrictMode, useState, type ReactNode } from "react";
+import { isValidElement, StrictMode, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import type { PotyroRecord } from "potyro";
@@ -29,8 +29,7 @@ import { browserVault, deferredVault, secureIdentitySecrets, setSecretVault } fr
 import { loadRememberedKeys, watchFreeEngine } from "./engine-store.js";
 import type { Provenance } from "@potyro/host";
 import type { PotyroRuntime } from "@potyro/runtime";
-import { App } from "./App.js";
-import { Studio } from "./studio.js";
+import { Studio, warmStudio } from "./lazy-studio.js";
 import { readNewFromUrl, type NewFromUrl } from "./new-from-url.js";
 import { galleryUrl } from "./gallery-link.js";
 import { Launcher, openInstalledApp } from "./launcher.js";
@@ -55,7 +54,8 @@ import { askToIncludeChat } from "./share-chat.js";
 import { UiHost } from "./ui-host.js";
 import { PickerHost } from "./picker.js";
 import { openAppStore, syncAllowedFor } from "./app-store.js";
-import { Splash } from "./splash.js";
+import { Splash, type SplashProps } from "./splash.js";
+import { markReady, Ready } from "./first-ready.js";
 import { startReminderSync, watchReminderTimes } from "./reminder-sync.js";
 import { navigateTo, setRouteHandler, type ShellRoute } from "./router.js";
 import { DataPage } from "./data-page.js";
@@ -253,10 +253,19 @@ function newFromUrl(): NewFromUrl | null {
 }
 const NEW_FROM_URL = typeof location === "undefined" ? null : newFromUrl();
 
+/** How long after Home appears the Studio is fetched, where the browser cannot say it is idle (Safari). */
+const STUDIO_WARM_MS = 1500;
+
 function Home() {
   const [studio, setStudio] = useState<{ prefill?: string; draftId?: string; start?: boolean } | null>(
     NEW_FROM_URL === null ? null : { prefill: NEW_FROM_URL.text || undefined, start: NEW_FROM_URL.start },
   );
+  // The Studio is not in the script Home paints with (#48, lazy-studio.tsx). Fetched once Home is
+  // up and the page is idle, so the first tap on "New app" finds it here.
+  useEffect(() => {
+    const idle = globalThis.requestIdleCallback ?? ((run: () => void) => setTimeout(run, STUDIO_WARM_MS));
+    idle(() => warmStudio());
+  }, []);
   return (
     <>
       <Launcher
@@ -280,9 +289,13 @@ let reactRoot: ReturnType<typeof createRoot> | null = null;
 
 function mount(root: HTMLElement, node: ReactNode): void {
   reactRoot ??= createRoot(root);
+  // Every screen is one to show (first-ready.tsx) but the splash of something still opening; a
+  // splash that says why it could not open is one the person must see.
+  const opening = isValidElement<SplashProps>(node) && node.type === Splash && !node.props.failed;
   reactRoot.render(
     <StrictMode>
       {node}
+      {opening ? null : <Ready />}
       {/* Once, around every route — home, a built-in, or a saved app. */}
       <Dialogs host={shellDialogs} />
       {/* Every app's countdowns (docs/04 §Timers), in sight on every page and at home. */}
@@ -291,9 +304,21 @@ function mount(root: HTMLElement, node: ReactNode): void {
       <IncomingFiles />
     </StrictMode>,
   );
+  settleFirstScreen();
   registerServiceWorker();
   registerDeepLinks();
   registerShares();
+}
+
+/**
+ * The page's own first screen (first-screen.ts, #48) has been replaced by this render. Its mark on
+ * <html> held back Home's fade-in so the two could not be told apart; two frames later Home is on
+ * screen and every later arrival fades in as usual.
+ */
+function settleFirstScreen(): void {
+  const page = document.documentElement;
+  if (!page.hasAttribute("data-first-screen")) return;
+  requestAnimationFrame(() => requestAnimationFrame(() => page.removeAttribute("data-first-screen")));
 }
 
 // A saved user app. UNTRUSTED by default (isolate); if the user promoted it, TRUSTED (direct) — the
@@ -828,6 +853,9 @@ async function bootUserApp(id: string, root: HTMLElement, toaster: Toaster, caps
     return null;
   }
 
+  // An app's own screen (its chrome, its panels, the built-in views) is not part of what Home paints
+  // with (#48): it arrives here, under the splash, from the service worker's cache when offline.
+  const { App } = await import("./App.js");
   // What this device calls this app and what colour it gave it.
   const { getEntry: entryFor, appKey: keyFor } = await import("./launcher-store.js");
   const { hueColour } = await import("./tile-identity.js");
@@ -993,11 +1021,11 @@ async function offerAccountApps(): Promise<void> {
     // moment overlaps the launcher; left until an app is tapped, it sits between the tap and the
     // app appearing. Not awaited — nothing below needs it, and the real open shares this one.
     if (syncs) {
-      const { warmDeviceDatabase } = await import("@potyro/store");
+      const { warmDeviceDatabase } = await import("@potyro/store/sync");
       void warmDeviceDatabase();
     }
 
-    const { readAccountApps, readAccountName, readProfileName } = await import("@potyro/store");
+    const { readAccountApps, readAccountName, readProfileName } = await import("@potyro/store/sync");
     const { openAccountNodeForDevice, publishAppListToAccount } = await import("./open-store.js");
     const node = await openAccountNodeForDevice();
     if (!node) return;
@@ -1316,6 +1344,8 @@ boot().catch((err: unknown) => {
     const why = err instanceof Error ? err.message : String(err);
     root.textContent = t`Boot error: ${why}`;
   }
+  // A start-up error is a screen the person must see (first-ready.tsx).
+  markReady();
   // eslint-disable-next-line no-console
   console.error(err);
 });

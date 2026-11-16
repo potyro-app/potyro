@@ -119,8 +119,22 @@ export async function getEsbuild(): Promise<EsbuildLike> {
       await esbuild.initialize({ wasmURL: new URL("esbuild-wasm/esbuild.wasm", import.meta.url).href });
       return esbuild as unknown as EsbuildLike;
     })();
+    // A failed fetch (no network just then) is not kept as the answer: the next caller tries again.
+    esbuildReady.catch(() => {
+      esbuildReady = null;
+    });
   }
   return esbuildReady;
+}
+
+/**
+ * Start fetching and compiling the bundler now, without waiting for it (#48). The Studio calls this
+ * as a prompt is sent: the Wasm is a few megabytes, and the model takes longer than that to answer,
+ * so the made app is bundled the moment it arrives instead of starting the download then. A failure
+ * is silent here: whoever needs the bundler asks again and reports it.
+ */
+export function warmBundler(): void {
+  void getEsbuild().catch(() => undefined);
 }
 
 /**

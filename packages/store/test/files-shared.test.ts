@@ -3,7 +3,8 @@
 // Through a relay, as real devices are connected: two peers wired directly push everything to each
 // other and would make "on demand" impossible to see (peer-harness.ts says why).
 import { afterEach, describe, expect, it } from "vitest";
-import { copyStoreData, createRelayedPair, fileSpace, MemoryStore, SPACE_BUDGET, SpaceFullError, type PeerPair } from "../src/index.js";
+import { copyStoreData, createRelayedPair, fileSpace, MemoryStore, SpaceFullError, type PeerPair } from "../src/index.js";
+import { SPACE_BUDGET } from "../src/sync.js";
 
 const text = (s: string): Blob => new Blob([s], { type: "text/plain" });
 

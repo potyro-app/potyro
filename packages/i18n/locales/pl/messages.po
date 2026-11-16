@@ -1864,6 +1864,7 @@ msgstr "Podgląd aplikacji"
 msgid "App source"
 msgstr "Kod źródłowy aplikacji"
 
+#: ../shell/src/lazy-studio.tsx
 #: ../shell/src/studio.tsx
 msgid "App studio"
 msgstr "Studio aplikacji"
@@ -2592,6 +2593,7 @@ msgstr "Zamknij ekran aplikacji"
 msgid "Close model settings"
 msgstr "Zamknij ustawienia modelu"
 
+#: ../shell/src/lazy-studio.tsx
 #: ../shell/src/studio.tsx
 msgid "Close studio"
 msgstr "Zamknij Studio"
@@ -6938,6 +6940,8 @@ msgid "Stronger sibling, still ~50× cheaper than a frontier model"
 msgstr "Mocniejszy brat, wciąż ~50× tańszy niż model z czołówki"
 
 #. The Studio's name, above the app's: where apps are made by talking
+#. The Studio's name, above the app's: where apps are made by talking
+#: ../shell/src/lazy-studio.tsx
 #: ../shell/src/studio.tsx
 #: ../shell/src/studio.tsx
 msgid "Studio"

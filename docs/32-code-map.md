@@ -21,6 +21,9 @@ The architecture itself is docs/00; the package table and the seams are docs/00 
 Design: docs/00 §Sync, CRDT and identity; docs/adr/0001-sync-engine-and-identity.md. One cojson group ("space") per synced app,
 a root CoMap per app, one CoMap per record; Potyro's relay is pinned `jazz-run sync`.
 
+- `packages/store/src/sync.ts` — `@potyro/store/sync`: everything in this section, as the one module
+  the shell loads with `import()`. The barrel exports its types only: cojson is not in the script a
+  first visit waits for (#48).
 - `packages/store/src/jazz-backend.ts` — opening nodes and spaces, the relay, invites, members, names:
   `openAccountNode`, `openJazzStore` (the browser entry), `createJazzStore`, `openDeviceDatabase`,
   `deviceNode`, `attachRelay`, `reviveOnResume`, `createSpaceInvite`, `joinSpace`, `spaceMembers`,
@@ -168,6 +171,14 @@ Design: docs/05 §View contract; docs/03 (the declarative side).
 
 Design: docs/00 §An app's life; the composition root is `main.tsx`.
 
+- The first visit (#48): `packages/shell/first-screen.ts` (Home's top written into `index.html` by
+  the build, its words from the catalogs), `packages/shell/src/first-ready.tsx` (`data-potyro-ready`
+  on `<html>` once a real screen is up; the Android splash waits for it),
+  `packages/shell/src/lazy-studio.tsx` (the Studio as a chunk of its own, `warmStudio`),
+  `KEPT_WITH_BOOT` in `packages/shell/vite.config.ts` (what the worker's install keeps although Home
+  does not load it), `packages/shell/precompress.ts` (`.br`/`.gz` for the deploy). A dynamic
+  `import()` of a package barrel (`@potyro/store`, `@potyro/generator/backends`) keeps every export
+  of it in the entry script: import by name, or from a narrow subpath.
 - `packages/shell/src/main.tsx` — `boot` (identity, routing, first render), `bootUserApp` (opens a
   saved app: the store, the runner by provenance, the runtime, `appOpened`/`appClosed`), `bootDemo`,
   `bootInviteIfPresent`, `openLinkedApp`, `show`, `offerAccountApps`, `exportApp`/`importApp`,

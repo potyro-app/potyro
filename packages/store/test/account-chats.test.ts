@@ -6,7 +6,8 @@
 // the collaborator, who must not read it.
 import { beforeAll, describe, expect, it } from "vitest";
 import { WasmCrypto } from "cojson/crypto/WasmCrypto";
-import { createJazzStore, initSqlite, publishChatMessages, readAccountChat, removeChatMessages, watchAccountChats, type JazzKeyStore } from "../src/index.js";
+import { initSqlite, type JazzKeyStore } from "../src/index.js";
+import { createJazzStore, publishChatMessages, readAccountChat, removeChatMessages, watchAccountChats } from "../src/sync.js";
 
 let crypto: Awaited<ReturnType<typeof WasmCrypto.create>>;
 beforeAll(async () => {
