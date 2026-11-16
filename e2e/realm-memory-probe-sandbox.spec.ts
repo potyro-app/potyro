@@ -1,4 +1,5 @@
-import { chromium, firefox, expect, test, type Browser, type BrowserType, type Page } from "@playwright/test";
+import { chromium, firefox, type Browser, type BrowserType } from "@playwright/test";
+import { expect, test, type Page } from "./console-guard";
 import { execFileSync } from "node:child_process";
 import { chmodSync, existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
