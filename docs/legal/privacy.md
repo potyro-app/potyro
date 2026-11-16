@@ -1,12 +1,15 @@
 # Privacy
 
-Effective: 2026-11-07
+Effective: 2026-11-16
 
 ## The short version
 
 - Potyro runs in your browser. Your apps and what you put in them stay on your device, unless you
   turn on sync or backup, share an app, or use a feature that needs the internet.
-- There are no accounts, no ads, no cookies and no analytics. Nothing is sold.
+- There are no accounts, no ads and no cookies, and nothing follows you from page to page. Nothing
+  is sold.
+- We keep a few plain counts, like how many visits the site had this month. A count is a number,
+  with nothing in it that says who.
 - When something leaves your device, it is because you used a feature that needs it. This page
   says, for each one, what goes, where, and for how long.
 - Some parts of Potyro use AI models. What they make can be wrong.
@@ -161,6 +164,22 @@ Some apps, like games, connect people in a room.
 
 These services work under their own terms.
 
+### Counts
+
+We keep a few numbers, to know whether anyone uses Potyro and what to build next. Each is one
+number a month for everyone together.
+
+- **Visits to potyro.com.** A page of the site tells our server "a visit". It does not say which
+  page, where you came from, or anything about your browser, and it sets no cookie and keeps
+  nothing on your device. This page and the terms do not count at all. A browser that sends Global
+  Privacy Control or Do Not Track is not counted.
+- **Two counts from the app**, each at most once a month from a device: that someone used their own
+  AI key, and that someone asked for a paid plan. They carry no id. A switch under You turns both
+  off.
+
+To count an address once a day, the relay keeps a scrambled form of your IP address in memory, for
+a day or until it restarts. It is never written to disk.
+
 ### Our web server
 
 Like any website, our server receives your IP address with every request.
@@ -179,6 +198,7 @@ on it.
 - **To keep a free service working and fair.** The limits per device and per IP address, and the
   spending cap on the free allowance, stop one person from using it up for everyone, and protect
   the service from abuse.
+- **To know whether Potyro is used.** The counts above, which hold nothing about any one person.
 - **Because the law requires it**, if an authority makes a lawful request.
 
 We do not use your data for ads, profiles or anything you did not ask for.
@@ -207,6 +227,7 @@ Some of these companies may handle data outside the EU, including in the United 
 | Demo links: the encrypted app, its title, line and picture | Link service | Until deleted. Links do not expire. |
 | Free allowance: requests per device id, total cost | AI relay, a file | The current month |
 | Daily counts per device id or per IP address | AI, link and request relays, memory | A day, or until the relay restarts |
+| Counts: one number a month per kind, for everyone together | AI relay, a file | Kept |
 | Rooms: ids, names, counts | Rooms relay, memory | While the room is live |
 | Requests and wording suggestions | GitHub, public | Until deleted |
 | Emails you send us | Our mailbox | 12 months after the matter is closed |
@@ -258,3 +279,7 @@ device. Be aware of the limits:
 
 We post every change here, with its date. If a change matters to you, Potyro tells you before it
 applies.
+
+- **2026-11-16.** The short version said "no analytics". Potyro now keeps the counts described
+  under Counts, so it says that instead.
+- **2026-11-07.** First version.
