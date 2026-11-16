@@ -1,7 +1,9 @@
 // Put Potyro's own Android code into the generated project (android/ is gitignored and regenerated):
 // the `PotyroLocalSocket` plugin — plain ws:// to the LOCAL NETWORK only, docs/28 §6 — the voice
 // plugin (docs/29), and `PotyroKeepAwake` — the screen kept on for `ctx.ui.keepAwake`, docs/04 —
-// copied from android-templates/ into MainActivity's package, and registered in MainActivity. Idempotent.
+// copied from android-templates/ into MainActivity's package, and registered in MainActivity — and
+// `SplashHold`, which keeps the system splash up until the page has loaded (scripts/brand.mjs draws
+// the splash), called from MainActivity after `super.onCreate`. Idempotent.
 //
 // Nothing here touches the network security config or `usesCleartextTraffic`: the app's cleartext
 // policy stays "no" for every HTTP stack. The plugin speaks ws:// itself, over a plain socket, and
@@ -11,7 +13,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const TEMPLATES = ["LocalWebSocket.java", "LocalSocketPlugin.java", "SpeechPlugin.java", "KeepAwakePlugin.java"];
+export const TEMPLATES = ["LocalWebSocket.java", "LocalSocketPlugin.java", "SpeechPlugin.java", "KeepAwakePlugin.java", "SplashHold.java"];
 
 /** Potyro's own plugins, registered in MainActivity in this order. */
 export const PLUGINS = ["LocalSocketPlugin", "SpeechPlugin", "KeepAwakePlugin"];
@@ -39,6 +41,19 @@ export function withPluginRegistered(source, plugins = PLUGINS) {
     const body = `{\n    @Override\n    public void onCreate(Bundle savedInstanceState) {\n        // Potyro's own plugins (scripts/patch-android.mjs): ws:// to the local network (docs/28 §6), voice (docs/29), the screen kept on (docs/04).\n        ${lines}\n        super.onCreate(savedInstanceState);\n    }\n}`;
     out = out.replace(/extends\s+BridgeActivity\s*\{\s*\}/, `extends BridgeActivity ${body}`);
   }
+  return { source: out, added: out !== source };
+}
+
+/** The call that holds the splash until the page has loaded (android-templates/SplashHold.java). */
+export const SPLASH_HOLD = "SplashHold.attach(this);";
+
+/**
+ * MainActivity holding the splash: the call goes right AFTER `super.onCreate`, where the bridge and
+ * its WebView exist — so run this on an activity `withPluginRegistered` has given an onCreate. Once. Pure.
+ */
+export function withSplashHeld(source) {
+  if (source.includes(SPLASH_HOLD)) return { source, added: false };
+  const out = source.replace(/^([ \t]*)(super\.onCreate\s*\(\s*\w+\s*\)\s*;)/m, `$1$2\n$1${SPLASH_HOLD}`);
   return { source: out, added: out !== source };
 }
 
@@ -76,6 +91,11 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()
   mkdirSync(dir, { recursive: true });
   for (const t of TEMPLATES) writeFileSync(join(dir, t), readFileSync(join(templates, t), "utf8").replaceAll("__PACKAGE__", pkg));
   const registered = withPluginRegistered(source);
-  if (registered.added) writeFileSync(activity, registered.source);
-  console.log(`[patch-android] ${TEMPLATES.join(", ")} → ${pkg}${registered.added ? "; registered in MainActivity" : ""}.`);
+  const held = withSplashHeld(registered.source);
+  if (!held.source.includes(SPLASH_HOLD)) {
+    console.error(`[patch-android] ${activity} has no super.onCreate to hold the splash after.`);
+    process.exit(1);
+  }
+  if (registered.added || held.added) writeFileSync(activity, held.source);
+  console.log(`[patch-android] ${TEMPLATES.join(", ")} → ${pkg}${registered.added ? "; registered in MainActivity" : ""}${held.added ? "; splash held until the page loads" : ""}.`);
 }

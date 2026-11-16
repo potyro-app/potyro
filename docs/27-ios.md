@@ -91,6 +91,13 @@ template (`packages/native/ios-templates/`, copied in once by hand, §4). If you
 changing something in `ios/` that must survive a fresh `cap add ios`, put it in the script and say
 so in the PR.
 
+The **app icon** is also written by a script on every `cap:add:ios` / `cap:sync:ios`:
+`scripts/brand.mjs --ios` replaces the one 1024px image the generated icon set names with the
+designer's dark symbol tile, edge to edge and with no alpha channel (docs/13 has the Android side).
+It has not been seen in Xcode or on a device. The **launch screen** is still Capacitor's
+(`Splash.imageset` and `LaunchScreen.storyboard`); giving it the page's background and the mark,
+light and dark, is owed.
+
 ### 2.1 Pointing it at potyro.app — and what will not work yet
 
 `VITE_POTYRO_SITE` sets all of these at once; each can still be overridden on its own. potyro.app has
@@ -361,6 +368,7 @@ directly instead of filing it publicly. A fix to the generated project goes into
 |---|---|
 | `packages/native/capacitor.config.ts` | pinned schemes, `contentInset: "never"`, the App Group for the share plugin |
 | `packages/native/scripts/patch-plist.mjs` (+ `test/patch-plist.test.ts`) | Info.plist keys, deployment target, AppDelegate opened-file copy |
+| `packages/native/scripts/brand.mjs --ios` (+ `test/brand.test.ts`) | the app icon, from the design package |
 | `packages/native/ios-templates/` | Share Extension, its `NSExtension` plist, the privacy manifest, the `PotyroSpeech` plugin (§4.7) — **uncompiled** |
 | `packages/native/src/capacitor-capabilities.ts` | `makeRoom` / `IOS_PENDING_LIMIT` (+ `test/pending-limit.test.ts`) |
 | `packages/native/src/keep-storage.ts` | `navigator.storage.persist()` on native start |

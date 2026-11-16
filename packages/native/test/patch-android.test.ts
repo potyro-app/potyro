@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 // @ts-expect-error — a plain .mjs build script, typed by use
-import { packageOf, withPluginRegistered } from "../scripts/patch-android.mjs";
+import { SPLASH_HOLD, TEMPLATES, packageOf, withPluginRegistered, withSplashHeld } from "../scripts/patch-android.mjs";
+import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 // The local-socket plugin (docs/28 §6) is registered in the generated MainActivity, once.
 
@@ -51,5 +53,28 @@ describe("patch-android", () => {
     expect(source.match(/registerPlugin\(SpeechPlugin\.class\)/g)).toHaveLength(1);
     expect(source.indexOf("registerPlugin")).toBeLessThan(source.indexOf("super.onCreate(b)"));
     expect(source.match(/import android\.os\.Bundle;/g)).toHaveLength(1);
+  });
+
+  it("holds the splash right after super.onCreate, once, in the activity the plugins were registered in", () => {
+    const registered = withPluginRegistered(GENERATED).source;
+    const { source, added } = withSplashHeld(registered);
+    expect(added).toBe(true);
+    const lines = source.split("\n").map((l: string) => l.trim());
+    expect(lines[lines.indexOf("super.onCreate(savedInstanceState);") + 1]).toBe(SPLASH_HOLD);
+    expect(withSplashHeld(source)).toEqual({ source, added: false });
+    // and the plugins are still registered before super.onCreate
+    expect(source.indexOf("registerPlugin(KeepAwakePlugin.class);")).toBeLessThan(source.indexOf("super.onCreate"));
+  });
+
+  it("leaves an activity with no onCreate alone rather than guessing where the call goes", () => {
+    expect(withSplashHeld(GENERATED)).toEqual({ source: GENERATED, added: false });
+  });
+
+  it("has every template it copies, each in the package placeholder", () => {
+    for (const t of TEMPLATES) {
+      const path = fileURLToPath(new URL(`../android-templates/${t}`, import.meta.url));
+      expect(existsSync(path), t).toBe(true);
+      expect(readFileSync(path, "utf8"), t).toMatch(/^package __PACKAGE__;/);
+    }
   });
 });

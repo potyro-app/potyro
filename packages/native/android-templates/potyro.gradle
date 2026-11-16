@@ -1,0 +1,64 @@
+// Potyro's own build settings for the generated app module — applied from app/build.gradle by
+// scripts/release-gradle.mjs, which copies this file in after every `cap add` / `cap sync`.
+//
+// VERSION. `versionName` is the product's version (the root package.json, read when the project was
+// patched); `versionCode` is that version as one number, major·10000 + minor·100 + patch, never
+// below 1. A store upload needs a code higher than the last one: set POTYRO_VERSION_CODE (and
+// POTYRO_VERSION_NAME, to say something else) in the environment of the build.
+//
+// SIGNING. A release build is signed only when a keystore is named, and nothing about it lives in
+// the repository. Either set the four variables
+//     POTYRO_KEYSTORE  POTYRO_KEYSTORE_PASSWORD  POTYRO_KEY_ALIAS  POTYRO_KEY_PASSWORD
+// or keep a properties file OUTSIDE the repository — ~/.potyro/keystore.properties, or wherever
+// POTYRO_KEYSTORE_PROPERTIES points — with
+//     storeFile=/absolute/path/to/upload.jks
+//     storePassword=…
+//     keyAlias=…
+//     keyPassword=…
+// The environment wins over the file. With neither, `assembleRelease` / `bundleRelease` still build
+// and leave the artifact unsigned, and say so. Nothing here prints a path's contents or a password.
+
+def potyroEnv = { String name -> System.getenv(name)?.trim() ?: null }
+
+def potyroSigningFile = potyroEnv('POTYRO_KEYSTORE_PROPERTIES')
+        ? new File(potyroEnv('POTYRO_KEYSTORE_PROPERTIES'))
+        : new File(System.getProperty('user.home'), '.potyro/keystore.properties')
+def potyroSigningProps = new Properties()
+if (potyroSigningFile.isFile()) {
+    potyroSigningFile.withInputStream { potyroSigningProps.load(it) }
+}
+def potyroSigning = { String env, String key -> potyroEnv(env) ?: potyroSigningProps.getProperty(key)?.trim() ?: null }
+
+def potyroStore = potyroSigning('POTYRO_KEYSTORE', 'storeFile')
+def potyroStorePassword = potyroSigning('POTYRO_KEYSTORE_PASSWORD', 'storePassword')
+def potyroKeyAlias = potyroSigning('POTYRO_KEY_ALIAS', 'keyAlias')
+def potyroKeyPassword = potyroSigning('POTYRO_KEY_PASSWORD', 'keyPassword')
+def potyroCanSign = potyroStore && potyroStorePassword && potyroKeyAlias && potyroKeyPassword
+
+android {
+    defaultConfig {
+        versionName potyroEnv('POTYRO_VERSION_NAME') ?: '__VERSION_NAME__'
+        versionCode((potyroEnv('POTYRO_VERSION_CODE') ?: '__VERSION_CODE__') as Integer)
+    }
+
+    if (potyroCanSign) {
+        signingConfigs {
+            release {
+                storeFile new File(potyroStore)
+                storePassword potyroStorePassword
+                keyAlias potyroKeyAlias
+                keyPassword potyroKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (potyroCanSign) {
+                signingConfig signingConfigs.release
+            } else {
+                logger.lifecycle('[potyro] no keystore named (POTYRO_KEYSTORE… or ~/.potyro/keystore.properties): a release build will be UNSIGNED.')
+            }
+        }
+    }
+}
