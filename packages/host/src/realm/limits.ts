@@ -40,6 +40,13 @@ export const REALM_LIMITS = {
   definitionBytes: 8 * MB,
   /** Bytes a realm may send on a port between two of its watchdog's checks (50 ms): more is a flood, stopped like one. */
   burstBytes: 256 * MB,
+  /**
+   * Values in one message the host will walk to measure it. A message with more is refused as too
+   * much without being walked further: measuring is the shell's own thread.
+   */
+  nodes: 1_000_000,
+  /** Time the host may spend measuring one app's messages in any second: more is a flood, stopped like one. */
+  measureMs: 400,
 } as const;
 
 /** The ops that carry words and choices, held to `wordsBytes`. `ui.share` carries files and has its own limits (make-ctx.ts). */
@@ -50,24 +57,36 @@ export function isWordsOp(op: string): boolean {
 /** What a plain node costs where nothing better is known: its slot and its header, roughly. */
 const NODE = 16;
 
+/** A BigInt's bytes, found by a few shifts: one can be as large as the engine allows. */
+function bigintBytes(v: bigint): number {
+  const n = v < 0n ? -v : v;
+  for (const bits of [64, 8 * 1024, 8 * MB, 64 * MB]) if (n >> BigInt(bits) === 0n) return bits / 8;
+  return Number.POSITIVE_INFINITY;
+}
+
 /**
  * About how many bytes a value that crossed a port holds — a structured clone: plain data, binary,
  * Blobs, Maps, Sets, Dates. An estimate from below for objects (the engines differ) and exact for
  * what is big: strings (two bytes a unit), buffers and Blobs. It stops counting once past `stopAt`,
- * so a value built to be slow to measure costs no more than its first `stopAt` bytes' worth.
+ * so a value built to be slow to measure costs no more than its first `stopAt` bytes' worth, and
+ * gives up — the answer is then infinite, "too much" — after `REALM_LIMITS.nodes` values.
  */
 export function sizeOf(value: unknown, stopAt: number = Number.POSITIVE_INFINITY): number {
   let bytes = 0;
+  let nodes = 0;
   const seen = new Set<object>();
   const stack: object[] = [];
   /** Counted here when it is a leaf; an object waits its turn. */
   const visit = (v: unknown): void => {
+    nodes += 1;
     if (typeof v === "string") bytes += NODE + v.length * 2;
+    else if (typeof v === "bigint") bytes += NODE + bigintBytes(v);
     else if (v === null || typeof v !== "object") bytes += 8;
     else stack.push(v);
   };
   visit(value);
   while (stack.length && bytes <= stopAt) {
+    if (nodes > REALM_LIMITS.nodes) return Number.POSITIVE_INFINITY;
     const v = stack.pop()!;
     if (seen.has(v)) continue;
     seen.add(v);
@@ -89,10 +108,43 @@ export function sizeOf(value: unknown, stopAt: number = Number.POSITIVE_INFINITY
       continue;
     }
     bytes += NODE;
+    // What a clone carries that is not an own enumerable property: an error's words, a picture's
+    // pixels, a pattern's source, a boxed string's text.
+    if (v instanceof Error || (typeof DOMException !== "undefined" && v instanceof DOMException)) {
+      const e = v as Error;
+      visit(e.name);
+      visit(e.message);
+      visit(e.stack);
+      visit((e as { cause?: unknown }).cause);
+    } else if (v instanceof RegExp) {
+      bytes += v.source.length * 2;
+      continue;
+    } else if (v instanceof String) {
+      bytes += v.length * 2;
+      continue;
+    } else if (typeof ImageData !== "undefined" && v instanceof ImageData) {
+      visit(v.data);
+      continue;
+    } else if (!Array.isArray(v) && Object.getPrototypeOf(v) !== Object.prototype && Object.getPrototypeOf(v) !== null && !(v instanceof Map) && !(v instanceof Set) && !(v instanceof Date)) {
+      // Something else of the platform's (an ImageBitmap, a video frame): by its picture, when it has one.
+      const { width, height, displayWidth, displayHeight } = v as { width?: unknown; height?: unknown; displayWidth?: unknown; displayHeight?: unknown };
+      const w = Number(width ?? displayWidth);
+      const h = Number(height ?? displayHeight);
+      if (w > 0 && h > 0) bytes += w * h * 4;
+    }
     if (Array.isArray(v)) {
       // Every slot is charged before any is read, holes too: `new Array(1e9)` is refused, not walked.
       bytes += v.length * 8;
-      for (let i = 0; i < v.length && bytes <= stopAt; i++) visit(v[i]);
+      for (let i = 0; i < v.length && bytes <= stopAt && nodes <= REALM_LIMITS.nodes; i++) visit(v[i]);
+      // A clone keeps an array's named properties too.
+      for (const key in v) {
+        const c = key.charCodeAt(0);
+        if (c >= 48 && c <= 57) continue;
+        if (!Object.prototype.hasOwnProperty.call(v, key)) continue;
+        bytes += NODE + key.length * 2;
+        visit((v as unknown as Record<string, unknown>)[key]);
+        if (bytes > stopAt) break;
+      }
       continue;
     }
     if (v instanceof Map) {
@@ -110,7 +162,7 @@ export function sizeOf(value: unknown, stopAt: number = Number.POSITIVE_INFINITY
       }
       continue;
     }
-    if (v instanceof Date || v instanceof RegExp) continue;
+    if (v instanceof Date) continue;
     for (const key in v) {
       if (!Object.prototype.hasOwnProperty.call(v, key)) continue;
       bytes += NODE + key.length * 2;
@@ -140,9 +192,11 @@ export class HeldBudget {
   private ops = 0;
   private windowBytes = 0;
   private windowStart = 0;
+  private busyMs = 0;
+  private busyStart = 0;
 
   constructor(
-    private readonly limits: { heldBytes: number; opsInFlight: number; burstBytes: number } = REALM_LIMITS,
+    private readonly limits: { heldBytes: number; opsInFlight: number; burstBytes: number; measureMs?: number } = REALM_LIMITS,
     private readonly now: () => number = () => performance.now(),
     private readonly windowMs = 50,
   ) {}
@@ -154,14 +208,31 @@ export class HeldBudget {
     return this.ops;
   }
 
+  /**
+   * Measure a message that arrived (`sizeOf`), and keep count of the time that took: the measuring
+   * is the shell's own thread, and `arrived` calls a realm that takes too much of it a flood.
+   */
+  measure(value: unknown, stopAt: number): number {
+    const t0 = this.now();
+    if (t0 - this.busyStart >= 1000) {
+      this.busyStart = t0;
+      this.busyMs = 0;
+    }
+    const size = sizeOf(value, stopAt);
+    this.busyMs += this.now() - t0;
+    return size;
+  }
+
   /** `bytes` arrived on a port. True when that is more than a realm may send in one window: a flood. */
   arrived(bytes: number): boolean {
+    if (this.busyMs > (this.limits.measureMs ?? Number.POSITIVE_INFINITY)) return true;
     const t = this.now();
     if (t - this.windowStart >= this.windowMs) {
       this.windowStart = t;
       this.windowBytes = 0;
     }
-    this.windowBytes += bytes;
+    // A message given up on (`sizeOf`'s infinite answer) is refused where it is answered; here it weighs as the largest one.
+    this.windowBytes += Number.isFinite(bytes) ? bytes : REALM_LIMITS.opBytes;
     return this.windowBytes > this.limits.burstBytes;
   }
 

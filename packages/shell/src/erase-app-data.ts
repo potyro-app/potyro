@@ -23,7 +23,7 @@ export interface EraseAppDataDeps {
   deleteDatabase?: (namespace: string) => Promise<void>;
   /** The browser's origin-private file system root, for the fallback that keeps a directory per app. */
   opfsRoot?: () => Promise<{ getDirectoryHandle(name: string): Promise<{ removeEntry(name: string, opts?: { recursive?: boolean }): Promise<void> }> }>;
-  storage?: Pick<Storage, "removeItem" | "getItem" | "setItem">;
+  storage?: Pick<Storage, "removeItem" | "getItem" | "setItem"> & Partial<Pick<Storage, "key" | "length">>;
 }
 
 /** The apps whose database is still owed its removal: deleted while open, or while the tab was going. */
@@ -31,6 +31,7 @@ const OWED = "potyro:erase-owed";
 
 /** `OPEN_OFF_KEY` of sealed-open-guard.ts, said again here so this module does not load the realm's. */
 export const SEALED_OPEN_OFF = "potyro:sealed-open:off";
+export const SEALED_OPEN_MARK = "potyro:sealed-open:mark:";
 
 /** The apps open in this tab right now (`bootUserApp` says). A deleted app's file waits for its close. */
 const open = new Set<string>();
@@ -67,13 +68,27 @@ export async function eraseAppData(appId: string, deps: EraseAppDataDeps = {}): 
   // sealed app shares (sealed-open-guard.ts `OPEN_OFF_KEY`). The same app added again starts clean.
   try {
     const paused = JSON.parse(storage?.getItem(SEALED_OPEN_OFF) ?? "null") as Record<string, unknown> | null;
-    if (paused && typeof paused === "object" && appId in paused) {
+    if (paused && typeof paused === "object" && Object.prototype.hasOwnProperty.call(paused, appId)) {
       delete paused[appId];
       if (Object.keys(paused).length) storage?.setItem(SEALED_OPEN_OFF, JSON.stringify(paused));
       else storage?.removeItem(SEALED_OPEN_OFF);
     }
   } catch {
     /* an unreadable note is no note */
+  }
+  // ...and any marker a tab that died left for it, not read yet: it would pause the next app of that id.
+  try {
+    const marks: string[] = [];
+    for (let i = 0; i < (storage?.length ?? 0); i++) {
+      const key = storage?.key?.(i);
+      if (key?.startsWith(SEALED_OPEN_MARK)) marks.push(key);
+    }
+    for (const key of marks) {
+      const mark = JSON.parse(storage?.getItem(key) ?? "null") as { app?: unknown } | null;
+      if (mark?.app === appId) storage?.removeItem(key);
+    }
+  } catch {
+    /* as above */
   }
   owe(appId, deps);
   await settleOwed(deps);

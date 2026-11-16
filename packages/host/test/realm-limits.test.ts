@@ -70,6 +70,25 @@ describe("sizeOf: about how much a value that crossed a port holds", () => {
     expect(performance.now() - started).toBeLessThan(200);
   });
 
+  it("counts what a clone carries outside its own properties: an error's words, a large number, a pattern, an array's names", () => {
+    expect(sizeOf(new Error("x".repeat(1_000_000)))).toBeGreaterThan(2_000_000);
+    expect(sizeOf(new Error("small", { cause: "y".repeat(1_000_000) }))).toBeGreaterThan(2_000_000);
+    expect(sizeOf(1n << 80_000_000n)).toBeGreaterThanOrEqual(8 * 1024 * 1024);
+    expect(sizeOf(-(1n << 80_000_000n))).toBeGreaterThanOrEqual(8 * 1024 * 1024);
+    expect(sizeOf(12n)).toBeLessThan(64);
+    expect(sizeOf(new RegExp("a".repeat(100_000)))).toBeGreaterThan(200_000);
+    expect(sizeOf(new String("z".repeat(100_000)))).toBeGreaterThan(200_000);
+    const named = [1, 2, 3] as number[] & { extra?: string };
+    named.extra = "w".repeat(500_000);
+    expect(sizeOf(named)).toBeGreaterThan(1_000_000);
+  });
+
+  it("gives up on a message of more values than it will walk: too much, whatever its bytes", () => {
+    const many = Array.from({ length: REALM_LIMITS.nodes / 2 + 10 }, () => [1]);
+    expect(sizeOf(many)).toBe(Number.POSITIVE_INFINITY);
+    expect(() => checkOpSize("data.create", sizeOf(many))).toThrow(RealmLimitError);
+  });
+
   it("holds words to a small limit and bytes to the op's", () => {
     for (const op of ["ui.toast", "ui.confirm", "ui.form", "log", "navigate", "guests.add", "caps.notifications.schedule", "view.navigate"]) expect(isWordsOp(op)).toBe(true);
     for (const op of ["media.put", "files.write", "create", "storage.set", "ui.share", "caps.network.fetch", "caps.network.socket.send"]) expect(isWordsOp(op)).toBe(false);
@@ -108,6 +127,39 @@ describe("HeldBudget: one app's account", () => {
     expect(budget.arrived(600)).toBe(true);
     t = 60;
     expect(budget.arrived(600)).toBe(false);
+  });
+});
+
+describe("HeldBudget: what a refusal leaves behind", () => {
+  it("gives the op's place back when its bytes are refused", () => {
+    const budget = new HeldBudget({ heldBytes: 100, opsInFlight: 2, burstBytes: 1e9 });
+    const keep = budget.take(90, "x");
+    for (let i = 0; i < 10; i++) {
+      const held: Array<() => void> = [];
+      try {
+        held.push(budget.begin());
+        held.push(budget.take(50, "y"));
+      } catch (e) {
+        expect(e).toBeInstanceOf(RealmLimitError);
+      } finally {
+        for (const give of held) give();
+      }
+    }
+    expect(budget.inFlight).toBe(0);
+    keep();
+    expect(budget.heldBytes).toBe(0);
+  });
+
+  it("calls a realm whose messages take too long to measure a flood, and forgets it a second later", () => {
+    let t = 0;
+    const budget = new HeldBudget({ heldBytes: 1e9, opsInFlight: 10, burstBytes: 1e9, measureMs: 5 }, () => (t += 3));
+    budget.measure("a", 100); // each measuring "takes" 3 ms on this clock
+    expect(budget.arrived(1)).toBe(false);
+    budget.measure("a", 100);
+    expect(budget.arrived(1)).toBe(true);
+    t += 1000;
+    budget.measure("a", 100);
+    expect(budget.arrived(1)).toBe(false);
   });
 });
 

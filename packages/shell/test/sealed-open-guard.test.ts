@@ -90,4 +90,12 @@ describe("a tab that died with a sealed app open", () => {
     expect(sealedOpenPaused("notes")).toBe(false);
     expect(sealedOpenPaused("other")).toBe(true);
   });
+
+  it("leaves no marker behind for a deleted app's id either", async () => {
+    deadTab("notes");
+    localStorage.setItem(`${OPEN_MARK_PREFIX}deadtab:2`, JSON.stringify({ app: "other", page: "app", at: Date.now() - 60_000 }));
+    await eraseAppData("notes", { deleteDatabase: async () => undefined, opfsRoot: () => Promise.reject(new Error("no OPFS")) });
+    expect(sealedOpenPaused("notes")).toBe(false);
+    expect(sealedOpenPaused("other")).toBe(true);
+  });
 });

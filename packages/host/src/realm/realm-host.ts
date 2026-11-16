@@ -263,7 +263,7 @@ export class RealmLoadedApp implements LoadedApp {
       if (!this.resting) return;
       this.resting = false;
       this.stops = [];
-      for (const listener of [...this.restListeners]) listener();
+      this.tellRest();
     },
   };
   /** The logic's port as `answer` sees it; null while no realm is up. */
@@ -363,7 +363,20 @@ export class RealmLoadedApp implements LoadedApp {
     this.stops = [...this.stops.filter((at) => t - at <= REST_WINDOW_MS), t];
     if (this.resting || this.stops.length < REST_AFTER_STOPS) return;
     this.resting = true;
-    for (const listener of [...this.restListeners]) listener();
+    this.tellRest();
+  }
+
+  /** Tell whoever shows the rest. A listener that throws must not keep a stop from finishing: its error surfaces on its own. */
+  private tellRest(): void {
+    for (const listener of [...this.restListeners]) {
+      try {
+        listener();
+      } catch (e) {
+        queueMicrotask(() => {
+          throw e;
+        });
+      }
+    }
   }
 
   /** Whether this realm's frame thread answers (see `releaseSharedProcess`). No realm up: nothing to hold. */
@@ -459,7 +472,7 @@ export class RealmLoadedApp implements LoadedApp {
     if (!answers && ++this.burst > MAX_BURST) return this.kill(`it sent more than ${MAX_BURST} messages in ${CHECK_MS} ms`);
     if (!m || typeof m !== "object") return;
     // Bytes count as messages do: an op's are counted where it is answered, anything else's here.
-    if (m.t !== "op" && this.budget.arrived(sizeOf(m, REALM_LIMITS.burstBytes))) return this.kill(FLOOD_BYTES);
+    if (m.t !== "op" && this.budget.arrived(this.budget.measure(m, REALM_LIMITS.opBytes))) return this.kill(FLOOD_BYTES);
     if (m.t === "hb") {
       this.lastBeat = now();
       this.stalledAtBeat = this.stalledMs;
@@ -504,13 +517,16 @@ export class RealmLoadedApp implements LoadedApp {
     try {
       // Measured first, whatever it is: the bytes arrived either way, and a realm that sends too many
       // in one go is stopped like one that sends too many messages.
-      const size = sizeOf(m.args, REALM_LIMITS.opBytes);
+      // The whole message, not its arguments alone: whatever else it carries is held as long.
+      const size = this.budget.measure(m, REALM_LIMITS.opBytes);
       if (this.budget.arrived(size)) return void ch.flood?.(FLOOD_BYTES);
       const op = typeof m.op === "string" ? m.op : "";
       const isView = Boolean(ch.viewOp) && (VIEW_OPS as readonly string[]).includes(op);
       if (!isView && !(OPS as readonly string[]).includes(op)) throw new Error(`op not allowed: ${String(m.op).slice(0, 40)}`);
       checkOpSize(op, size);
-      held.push(this.budget.begin(), this.budget.take(size, `ctx.${op}`));
+      // One at a time: what the first returns must be kept when the second refuses.
+      held.push(this.budget.begin());
+      held.push(this.budget.take(size, `ctx.${op}`));
       const ctxId = Number(m.ctxId);
       const ctx = ch.ctx(ctxId);
       if (!ctx) throw new Error("no such ctx");
@@ -955,7 +971,7 @@ export class RealmLoadedApp implements LoadedApp {
         baseOf: (ctx, id) => this.baseOf(ctx, id),
         catalogFor: (language) => (language ? this.catalogs?.[language] : undefined),
         answer: (m, ch) => void this.answer(m, ch),
-        arrived: (m) => this.budget.arrived(sizeOf(m, REALM_LIMITS.burstBytes)),
+        arrived: (m) => this.budget.arrived(this.budget.measure(m, REALM_LIMITS.opBytes)),
         releaseHolds: (prefix) => this.releaseHolds(prefix),
         stopped: (kind, reason) => {
           // Out of process and silent: the view may still spin there, holding every realm frame of the

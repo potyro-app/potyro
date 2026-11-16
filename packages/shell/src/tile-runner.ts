@@ -134,6 +134,7 @@ export async function runTileHeadless(app: UserApp): Promise<void> {
   const sync = await syncAllowedFor(app);
   const raw = await openAppStore(app, { sync, me: me.id });
   let composed: Awaited<ReturnType<typeof compose>> | undefined;
+  let unwatch: (() => void) | undefined;
   try {
     const store = readOnlyStore(raw, "a launcher tile only reads");
     const modules = await modulesWithoutAsking(app, raw, sync);
@@ -146,7 +147,11 @@ export async function runTileHeadless(app: UserApp): Promise<void> {
       const { loadTrustedModule } = await import("./trusted-loader.js");
       composed = await compose({ provenance: "trusted", app: await loadTrustedModule(app.source, modules), store, caps, ui, nav, me });
     } else {
-      const [{ createAppBundler }, { createSharedAppLoader }] = await Promise.all([import("./app-bundler.js"), import("./isolate-bridge.js")]);
+      const [{ createAppBundler }, { createSharedAppLoader }, { sealedOpenPaused, watchSealedOpen }] = await Promise.all([import("./app-bundler.js"), import("./isolate-bridge.js"), import("./sealed-open-guard.js")]);
+      // An app paused after a tab died with it open is not run here either; and while its tile's code
+      // runs it is marked as when it is open, so a tile that takes the tab down does so once (docs/22 §7.1).
+      if (sealedOpenPaused(app.id)) return;
+      unwatch = watchSealedOpen(app.id);
       const bundleCode = await (await createAppBundler())(app.source, modules);
       composed = await compose({ provenance: "untrusted", bundleCode, store, caps, ui, nav, me, loadIsolated: await createSharedAppLoader(store) });
     }
@@ -156,6 +161,7 @@ export async function runTileHeadless(app: UserApp): Promise<void> {
     }
     remember(app.id, app.source, await runTile(composed.loaded, composed.runtime, store));
   } finally {
+    unwatch?.();
     if (composed) {
       composed.runtime.close();
       composed.loaded.dispose();
