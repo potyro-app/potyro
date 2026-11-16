@@ -702,3 +702,36 @@ describe("JazzStore — attribution across peers (KA-36)", () => {
     expect(asBruno.find((e) => e.field === "name")?.by).toBe(ana.accountID);
   });
 });
+
+describe("a record whose content has not arrived (#67)", () => {
+  // The index can point at a map that is here but still empty: the index landed first, or a reload
+  // read it back first. Listed, that was a row with no `id` — an empty row, and a list with no key.
+  async function withEmptyMap(): Promise<{ s: JazzStore; whole: string; empty: { set(k: string, v: unknown): void } }> {
+    const s = await seeded();
+    const whole = await s.insert("place", { name: "Lisbon" });
+    const inner = s as unknown as {
+      group: { createMap(init: Record<string, unknown>): { id: string; set(k: string, v: unknown): void } };
+      entityIndex(entity: string): Promise<{ set(k: string, v: unknown): void }>;
+    };
+    const empty = inner.group.createMap({});
+    (await inner.entityIndex("place")).set("01HZZZZZZZZZZZZZZZZZZZZZZZ", empty.id);
+    return { s, whole: whole.id, empty };
+  }
+
+  it("is not listed, and not found, until it has its id", async () => {
+    const { s, whole } = await withEmptyMap();
+    const rows = await s.all("place");
+    expect(rows.map((r) => r.id)).toEqual([whole]);
+    expect(rows.every((r) => typeof r.id === "string" && r.id !== "")).toBe(true);
+    expect(await s.get("place", "01HZZZZZZZZZZZZZZZZZZZZZZZ")).toBeNull();
+  });
+
+  it("is listed once its content is there", async () => {
+    const { s, whole, empty } = await withEmptyMap();
+    const now = new Date().toISOString();
+    for (const [k, v] of Object.entries({ id: "01HZZZZZZZZZZZZZZZZZZZZZZZ", name: "Porto", createdAt: now, updatedAt: now })) empty.set(k, v);
+    const ids = (await s.all("place")).map((r) => r.id);
+    expect(ids.sort()).toEqual([whole, "01HZZZZZZZZZZZZZZZZZZZZZZZ"].sort());
+    expect((await s.get("place", "01HZZZZZZZZZZZZZZZZZZZZZZZ"))?.name).toBe("Porto");
+  });
+});

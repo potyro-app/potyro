@@ -264,6 +264,11 @@ function replayDerived(
   return out;
 }
 
+/** A record whose content has been read: one whose map is here but still empty has no `id` (#67). */
+function isWhole(r: PotyroRecord): boolean {
+  return typeof (r as { id?: unknown }).id === "string" && (r as { id: string }).id !== "";
+}
+
 export class JazzStore implements Store {
   private readonly node: NodeLike;
   private readonly group: RawGroupLike;
@@ -611,12 +616,19 @@ export class JazzStore implements Store {
   /** The rows one index lists for `entity`; `idOf` reads a record id off a key, or null for a key of another entity. */
   private async rowsIn(entity: string, index: RawMapLike, idOf: (key: string) => string | null): Promise<PotyroRecord[]> {
     const rows: PotyroRecord[] = [];
+    // A map that is here before its content (the index arrived first, or a reload read it back
+    // first) reads as a record with no fields, not even its `id`. It is left out, as a map that is
+    // not here at all already is: the map is watched, so the list is read again when the content
+    // lands. Listed, it was a row with nothing in it for an instant (#67).
+    const keep = (r: PotyroRecord): void => {
+      if (isWhole(r)) rows.push(r);
+    };
     if (this.creatorOnly.has(entity)) {
       // Every id ever indexed: a record someone else "deleted" is still there, as its creator left it.
       for (const key of Object.keys(index.ops ?? {}).concat(index.ops ? [] : index.keys())) {
         if (idOf(key) === null) continue;
         const found = await this.scopedIn(index, key);
-        if (found) rows.push(await this.record(found.m));
+        if (found) keep(await this.record(found.m));
       }
       return rows;
     }
@@ -625,7 +637,7 @@ export class JazzStore implements Store {
       const refId = index.get(key);
       if (typeof refId !== "string") continue; // deleted: tombstoned to undefined
       try {
-        rows.push(await this.record(await this.loadMap(refId)));
+        keep(await this.record(await this.loadMap(refId)));
       } catch {
         // Pointed at, not here yet: a record shared with this device whose group is still arriving.
       }
@@ -881,7 +893,10 @@ export class JazzStore implements Store {
 
   async get(entity: string, id: Id): Promise<PotyroRecord | null> {
     const m = await this.recordMap(entity, id);
-    return m ? this.record(m) : null;
+    if (!m) return null;
+    // Not there until its content is: see `rowsIn` (#67).
+    const r = await this.record(m);
+    return isWhole(r) ? r : null;
   }
 
   /**
