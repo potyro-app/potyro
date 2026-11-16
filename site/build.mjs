@@ -7,7 +7,7 @@
 //
 //   pnpm site:build [--out dist/site] [--allow-local]
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { APP_SITE, GALLERY_DIR, hoursCss, imageSize, LOGO_FILES, pageScript, readStrings, renderPage } from "../gallery/src/build.mjs";
@@ -24,6 +24,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 export const SITE_DIR = here;
 const ROOT = resolve(here, "..");
 const DESIGN = join(ROOT, "packages", "design");
+
+/** The files a page names with a stamp of their bytes, and where a page names them. */
+const STAMPED_FILE = /^\/(?:fonts|logo|shots|screens|media)\//;
+const STAMPED_ATTR = /\b(href|src|poster)="(\/(?:fonts|logo|shots|screens|media)\/[^"?#]+)"/g;
 
 /** @param {Buffer | string} bytes */
 const shortHash = (bytes) => createHash("sha256").update(bytes).digest("hex").slice(0, 10);
@@ -64,18 +68,35 @@ export async function buildSite(opts = {}) {
   mkdirSync(out, { recursive: true });
   /** Every page written, by its address from the root: what the sitemap lists. @type {string[]} */
   const written = [];
+  /**
+   * A picture, a recording, a font or a logo, by the address it is served at → a hash of its bytes.
+   * A page names each as `/media/x.webm?v=<hash>`, so the address changes when the file does and the
+   * server can let a browser keep it for a year (deploy/potyro.app.Caddyfile); the bare address, which
+   * a share card and an old link use, still answers, with a day.
+   * @type {Map<string, string>}
+   */
+  const stamps = new Map();
+  const stamped = (/** @type {string} */ html) => html.replace(STAMPED_ATTR, (whole, attr, path) => (stamps.has(path) ? `${attr}="${path}?v=${stamps.get(path)}"` : whole));
   const put = (/** @type {string} */ path, /** @type {Buffer | string} */ bytes) => {
     if (path === "index.html" || path.endsWith("/index.html")) written.push(`/${path.slice(0, -"index.html".length)}`);
+    if (STAMPED_FILE.test(`/${path}`)) stamps.set(`/${path}`, shortHash(bytes));
     mkdirSync(dirname(join(out, path)), { recursive: true });
-    writeFileSync(join(out, path), bytes);
+    writeFileSync(join(out, path), path.endsWith(".html") ? stamped(String(bytes)) : bytes);
   };
+  const copy = (/** @type {string} */ from, /** @type {string} */ to) => put(to, readFileSync(from));
   const copyDir = (/** @type {string} */ from, /** @type {string} */ to, /** @type {(name: string) => boolean} */ keep = () => true) => {
-    mkdirSync(join(out, to), { recursive: true });
-    for (const f of readdirSync(from)) if (keep(f) && statSync(join(from, f)).isFile()) copyFileSync(join(from, f), join(out, to, f));
+    for (const f of readdirSync(from)) if (keep(f) && statSync(join(from, f)).isFile()) copy(join(from, f), `${to}/${f}`);
   };
 
   // ---- the shared files ----
-  const tokens = readFileSync(join(DESIGN, "tokens.css"));
+  // The fonts first: tokens.css names them, and names each with its stamp.
+  copyDir(join(DESIGN, "fonts"), "fonts", (f) => f.endsWith(".woff2"));
+  const tokens = Buffer.from(
+    readFileSync(join(DESIGN, "tokens.css"), "utf8").replace(/url\("\.\/fonts\/([^"]+)"\)/g, (_, f) => {
+      if (!stamps.has(`/fonts/${f}`)) throw new Error(`tokens.css names fonts/${f}, which packages/design/fonts does not have`);
+      return `url("./fonts/${f}?v=${stamps.get(`/fonts/${f}`)}")`;
+    }),
+  );
   const hours = hoursCss();
   const chrome = readFileSync(join(GALLERY_DIR, "src", "page", "chrome.css"), "utf8");
   const galleryCss = chrome + "\n" + readFileSync(join(GALLERY_DIR, "src", "page", "gallery.css"), "utf8");
@@ -96,10 +117,8 @@ export async function buildSite(opts = {}) {
   put("gallery.js", galleryJs);
   put("site.js", siteJs);
   put("text.js", textJs);
-  copyFileSync(join(GALLERY_DIR, "src", "page", "favicon.svg"), join(out, "favicon.svg"));
-  copyDir(join(DESIGN, "fonts"), "fonts", (f) => f.endsWith(".woff2"));
-  mkdirSync(join(out, "logo"), { recursive: true });
-  for (const f of LOGO_FILES) copyFileSync(join(DESIGN, "logo", f), join(out, "logo", f));
+  copy(join(GALLERY_DIR, "src", "page", "favicon.svg"), "favicon.svg");
+  for (const f of LOGO_FILES) copy(join(DESIGN, "logo", f), `logo/${f}`);
   const logos = Object.fromEntries(["wordmark-rosa.svg", "wordmark-large.svg", "tagline.svg", "symbol-rosa.svg"].map((f) => [f, readFileSync(join(DESIGN, "logo", f), "utf8")]));
 
   // ---- pictures: the gallery's shots, the home's screens, the recordings ----
@@ -116,10 +135,9 @@ export async function buildSite(opts = {}) {
   const { published } = shownApps(gallery);
   for (const app of published) picture(join(GALLERY_DIR, app.screenshot ?? ""), `/${app.screenshot}`);
   for (const f of readdirSync(join(here, "shots"))) if (f.endsWith(".jpg")) picture(join(here, "shots", f), `/screens/${f}`);
-  mkdirSync(join(out, "media"), { recursive: true });
   for (const f of readdirSync(join(here, "media"))) {
     if (/\.(jpg|png)$/.test(f)) picture(join(here, "media", f), `/media/${f}`);
-    else copyFileSync(join(here, "media", f), join(out, "media", f));
+    else copy(join(here, "media", f), `media/${f}`);
   }
 
   // ---- the legal pages, when their texts are ready ----
@@ -146,7 +164,7 @@ export async function buildSite(opts = {}) {
   // ---- for crawlers and for a mistyped address ----
   // The server answers an unknown address with 404.html and the 404 status (deploy/potyro.app.Caddyfile).
   const lost = `<div class="layout one"><article class="how"><header class="head"><h1>${words.notFoundTitle}</h1><p class="lede">${words.notFoundText}</p></header><p><a href="/">${words.notFoundHome}</a> · <a href="/apps/">${words.notFoundApps}</a></p></article></div>`;
-  writeFileSync(join(out, "404.html"), sitePage({ title: words.notFoundTitle, description: words.notFoundText, path: "/404.html", main: lost, current: "", styles: [], v, logos, w: words, legal: legal.ready }));
+  writeFileSync(join(out, "404.html"), stamped(sitePage({ title: words.notFoundTitle, description: words.notFoundText, path: "/404.html", main: lost, current: "", styles: [], v, logos, w: words, legal: legal.ready })));
   const listed = [...new Set(written)].sort();
   put("sitemap.xml", `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${listed.map((path) => `  <url><loc>${SITE}${path}</loc></url>`).join("\n")}\n</urlset>\n`);
   put("robots.txt", `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`);

@@ -19,6 +19,8 @@ const ICON = {
   arrowUp: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
   arrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
   copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  pause: '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
+  play: '<polygon points="6 3 20 12 6 21 6 3"/>',
 };
 const icon = (/** @type {string} */ paths, size = 20) =>
   `<svg class="k-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${paths}</svg>`;
@@ -171,7 +173,11 @@ export function renderHome({ gallery, words, lucide, code, logos, v, sizes, lega
   const clip = (/** @type {string} */ name, /** @type {string} */ labelKey, cls = "") => {
     const poster = `/media/${name}-poster.jpg`;
     const s = size(poster);
-    return `<div class="phone rec-phone ${cls}"><video class="rec" muted loop playsinline preload="none" poster="${poster}" width="${s.width}" height="${s.height}" aria-label="${e(w[labelKey])}"${ta(`aria-label:${labelKey}`)}><source src="/media/${name}.webm" type="video/webm"><source src="/media/${name}.mp4" type="video/mp4"></video></div>`;
+    // A recording moves and loops, so it can be stopped (WCAG 2.2.2): a button on the phone, reached
+    // with Tab, and a press on the recording itself. The script shows the button; without the script
+    // nothing plays, and the poster stays.
+    const stop = `<button type="button" class="rec-toggle" hidden><span class="rec-pause">${icon(ICON.pause, 20)}<span class="visually-hidden"${t("recPause")}>${e(w.recPause)}</span></span><span class="rec-play">${icon(ICON.play, 20)}<span class="visually-hidden"${t("recPlay")}>${e(w.recPlay)}</span></span></button>`;
+    return `<div class="phone rec-phone ${cls}"><video class="rec" muted loop playsinline preload="none" poster="${poster}" width="${s.width}" height="${s.height}" aria-label="${e(w[labelKey])}"${ta(`aria-label:${labelKey}`)}><source src="/media/${name}.webm" type="video/webm"><source src="/media/${name}.mp4" type="video/mp4"></video>${stop}</div>`;
   };
 
   const tiles = TILES.map((tile, i) => {
@@ -190,12 +196,14 @@ export function renderHome({ gallery, words, lucide, code, logos, v, sizes, lega
     { id: "share", hour: "laranja", pic: SCREENS.share.map((x) => phone(`/screens/${x}.jpg`)).join(""), extra: `<p class="link-pill"><span>${e(w.shareLink)}</span><button type="button" class="btn" data-copy="https://potyro.com/" data-copied="${e(w.copied)}"${t("copyLink")}${ta("data-copied:copied")}>${e(w.copyLink)}</button></p>` },
     { id: "safe", hour: "menta", pic: phone("/media/permission-ai.png", "stillPermissionAi", "boxed") + phone("/media/permission-camera.png", "stillPermissionCamera") },
   ];
+  // Each "Learn more" says what about, for a screen reader and a search engine: seven links with the
+  // same two words tell neither where they go. The eye has the heading beside it.
   const blocks = steps
     .map(
       (s, i) => `
 <div class="block-row" id="${s.id}"><div class="wrap">
   <section class="block reveal ${i % 2 ? "flip" : ""}" data-traco="${s.hour}" aria-labelledby="${s.id}-h">
-    <div class="block-words"><h2 id="${s.id}-h"${t(s.id)}>${e(w[s.id])}</h2><p class="say"${t(`${s.id}Text`)}>${e(w[`${s.id}Text`])}</p>${s.extra ?? ""}<p class="learn"><a href="/how/${s.id}/"${t("learnMore")}>${e(w.learnMore)}</a></p></div>
+    <div class="block-words"><h2 id="${s.id}-h"${t(s.id)}>${e(w[s.id])}</h2><p class="say"${t(`${s.id}Text`)}>${e(w[`${s.id}Text`])}</p>${s.extra ?? ""}<p class="learn"><a href="/how/${s.id}/"><span${t("learnMore")}>${e(w.learnMore)}</span><span class="visually-hidden">: <span${t(s.id)}>${e(w[s.id])}</span></span></a></p></div>
     <div class="block-pic">${s.pic}</div>
   </section>
 </div></div>`,

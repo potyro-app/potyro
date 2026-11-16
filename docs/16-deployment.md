@@ -304,8 +304,10 @@ What each part is for:
 - **`frame-src 'none'`** on every response: the shell embeds no frame that fetches, and this is what
   stops a shared app's sandboxed frame navigating itself to a URL (#272, docs/22 §3.2).
   `index.html` carries the same as a `<meta>` for the native WebView, which serves no headers.
-- **Cache headers.** Hashed assets are `immutable`; `index.html`, `sw.js` and the legal pages are
-  `no-cache`, or a deploy stays invisible until someone clears their cache.
+- **Cache headers.** Hashed assets (`/assets/*`, the legal pages' `/legal/*`) are `immutable`;
+  `index.html`, `sw.js` and the legal pages are `no-cache`, or a deploy stays invisible until
+  someone clears their cache; the icons, the manifest, `robots.txt` and `sitemap.xml` have plain
+  names, so a day.
 - **`precompressed br gzip`.** The deploy's build leaves `<file>.br` and `<file>.gz` beside every
   text file and Wasm (`POTYRO_PRECOMPRESS=1`, [§1](#1-build-the-shell)); Caddy sends the copy the
   browser accepts instead of compressing each response. The page's first script is about 380 kB as
@@ -1045,9 +1047,13 @@ rsync -av --delete dist/site/ <admin>@<server>:/srv/potyro.com/
 By hand, with an account that can write `/srv/potyro.com`: the deploy key cannot, since `rrsync`
 holds it to the app's web root. Nothing deploys the site automatically. The Caddy block is
 `potyro.com, www.potyro.com` in [`deploy/potyro.app.Caddyfile`](../deploy/potyro.app.Caddyfile):
-`file_server`, `no-cache` on the pages, a day's cache on the files (the pages name their
-stylesheets and scripts with `?v=<hash>`), `/gallery/*` → `/apps/`, `POST /count` → the AI relay,
-and `log { output discard }`.
+`file_server`, `no-cache` on every page (`/`, any address ending in `/`, any `.html`), a day's
+cache on the stylesheets and scripts (the pages name them with `?v=<hash>`), on `robots.txt` and
+the sitemap, and on a picture or font asked for by its bare address (a share card's `og.png`), a
+year for a picture, recording, font or logo asked for as a page names it, with `?v=<a hash of its
+bytes>` (`site/build.mjs` stamps them), and for the legal pages' files under `/legal/`, which carry
+the hash in their names; `/gallery/*` → `/apps/`, `POST /count` → the AI relay, `www` → the bare name, the site's own page for an
+address that is not one, and `log { output discard }`.
 
 ## The gallery's links (docs/24 §10)
 
@@ -1120,8 +1126,10 @@ Once the owner has filled the texts, the next build of each site has them, with 
   (checked with Caddy 2.11.7).
 - **potyro.com** (`pnpm site:build`, rsync as above): `privacy/index.html`, `terms/index.html`
   and `legal/` beside the home and the gallery. The `file_server` serves them as they are (`/privacy` redirects
-  to `/privacy/`). They have no script and no inline style, so the CSP above holds. They are not in
-  the block's `no-cache` rule yet: add `/privacy/* /terms/*` to `@page` when they are first served.
+  to `/privacy/`). They have no script and no inline style, so the CSP above holds. The block's
+  `@page` rule marks them `no-cache` like every other page. Each page names
+  `https://potyro.com/<page>/` as its one address (`rel="canonical"`), on potyro.app too, so a
+  search engine counts the two copies as one.
 
 The service worker serves a navigation network first, so `/privacy` comes from the server whenever
 the device is online; offline it is the copy from the last visit, or the app if there is none. Every

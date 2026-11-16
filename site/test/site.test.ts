@@ -2,6 +2,7 @@
 // (the server's policy allows no inline style or script), nothing from anyone else, and the numbers
 // on the home counted from the gallery, not typed.
 import { describe, expect, it, beforeAll } from "vitest";
+import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -122,7 +123,7 @@ describe("the home", () => {
     expect(clips.length).toBeGreaterThanOrEqual(4);
     for (const tag of clips) {
       expect(tag).toContain('preload="none"');
-      expect(tag).toMatch(/poster="\/media\/[\w-]+-poster\.jpg"/);
+      expect(tag).toMatch(/poster="\/media\/[\w-]+-poster\.jpg\?v=\w+"/);
       expect(tag).not.toContain("autoplay");
     }
     expect(home.match(/type="video\/mp4"/g)!.length).toBe(clips.length);
@@ -130,7 +131,55 @@ describe("the home", () => {
   });
 });
 
+describe("a recording can be stopped", () => {
+  it("each one has a button a keyboard reaches, saying Pause and Play in every language, shown by the script", () => {
+    const phones = home.match(/<div class="phone rec-phone[^"]*">.*?<\/div>/gs) ?? [];
+    expect(phones.length).toBe((home.match(/<video\b/g) ?? []).length);
+    for (const phone of phones) {
+      // A real button, in the page's order right after its recording, with no tabindex taking it out.
+      expect(phone).toMatch(/<\/video><button type="button" class="rec-toggle" hidden>/);
+      expect(phone).not.toContain("tabindex");
+      expect(phone).toMatch(/<span class="visually-hidden" data-t="recPause">Pause<\/span>/);
+      expect(phone).toMatch(/<span class="visually-hidden" data-t="recPlay">Play<\/span>/);
+    }
+    const words = JSON.parse(readFileSync(join(here, "words.json"), "utf8"));
+    for (const lang of Object.keys(words)) expect(words[lang].recPause, lang).not.toBe(words[lang].recPlay);
+  });
+
+  it("a press on the recording or on its button stops it, and scrolling never starts it again", () => {
+    const js = readFileSync(join(out, "site.js"), "utf8");
+    expect(js).toContain('v.addEventListener("click", toggle)');
+    expect(js).toContain('button.addEventListener("click", toggle)');
+    expect(js).toContain("button.hidden = false");
+    expect(js).toMatch(/else if \(!v\.hasAttribute\("data-held"\)\) start\(v\)/);
+    const css = readFileSync(join(out, "site.css"), "utf8");
+    expect(css).toMatch(/\.rec-toggle \{[^}]*width: 44px; height: 44px;/);
+    expect(css).toMatch(/\.rec-toggle:focus-visible \{[^}]*outline:/);
+  });
+});
+
 describe("the prompt box", () => {
+  it("writes its example in the design system's secondary ink, readable on both grounds", () => {
+    expect(readFileSync(join(out, "site.css"), "utf8")).toContain(".prompt-box::placeholder { color: var(--muted); opacity: 1; }");
+    const tokens = readFileSync(join(here, "..", "packages", "design", "tokens.css"), "utf8");
+    const light = tokens.slice(0, tokens.indexOf("@media (prefers-color-scheme: dark)"));
+    const dark = tokens.slice(tokens.indexOf(':root[data-theme="dark"] {'));
+    const colour = (css: string, name: string) => new RegExp(`--${name}: (#[0-9a-f]{6})`).exec(css)![1];
+    const light1 = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const contrast = (a: string, b: string) => {
+      const [hi, lo] = [light1(a), light1(b)].sort((x, y) => y - x);
+      return (hi + 0.05) / (lo + 0.05);
+    };
+
+    // The box's ground is --bg.
+    expect(contrast(colour(light, "muted"), colour(light, "bg"))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(colour(dark, "muted"), colour(dark, "bg"))).toBeGreaterThanOrEqual(4.5);
+  });
+
+
   it("tells the app where its links came from, and no other link on the page does", () => {
     const links = [...home.matchAll(/<a\b[^>]*>/g)].map((m) => m[0]);
     const telling = links.filter((a) => a.includes("referrerpolicy"));
@@ -189,6 +238,8 @@ describe("the text pages", () => {
   it("has a Learn-more page behind every block of the home, and the developers page with the package map", () => {
     for (const id of ["data", "database", "make", "together", "ai", "share", "safe"]) {
       expect(home).toContain(`href="/how/${id}/"`);
+      // The link says what it leads to, not "Learn more" seven times over.
+      expect(home).toMatch(new RegExp(`<a href="/how/${id}/"><span data-t="learnMore">[^<]+</span><span class="visually-hidden">: <span data-t="${id}">[^<]+</span></span></a>`));
       const p = page(`how/${id}`);
       expect(p.match(/<h1\b/g)).toHaveLength(1);
       expect(p).not.toMatch(/ style="/);
@@ -234,6 +285,30 @@ describe("for crawlers and for a mistyped address", () => {
 
   it("offers the smaller recording first, so a browser that plays both takes it", () => {
     for (const clip of home.match(/<video\b[^>]*>.*?<\/video>/gs) ?? []) expect(clip.indexOf("video/webm")).toBeLessThan(clip.indexOf("video/mp4"));
+  });
+});
+
+describe("what a browser may keep", () => {
+  const hashOf = (path: string) => createHash("sha256").update(readFileSync(join(out, path))).digest("hex").slice(0, 10);
+
+  it("a page names each picture, recording and font with a stamp of its bytes", () => {
+    const named = [...home.matchAll(/\b(?:href|src|poster)="(\/(?:fonts|logo|shots|screens|media)\/[^"?]+)(\?v=(\w+))?"/g)];
+    expect(named.length).toBeGreaterThan(20);
+    for (const [, path, , v] of named) expect(v, path).toBe(hashOf(path));
+    const how = readFileSync(join(out, "how", "data", "index.html"), "utf8");
+    for (const [, path, v] of how.matchAll(/\bsrc="(\/(?:shots|screens|media)\/[^"?]+)(?:\?v=(\w+))?"/g)) expect(v, path).toBe(hashOf(path));
+  });
+
+  it("the stylesheet names each font the same way, so the preloaded file is the one it uses", () => {
+    const fonts = [...readFileSync(join(out, "tokens.css"), "utf8").matchAll(/url\("\.\/fonts\/([^"?]+)(?:\?v=(\w+))?"\)/g)];
+    expect(fonts.length).toBeGreaterThanOrEqual(5);
+    for (const [, file, v] of fonts) expect(v, file).toBe(hashOf(`fonts/${file}`));
+    for (const [, path] of home.matchAll(/<link rel="preload" href="\/(fonts\/[^"?]+)\?v=\w+" as="font"/g)) expect(home).toContain(`/${path}?v=${hashOf(path)}`);
+    expect(home.match(/<link rel="preload" href="\/fonts\/[^"]+\?v=\w+" as="font"/g)).toHaveLength(2);
+  });
+
+  it("a share card's picture keeps its bare address", () => {
+    expect(home).toContain('content="https://potyro.com/media/og.png"');
   });
 });
 

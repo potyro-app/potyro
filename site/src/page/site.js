@@ -1,6 +1,7 @@
 // The home's only script. The page is whole without it: with it, blocks and phones enter as they
-// come into view, a recording plays while it is on screen and stops when it leaves, Enter sends the
-// box, and Copy link copies. Nothing is sent anywhere and nothing is remembered.
+// come into view, a recording plays while it is on screen and stops when it leaves or when it is
+// pressed, Enter sends the box, and Copy link copies. Nothing is sent anywhere and nothing is
+// remembered.
 (function () {
   "use strict";
   var root = document.documentElement;
@@ -29,17 +30,43 @@
     });
   }
 
-  // A recording plays only while it is on screen, never under reduced motion (its poster stays).
+  // A recording plays only while it is on screen, never under reduced motion (its poster stays), and
+  // never again by itself once a person has stopped it: a press on the recording or on its button
+  // stops it and starts it (WCAG 2.2.2), and what they chose holds while they scroll.
   var clips = document.querySelectorAll("video.rec");
+  var start = function (v) {
+    var p = v.play();
+    if (p && p.catch) p.catch(function () {});
+  };
+  clips.forEach(function (v) {
+    var button = v.parentNode.querySelector(".rec-toggle");
+    var toggle = function () {
+      if (v.paused) {
+        v.removeAttribute("data-held");
+        start(v);
+      } else {
+        v.setAttribute("data-held", "");
+        v.pause();
+      }
+    };
+    v.addEventListener("click", toggle);
+    if (!button) return;
+    var show = function () {
+      button.classList.toggle("playing", !v.paused);
+    };
+    v.addEventListener("play", show);
+    v.addEventListener("pause", show);
+    button.addEventListener("click", toggle);
+    button.hidden = false;
+    show();
+  });
   if (clips.length && !reduce && "IntersectionObserver" in window) {
     var vio = new IntersectionObserver(
       function (entries) {
         entries.forEach(function (x) {
           var v = x.target;
-          if (x.isIntersecting) {
-            var p = v.play();
-            if (p && p.catch) p.catch(function () {});
-          } else v.pause();
+          if (!x.isIntersecting) v.pause();
+          else if (!v.hasAttribute("data-held")) start(v);
         });
       },
       { threshold: 0.4 },

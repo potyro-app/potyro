@@ -200,6 +200,23 @@ describe("the Markdown the texts use", () => {
     expect(renderLegalPage("terms", "No heading here.", { assets })).toContain("<title>Terms of use · Potyro</title>");
   });
 
+  it("says what it is to a search engine and to a pasted link, and names one address as its own", () => {
+    for (const page of ["privacy", "terms"] as const) {
+      const html = renderLegalPage(page, `# ${page}`, { assets });
+      const meta = (name: string) => html.match(new RegExp(`<meta (?:name|property)="${name}" content="([^"]*)"`))?.[1];
+
+      expect(meta("description")!.length).toBeGreaterThan(50);
+      expect(meta("description")!.length).toBeLessThan(160);
+      expect(meta("og:description")).toBe(meta("description"));
+      expect(html).toContain(`<link rel="canonical" href="https://potyro.com/${page}/" />`);
+      expect(meta("og:url")).toBe(`https://potyro.com/${page}/`);
+      expect(meta("og:image")).toBe("https://potyro.com/media/og.png");
+      expect(meta("twitter:card")).toBe("summary_large_image");
+    }
+    const described = (page: "privacy" | "terms") => /name="description" content="([^"]*)"/.exec(renderLegalPage(page, "# x", { assets }))?.[1];
+    expect(described("privacy")).not.toBe(described("terms"));
+  });
+
   it("Open Potyro and the logo go to the app: the site's root on potyro.app, the app's own site beside the gallery", () => {
     const links = (html: string) => [...html.matchAll(/<a class="brand" href="([^"]+)"|<a href="([^"]+)">Open Potyro<\/a>/g)].map((m) => m[1] ?? m[2]);
     expect(links(renderLegalPage("privacy", "# Privacy", { assets }))).toEqual(["../", "../"]);
