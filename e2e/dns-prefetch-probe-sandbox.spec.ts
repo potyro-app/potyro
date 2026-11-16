@@ -1,4 +1,4 @@
-import { chromium, firefox, test, expect, type Browser, type Page } from "@playwright/test";
+import { chromium, firefox, test, expect, type Browser, type Page } from "./console-guard";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { mkdtempSync, readFileSync } from "node:fs";
