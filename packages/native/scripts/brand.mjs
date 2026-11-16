@@ -21,7 +21,7 @@
 // alone, with a night variant, then the app's theme with that same colour behind the WebView. The
 // colours are tokens.css's `--bg`, the first thing the shell paints, so splash → window → page is
 // one colour and nothing flashes. `@capacitor/splash-screen` is not needed and not added.
-// SplashHold.java (patch-android.mjs) keeps the splash up until the page has loaded.
+// SplashHold.java (patch-android.mjs) keeps the splash up until the shell says its first screen is there.
 //
 // Also here, from the same mark: the status-bar icon reminders use (`ic_stat_potyro`), and — when
 // ios/ exists — the one 1024px image the generated iOS project takes as its app icon.

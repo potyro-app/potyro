@@ -2,7 +2,7 @@
 // the `PotyroLocalSocket` plugin — plain ws:// to the LOCAL NETWORK only, docs/28 §6 — the voice
 // plugin (docs/29), and `PotyroKeepAwake` — the screen kept on for `ctx.ui.keepAwake`, docs/04 —
 // copied from android-templates/ into MainActivity's package, and registered in MainActivity — and
-// `SplashHold`, which keeps the system splash up until the page has loaded (scripts/brand.mjs draws
+// `SplashHold`, which keeps the system splash up until the shell signals its first screen (scripts/brand.mjs draws
 // the splash), called from MainActivity after `super.onCreate`. Idempotent.
 //
 // Nothing here touches the network security config or `usesCleartextTraffic`: the app's cleartext
@@ -44,7 +44,7 @@ export function withPluginRegistered(source, plugins = PLUGINS) {
   return { source: out, added: out !== source };
 }
 
-/** The call that holds the splash until the page has loaded (android-templates/SplashHold.java). */
+/** The call that holds the splash until the shell signals its first screen (android-templates/SplashHold.java). */
 export const SPLASH_HOLD = "SplashHold.attach(this);";
 
 /**
@@ -97,5 +97,5 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()
     process.exit(1);
   }
   if (registered.added || held.added) writeFileSync(activity, held.source);
-  console.log(`[patch-android] ${TEMPLATES.join(", ")} → ${pkg}${registered.added ? "; registered in MainActivity" : ""}${held.added ? "; splash held until the page loads" : ""}.`);
+  console.log(`[patch-android] ${TEMPLATES.join(", ")} → ${pkg}${registered.added ? "; registered in MainActivity" : ""}${held.added ? "; splash held until the first screen" : ""}.`);
 }

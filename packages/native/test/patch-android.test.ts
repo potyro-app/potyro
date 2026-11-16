@@ -77,4 +77,15 @@ describe("patch-android", () => {
       expect(readFileSync(path, "utf8"), t).toMatch(/^package __PACKAGE__;/);
     }
   });
+
+  it("holds the splash for the shell's own first-screen signal, with one limit, and not for a mounted root", () => {
+    const hold = readFileSync(fileURLToPath(new URL("../android-templates/SplashHold.java", import.meta.url)), "utf8");
+    const code = hold.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
+    expect(code).toContain(`static final String READY = "document.documentElement.dataset.potyroReady==='1'";`);
+    expect(code).toContain("web.evaluateJavascript(READY,");
+    expect(code).toContain("static final long LIMIT_MS = 5000;");
+    expect(code.match(/LIMIT_MS/g)).toHaveLength(2); // declared, and the one place it ends the hold
+    // a mounted root is not a drawn screen: the hold must not end on it
+    expect(code).not.toMatch(/childElementCount|getElementById/);
+  });
 });
