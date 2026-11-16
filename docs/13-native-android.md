@@ -106,9 +106,20 @@ design package (`packages/design/logo`, `tokens.css`), never from a picture kept
   has loaded), and five seconds at most. One limit: a shell that never sets the signal cannot be told
   from a slow one, so such a shell holds the splash the full five seconds on every start — the
   shell change that sets it (#48) goes in first. The status and navigation bars wear the same colour.
-  `@capacitor/splash-screen` is not installed; nothing here needs it. The splash follows the
-  **phone's** theme: someone who chose the other appearance inside Potyro sees the phone's colour
-  until the page paints.
+  `@capacitor/splash-screen` is not installed; nothing here needs it.
+- **Potyro's own theme, not the phone's.** Potyro has its own light/dark choice, and an app can open
+  in its own theme; Android draws the bar icons and the splash for the phone's. So the page says what
+  it is showing — `android-templates/appearance.js`, run in the page after every load by the
+  `PotyroAppearance` plugin, watching `data-theme` on `<html>` and the phone's theme, never polling —
+  and the app draws the status and navigation bar icons for that (through Capacitor's own
+  `SystemBars`, which puts the style back after a rotation), and colours the bars where Android
+  still lets an app (before 15). The **splash** is drawn by the system before any app code runs, so
+  nothing in the app can choose it at that moment: on Android 12+ the person's own choice for Potyro
+  (the Look, read where the shell keeps it) is handed to the system
+  (`UiModeManager.setApplicationNightMode`), which keeps it and uses it for the next start's splash;
+  "the phone decides" hands it back. An app's own theme changes the bars and is never remembered. On
+  Android 7–11 the splash follows the phone. The first start after the choice changed elsewhere (a
+  restored backup, say) still shows the old splash once.
 - **Reminders' status-bar icon** (`ic_stat_potyro`) is the same mark in one colour.
 
 No browser and no image library is involved (`scripts/vector.mjs`, `scripts/png.mjs`), so it runs
@@ -179,23 +190,25 @@ POTYRO_AGP=8.13.0 POTYRO_GRADLE=8.14.3 pnpm cap:sync  # or pin somewhere else
   declaring one to take a photo would be asking for every photo on the phone.
 - Still unchecked on a device: store builds.
 
-2026-11-16, on an emulator (Android 13, WebView 109, software rendering; no phone attached), with a
-shell that did not yet set the first-screen signal:
+2026-11-16, debug builds:
 
-- The debug APK, the unsigned release APK and the release bundle build.
-- The icon shows whole in the launcher's circle, in the light and the dark drawer. The themed icon
-  and the other mask shapes were only rendered from the generated files, not seen on a launcher.
-- Dark: the splash (the mark on the page's colour) and then Home, bars in that colour, seen with the
-  build of that day.
-- Light: the splash was seen. Home after it was seen once on an earlier build of the same day whose
-  pictures were not kept; **light with the final build was not captured, and is owed** — on a phone.
-- The hold then waited for "the root element has children", and ended while the page was still
-  blank: React had mounted, nothing was drawn. That is why it now waits for the shell's signal.
-  With the signal: not yet seen at all. `adb logcat -s PotyroSplash` says how long the splash was
-  held and what ended it.
-- Owed besides: a signed build, an upload to Play, a real phone.
-- Seen there too, with or without the splash hold: reopened within seconds of `am force-stop`, about
-  one start in four said "Potyro is open in another tab".
+- **Pixel 10, Android 17, WebView 157**, this branch merged with the shell change that sets the
+  first-screen signal: 12 cold starts, the splash held 530–690 ms each time and the log said the
+  shell's signal ended it; Home followed with no blank gap, phone in light and in dark; "open in
+  another tab" 0 times in 12. Found there: with Potyro light on a dark phone the bar icons were white
+  on the white page and a dark splash gave way to a white Home — the reason for `PotyroAppearance`
+  above. **`PotyroAppearance` itself has not run on any device yet**: it compiles into the APK and
+  its page script is unit-tested; the four combinations (phone light/dark × Potyro light/dark), a
+  themed app, and the remembered splash are owed on a phone.
+- **Emulator, Android 13, WebView 109, software rendering**, before the signal existed: the debug
+  APK, the unsigned release APK and the release bundle build. The icon shows whole in the launcher's
+  circle, in the light and the dark drawer; the themed icon and the other mask shapes were only
+  rendered from the generated files. Dark splash and Home were seen. The hold then waited for "the
+  root element has children" and ended on a blank page, which is why it waits for the shell's signal.
+  About one start in four right after `am force-stop` said "Potyro is open in another tab", with or
+  without the splash hold; not seen on the phone.
+- `adb logcat -s PotyroSplash` says how long the splash was held and what ended it.
+- Owed besides: a signed build, an upload to Play.
 
 Useful while checking: `adb shell dumpsys alarm | grep -A3 app.potyro` for what is scheduled, and
 `adb shell dumpsys notification --noredact | grep -B4 -A10 "<title>"` for what actually fired. The

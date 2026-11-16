@@ -43,7 +43,7 @@ describe("patch-android", () => {
     const earlier = withPluginRegistered(GENERATED).source.replace(/\n\s*registerPlugin\(SpeechPlugin\.class\);/, "");
     const { source, added } = withPluginRegistered(earlier);
     expect(added).toBe(true);
-    expect(source.match(/registerPlugin\(/g)).toHaveLength(3);
+    expect(source.match(/registerPlugin\(/g)).toHaveLength(4);
   });
 
   it("adds to an onCreate that is already there", () => {

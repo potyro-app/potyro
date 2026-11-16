@@ -97,6 +97,9 @@ describe("brand: colours come from the design tokens", () => {
   it("gives the splash and the window that colour, light and night", () => {
     expect(text("values/potyro_brand.xml")).toContain('<color name="potyro_bg">#FFFFFF</color>');
     expect(text("values-night/potyro_brand.xml")).toContain('<color name="potyro_bg">#1C1B1C</color>');
+    // and both, whatever the phone's theme, for the bars of a Potyro that is not in it (AppearancePlugin)
+    expect(text("values/potyro_brand.xml")).toContain('<color name="potyro_bg_light">#FFFFFF</color>');
+    expect(text("values/potyro_brand.xml")).toContain('<color name="potyro_bg_dark">#1C1B1C</color>');
   });
 
   it("gives the icon the logo's graphite, which is the --ink-soft token", () => {

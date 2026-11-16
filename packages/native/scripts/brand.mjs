@@ -165,7 +165,7 @@ export function brandResources(design) {
   const icon = adaptiveMark(design.circleTile);
   const files = {
     "values/ic_launcher_background.xml": colours({ ic_launcher_background: icon.background }),
-    "values/potyro_brand.xml": colours({ potyro_bg: bg.light, potyro_accent: accent.light }, true),
+    "values/potyro_brand.xml": colours({ potyro_bg: bg.light, potyro_accent: accent.light, potyro_bg_light: bg.light, potyro_bg_dark: bg.dark }, true),
     "values-night/potyro_brand.xml": colours({ potyro_bg: bg.dark, potyro_accent: accent.dark }, false),
     "values/styles.xml": STYLES,
     "mipmap-anydpi-v26/ic_launcher.xml": ADAPTIVE_ICON,

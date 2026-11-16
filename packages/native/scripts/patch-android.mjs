@@ -1,6 +1,7 @@
 // Put Potyro's own Android code into the generated project (android/ is gitignored and regenerated):
 // the `PotyroLocalSocket` plugin — plain ws:// to the LOCAL NETWORK only, docs/28 §6 — the voice
 // plugin (docs/29), and `PotyroKeepAwake` — the screen kept on for `ctx.ui.keepAwake`, docs/04 —
+// and `PotyroAppearance` — the phone's bars and the next splash follow the theme Potyro shows —
 // copied from android-templates/ into MainActivity's package, and registered in MainActivity — and
 // `SplashHold`, which keeps the system splash up until the shell signals its first screen (scripts/brand.mjs draws
 // the splash), called from MainActivity after `super.onCreate`. Idempotent.
@@ -13,10 +14,20 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const TEMPLATES = ["LocalWebSocket.java", "LocalSocketPlugin.java", "SpeechPlugin.java", "KeepAwakePlugin.java", "SplashHold.java"];
+export const TEMPLATES = ["LocalWebSocket.java", "LocalSocketPlugin.java", "SpeechPlugin.java", "KeepAwakePlugin.java", "SplashHold.java", "AppearancePlugin.java"];
 
 /** Potyro's own plugins, registered in MainActivity in this order. */
-export const PLUGINS = ["LocalSocketPlugin", "SpeechPlugin", "KeepAwakePlugin"];
+export const PLUGINS = ["LocalSocketPlugin", "SpeechPlugin", "KeepAwakePlugin", "AppearancePlugin"];
+
+/**
+ * A template as it goes into the project: its package, and the page script AppearancePlugin runs
+ * (android-templates/appearance.js) written in as a Java string — comments and blank lines dropped,
+ * so the file stays readable here and small there. Pure.
+ */
+export function fillTemplate(template, { pkg, appearanceJs }) {
+  const script = appearanceJs.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("//")).join("\n");
+  return template.replaceAll("__PACKAGE__", pkg).replaceAll("__APPEARANCE_JS__", JSON.stringify(script));
+}
 
 /** The package a MainActivity.java declares, or null. Pure. */
 export function packageOf(source) {
@@ -89,7 +100,8 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()
   }
   const dir = dirname(activity);
   mkdirSync(dir, { recursive: true });
-  for (const t of TEMPLATES) writeFileSync(join(dir, t), readFileSync(join(templates, t), "utf8").replaceAll("__PACKAGE__", pkg));
+  const appearanceJs = readFileSync(join(templates, "appearance.js"), "utf8");
+  for (const t of TEMPLATES) writeFileSync(join(dir, t), fillTemplate(readFileSync(join(templates, t), "utf8"), { pkg, appearanceJs }));
   const registered = withPluginRegistered(source);
   const held = withSplashHeld(registered.source);
   if (!held.source.includes(SPLASH_HOLD)) {
