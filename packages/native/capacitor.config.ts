@@ -39,8 +39,9 @@ const config: CapacitorConfig = {
     LocalNotifications: {
       // Exact, offline, app-closed reminders — the deciding native feature (business plan §8.3).
       // Android only; iOS takes its icon from the app.
-      smallIcon: "ic_stat_icon_config_sample",
-      iconColor: "#1f6feb",
+      // The mark, drawn by scripts/brand.mjs from the design package, in the accent (tokens.css --accent).
+      smallIcon: "ic_stat_potyro",
+      iconColor: "#ca2b70",
     },
     CapacitorShareTarget: {
       // iOS only: where the Share Extension leaves what was shared (docs/27 §4.4). Android reads the

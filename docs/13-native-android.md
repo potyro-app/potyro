@@ -85,6 +85,75 @@ type (`@capgo/capacitor-share-target` copies each file into the app's cache) and
 and `file://` (`@capacitor/app` reports it as an opened URL). A manifest patched by an older build, with
 the text-only filter, is upgraded in place. Not yet checked on a device (#254).
 
+## The icon, the splash, the version and signing
+
+Capacitor's template ships its own icon and a splash picture. `scripts/brand.mjs` — run with the
+other patches on every `cap:add`/`cap:sync` — replaces them with Potyro's, built each time from the
+design package (`packages/design/logo`, `tokens.css`), never from a picture kept beside the project:
+
+- **Launcher icon**: the designer's dark symbol tile, the one the favicon wears. Adaptive
+  (Android 8+): graphite background, the mark as foreground exactly where the designer put it in the
+  circle tile, and a one-colour layer for Android 13's themed icons. The mark stays well inside the
+  66dp circle no launcher mask cuts (the script refuses to write one that does not). Android 7 gets
+  the square and the round tile as PNGs, rasterised at each of the five densities.
+- **Splash**: the system one (Android 12+; `core-splashscreen`, already in the template, draws the
+  same on older ones) — the launch theme's `windowSplashScreenBackground`, `…AnimatedIcon` and
+  `postSplashScreenTheme`. Background `--bg` and the mark alone, graphite by day and white by night,
+  then the app's theme with the same colour behind the WebView, which is the colour the shell paints
+  first: no flash. `SplashHold` (`android-templates/`, called from MainActivity by
+  `patch-android.mjs`) keeps the splash until the shell says its first real screen is there
+  (`document.documentElement.dataset.potyroReady === "1"`, asked of the page every 100 ms once it
+  has loaded), and five seconds at most. One limit: a shell that never sets the signal cannot be told
+  from a slow one, so such a shell holds the splash the full five seconds on every start — the
+  shell change that sets it (#48) goes in first. The status and navigation bars wear the same colour.
+  `@capacitor/splash-screen` is not installed; nothing here needs it.
+- **Potyro's own theme, not the phone's.** Potyro has its own light/dark choice, and an app can open
+  in its own theme; Android draws the bar icons and the splash for the phone's. So the page says what
+  it is showing — `android-templates/appearance.js`, run in the page after every load by the
+  `PotyroAppearance` plugin, watching `data-theme` on `<html>` and the phone's theme, never polling —
+  and the app draws the status and navigation bar icons for that (through Capacitor's own
+  `SystemBars`, which puts the style back after a rotation), and colours the bars where Android
+  still lets an app (before 15). Two things about Capacitor decide how the plugin is written. It
+  listens for page loads from `handleOnStart`, not `load()`: plugins load inside the bridge's
+  constructor and the builder then replaces the bridge's list of WebView listeners, so a listener
+  added in `load()` is dropped without a word. And it draws again after every configuration change,
+  because `SystemBars` then repaints the window from the activity's theme, which is the phone's.
+  Each call the plugin receives is one line in the log (tag `PotyroAppearance`: what the page said,
+  what was set), and the page script says once what it found when it started. The **splash** is drawn by the system before any app code runs, so
+  nothing in the app can choose it at that moment: on Android 12+ the person's own choice for Potyro
+  (the Look, read where the shell keeps it) is handed to the system
+  (`UiModeManager.setApplicationNightMode`), which keeps it and uses it for the next start's splash;
+  "the phone decides" hands it back. An app's own theme changes the bars and is never remembered. On
+  Android 7–11 the splash follows the phone. The first start after the choice changed elsewhere (a
+  restored backup, say) still shows the old splash once.
+- **Reminders' status-bar icon** (`ic_stat_potyro`) is the same mark in one colour.
+
+No browser and no image library is involved (`scripts/vector.mjs`, `scripts/png.mjs`), so it runs
+wherever `cap sync` does; `test/brand.test.ts` holds the geometry and the files.
+
+`scripts/release-gradle.mjs` copies `android-templates/potyro.gradle` beside the generated
+`app/build.gradle` and applies it:
+
+- **Version**: `versionName` is the root `package.json` version, `versionCode` that version as one
+  number (major·10000 + minor·100 + patch, never below 1). The build's environment overrides both:
+  `POTYRO_VERSION_NAME`, `POTYRO_VERSION_CODE`. Play wants a code higher than the last upload.
+- **Signing**: a release is signed only when a keystore is named, and nothing about it is in the
+  repository. Set `POTYRO_KEYSTORE`, `POTYRO_KEYSTORE_PASSWORD`, `POTYRO_KEY_ALIAS` and
+  `POTYRO_KEY_PASSWORD`, or keep a properties file outside the repository
+  (`~/.potyro/keystore.properties`, or the path in `POTYRO_KEYSTORE_PROPERTIES`) with `storeFile`,
+  `storePassword`, `keyAlias`, `keyPassword`. With neither, the release still builds, unsigned, and
+  says so.
+
+From the command line, with Studio's own JDK:
+
+```bash
+cd packages/native/android
+export JAVA_HOME=<android-studio>/jbr ANDROID_HOME=$HOME/Android/Sdk
+./gradlew assembleDebug      # app/build/outputs/apk/debug/app-debug.apk
+./gradlew bundleRelease      # app/build/outputs/bundle/release/app-release.aab — what Play takes
+./gradlew assembleRelease    # app/build/outputs/apk/release/app-release(-unsigned).apk
+```
+
 ## Build tools: pinned to what Android Studio here can open
 
 `cap add android` writes whatever the installed Capacitor ships with — currently **AGP 8.13 / Gradle
@@ -126,6 +195,39 @@ POTYRO_AGP=8.13.0 POTYRO_GRADLE=8.14.3 pnpm cap:sync  # or pin somewhere else
   (`camera`, or `photos` when picking from the library), so no storage permission is declared:
   declaring one to take a photo would be asking for every photo on the phone.
 - Still unchecked on a device: store builds.
+
+2026-11-16, debug builds:
+
+- **Pixel 10, Android 17, WebView 157**, this branch merged with the shell change that sets the
+  first-screen signal: 12 cold starts, the splash held 530–690 ms each time and the log said the
+  shell's signal ended it; Home followed with no blank gap, phone in light and in dark; "open in
+  another tab" 0 times in 12. Found there: with Potyro light on a dark phone the bar icons were white
+  on the white page and a dark splash gave way to a white Home — the reason for `PotyroAppearance`
+  above. The first `PotyroAppearance` then did nothing on this phone: registered, never heard from
+  (the dropped listener, above). **The corrected plugin has not been checked on the phone yet**; the
+  four combinations, a themed app and the remembered splash are owed there, on Android 17.
+- **Emulator, Android 15 (API 35), WebView 124, software rendering**, the corrected plugin, this
+  branch merged with main, looked at in screenshots with the log beside them. With the listener in
+  `load()`: no line from the page script or the plugin, and a light Home under a dark bar strip.
+  Corrected: phone dark × Potyro light, phone dark × Potyro dark, phone light × Potyro dark, phone
+  light × Potyro light, each after choosing it in Look and after a cold start — dark icons on the
+  light page, light icons on the dark page, eight of eight. The next start's splash followed the
+  remembered Look in both crossed cases (light splash on a dark phone, dark splash on a light one).
+  "The phone decides" followed the phone again when its theme was switched with Potyro open. Found
+  on the way: handing the Look to the system is itself a configuration change, and Capacitor's
+  `SystemBars` answered it by painting the window dark behind dark icons — hence the redraw. An
+  install over the earlier build with Potyro already light: one dark splash (the system had not been
+  told yet), a correct Home, and a light splash from the second start. Not seen here: an app with
+  its own theme, and Android 16/17's bars.
+- **Emulator, Android 13, WebView 109, software rendering**, before the signal existed: the debug
+  APK, the unsigned release APK and the release bundle build. The icon shows whole in the launcher's
+  circle, in the light and the dark drawer; the themed icon and the other mask shapes were only
+  rendered from the generated files. Dark splash and Home were seen. The hold then waited for "the
+  root element has children" and ended on a blank page, which is why it waits for the shell's signal.
+  About one start in four right after `am force-stop` said "Potyro is open in another tab", with or
+  without the splash hold; not seen on the phone.
+- `adb logcat -s PotyroSplash` says how long the splash was held and what ended it.
+- Owed besides: a signed build, an upload to Play.
 
 Useful while checking: `adb shell dumpsys alarm | grep -A3 app.potyro` for what is scheduled, and
 `adb shell dumpsys notification --noredact | grep -B4 -A10 "<title>"` for what actually fired. The
