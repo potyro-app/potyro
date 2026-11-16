@@ -51,13 +51,19 @@ export interface SplashProps {
    * runs it says so, and if it fails the reason replaces the old one.
    */
   action?: { label: string; run: () => Promise<void> };
+  /**
+   * A sealed app that was open when Potyro last stopped working on this device (a tab that crashed or
+   * froze, #90): it is not started again by itself. Not an error and not a verdict — the screen says
+   * what happened and `start` starts it.
+   */
+  paused?: { start: () => void };
 }
 
 /** Read a declaration out of an app's source without running it — the trick `examples.ts` uses. */
 const declared = (source: string | undefined, key: string): string | undefined =>
   source ? (new RegExp(`^\\s*${key}:\\s*"([^"]+)"`, "m").exec(source)?.[1] ?? undefined) : undefined;
 
-export function Splash({ id, name, source, icon, verb = "Opening", failed, notFound, promote, action }: SplashProps) {
+export function Splash({ id, name, source, icon, verb = "Opening", failed, notFound, promote, action, paused }: SplashProps) {
   const [busy, setBusy] = useState(false);
   const [actionFailed, setActionFailed] = useState<string | null>(null);
   // The launcher's entry carries what THIS device calls the app — a nickname, another emoji, a
@@ -85,7 +91,23 @@ export function Splash({ id, name, source, icon, verb = "Opening", failed, notFo
           </span>
         )}
         <p className="k-splash-name">{entry?.displayName ?? name}</p>
-        {failed ? (
+        {paused ? (
+          <>
+            <p className="k-splash-why k-splash-paused">
+              <Trans comment="Shown instead of opening a shared app, after the browser tab crashed or froze the last time this app was open. Calm: it may or may not have been the app's doing.">
+                Potyro stopped working the last time this app was open, so it has not been started. What you saved in it is still here.
+              </Trans>
+            </p>
+            <div className="k-splash-actions">
+              <button type="button" className="k-add k-primary-action" onClick={paused.start}>
+                <Trans comment="A button: start an app that Potyro did not start by itself">Start it</Trans>
+              </button>
+              <button type="button" className="k-add" onClick={() => navigateTo({ kind: "home" })}>
+                <Trans>Back to my apps</Trans>
+              </button>
+            </div>
+          </>
+        ) : failed ? (
           <>
             {/* A 404 is not a failure of the app's: no "it could not open", only what happened. */}
             {notFound ? null : (

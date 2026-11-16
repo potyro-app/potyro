@@ -2032,6 +2032,7 @@ msgid "Back to a working page"
 msgstr "Voltar pra uma página que funciona"
 
 #: ../shell/src/splash.tsx
+#: ../shell/src/splash.tsx
 msgid "Back to my apps"
 msgstr "Voltar pros meus apps"
 
@@ -5905,6 +5906,11 @@ msgstr "A IA grátis do Potyro acabou para todo mundo por enquanto. Volta no mê
 msgid "Potyro's free AI is used up for everyone for now. It's back tomorrow, or add your own OpenRouter key in Model settings."
 msgstr "A IA grátis do Potyro acabou para todo mundo por enquanto. Volta amanhã, ou coloca sua chave do OpenRouter nos ajustes do modelo."
 
+#. Shown instead of opening a shared app, after the browser tab crashed or froze the last time this app was open. Calm: it may or may not have been the app's doing.
+#: ../shell/src/splash.tsx
+msgid "Potyro stopped working the last time this app was open, so it has not been started. What you saved in it is still here."
+msgstr "O Potyro parou de funcionar na última vez em que este app esteve aberto, então ele não foi iniciado. O que você salvou nele continua aqui."
+
 #. Edit tile, Live connections: Potyro's own relay where apps play together
 #: ../shell/src/live-connections-setting.tsx
 msgid "Potyro’s rooms"
@@ -6864,6 +6870,11 @@ msgstr "Começar um app novo"
 #: ../shell/src/free-panel.tsx
 msgid "Start from an app in the gallery"
 msgstr "Começar com um app da galeria"
+
+#. A button: start an app that Potyro did not start by itself
+#: ../shell/src/splash.tsx
+msgid "Start it"
+msgstr "Iniciar"
 
 #. A button on the notice of a paused app: run the app again
 #: ../shell/src/rest-banner.tsx

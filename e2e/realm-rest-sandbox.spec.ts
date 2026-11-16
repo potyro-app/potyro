@@ -67,3 +67,35 @@ test("an app stopped three times in a row rests, says so, and starts again when 
   await expect(row.locator(".k-secondary")).toHaveText("KEPT!", { timeout: 15_000 });
   await expect(page.locator("#potyro-realms iframe")).toHaveCount(1);
 });
+
+test("an app that was open when a tab died is not started again by itself", async ({ page }) => {
+  // What a tab that crashed or froze leaves behind: its marker for the app it had open, never
+  // refreshed again. (The browser ends a tab whose shared app keeps memory without end where the
+  // app's frame shares the page's process — measured in docs/22 §7.1; a spec must not do that to
+  // the machine it runs on.)
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("planted")) return;
+    sessionStorage.setItem("planted", "1");
+    localStorage.setItem("potyro:sealed-open:mark:deadtab:1", JSON.stringify({ app: "keeps-stopping", page: "app", at: Date.now() - 60_000 }));
+  });
+  await page.addInitScript(
+    ([s]) => {
+      localStorage.setItem("potyro:user-apps", JSON.stringify([{ id: "keeps-stopping", name: "Keeps stopping", source: s, trusted: false, updatedAt: new Date().toISOString() }]));
+    },
+    [KEEPS_STOPPING] as const,
+  );
+  await page.goto("/?user=keeps-stopping");
+  const splash = page.locator(".k-splash");
+  await expect(splash).toContainText("Potyro stopped working the last time this app was open, so it has not been started. What you saved in it is still here.", { timeout: 30_000 });
+  // None of its code has run: no realm was made for it.
+  await expect(page.locator("#potyro-realms iframe")).toHaveCount(0);
+
+  await splash.getByRole("button", { name: "Start it" }).click();
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
+  await expect(page.locator("#potyro-realms iframe")).toHaveCount(1);
+  // Open and on screen, it is marked; the old tab's marker is gone.
+  const marks = await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("potyro:sealed-open:mark:")));
+  expect(marks).toHaveLength(1);
+  expect(marks[0]).not.toContain("deadtab");
+  expect(await page.evaluate(() => localStorage.getItem("potyro:sealed-open:off"))).toBeNull();
+});

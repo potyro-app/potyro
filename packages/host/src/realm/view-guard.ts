@@ -75,6 +75,12 @@ export interface ViewGuardOptions {
   now?: () => number;
   /** This page load's own id: its markers are its own watchdog's business, never "stale". */
   loadId?: string;
+  /**
+   * Another thing guarded the same way, under its own keys: the shell marks a sealed app as open with
+   * these (#90), so a tab that dies with one open does not walk into it again at the next start.
+   * Default: the sealed views' (`MARK_PREFIX`, `OFF_KEY`).
+   */
+  keys?: { mark: string; off: string };
 }
 
 export class ViewGuard {
@@ -82,11 +88,15 @@ export class ViewGuard {
   private readonly fallback = memoryStorage();
   private readonly now: () => number;
   private readonly loadId: string;
+  private readonly markPrefix: string;
+  private readonly offKey: string;
   private seq = 0;
 
   constructor(opts: ViewGuardOptions = {}) {
     this.now = opts.now ?? Date.now;
     this.loadId = opts.loadId ?? Math.random().toString(36).slice(2, 10);
+    this.markPrefix = opts.keys?.mark ?? MARK_PREFIX;
+    this.offKey = opts.keys?.off ?? OFF_KEY;
     let storage = opts.storage;
     if (storage === undefined) {
       try {
@@ -126,7 +136,7 @@ export class ViewGuard {
       try {
         for (let i = 0; i < s.length; i++) {
           const k = s.key(i);
-          if (k && k.startsWith(MARK_PREFIX)) out.push(k);
+          if (k && k.startsWith(this.markPrefix)) out.push(k);
         }
       } catch {
         /* unreadable storage has no markers */
@@ -138,7 +148,7 @@ export class ViewGuard {
   /** Every app whose views are off on this device, by app. */
   offList(): Record<string, OffEntry> {
     try {
-      const raw = this.get(OFF_KEY);
+      const raw = this.get(this.offKey);
       const parsed = raw ? (JSON.parse(raw) as unknown) : null;
       return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, OffEntry>) : {};
     } catch {
@@ -154,7 +164,7 @@ export class ViewGuard {
     const turned: string[] = [];
     const t = this.now();
     for (const key of this.keys()) {
-      if (key.startsWith(`${MARK_PREFIX}${this.loadId}:`)) continue;
+      if (key.startsWith(`${this.markPrefix}${this.loadId}:`)) continue;
       let mark: Marker | null = null;
       try {
         mark = JSON.parse(this.get(key) ?? "null") as Marker | null;
@@ -181,7 +191,7 @@ export class ViewGuard {
   turnOff(app: string, page: string, why: string): void {
     const off = this.offList();
     off[app] = { page, at: this.now(), why };
-    this.set(OFF_KEY, JSON.stringify(off));
+    this.set(this.offKey, JSON.stringify(off));
   }
 
   /** "Try its screen again": the person asked, so the next mount goes ahead. */
@@ -189,13 +199,13 @@ export class ViewGuard {
     const off = this.offList();
     if (!(app in off)) return;
     delete off[app];
-    if (Object.keys(off).length) this.set(OFF_KEY, JSON.stringify(off));
-    else this.remove(OFF_KEY);
+    if (Object.keys(off).length) this.set(this.offKey, JSON.stringify(off));
+    else this.remove(this.offKey);
   }
 
   /** A view of `app` is about to mount: the marker is written now, before any of its code runs. */
   mounting(app: string, page: string): MountMark {
-    const key = `${MARK_PREFIX}${this.loadId}:${++this.seq}`;
+    const key = `${this.markPrefix}${this.loadId}:${++this.seq}`;
     let written = 0;
     let state: "live" | "paused" | "done" = "live";
     const write = () => {

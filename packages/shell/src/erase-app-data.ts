@@ -29,6 +29,9 @@ export interface EraseAppDataDeps {
 /** The apps whose database is still owed its removal: deleted while open, or while the tab was going. */
 const OWED = "potyro:erase-owed";
 
+/** `OPEN_OFF_KEY` of sealed-open-guard.ts, said again here so this module does not load the realm's. */
+export const SEALED_OPEN_OFF = "potyro:sealed-open:off";
+
 /** The apps open in this tab right now (`bootUserApp` says). A deleted app's file waits for its close. */
 const open = new Set<string>();
 
@@ -59,6 +62,18 @@ export async function eraseAppData(appId: string, deps: EraseAppDataDeps = {}): 
     } catch {
       /* storage that cannot be written cannot have held the app either */
     }
+  }
+  // ...and the note that it was paused after a tab died with it open: one entry in a map every
+  // sealed app shares (sealed-open-guard.ts `OPEN_OFF_KEY`). The same app added again starts clean.
+  try {
+    const paused = JSON.parse(storage?.getItem(SEALED_OPEN_OFF) ?? "null") as Record<string, unknown> | null;
+    if (paused && typeof paused === "object" && appId in paused) {
+      delete paused[appId];
+      if (Object.keys(paused).length) storage?.setItem(SEALED_OPEN_OFF, JSON.stringify(paused));
+      else storage?.removeItem(SEALED_OPEN_OFF);
+    }
+  } catch {
+    /* an unreadable note is no note */
   }
   owe(appId, deps);
   await settleOwed(deps);
