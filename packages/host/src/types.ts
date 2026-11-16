@@ -241,8 +241,24 @@ export interface LoadedApp {
    * mediated ctx as the app's logic.
    */
   sealedView?(pageRef: string): SealedView | null;
+  /**
+   * Present on the browser realm's apps (#90, docs/22 §7.1): the app at rest. A sealed app the
+   * watchdog had to stop several times in a row is not started again by itself; the shell says so and
+   * offers to start it again.
+   */
+  rest?: AppRest;
 
   dispose(): void;
+}
+
+/** A sealed app the host stopped and will not start again by itself. */
+export interface AppRest {
+  /** Stopped several times in a row, and not started again until `wake`. Calls meanwhile fail as "stopped". */
+  resting(): boolean;
+  /** Hear it go to rest, and wake. Returns the way to stop hearing. */
+  subscribe(listener: () => void): () => void;
+  /** The person chose to start it again. */
+  wake(): void;
 }
 
 /** Why a sealed view was taken down: it stopped answering, or it blocked the page's own thread. */

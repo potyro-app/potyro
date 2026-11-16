@@ -6865,6 +6865,11 @@ msgstr "Começar um app novo"
 msgid "Start from an app in the gallery"
 msgstr "Começar com um app da galeria"
 
+#. A button on the notice of a paused app: run the app again
+#: ../shell/src/rest-banner.tsx
+msgid "Start it again"
+msgstr "Iniciar de novo"
+
 #: ../shell/src/ask-panel.tsx
 #: ../views/src/steps.tsx
 msgid "Start over"
@@ -7737,6 +7742,11 @@ msgstr "Este app não está salvo neste aparelho, então não dá pra mudar aqui
 #: ../shell/src/inline-edit.tsx
 msgid "This app isn't written in a way that can be changed in place."
 msgstr "Este app não foi escrito de um jeito que dê pra mudar direto na tela."
+
+#. A notice at the top of a shared app that Potyro had to stop several times in a row (it froze or used too much memory) and has now paused. Calm, not an error.
+#: ../shell/src/rest-banner.tsx
+msgid "This app stopped several times in a row, so Potyro paused it. What you saved in it is still here."
+msgstr "Este app parou várias vezes seguidas, então o Potyro o pausou. O que você salvou nele continua aqui."
 
 #: ../shell/src/open-store.ts
 msgid "This app’s data is open in another Potyro tab or window, so it cannot be opened here as well. Close it there, then try again."

@@ -275,6 +275,10 @@ export interface LoadedApp {
   customViewMount?(viewId: string): CustomViewMount | null; // trusted only, the `mount` form
   // A sealed app's custom view, drawn in a sandboxed frame of its own (#267): the realm's apps only.
   sealedView?(pageRef: string): SealedView | null;
+  // A sealed app the watchdog stopped several times in a row is not started again by itself (#90,
+  // docs/22 §7.1): `resting()`, `subscribe(listener)`, `wake()`. The realm's apps only; the shell
+  // shows a notice with "Start it again", and calls meanwhile fail as "stopped".
+  rest?: AppRest;
   dispose(): void;
 }
 

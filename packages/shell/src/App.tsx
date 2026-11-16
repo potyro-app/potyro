@@ -58,6 +58,7 @@ import { ShareSheet } from "./share-sheet.js";
 import { takeStudioHandoff } from "./studio-handoff.js";
 import { canRemix, RemixDialog } from "./remix.js";
 import { LockBanner, WRITE_CONTROLS, useAppLock, type AppLock } from "./app-lock.js";
+import { RestBanner } from "./rest-banner.js";
 import { isRtl, languageName, languageNote, shownName } from "./app-words.js";
 import { languagePrefs } from "./locale.js";
 import { optionLabel } from "@potyro/views";
@@ -1245,6 +1246,8 @@ export function App({ runtime, provenance, toaster, appId, name, appAccent, them
         fullscreen={fullscreen ? { onExit: exitFullscreen } : undefined}
       >
       {locked ? <LockBanner state={locked} /> : null}
+      {/* A sealed app the host stopped several times in a row (#90): it says so, and waits to be started again. */}
+      <RestBanner app={runtime.core.app} onWake={() => runtime.core.invalidate()} />
       {/* In the page's flow, so it never covers a question (trust, a permission) and takes no tap
           meant for the page. Not over a map that fills the page; a full-screen page has no chrome at all. */}
       {guideCard && guide.length > 0 && !fullscreen && !(pageView?.type === "map" && !currentPage?.layout) ? <GuideCard steps={guide} onClose={closeGuideCard} /> : null}

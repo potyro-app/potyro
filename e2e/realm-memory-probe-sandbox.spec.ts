@@ -18,13 +18,16 @@ import { REALM_CSP } from "../packages/host/src/realm/protocol.js";
 //   - a run that is meant to reach the end of memory does so inside a cgroup of its own
 //     (`systemd-run --user --scope -p MemoryMax=…`, swap off): the kernel ends a process of THAT
 //     browser at the cgroup's limit, which is what a phone or a full laptop does to a tab, without
-//     the machine itself ever being short. Where systemd-run is not there, those runs skip.
+//     the machine itself ever being short (`OOMPolicy=continue`: systemd would otherwise end the
+//     whole browser for the one process the kernel chose). Where systemd-run is not there, those skip.
 //   - the engines' own heap limits are reached cheaply by lowering them (`--max-old-space-size`,
 //     `javascript.options.mem.max`): who dies and what the page hears is the same at 256 MB as at 4 GB.
 //
 // Each run prints one `REALM_MEM {json}` line; docs/22 §7.1 is written from those.
 
 const ON = Boolean(process.env.POTYRO_REALM_MEMORY);
+/** `POTYRO_REALM_MEMORY=1` runs every one; any other value is a pattern for the runs' names (`cgroup|frame`). */
+const ONLY = ON && process.env.POTYRO_REALM_MEMORY !== "1" ? new RegExp(String(process.env.POTYRO_REALM_MEMORY), "i") : null;
 const MB = 1024 * 1024;
 const GB = 1024 * MB;
 
@@ -36,6 +39,12 @@ interface Run {
   /** Stop here if nothing refused first (bytes, estimated for objects). */
   ceiling: number;
   timeLimitMs: number;
+  /**
+   * How long without a beat ends the run as "silent" (default 3 s). A heap of gigabytes near its limit
+   * stops the world for seconds at a time to collect: that is silence too, and the product's own
+   * watchdog ends a realm after one second of it — but it is not yet the engine's answer.
+   */
+  silenceMs?: number;
 }
 
 /** Runs in the Worker, or — evaluated as is — on a frame's main thread. Plain script. */
@@ -116,6 +125,8 @@ interface Outcome {
   frameAnswers: boolean;
   /** The page's largest event-loop gap during the run (ms). */
   shellGapMs: number;
+  /** The longest the realm went without a beat (ms): the product's watchdog ends a realm at 1000. */
+  longestSilenceMs: number;
   ms: number;
 }
 
@@ -136,6 +147,7 @@ async function probe(page: Page, cfg: Run): Promise<Outcome> {
       const control = new MessageChannel();
       const started = performance.now();
       let lastBeat = started;
+      let longestSilence = 0;
       let lastBytes = 0;
       let lastHeap: number | null = null;
       let done: Outcome["done"];
@@ -151,6 +163,7 @@ async function probe(page: Page, cfg: Run): Promise<Outcome> {
       }, 10);
       app.port1.onmessage = (e) => {
         const m = e.data as { t: string; bytes?: number; heap?: number | null; facts?: Record<string, unknown> };
+        longestSilence = Math.max(longestSilence, performance.now() - lastBeat);
         lastBeat = performance.now();
         if (m.t === "up") facts = m.facts;
         if (m.t === "hb") {
@@ -174,7 +187,8 @@ async function probe(page: Page, cfg: Run): Promise<Outcome> {
           end = "done";
           break;
         }
-        if (t - lastBeat > 3000) {
+        if (t - lastBeat > (cfg.silenceMs ?? 3000)) {
+          longestSilence = Math.max(longestSilence, t - lastBeat);
           end = "silent";
           break;
         }
@@ -197,7 +211,7 @@ async function probe(page: Page, cfg: Run): Promise<Outcome> {
       });
       clearInterval(meter);
       iframe.remove();
-      return { end, done, facts, lastBytes, lastHeap, workerError, beatsAfter, frameAnswers, shellGapMs: Math.round(gap), ms };
+      return { end, done, facts, lastBytes, lastHeap, workerError, beatsAfter, frameAnswers, shellGapMs: Math.round(gap), longestSilenceMs: Math.round(longestSilence), ms };
     },
     { cfg, csp: REALM_CSP, frameSource: FRAME_SOURCE, growSource: GROW_SOURCE },
   );
@@ -214,7 +228,7 @@ function boxed(real: string, maxBytes: number): string | null {
   if (!existsSync(real)) return null;
   const dir = mkdtempSync(join(tmpdir(), "potyro-realm-mem-"));
   const script = join(dir, "browser.sh");
-  writeFileSync(script, `#!/bin/sh\nexport XDG_RUNTIME_DIR=${runtimeDir}\nexec systemd-run --user --scope -q -p MemoryMax=${maxBytes} -p MemorySwapMax=0 ${JSON.stringify(real)} "$@"\n`);
+  writeFileSync(script, `#!/bin/sh\nexport XDG_RUNTIME_DIR=${runtimeDir}\nexec systemd-run --user --scope -q -p MemoryMax=${maxBytes} -p MemorySwapMax=0 -p OOMPolicy=continue ${JSON.stringify(real)} "$@"\n`);
   chmodSync(script, 0o755);
   return script;
 }
@@ -239,7 +253,7 @@ const endOfMemory: Run[] = [
   { kind: "buffers", where: "frame", ceiling: 6 * GB, timeLimitMs: 120_000 },
 ];
 /** In a 6 GB cgroup, the engine's own heap limit as shipped: objects until it refuses or the cgroup does. */
-const ownLimit: Run[] = [{ kind: "objects", where: "worker", ceiling: 8 * GB, timeLimitMs: 180_000 }];
+const ownLimit: Run[] = [{ kind: "objects", where: "worker", ceiling: 8 * GB, timeLimitMs: 150_000, silenceMs: 60_000 }];
 
 const firefoxLow = { "javascript.options.mem.max": LOW_HEAP_MB, "dom.workers.options.mem.max": LOW_HEAP_MB };
 
@@ -299,12 +313,13 @@ async function outOfProcessFrames(browser: Browser): Promise<number | null> {
 
 test.describe("what an engine does when a sealed app keeps memory without end (#90)", () => {
   test.skip(!ON, "a measurement: POTYRO_REALM_MEMORY=1 runs it (docs/22 §7.1)");
-  test.describe.configure({ mode: "serial" });
 
   for (const config of CONFIGS) {
     for (const run of config.runs) {
-      test(`${config.name}: ${run.kind} in the ${run.where}`, async ({ baseURL }, testInfo) => {
-        test.setTimeout(run.timeLimitMs + 90_000);
+      const title = `${config.name}: ${run.kind} in the ${run.where}`;
+      test(title, async ({ baseURL }, testInfo) => {
+        test.skip(ONLY !== null && !ONLY.test(title), "not asked for this time");
+        test.setTimeout(run.timeLimitMs + (run.silenceMs ?? 3000) + 90_000);
         const options = config.launch();
         test.skip(options === null, "no memory cgroup can be made here (systemd-run --user --scope)");
         const browser = await config.engine.launch(options ?? undefined);
@@ -319,16 +334,22 @@ test.describe("what an engine does when a sealed app keeps memory without end (#
           // work would be in the measurement.
           await page.route("**/realm-memory-probe", (route) => route.fulfill({ contentType: "text/html", body: "<!doctype html><title>probe</title>" }));
           await page.goto(`${baseURL}/realm-memory-probe`);
-          const running = probe(page, run).then(
-            (outcome) => ({ outcome }),
-            (error: unknown) => ({ error: String(error instanceof Error ? error.message : error).split("\n")[0] }),
-          );
+          // The page may never answer again (a frame that shares its thread and its heap): that is a
+          // result, not a hung test.
+          const patience = run.timeLimitMs + (run.silenceMs ?? 3000) + 20_000;
+          const running = Promise.race([
+            probe(page, run).then(
+              (outcome) => ({ outcome }),
+              (error: unknown) => ({ error: String(error instanceof Error ? error.message : error).split("\n")[0] }),
+            ),
+            new Promise<{ pageHung: true }>((r) => setTimeout(() => r({ pageHung: true }), patience)),
+          ]);
           const early = await Promise.race([running, new Promise<null>((r) => setTimeout(() => r(null), 1500))]);
           if (!early && !crashed && !gone) seen.outOfProcessFrames = await outOfProcessFrames(browser);
           const result = await running;
           Object.assign(seen, result, { pageCrashed: crashed, browserGone: gone });
           // The page itself: does it still run script?
-          if (!gone) seen.pageAnswersAfter = await Promise.race([page.evaluate(() => 1 + 1).then((v) => v === 2, () => false), new Promise<boolean>((r) => setTimeout(() => r(false), 5000))]);
+          if (!gone && !("pageHung" in result)) seen.pageAnswersAfter = await Promise.race([page.evaluate(() => 1 + 1).then((v) => v === 2, () => false), new Promise<boolean>((r) => setTimeout(() => r(false), 5000))]);
         } finally {
           console.log(`REALM_MEM ${JSON.stringify(seen)}`);
           await testInfo.attach("realm-memory", { body: JSON.stringify(seen, null, 2), contentType: "application/json" });

@@ -4,6 +4,9 @@ export interface Toast {
   msg: string;
 }
 
+/** Toasts on screen at once; an older one makes room. */
+export const MAX_TOASTS = 4;
+
 export class Toaster {
   private toasts: Toast[] = [];
   private listeners = new Set<() => void>();
@@ -11,7 +14,8 @@ export class Toaster {
 
   push = (msg: string): void => {
     const toast = { id: ++this.seq, msg };
-    this.toasts = [...this.toasts, toast];
+    // The newest few: an app that toasts in a loop gets a short stack, not one as long as its loop (#90).
+    this.toasts = [...this.toasts.slice(-(MAX_TOASTS - 1)), toast];
     this.emit();
     setTimeout(() => this.dismiss(toast.id), 2600);
   };

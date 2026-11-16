@@ -3714,6 +3714,10 @@ th.k-data-raw {
 .k-sealed-retry {
   margin-left: auto;
 }
+/* A sealed app at rest (#90): the same calm notice, above the page it paused. */
+.k-rest-notice {
+  margin: var(--space-3) var(--space-4) 0;
+}
 
 /* The sealed-screen device check (#267): read at arm's length on a phone. */
 .k-probe {

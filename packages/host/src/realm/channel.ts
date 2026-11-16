@@ -19,6 +19,8 @@ export interface Channel {
   pinnedBy: Map<number, number>;
   /** Prefix of this port's progress ids in the host's table. */
   progress: string;
+  /** This port sent more than a realm may in one go (limits.ts): stop what is behind it. */
+  flood?(reason: string): void;
   /** A view's port only: the `Runtime` calls of `ViewProps.runtime` that are not ctx methods. */
   viewOp?(op: ViewOp, args: unknown[]): Promise<unknown>;
   /** What an answer becomes before it crosses (a view's file and picture URLs: their bytes). */
