@@ -80,10 +80,10 @@ describe("passing a connection through", () => {
       const taken = await until(() => g.stats().bytesUp === sent, 300).then(() => true, () => false);
       if (!taken) break;
     }
-    const took = g.stats().bytesUp;
-    expect(took).toBeGreaterThan(0);
     a.socket.resetAndDestroy(); // gone at once: a phone off the network, a killed tab
     await until(() => g.stats().connections === 0);
+    const took = g.stats().bytesUp; // read once the connection is over: nothing more is taken after
+    expect(took).toBeGreaterThan(0);
     relay.sockets[0]!.resume();
     await until(() => relay.got().length >= took || relay.sockets[0]!.destroyed, 5000);
     expect(relay.got().length).toBe(took);
@@ -486,11 +486,22 @@ describe("the limiter's own memory", () => {
     const relay = await fakeRelay();
     const { url, gate: g } = await gate(relay, { limits: { bytesPerSecond: 1_000, byteBurst: 1_000 } });
     const a = await open(url, from("9.9.9.9"));
+    const before = g.stats().bytesUp;
     a.ws.send(Buffer.alloc(4_000_000));
-    await new Promise((r) => setTimeout(r, 400));
-    // Far less than the message has passed the gate; the rest waits in the sender, held by TCP.
-    expect(g.stats().bytesUp).toBeLessThan(1_500_000);
-    expect(a.ws.bufferedAmount).toBeGreaterThan(1_000_000);
+    // The first read put the address far into debt: from then on the gate does not read it.
+    await until(() => g.stats().heldMs > 0);
+    const taken = g.stats().bytesUp - before;
+    // What the gate took is what one read brings, whatever the message's length. It writes on what
+    // it takes at once and keeps none, so this is all of the message that is, or ever was, in it.
+    // Where the rest waits is not the gate's to say and not asserted: in the sender or in the
+    // kernel's socket buffers, which hold megabytes on one machine and not on the next.
+    expect(taken).toBeGreaterThan(0);
+    expect(taken).toBeLessThanOrEqual(2 * 65_536);
+    // And it stays so while the hold lasts (a minute, at this rate): a wait can only miss a fault here, never make one.
+    await new Promise((r) => setTimeout(r, 300));
+    expect(g.stats().bytesUp - before).toBe(taken);
+    expect(relay.got.length).toBe(0); // the message is not whole at the relay either
+    expect(a.ws.readyState).toBe(1);
   });
 });
 
