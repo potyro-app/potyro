@@ -81,6 +81,12 @@ export interface ViewGuardOptions {
    * Default: the sealed views' (`MARK_PREFIX`, `OFF_KEY`).
    */
   keys?: { mark: string; off: string };
+  /**
+   * A marker last refreshed longer ago than this is forgotten, not counted: a tab that died that
+   * long ago was more likely a power cut, a sleep or a browser restart than something the person is
+   * walking back into. Default: never forgotten (the sealed views').
+   */
+  forgetAfterMs?: number;
 }
 
 export class ViewGuard {
@@ -90,6 +96,7 @@ export class ViewGuard {
   private readonly loadId: string;
   private readonly markPrefix: string;
   private readonly offKey: string;
+  private readonly forgetAfterMs: number;
   private seq = 0;
 
   constructor(opts: ViewGuardOptions = {}) {
@@ -97,6 +104,7 @@ export class ViewGuard {
     this.loadId = opts.loadId ?? Math.random().toString(36).slice(2, 10);
     this.markPrefix = opts.keys?.mark ?? MARK_PREFIX;
     this.offKey = opts.keys?.off ?? OFF_KEY;
+    this.forgetAfterMs = opts.forgetAfterMs ?? Number.POSITIVE_INFINITY;
     let storage = opts.storage;
     if (storage === undefined) {
       try {
@@ -177,6 +185,7 @@ export class ViewGuard {
       }
       if (t - Number(mark.at) <= MARK_STALE_MS) continue; // another tab, alive
       this.remove(key);
+      if (t - Number(mark.at) > this.forgetAfterMs) continue; // too long ago to mean anything
       this.turnOff(mark.app, String(mark.page), "a tab stopped responding, or closed, while this app's screen was showing");
       turned.push(mark.app);
     }

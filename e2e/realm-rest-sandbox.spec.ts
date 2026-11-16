@@ -99,3 +99,94 @@ test("an app that was open when a tab died is not started again by itself", asyn
   expect(marks[0]).not.toContain("deadtab");
   expect(await page.evaluate(() => localStorage.getItem("potyro:sealed-open:off"))).toBeNull();
 });
+
+// ─── when the notice may show: only a page that died while it was SHOWING the app ────────────────
+//
+// A phone ends background tabs all day with no word to the page, and a shared app is what every
+// shared app is: coming back to one must never read as "Potyro stopped working". The marker is taken
+// away the moment the page is hidden or put away, so only a page that died on screen leaves one.
+
+const PAUSED = "Potyro stopped working the last time this app was open, so it has not been started.";
+const MARKS = () => Object.keys(localStorage).filter((k) => k.startsWith("potyro:sealed-open:mark:"));
+
+/** The app in every page of the context, as a shared app on this device. */
+async function shared(context: import("@playwright/test").BrowserContext): Promise<void> {
+  await context.addInitScript(
+    ([s]) => {
+      localStorage.setItem("potyro:user-apps", JSON.stringify([{ id: "keeps-stopping", name: "Keeps stopping", source: s, trusted: false, updatedAt: new Date().toISOString() }]));
+    },
+    [KEEPS_STOPPING] as const,
+  );
+}
+
+/** End the page's process as the system does: no unload, no event, nothing runs. */
+async function kill(page: import("@playwright/test").Page): Promise<void> {
+  const cdp = await page.context().newCDPSession(page);
+  const crashed = page.waitForEvent("crash");
+  void cdp.send("Page.crash").catch(() => {});
+  await crashed;
+}
+
+/** A later visit, in a new tab: whatever the dead tab left is by now older than a live tab's would be. */
+async function comeBack(context: import("@playwright/test").BrowserContext): Promise<import("@playwright/test").Page> {
+  const page = await context.newPage();
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("aged")) return;
+    sessionStorage.setItem("aged", "1");
+    for (const key of Object.keys(localStorage)) {
+      if (!key.startsWith("potyro:sealed-open:mark:")) continue;
+      const mark = JSON.parse(localStorage.getItem(key) ?? "null") as { at: number } | null;
+      if (mark) localStorage.setItem(key, JSON.stringify({ ...mark, at: mark.at - 60_000 }));
+    }
+  });
+  await page.goto("/?user=keeps-stopping");
+  return page;
+}
+
+test("a tab the system ended in the background, healthy, comes back with no notice", async ({ page, context, browserName }) => {
+  test.skip(browserName !== "chromium", "ending a page's process without unload needs CDP");
+  await shared(context);
+  await page.goto("/?user=keeps-stopping");
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
+  expect(await page.evaluate(MARKS)).toHaveLength(1);
+  // The person switches away: the page is hidden, as the browser tells it.
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(await page.evaluate(MARKS)).toEqual([]);
+  await kill(page);
+
+  const back = await comeBack(context);
+  await expect(back.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
+  await expect(back.getByText(PAUSED)).toHaveCount(0);
+  expect(await back.evaluate(() => localStorage.getItem("potyro:sealed-open:off"))).toBeNull();
+});
+
+test("a tab that died while it was showing the app: the app is not started by itself", async ({ page, context, browserName }) => {
+  test.skip(browserName !== "chromium", "ending a page's process without unload needs CDP");
+  await shared(context);
+  await page.goto("/?user=keeps-stopping");
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
+  await kill(page);
+
+  const back = await comeBack(context);
+  await expect(back.locator(".k-splash")).toContainText(PAUSED, { timeout: 30_000 });
+  await expect(back.locator("#potyro-realms iframe")).toHaveCount(0);
+});
+
+test("leaving the app's page and coming back with the Back button shows no notice", async ({ page, context }) => {
+  await shared(context);
+  await page.goto("/?user=keeps-stopping");
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
+  // Another document, then back: restored from the back/forward cache where the engine keeps the
+  // page, loaded again where it does not. Either way the page was put away, not lost.
+  await page.goto("/robots.txt");
+  expect(await page.evaluate(MARKS)).toEqual([]);
+  await page.goBack();
+  await expect(page.locator(".k-app")).toHaveAttribute("data-provenance", "untrusted", { timeout: 30_000 });
+  await expect(page.getByText(PAUSED)).toHaveCount(0);
+  expect(await page.evaluate(MARKS)).toHaveLength(1);
+  expect(await page.evaluate(() => localStorage.getItem("potyro:sealed-open:off"))).toBeNull();
+});

@@ -467,6 +467,15 @@ view frame's heap and DOM, their buffers, nested Workers. The browser ends it, a
   is still here.", with **Start it** and **Back to my apps**. It is not proof the app did it — a
   browser killed for any reason while a sealed app was on screen leaves the same marker — which is
   why it costs one tap and decides nothing.
+  **Only a page that died while showing the app leaves a marker.** It is removed on
+  `visibilitychange` to hidden, `pagehide` and `freeze`, and written again when the page shows: a
+  background tab the system discards, an installed app put away and ended, a page kept in the
+  back/forward cache, leave none, and coming back shows no notice. A marker older than ten minutes
+  (`OPEN_FORGET_MS`) is dropped unread: a laptop that slept and lost power, a browser that updated
+  overnight. What still shows the notice without the app's doing: a power cut, a force-quit or a
+  browser crash while the app was on screen, returned to within ten minutes. Not checked on a
+  device: that an Android WebView (the Capacitor app) tells the page it is hidden before the system
+  ends it.
 - **A tile.** The launcher runs a sealed app's tile code on Home. It is marked the same way while it
   runs, and a paused app's tile is not run.
 - **Not covered:** a demo link's app and the Studio's preview run sealed logic too and are not

@@ -5,7 +5,7 @@
 // the same app into the same thing.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ViewGuard } from "@potyro/host/realm";
-import { OPEN_MARK_PREFIX, OPEN_OFF_KEY, sealedOpenPaused, startSealedAgain, watchSealedOpen } from "../src/sealed-open-guard.js";
+import { OPEN_FORGET_MS, OPEN_MARK_PREFIX, OPEN_OFF_KEY, sealedOpenPaused, startSealedAgain, watchSealedOpen } from "../src/sealed-open-guard.js";
 import { SEALED_OPEN_OFF, eraseAppData } from "../src/erase-app-data.js";
 
 const marks = (): string[] => Object.keys(localStorage).filter((k) => k.startsWith(OPEN_MARK_PREFIX));
@@ -37,17 +37,17 @@ describe("the marker of an open sealed app", () => {
 
   it("is taken away while the page is off screen, and put back when it shows again", () => {
     const stop = watchSealedOpen("notes");
-    const hidden = vi.spyOn(document, "hidden", "get");
-    hidden.mockReturnValue(true);
+    const hide = (is: boolean): void => void Object.defineProperty(document, "hidden", { configurable: true, get: () => is });
+    hide(true);
     document.dispatchEvent(new Event("visibilitychange"));
     expect(marks()).toEqual([]);
-    hidden.mockReturnValue(false);
+    hide(false);
     document.dispatchEvent(new Event("visibilitychange"));
     expect(marks()).toHaveLength(1);
     window.dispatchEvent(new Event("pagehide"));
     expect(marks()).toEqual([]);
     stop();
-    hidden.mockRestore();
+    delete (document as { hidden?: boolean }).hidden;
   });
 });
 
@@ -65,6 +65,21 @@ describe("a tab that died with a sealed app open", () => {
     startSealedAgain("notes");
     expect(sealedOpenPaused("notes")).toBe(false);
     expect(localStorage.getItem(OPEN_OFF_KEY)).toBeNull();
+  });
+
+  it("does not count a marker from long ago: a power cut, a sleep, a restart with the app merely on screen", () => {
+    deadTab("notes", OPEN_FORGET_MS + 1000);
+    expect(sealedOpenPaused("notes")).toBe(false);
+    expect(marks()).toEqual([]); // and it is not kept to be counted later
+  });
+
+  it("is not left by a page that is frozen", () => {
+    const stop = watchSealedOpen("notes");
+    document.dispatchEvent(new Event("freeze"));
+    expect(marks()).toEqual([]);
+    document.dispatchEvent(new Event("resume"));
+    expect(marks()).toHaveLength(1);
+    stop();
   });
 
   it("does not take another tab that is alive for a dead one", () => {
