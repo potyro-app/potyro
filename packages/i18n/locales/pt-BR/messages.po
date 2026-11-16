@@ -5898,6 +5898,11 @@ msgstr "O Potyro passa tudo isso para o OpenRouter e para o modelo que ele escol
 msgid "Potyro pink"
 msgstr "Rosa do Potyro"
 
+#. Shown instead of opening a shared app, after the browser tab crashed or froze the last time this app was open. Calm: it may or may not have been the app's doing.
+#: ../shell/src/splash.tsx
+msgid "Potyro stopped working the last time this app was open, so it has not been started. What you saved in it is still here."
+msgstr "O Potyro parou de funcionar na última vez em que este app esteve aberto, então ele não foi iniciado. O que você salvou nele continua aqui."
+
 #: ../shell/src/app-ai.ts
 msgid "Potyro's free AI is used up for everyone for now. It's back next month, or add your own OpenRouter key in Model settings."
 msgstr "A IA grátis do Potyro acabou para todo mundo por enquanto. Volta no mês que vem, ou coloca sua chave do OpenRouter nos ajustes do modelo."
@@ -5905,11 +5910,6 @@ msgstr "A IA grátis do Potyro acabou para todo mundo por enquanto. Volta no mê
 #: ../shell/src/app-ai.ts
 msgid "Potyro's free AI is used up for everyone for now. It's back tomorrow, or add your own OpenRouter key in Model settings."
 msgstr "A IA grátis do Potyro acabou para todo mundo por enquanto. Volta amanhã, ou coloca sua chave do OpenRouter nos ajustes do modelo."
-
-#. Shown instead of opening a shared app, after the browser tab crashed or froze the last time this app was open. Calm: it may or may not have been the app's doing.
-#: ../shell/src/splash.tsx
-msgid "Potyro stopped working the last time this app was open, so it has not been started. What you saved in it is still here."
-msgstr "O Potyro parou de funcionar na última vez em que este app esteve aberto, então ele não foi iniciado. O que você salvou nele continua aqui."
 
 #. Edit tile, Live connections: Potyro's own relay where apps play together
 #: ../shell/src/live-connections-setting.tsx
