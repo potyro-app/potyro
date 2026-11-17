@@ -12,7 +12,7 @@ export {
   type RealmHandle,
   type RealmViewOptions,
 } from "./realm-host.js";
-export { frameSpawner, realmDocument, viewDocument, spawnViewFrame, FRAME_SOURCE, NO_WEBRTC, VIEW_CSS, type FrameSpawnerOptions, type ViewFrameHandle } from "./frame.js";
+export { frameSpawner, realmDocument, viewDocument, spawnViewFrame, FRAME_SOURCE, NO_DNS_PREFETCH, NO_WEBRTC, VIEW_CSS, type FrameSpawnerOptions, type ViewFrameHandle } from "./frame.js";
 export { OPS, VIEW_OPS, REALM_CSP, type CallKind, type CtxBase, type Op, type ViewOp, type ViewInit, type HostToView, type ViewToHost } from "./protocol.js";
 export { REALM_LIMITS, RealmLimitError, sizeOf } from "./limits.js";
 export { REST_AFTER_STOPS, REST_WINDOW_MS } from "./realm-host.js";
