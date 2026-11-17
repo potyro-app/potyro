@@ -76,7 +76,7 @@ Code: `packages/host/src/realm/sealed-view.ts`, `view-runtime.ts` (docs/22 §11)
 
 A sealed app's custom view draws in its own sandboxed frame, one per mounted view, in the place of
 the page's content. It has the same authority as the logic and no more: `sandbox="allow-scripts"`
-only, the same CSP, WebRTC deleted, its own port with the same op list plus a few view operations
+only, the same CSP, WebRTC deleted, DNS prefetch off in its document (§10), its own port with the same op list plus a few view operations
 (`VIEW_OPS`). The shell keeps the header and the navigation. Removing the frame removes everything
 the view left behind.
 
@@ -218,8 +218,9 @@ Read this before you rely on Potyro for something that matters.
 - **The fallback box is tested less than the realm.** It is a supported path (§6) whose browser
   project is outside the gate.
 - **Code a model wrote runs as yours** (§9).
-- **A sealed screen can make the browser look a name up** (§10): in Firefox, measured, it does;
-  the app's logic cannot.
+- **A sealed screen can make the browser look a name up** (§10): links no longer do, but
+  `<link rel="preconnect">` and a frame the screen nests still do, in Firefox and Chromium,
+  measured; the app's logic cannot.
 
 ## 9. Code a model wrote, in your own app
 
@@ -272,40 +273,67 @@ and nothing in the app's manifest. It is slow, one-way and needs the app's autho
 zone; it is also exactly the kind of exit the box exists to close. The app's logic has no such
 exit: a Worker has no document to put a hint in.
 
-Measured on 2026-11-16 with `e2e/dns-prefetch-probe-sandbox.spec.ts` (opt-in,
-`POTYRO_DNS_PROBE=1`), in the browsers Playwright 1.62 installs on Linux (Firefox 153, Chromium
-151). A shared app's own screen puts each hint in its frame's document; a control page with no CSP
-does the same in the same browser. The evidence is the browser's own record of its resolver
-(Firefox's `nsHostResolver` log, Chromium's net-log), not the app's word. "Not measurable" means
-the control made no lookup either, so the method cannot tell there: it is not a pass.
+**What the frame does about it.** Every realm document switches its own DNS prefetch off before
+any script runs: `<meta http-equiv="x-dns-prefetch-control" content="off">` (`NO_DNS_PREFETCH` in
+`packages/host/src/realm/frame.ts`). Both engines keep an "off" for the life of the document, so
+the app cannot take it back by removing the element or by adding its own with "on": Gecko reads the
+value only while prefetch is still allowed (`Document::SetHeaderData`), Blink remembers that it was
+switched off (`Document::ParseDNSPrefetchControlHeader`). That is a rule of the engine, not a
+script of ours the app could race.
 
-| From a sealed screen | Firefox | Chromium |
-|---|---|---|
-| `<link rel="dns-prefetch">` | **looked up** | not measurable |
-| `<link rel="preconnect">` | **looked up** | not measurable |
-| `<a href>`, hovered | **looked up** | not measurable |
-| `<link rel="prefetch">` | not looked up | not looked up |
-| `<link rel="preload">` | not looked up | not looked up |
-| `<img src>` | not looked up | not looked up |
-| `fetch()` | not looked up | not looked up |
-| `fetch()` from the logic's Worker | not looked up | not looked up |
+**It closes part of the exit, not the exit.** Measured on 2026-11-17 with
+`e2e/dns-prefetch-probe-sandbox.spec.ts` (opt-in, `POTYRO_DNS_PROBE=1`) on Linux: Firefox 153 and
+Chromium 151 as Playwright 1.62 installs them, and Chrome 156 (the stable channel). The app under
+test is hostile: it removes the frame's switch, adds its own with "on", writes each hint into its
+screen, and nests a frame of its own with the same hints. A control page with no CSP does the same
+in the same browser. The evidence is the browser's own record of its resolver (Firefox's
+`nsHostResolver` log, Chromium's net-log), not the app's word. Chromium and Chrome gave the same
+answers.
 
-So: everything CSP names is stopped before a name is resolved, in both engines. **In Firefox, a
-sealed screen's dns-prefetch, preconnect and link hints are resolved**: a shared app with a screen
-of its own can send what it holds to its author's DNS zone from Firefox, a few bytes at a time.
-In Chromium the three are **unmeasured, not safe**: as Playwright runs it (the headless shell, full
-Chromium, and full Chromium with `--disable-background-networking` taken off) the control page
-made no lookup for them either, so the probe cannot see what a person's Chrome does. WebKit and the
-Android WebView are not measured.
+| From a sealed screen | Firefox, before | Firefox, now | Chromium, before | Chromium, now |
+|---|---|---|---|---|
+| `<a href>` (Firefox: any link; Chromium: hovered) | **looked up** | not looked up | **looked up** | not looked up |
+| `<link rel="dns-prefetch">` | **looked up** | not looked up | **looked up** | **looked up** |
+| `<link rel="preconnect">` | **looked up** | **looked up** | **looked up** | **looked up** |
+| the same three, in a frame the screen nests | **looked up** | **looked up** | **looked up** | **looked up** |
+| `<link rel="prefetch">`, `<link rel="preload">` | not looked up | not looked up | not looked up | not looked up |
+| `<img src>`, `fetch()` | not looked up | not looked up | not looked up | not looked up |
+| `fetch()` from the logic's Worker | not looked up | not looked up | not looked up | not looked up |
 
-**Open.** Nothing in the realm stops this today. Two things to try, neither verified: Firefox
-decides DNS prefetch per document and inherits the decision from the embedding page, so
-`X-DNS-Prefetch-Control: off` on the shell's response, or its `<meta http-equiv>` in the view's
-document (`viewDocument` in `frame.ts`), may cover dns-prefetch and links; preconnect is a
-separate mechanism and may need the browser to honour CSP for it. The probe is the test for any
-fix: it must show the control still looking the names up and the sealed screen not. Until then,
-on Firefox a sealed app that draws its own screen should be counted as able to tell its author a
-little, slowly, without asking.
+In every row the control page's name was looked up, so the method could see it. The probe asserts
+the rows that are closed and prints the rest.
+
+So: everything CSP names is stopped before a name is resolved, in both engines. A link in a sealed
+screen no longer tells the resolver where it points, which is what an ordinary shared app with
+links in it did in Firefox without meaning to. **A sealed app that wants to tell its author
+something still can, in Firefox and in Chromium**, a few bytes per lookup, without asking:
+
+- **`<link rel="preconnect">` has no switch a page can reach.** Gecko's `Document::MaybePreconnect`
+  asks only the browser's own `network.preconnect` setting; it does not read the DNS switch and it
+  does not consult CSP. Chromium behaves the same. `connect-src 'none'`, which the realm's CSP
+  has, does not govern it in either.
+- **Chromium's `<link rel="dns-prefetch">` ignores the switch**, which there governs links only.
+- **A document the app makes for itself starts with its own setting.** A nested `<iframe srcdoc>`
+  is not a fetch, so the frame's `frame-src` does not stop it, and its document has prefetch on
+  (Firefox) or may ask for it (Chromium).
+
+**What does not help, measured.** `X-DNS-Prefetch-Control: off` as a response header on the shell
+changes nothing in a sandboxed srcdoc frame with the realm's CSP, in either engine (measured on a
+bare page with such a frame, outside the app): Gecko takes a frame's default from the
+browser's own setting for the tab, not from the page that embeds it, so the shell is not served
+with it. Nothing else a page or its server can say was found to govern these three; closing them
+needs either the browsers (preconnect and dns-prefetch under `connect-src`) or the app's script
+kept from the frame's DOM, which is not how a sealed screen works.
+
+**Open.** Count a sealed app that draws its own screen as able to tell its author a little,
+slowly, without asking, in every browser measured. A guard inside the frame (patching the DOM's
+methods, or watching it for hints) would run in the app's own realm, where the app can go round
+it, and is not built for that reason: it would look like a fix. WebKit and the Android WebView are
+not measured. The first measurement (2026-11-16) called Chromium "not measurable": as Playwright
+starts it (an off-the-record profile, `--disable-background-networking`) it makes none of these
+lookups for any page; the probe now gives it a profile on disk and leaves background networking
+on. An observer outside the browser (a DNS server of the probe's own) is not built: pointing a
+browser at one takes the machine's resolver or a trusted DNS-over-HTTPS endpoint.
 
 ## 11. For an audit
 
@@ -315,6 +343,7 @@ The surface a security review should cover, from docs/22 §10.5 and §11.5:
   `realm-host.ts`; every op on the list is a boundary that takes values from untrusted code;
 - the frame runtime and the WebRTC removal (`FRAME_SOURCE`, `NO_WEBRTC` in `frame.ts`), and the
   view frame's document (`viewDocument`), each with the runtime inlined and `</script` escaped;
+- the names a sealed screen can still have looked up (§10): `NO_DNS_PREFETCH` closes links only;
 - the realm CSP (`REALM_CSP`) and the iframe's `sandbox="allow-scripts"`; the `postMessage(…, "*")`
   at start that hands over the ports (the ports, not the origin, are the trust boundary);
 - the shell's `frame-src 'none'`, which must stay in step in `index.html`, `vite.config.ts` and the

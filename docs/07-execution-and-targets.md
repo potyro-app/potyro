@@ -66,6 +66,12 @@ engine, behind a watchdog and a crash-loop guard (docs/22 §11, docs/05 "Custom 
   2026-10-30). A
   srcdoc is not a fetch, so the realm still loads. `e2e/shell-csp-*.spec.ts` checks it where it is
   served, with a control page that has no policy.
+- **A third, closed in part** (docs/31 §10). A browser can look a name up without loading
+  anything. Each realm document switches DNS prefetch off before any script (`NO_DNS_PREFETCH` in
+  `frame.ts`), and both engines keep that for the document's life, so a link in a sealed screen is
+  no longer resolved. `<link rel="preconnect">`, Chromium's `<link rel="dns-prefetch">` and a frame
+  the view nests still are, in Firefox and Chromium, and nothing a page can say stops them: a
+  sealed app with a screen of its own can tell its author a little, slowly, without asking.
 - **Limits, by a watchdog** (`RealmLoadedApp`). Each call has a deadline (1 s, paused while a
   question, a consent prompt, a dialog or a fetch waits on the person or the world); the Worker beats
   every 100 ms and a second of silence stops it; a realm that floods the host with messages is

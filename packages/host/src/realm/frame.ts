@@ -14,6 +14,11 @@
 // What the iframe sandbox and CSP do NOT cover, and is closed here (#14 audit scope):
 //   - WebRTC: CSP does not govern ICE, and no engine honours `webrtc 'block'`. Each frame deletes the
 //     constructors before anything else runs (`NO_WEBRTC`). Workers never had them.
+//   - Names looked up without anything being loaded (docs/31 §10): CSP governs loads, and an anchor
+//     or a `<link rel="dns-prefetch">` makes Firefox resolve its host with none. Each realm document
+//     switches its own DNS prefetch off (`NO_DNS_PREFETCH`), which closes those two in the document
+//     itself and no further: `<link rel="preconnect">`, Chromium's `dns-prefetch`, and a frame the
+//     view nests are not governed by it, and nothing a page can say governs them.
 //   - The frame navigating itself: the iframe sandbox allows it, the frame's own CSP cannot stop it.
 //     The SHELL's `frame-src 'none'` does (index.html, deploy/potyro.app.Caddyfile), and the host also
 //     treats a second `load` as the frame being gone.
@@ -25,6 +30,20 @@ import type { RealmHandle, RealmSpawner } from "./realm-host.js";
 export const NO_WEBRTC = `["RTCPeerConnection", "webkitRTCPeerConnection", "mozRTCPeerConnection", "RTCDataChannel", "RTCRtpSender", "RTCRtpReceiver", "RTCIceCandidate", "RTCSessionDescription"].forEach(function (name) {
     try { delete window[name]; } catch (e) { /* not configurable: the escape spec would show it */ }
   });`;
+
+/**
+ * Switches DNS prefetch off for the document it is parsed into. In the markup, ahead of every script:
+ * both engines keep an "off" for the document's life — Gecko only ever reads the value while prefetch
+ * is still allowed (`Document::SetHeaderData`), Blink remembers an explicit "off"
+ * (`Document::ParseDNSPrefetchControlHeader`) — so the view cannot take it back by removing this
+ * element or by adding its own with "on". What it stops, measured (docs/31 §10): in Firefox, the
+ * lookup of every `<a href>` host and of `<link rel="dns-prefetch">`; in Chromium, the lookup of a
+ * hovered link's host, which is off in an opaque-origin frame until a document asks for it.
+ * What it does NOT stop, in either engine: `<link rel="preconnect">`, Chromium's
+ * `<link rel="dns-prefetch">`, and anything in a document the view makes for itself (a nested
+ * `<iframe srcdoc>` starts with its own setting). This is not the closing of that exit.
+ */
+export const NO_DNS_PREFETCH = `<meta http-equiv="x-dns-prefetch-control" content="off">`;
 
 /**
  * Runs on the logic frame's main thread. Plain ES2017, inlined into the srcdoc: it is small on
@@ -69,6 +88,7 @@ export function realmDocument(): string {
   return (
     `<!doctype html><html><head><meta charset="utf-8">` +
     `<meta http-equiv="Content-Security-Policy" content="${REALM_CSP}">` +
+    NO_DNS_PREFETCH +
     `</head><body>${inlineScript(FRAME_SOURCE)}</body></html>`
   );
 }
@@ -96,11 +116,12 @@ export const VIEW_CSS = [
   ".k-muted{color:var(--ink-soft);padding:.5rem 0}",
 ].join("");
 
-/** A view frame's document: the realm CSP, the WebRTC removal, then the view runtime (`virtual:potyro-realm-view`). */
+/** A view frame's document: the realm CSP, DNS prefetch off, the WebRTC removal, then the view runtime (`virtual:potyro-realm-view`). */
 export function viewDocument(runtimeSource: string): string {
   return (
     `<!doctype html><html><head><meta charset="utf-8">` +
     `<meta http-equiv="Content-Security-Policy" content="${REALM_CSP}">` +
+    NO_DNS_PREFETCH +
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
     `<style>${VIEW_CSS}</style>` +
     `</head><body><div id="root"></div>${inlineScript(`(function(){"use strict";${NO_WEBRTC}})();`)}${inlineScript(runtimeSource)}</body></html>`

@@ -570,10 +570,11 @@ code with ambient authority, and never in the shell's own realm." The mental-mod
   - The srcdoc construction: the runtime is inlined with `</script` escaped.
   - `postMessage(…, "*")` at init. The ports carry the trust, and a sandboxed frame cannot be
     reached by others.
-- **Channels CSP does not cover.** WebRTC (deleted), DNS prefetch (`<link rel=dns-prefetch>`,
-  hostname-only; measured 2026-11-16 and open in Firefox, docs/31 §10), and any new API that opens a
-  connection. Re-check this deny-list on
-  every engine release.
+- **Channels CSP does not cover.** WebRTC (deleted), names looked up without a load (each realm
+  document switches DNS prefetch off, `NO_DNS_PREFETCH`, which stops a link's host being resolved;
+  `<link rel=preconnect>`, Chromium's `<link rel=dns-prefetch>` and a frame the view nests are still
+  resolved, measured 2026-11-17 in Firefox and Chromium and open, docs/31 §10), and any new API
+  that opens a connection. Re-check this deny-list on every engine release.
 - **The shell's CSP and navigation.**
 - **Process models per target.** Chromium's shared sandbox process, and the WebView.
 - **Denial of service.** Memory with no cap. Repeated kills.
@@ -844,7 +845,7 @@ endless-loop spec proves it: without the escalation the next view never mounts.
 
 New surface: the view port (`VIEW_OPS`, the view ctx id, `SealedViewController`'s message handler, its
 flood guard), `view-runtime.ts` (untrusted like the worker runtime: app code shares its realm), the
-view frame's srcdoc (`viewDocument`, runtime inlined with `</script` escaped), the bytes the host
+view frame's srcdoc (`viewDocument`, runtime inlined with `</script` escaped, DNS prefetch off: docs/31 §10), the bytes the host
 fetches for a view's `blob:`/`data:` URLs, and the guard's localStorage keys (written only by the
 shell).
 
