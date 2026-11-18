@@ -325,7 +325,7 @@ async function main(): Promise<void> {
       // #78: where the feature the request names sits, read from the source. Judged on any app that
       // was made, working or not: where a model PUT the feature does not depend on a later bug.
       const uses = (prompt as Partial<MainPathPrompt>).uses;
-      const placement = uses && source ? await featurePlacement(source, uses) : undefined;
+      const placement = uses && source ? await featurePlacement(source, uses, (prompt as Partial<MainPathPrompt>).inputType) : undefined;
 
       const o: Outcome = {
         prompt,

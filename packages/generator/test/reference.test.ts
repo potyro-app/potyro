@@ -390,6 +390,24 @@ describe("capabilityNotes: the passages beside a request (every engine, tools or
     expect(capabilityNotes(CAPABILITY_REFERENCE, "add a due date", "const choice = await ctx.ui.menu({ items })")).toContain("menu<T = string>(");
   });
 
+  it("brings the form's fill for a picture that is read, whatever words ask for it (#78)", () => {
+    const asks = [
+      "an app where I take a photo of a wine bottle and it extracts the details",
+      "I want to snap a picture of a receipt and have it saved as an expense with the shop, the date and the total filled in for me.",
+      "Scan business cards at conferences: I point the phone at a card and get a contact with the name, company, email and phone, plus where I met them.",
+      "Something for my plants where I photograph a new plant and it tells me what it is and how often to water it, and keeps it in a list.",
+    ];
+    for (const ask of asks) {
+      const out = capabilityNotes(CAPABILITY_REFERENCE, ask);
+      expect(out, ask).toContain("// ===== fill =====");
+      expect(out, ask).toContain("export interface FormFill");
+    }
+    // A picture that is only kept, or a camera with nothing read from it, is not a form that fills itself.
+    for (const ask of ["a wine cellar with a photo of each bottle", "a mirror app that shows the selfie camera"]) {
+      expect(capabilityNotes(CAPABILITY_REFERENCE, ask), ask).not.toContain("// ===== fill =====");
+    }
+  });
+
   it("matches the app being changed by its code, not by its words", () => {
     expect(capabilityNotes(CAPABILITY_REFERENCE, "add a due date", "const r = await ctx.caps.ai.extract({ schema })")).toContain("export interface AiCapability");
     // A label that says "share" is not a use of ctx.ui.share.
