@@ -145,6 +145,11 @@ export interface Capability {
   cues: RegExp;
   /** When the app being changed already uses it: the code that does (never its words — labels say anything). */
   uses: RegExp;
+  /**
+   * The capabilities that, asked for TOGETHER, ask for this one too, whatever the request's words (#78):
+   * a picture that is taken and read is how a record starts, so the camera with the AI brings `fill`.
+   */
+  withAll?: readonly string[];
 }
 
 /**
@@ -186,7 +191,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "read a photo or text into a typed shape: `await ctx.caps.ai.extract({ image, instructions, schema: { shop: \"text?\", items: [{ name: \"text\", price: \"number\" }] } })`; `ask(question, { image })` → words (`permissions: { ai: true }`)",
     declarations: ["AiLeaf", "AiShape", "AiImage", "AiExtractRequest", "AiCapability"],
     notes: "Send only what the task needs: the call sends exactly what it names, nothing else of the app's.",
-    cues: /caps\.ai\b|\b(ai|a\.i\.|artificial intelligence|llm|gpt|ocr|scan\w*|receipts?|invoices?|extract\w*|recogni[sz]\w*|identify|classif\w*|read (?:the |a |my )?(?:photo|picture|image|label|text)|paragon\w*|rachun\w*|recibo\w*|nota fiscal|beleg\w*|quittung\w*|rechnung\w*|factura\w*|ticket de caja)\b/i,
+    cues: /caps\.ai\b|\b(ai|a\.i\.|artificial intelligence|llm|gpt|ocr|scan\w*|receipts?|invoices?|extract\w*|recogni[sz]\w*|identif\w*|tells? (?:me|you|us) what|classif\w*|read (?:the |a |my )?(?:photo|picture|image|label|text)|paragon\w*|rachun\w*|recibo\w*|nota fiscal|beleg\w*|quittung\w*|rechnung\w*|factura\w*|ticket de caja)\b/i,
     uses: /caps\.ai\b/,
   },
   {
@@ -544,6 +549,7 @@ export const CAPABILITIES: readonly Capability[] = [
     also: ["FormFill", "EntityDef.fill"],
     cues: /\bfill\s*:|\b(fill (?:in |out )?(?:the |this |my )?form|pre-?fill\w*|auto-?fill\w*|fill (?:it|them|the fields|the rest) (?:in )?(?:from|with|using)|scan (?:the |a )?(?:label|barcode|card|receipt)|while (?:adding|creating)|when (?:adding|creating) (?:a|an|the)|in the (?:add|create|new|edit) form|wypełni\w*|preench\w*|ausfüll\w*|rellen\w*|compil\w*)\b/i,
     uses: /^\s*fill\s*:\s*\[/m,
+    withAll: ["ctx.caps.camera", "ctx.caps.ai"],
   },
   {
     key: "ctx.ui.form",
@@ -653,7 +659,11 @@ export function capabilityBlock(c: Capability, declared: Readonly<Record<string,
   return `// ===== ${c.key} =====\n${body}`;
 }
 
-const NOTES_MAX_CHARS = 9000;
+/**
+ * The most a first message carries of them. The camera, the AI, the `ctx.caps` rule, `ctx.media` and
+ * `fill` together (a photo that fills a record, #78) are about 9,300 characters, and must all fit.
+ */
+const NOTES_MAX_CHARS = 10_000;
 
 /**
  * The capability passages a request needs, for the first message — so an engine that cannot call
@@ -662,18 +672,28 @@ const NOTES_MAX_CHARS = 9000;
  * that already reads `ctx.caps.ai` gets its declaration back). Empty when nothing matches.
  */
 export function capabilityNotes(declared: Readonly<Record<string, string>>, request: string, source = ""): string {
-  let picked = CAPABILITIES.filter((c) => c.cues.test(request) || (source !== "" && c.uses.test(source)));
+  const named = CAPABILITIES.filter((c) => c.cues.test(request) || (source !== "" && c.uses.test(source)));
+  const has = (key: string) => named.some((c) => c.key === key);
+  let picked = CAPABILITIES.filter((c) => named.includes(c) || (c.withAll?.every(has) ?? false));
   // A capability under ctx.caps brings the guard-and-permissions rule with it.
   if (picked.some((c) => c.key.startsWith("ctx.caps.")) && !picked.some((c) => c.key === "ctx.caps")) {
     picked = [CAPABILITIES.find((c) => c.key === "ctx.caps")!, ...picked];
   }
   if (!picked.length) return "";
-  let out = "";
-  for (const c of picked) {
-    const block = capabilityBlock(c, declared);
-    if (out.length + block.length > NOTES_MAX_CHARS) continue;
-    out += `${out ? "\n\n" : ""}${block}`;
+  // What the request's own combination asks for is kept first when not everything fits; the order
+  // the passages are read in stays the index's.
+  const kept = new Set<Capability>();
+  let size = 0;
+  for (const c of [...picked.filter((c) => !named.includes(c)), ...picked.filter((c) => named.includes(c))]) {
+    const length = capabilityBlock(c, declared).length;
+    if (size + length > NOTES_MAX_CHARS) continue;
+    kept.add(c);
+    size += length;
   }
+  const out = picked
+    .filter((c) => kept.has(c))
+    .map((c) => capabilityBlock(c, declared))
+    .join("\n\n");
   if (!out) return "";
   return `The declarations of the capabilities this request may need (the CAPABILITIES index in your instructions lists the rest; with tools, lookup reads any of them):\n\`\`\`ts\n${out}\n\`\`\``;
 }

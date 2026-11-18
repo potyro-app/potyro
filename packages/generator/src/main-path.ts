@@ -22,6 +22,11 @@
 // button that takes no picture is not. Code in another module of the app is not seen: the create
 // eval's apps are one file.
 //
+// A button may also take its picture without a line of code: an action whose `input` has a field of
+// the scenario's `inputType` (a `media` field is the shell's own camera-or-library box). It counts
+// as doing it, where the button is. So does a form's fill that reads such a field of its own form
+// (`draft.photo`): the field took the picture, the fill reads it.
+//
 // Nothing here calls a model. `eval:cli -- --corpus main-path` does, and costs money: run it only
 // when the owner asks.
 
@@ -33,6 +38,8 @@ export interface MainPathPrompt extends GenPrompt {
   feature: string;
   /** What the code of that feature must reach: a case-insensitive regex source over function text. */
   uses: string;
+  /** A field type that does it when an action asks for one in its `input`: `media` for a picture. */
+  inputType?: string;
 }
 
 /** Taking a picture: the camera capability, however it was reached (`ctx.caps.camera`, `const { camera } = ctx.caps`). */
@@ -50,6 +57,7 @@ export const MAIN_PATH_PROMPTS: MainPathPrompt[] = [
     tags: ["main-path", "camera", "ai"],
     feature: "a photo of the bottle fills in its details",
     uses: TAKES_PICTURE,
+    inputType: "media",
   },
   {
     id: "receipt-photo-expenses",
@@ -57,6 +65,7 @@ export const MAIN_PATH_PROMPTS: MainPathPrompt[] = [
     tags: ["main-path", "camera", "ai"],
     feature: "a photo of a receipt becomes an expense",
     uses: TAKES_PICTURE,
+    inputType: "media",
   },
   {
     id: "business-card-scan",
@@ -64,6 +73,7 @@ export const MAIN_PATH_PROMPTS: MainPathPrompt[] = [
     tags: ["main-path", "camera", "ai"],
     feature: "scanning a card makes a contact",
     uses: TAKES_PICTURE,
+    inputType: "media",
   },
   {
     id: "plant-photo-identify",
@@ -71,6 +81,7 @@ export const MAIN_PATH_PROMPTS: MainPathPrompt[] = [
     tags: ["main-path", "camera", "ai"],
     feature: "a photo of a plant adds it, identified",
     uses: TAKES_PICTURE,
+    inputType: "media",
   },
   {
     id: "livros-foto-capa",
@@ -79,6 +90,7 @@ export const MAIN_PATH_PROMPTS: MainPathPrompt[] = [
     language: "pt-BR",
     feature: "a photo of the cover fills in the book",
     uses: TAKES_PICTURE,
+    inputType: "media",
   },
 ];
 
@@ -153,16 +165,26 @@ function reach(text: string, known: Map<string, string>): string {
  * Where the feature sits in an app, read from its source. Null when the source cannot be read as an
  * app (no `defineApp({...})`, or it does not parse): the eval's other gates say that.
  */
-export async function featurePlacement(source: string, uses: string | RegExp): Promise<MainPathCheck | null> {
+export async function featurePlacement(source: string, uses: string | RegExp, inputType?: string): Promise<MainPathCheck | null> {
   const sw = await readSourceWords(source);
   if (!sw) return null;
   const pattern = typeof uses === "string" ? new RegExp(uses, "i") : uses;
   const known = declarations(sw);
   /** Does the code at `path` — a function, or the name of one — do it? */
-  const does = (path: string): boolean => {
+  const codeAt = (path: string): string => {
     const node = sw.nodes.get(path) ?? sw.nodes.get(`${path}#prop`);
-    return node ? pattern.test(reach(sw.source.slice(node.start, node.end), known)) : false;
+    return node ? reach(sw.source.slice(node.start, node.end), known) : "";
   };
+  const does = (path: string): boolean => pattern.test(codeAt(path));
+  /** Does a form's fill read a field of that type the form already has (`draft.photo`)? The field took the picture. */
+  const readsField = (def: Data, path: string): boolean => {
+    if (inputType === undefined || !isData(def.fields)) return false;
+    const code = codeAt(path);
+    return Object.entries(def.fields).some(([key, f]) => isData(f) && f.type === inputType && new RegExp(`\\.${key}\\b|\\b${key}\\s*[,}]`).test(code));
+  };
+  /** Does this action ask for it before it runs? */
+  const asks = (action: unknown): boolean =>
+    inputType !== undefined && isData(action) && isData(action.input) && Object.values(action.input).some((f) => isData(f) && f.type === inputType);
 
   const entities = isData(sw.data.entities) ? sw.data.entities : {};
   const pages = Array.isArray(sw.data.pages) ? sw.data.pages : [];
@@ -177,13 +199,13 @@ export async function featurePlacement(source: string, uses: string | RegExp): P
     if (!isData(def)) continue;
     if (Array.isArray(def.fill)) {
       def.fill.forEach((_f, i) => {
-        if (does(`entities.${entity}.fill.${i}.run`)) places.push({ where: entity === mainEntity ? "form-fill" : "elsewhere", at: `${entity}.fill[${i}]` });
+        if (does(`entities.${entity}.fill.${i}.run`) || readsField(def, `entities.${entity}.fill.${i}.run`)) places.push({ where: entity === mainEntity ? "form-fill" : "elsewhere", at: `${entity}.fill[${i}]` });
       });
     }
     if (isData(def.actions)) {
       for (const key of Object.keys(def.actions)) {
         // A record's action needs a saved record: the place #78 says must not be the only one.
-        if (does(`entities.${entity}.actions.${key}`)) places.push({ where: "elsewhere", at: `${entity}.actions.${key}` });
+        if (does(`entities.${entity}.actions.${key}`) || asks(def.actions[key])) places.push({ where: "elsewhere", at: `${entity}.actions.${key}` });
       }
     }
   }
@@ -191,8 +213,8 @@ export async function featurePlacement(source: string, uses: string | RegExp): P
     if (!isData(page)) return;
     const actions = Array.isArray(page.actions) ? page.actions : [];
     const primary = new Set<number>([0, ...[page.primaryAction, page.add].filter((n): n is number => typeof n === "number")]);
-    actions.forEach((_a, i) => {
-      if (!does(`pages.${p}.actions.${i}.run`)) return;
+    actions.forEach((action, i) => {
+      if (!does(`pages.${p}.actions.${i}.run`) && !asks(action)) return;
       places.push({ where: p !== 0 ? "elsewhere" : primary.has(i) ? "first-page-action" : "first-page-button", at: `pages[${p}].actions[${i}]` });
     });
     const view = isData(page.view) ? page.view : null;

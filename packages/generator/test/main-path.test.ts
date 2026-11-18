@@ -123,6 +123,25 @@ describe("where the feature a request names sits (#78)", () => {
     expect(await featurePlacement(source, USES)).toMatchObject({ where: "form-fill", onMainPath: true, found: ["bottle.fill[0]", "bottle.actions.rescan"] });
   });
 
+  it("a button that asks for the picture itself (a media input) does it, where the button is", async () => {
+    const input = `input: { label: { type: "media", accept: "image", label: "Label" } }, run: async (ctx: Ctx) => { ctx.ui.toast("read"); }`;
+    const onRecord = app({ actions: `\n      actions: { scan: { label: "Scan label", ${input} } },`, pages: LIST });
+    expect(await featurePlacement(onRecord, USES, "media")).toMatchObject({ where: "elsewhere", onMainPath: false, found: ["bottle.actions.scan"] });
+    const onPage = app({ pages: `{ id: "cellar", title: "Cellar", actions: [{ label: "Scan a bottle", ${input} }], view: { type: "list", entity: "bottle" } }` });
+    expect(await featurePlacement(onPage, USES, "media")).toMatchObject({ where: "first-page-action", onMainPath: true, found: ["pages[0].actions[0]"] });
+    // Without the scenario saying so, an input is not read as the feature.
+    expect(await featurePlacement(onRecord, USES)).toMatchObject({ where: "absent" });
+  });
+
+  it("a fill that reads the photo field its own form already has is the form filling from the photo", async () => {
+    const withPhoto = (run: string) =>
+      app({ fill: `\n      fill: [{ label: "Read label", run: ${run} }],`, pages: LIST }).replace(`vintage: { type: "number", label: "Vintage" },`, `vintage: { type: "number", label: "Vintage" }, photo: { type: "media", accept: "image" },`);
+    const reads = withPhoto(`async (draft, ctx) => (draft.photo && ctx.caps.ai ? ctx.caps.ai.extract({ image: await ctx.media.blob(draft.photo), instructions: "Read it.", schema: { name: "string" } }) : null)`);
+    expect(await featurePlacement(reads, USES, "media")).toMatchObject({ where: "form-fill", onMainPath: true, found: ["bottle.fill[0]"] });
+    const guesses = withPhoto(`async (draft) => ({ vintage: draft.name ? 2020 : undefined })`);
+    expect(await featurePlacement(guesses, USES, "media")).toMatchObject({ where: "absent" });
+  });
+
   it("a source that is not an app is not judged", async () => {
     expect(await featurePlacement("this is not code {", USES)).toBeNull();
     expect(await featurePlacement("export const x = 1;", USES)).toBeNull();
