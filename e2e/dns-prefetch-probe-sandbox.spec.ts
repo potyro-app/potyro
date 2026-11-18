@@ -112,7 +112,13 @@ async function controlServer(z: string): Promise<{ url: string; close: () => Pro
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address() as AddressInfo;
-  return { url: `http://127.0.0.1:${port}/`, close: () => new Promise<void>((resolve) => server.close(() => resolve())) };
+  // A browser keeps spare connections open (a preconnect it never used), and `close` alone waits for them.
+  const close = () =>
+    new Promise<void>((resolve) => {
+      server.close(() => resolve());
+      server.closeAllConnections();
+    });
+  return { url: `http://127.0.0.1:${port}/`, close };
 }
 
 /** A hovered link is looked up after the pointer has rested on it, not at once. */
