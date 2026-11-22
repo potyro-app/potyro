@@ -133,6 +133,22 @@ export const MIN_SAMPLE_ROWS = 2;
 /** At most this many of the model's rows are kept for one entity: it is asked for 3–5. */
 const MAX_SAMPLE_ROWS = 8;
 
+const sameName = (s: string): string => s.trim().toLowerCase();
+
+/**
+ * Each entity by the names a model may file its records under besides the key: the key in another
+ * case, and the label the request showed beside it (`entity order ("Order")`). A name two entities
+ * share names neither.
+ */
+function entityByName(entities: NonNullable<Entities>): Map<string, string> {
+  const names = new Map<string, string | null>();
+  for (const [key, def] of Object.entries(entities)) {
+    const label = (def as { label?: unknown }).label;
+    for (const name of new Set([sameName(key), ...(typeof label === "string" ? [sameName(label)] : [])])) names.set(name, names.has(name) ? null : key);
+  }
+  return new Map([...names].filter((e): e is [string, string] => e[1] !== null));
+}
+
 /** Fields a model's sample record cannot fill: a photo or a file it would have to name, a person in the app. */
 const madeUpOnly = (field: Field): boolean => holdsFile(field) || field.type === "member";
 
@@ -146,9 +162,12 @@ const madeUpOnly = (field: Field): boolean => holdsFile(field) || field.type ===
 export function sampleSeed(reply: unknown, entities: Entities): AppSeed | undefined {
   if (!entities || typeof reply !== "object" || reply === null || Array.isArray(reply)) return undefined;
   const rows: AppSeed = {};
-  for (const [entity, list] of Object.entries(reply as Record<string, unknown>)) {
-    const def = entities[entity];
-    if (!def || !Array.isArray(list)) continue;
+  const named = entityByName(entities);
+  for (const [name, list] of Object.entries(reply as Record<string, unknown>)) {
+    const entity = entities[name] ? name : named.get(sameName(name));
+    const def = entity ? entities[entity] : undefined;
+    // Rows under the entity's own key are never replaced by ones filed under another spelling of it.
+    if (!entity || !def || !Array.isArray(list) || (entity !== name && rows[entity])) continue;
     const fields = (def.fields ?? {}) as Record<string, Field>;
     rows[entity] = list
       .filter((row): row is Record<string, unknown> => typeof row === "object" && row !== null && !Array.isArray(row))

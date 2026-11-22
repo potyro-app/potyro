@@ -134,6 +134,18 @@ describe("a Studio app's sample records, from the model's reply", () => {
     expect(sampleSeed({ plant: [{ name: "Fig" }, { name: "Olive" }] }, plants())).toEqual({ plant: [{ name: "Fig" }, { name: "Olive" }] });
   });
 
+  it("takes records keyed by the entity's label or in another case: a small model writes \"Plant\" for plant", () => {
+    const rows = [{ name: "Fig" }, { name: "Olive" }];
+    // The request names each entity as `entity plant ("Plant")`: GPT-6 Luna keyed its reply by the label.
+    expect(sampleSeed({ Plant: rows }, plants())).toEqual({ plant: rows });
+    expect(sampleSeed({ PLANT: rows }, plants())).toEqual({ plant: rows });
+    // The label, when it is not the key: `entity visit ("Class")`.
+    const classes = { visit: { label: "Class", fields: { name: { type: "text" } } } } as never;
+    expect(sampleSeed({ Class: rows }, classes)).toEqual({ visit: rows });
+    // The key itself wins over another entity's label, and a name that fits nothing is still dropped.
+    expect(sampleSeed({ plant: rows, Tree: rows }, plants())).toEqual({ plant: rows });
+  });
+
   it("is none for a reply that is not rows", () => {
     for (const bad of [null, "Monstera", [{ name: "Fig" }], { plant: "Fig" }, { plant: [1, 2, "x"] }]) expect(sampleSeed(bad, plants())).toBeUndefined();
     expect(sampleSeed(reply, undefined)).toBeUndefined();
