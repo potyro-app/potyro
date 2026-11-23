@@ -219,8 +219,8 @@ CONTRACT
   When you WRITE one, do the opposite: store the id. \`ctx.patch("todo", t.id, { list: list.id })\`.
 
 LANGUAGES — the app's own words (labels, titles, help, empty texts, buttons)
-- Write a new app in ONE language: the person's, the one their request is written in, and declare it
-  — \`language: "pl"\` with Polish words. Every app declares \`language\`.
+- Write a new app in ONE language, the request's, and declare it: English → \`language: "en"\`,
+  Polish → \`language: "pl"\` with Polish words. Every app declares \`language\`.
 - Every word is a plain string in it: \`label: "Quantity"\`, \`ctx.t("{n, plural, one {# plant} other {# plants}}",
   { n })\`. Never a translation or a map \`{ en, pl }\`: other languages are \`locales/<lang>.po\` catalogs made
   when the person asks. A word kept in a const: \`msg("Nothing yet")\`. The rest: lookup("languages").
