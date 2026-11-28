@@ -72,6 +72,7 @@ to a package it imports.
 | `packages/share-links` | the share service for demo links (a server) |
 | `packages/ai-relay` | the relay behind the free AI allowance (a server) |
 | `packages/platform-requests` | the relay that files "Potyro lacks this" requests (a server) |
+| `packages/fediverse` | the gallery's fediverse account, an ActivityPub actor (a server) |
 | `packages/shell` | the product: launcher, navigation, panels, the Studio, trust, import and export, sharing, the composition root, the PWA build |
 | `packages/create-potyro` | `npm create potyro <dir>`: the starter project for an app |
 | `packages/legal` | the privacy and terms pages, built from `docs/legal/` |

@@ -165,6 +165,7 @@ In dependency order, lowest first:
 | `packages/ai-relay` | the relay that pays for the free AI allowance with Potyro's key, with caps | nothing |
 | `packages/platform-requests` | the relay that files "Potyro lacks this" requests as GitHub issues | nothing |
 | `packages/sync-gate` | the gate in front of the sync relay: limits per address, and for the whole relay | nothing |
+| `packages/fediverse` | the gallery's fediverse account: an ActivityPub actor that posts the apps the gallery publishes | nothing |
 | `packages/shell` | the product: launcher, navigation, panels, the Studio, trust prompts, import and export, sharing, the composition root, the PWA build | everything above |
 | `packages/create-potyro` | `npm create potyro <dir>`: a starter for writing an app outside this repo | nothing |
 
@@ -183,7 +184,7 @@ convention held by review:
   implementation. The implementations are chosen once, at the composition root in the shell.
 - App code reaches host power only through `ctx`. An app module may import `potyro`; it never
   imports a host, store or capabilities package.
-- The five servers (`rooms`, `share-links`, `ai-relay`, `platform-requests`, `sync-gate`) depend on no Potyro
+- The six servers (`rooms`, `share-links`, `ai-relay`, `platform-requests`, `sync-gate`, `fediverse`) depend on no Potyro
   package. What depends on them (the shell, and the host for the rooms protocol) imports only their
   browser-safe wire formats.
 
@@ -212,6 +213,7 @@ flowchart BT
     airelay[ai-relay]
     platreq[platform-requests]
     syncgate[sync-gate]
+    fediverse
     rooms
   end
   servers -. wire formats .-> shell
@@ -1387,6 +1389,7 @@ services sit beside them, each a Node process with no dependency on any Potyro p
 | rooms relay | `packages/rooms` | messages in flight; nothing on disk | see who anyone is, or keep history |
 | AI relay | `packages/ai-relay` | Potyro's OpenRouter key and the meters; no content | exceed the monthly cap, or see more than the app sent |
 | platform requests | `packages/platform-requests` | requests to the team, filed as GitHub issues | identify a person |
+| the gallery's fediverse account | `packages/fediverse`, docs/33 | its key, the public accounts that follow it, what it has posted | read a reply, or reach anything of an app or a device |
 
 Without the optional four, requests wait on the device, apps' AI runs on the person's own key,
 links carry the whole app, and multiplayer apps cannot meet. On potyro.app all five run on one

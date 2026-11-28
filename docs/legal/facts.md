@@ -114,6 +114,20 @@ that names and who shares with whom can be seen on the relay.
 | F-54 | Held while live: a random member id, the display name the app passes (`opts.name`, ≤ 40 characters), per-address counts. | docs/26 §1, §3; `host/src/sockets.ts` (`cleanName(opts?.name)`) | code |
 | F-54a | The rooms relay is live on potyro.app. | `https://potyro.app/rooms/health` → `{"ok":true,…}` | observed |
 
+## The gallery's fediverse account
+
+Built (`packages/fediverse`, docs/33), **not deployed**: privacy.md's section about it describes
+what the code does, and applies from the day the service runs.
+
+| # | Claim | Proof | Status |
+|---|---|---|---|
+| F-69 | Per follower the service keeps the account's address, its inbox, its server's shared inbox, its public key and key id, and the time it followed. Nothing else. | `fediverse/src/store.ts` (`Follower`); `inbox.ts` `remoteOf`, `follow` | code |
+| F-70 | Replies, mentions, likes and boosts are answered 202 and never stored; only Follow, Undo of a Follow, and Delete of a following account are acted on. | `fediverse/src/inbox.ts` (`kindOf`); `test/inbox.test.ts` "answers 202 and does nothing…" (no write, no lookup) | code, tested |
+| F-71 | A follower is removed on Undo, on Delete of the account, when its server answers 410, or when a delivery to its server fails and deliveries to it have been failing for 7 days or more. | `fediverse/src/inbox.ts` `forget`; `delivery.ts` `settle`, `GIVE_UP_MS` | code, tested. The public text says "unreachable for a week": it is checked when something is delivered, so the real time is a week or longer, never shorter |
+| F-72 | Nothing from a device or an app reaches the service: it reads the gallery's public feed file and what other servers send it. | `fediverse/src/server.ts` (`feedWatcher`); `scripts/check-boundaries.mjs` (no Potyro import); no reference to it in shell, host, runtime, views | code |
+| F-73 | It logs its start, feed counts and error messages; never an address, an account or a request. Per-address request counts are in memory, for a minute. | `fediverse/src/server.ts` `main`; `core.ts` `minuteCounter` | code. How long Docker keeps the container's log: F-07 |
+| F-74 | The followers file is in the nightly backup (`fediverse.tar`), kept as the other backups are. It leaves the server only encrypted. | `deploy/backup.sh` (offsite step); `deploy/backup.test.sh` | code, tested |
+
 ## Other services the browser contacts
 
 | # | Claim | Proof | Status |

@@ -1,0 +1,20 @@
+{
+  "name": "@potyro/fediverse",
+  "version": "0.0.0",
+  "author": "Edgar Zanella Alvarenga",
+  "type": "module",
+  "private": true,
+  "description": "The gallery's fediverse account (docs/33): an ActivityPub actor people follow from Mastodon and the like, which posts each app the gallery publishes. Reads the feed the gallery build writes, keeps who follows, signs what it sends. Stores no reply, runs no app code. Depends on no Potyro package. Deployment: docs/16.",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./src/fediverse.ts",
+    "./feed": "./src/feed.ts"
+  },
+  "types": "./src/fediverse.ts",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "start": "node --experimental-strip-types src/server.ts"
+  }
+}

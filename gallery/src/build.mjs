@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { hasShotSet, hourOf, LANGUAGES, readGallery, remixLink, shotFiles, shotPath, shownApps, SHOT_FORMATS, SHOT_LOCALES, SHOT_THEMES, SHOT_WIDTHS, SOURCE_LANGUAGE } from "./data.mjs";
 // The privacy page and the terms of use (#117): built only once docs/legal has no placeholder left.
 import { legalSite } from "../../packages/legal/src/build.mjs";
+import { galleryFeed } from "./feed.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const GALLERY_DIR = resolve(here, "..");
@@ -437,7 +438,7 @@ export function imageSize(b) {
 
 /**
  * Build the gallery into `out`: index.html, its stylesheets (the design system's tokens, the hours,
- * the page's own), script, favicon, fonts, logo files and the screenshots it shows. `out` is emptied
+ * the page's own), script, favicon, fonts, logo files, the screenshots it shows, and `feed.json` (feed.mjs). `out` is emptied
  * first, so a screenshot dropped from the gallery is dropped from the site.
  * @param {{ data?: string; shots?: string; out?: string; allowLocal?: boolean; legal?: string }} [opts]
  *   `legal`: the folder of legal texts (default docs/legal, or `POTYRO_LEGAL_DIR`).
@@ -491,6 +492,8 @@ export function buildGallery(opts = {}) {
   }
   const html = renderPage(gallery, strings, { css: shortHash(Buffer.concat([tokens, Buffer.from(hours), css])), js: shortHash(js), shots, logos, legal: legal.ready });
   writeFileSync(join(out, "index.html"), html);
+  // What the gallery's fediverse account posts from (docs/33).
+  writeFileSync(join(out, "feed.json"), JSON.stringify(galleryFeed(gallery, strings, (path) => imageSize(readFileSync(join(shotsRoot, path))))));
   return { out, published: published.length, soon: shownApps(gallery).soon.length, legal: legal.ready ? null : legal.notice };
 }
 

@@ -88,6 +88,13 @@ describe("the languages and the theme", () => {
 });
 
 describe("the home", () => {
+  it("carries the gallery's feed at /apps/feed.json, every picture it names a file of the site (docs/33)", () => {
+    const feed = JSON.parse(readFileSync(join(out, "apps", "feed.json"), "utf8"));
+    expect(feed.format).toBe("potyro-gallery-feed/1");
+    expect(feed.apps.length).toBeGreaterThan(0);
+    for (const app of feed.apps) expect(existsSync(join(out, app.image.path)), app.image.path).toBe(true);
+  });
+
   it("names only files the build wrote, by their path from the root", () => {
     for (const path of localPaths(home)) {
       expect(path.startsWith("/"), `${path} is not from the root`).toBe(true);

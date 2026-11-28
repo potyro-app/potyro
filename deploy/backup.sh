@@ -11,7 +11,11 @@
 #                    with `PRAGMA integrity_check` — a copy that fails the check is not a backup
 #   shares.tar       the share links (each link's sealed package and preview)
 #   ai-ledger.json   the month's AI spend
-# Never the secrets in /etc/potyro: they are the owner's to keep, apart from the data.
+#   fediverse.tar    the gallery's fediverse account (docs/33): its key and who follows it. The
+#                    key IS the account: without it every follower has to follow again
+# Never the secrets in /etc/potyro: they are the owner's to keep, apart from the data. One secret is
+# in the data all the same: the fediverse account's private key. So fediverse.tar goes offsite only
+# encrypted (BACKUP_AGE_RECIPIENT set); without it, it stays on the server and the run says so.
 #
 # Then, in this order:
 #   - offsite, when BACKUP_REMOTE is set: `rclone copy` of today's folder to $BACKUP_REMOTE/<date>
@@ -66,9 +70,10 @@ sqlite3 "$DATA_DIR/sync.db" ".timeout 60000" ".backup '$dest/sync.db'"
 check="$(sqlite3 "$dest/sync.db" 'PRAGMA integrity_check;')"
 [ "$check" = "ok" ] || fail "the copy of sync.db failed its integrity check: $check"
 
-# 2. The share links and the AI ledger: small files, each written whole.
+# 2. The share links, the AI ledger and the fediverse account: small files, each written whole.
 if [ -d "$DATA_DIR/shares" ]; then tar -C "$DATA_DIR" -cf "$dest/shares.tar" shares; fi
 if [ -f "$AI_DIR/ai-ledger.json" ]; then cp "$AI_DIR/ai-ledger.json" "$dest/ai-ledger.json"; fi
+if [ -d "$DATA_DIR/fediverse" ]; then tar -C "$DATA_DIR" -cf "$dest/fediverse.tar" fediverse; chmod 600 "$dest/fediverse.tar"; fi
 
 # 3. Offsite.
 if [ -n "$BACKUP_REMOTE" ]; then
@@ -78,8 +83,13 @@ if [ -n "$BACKUP_REMOTE" ]; then
     command -v age >/dev/null || fail "BACKUP_AGE_RECIPIENT is set and age is not installed"
     send="$(mktemp -d)"
     for f in "$dest"/*; do age -r "$BACKUP_AGE_RECIPIENT" -o "$send/$(basename "$f").age" "$f"; done
+  elif [ -f "$dest/fediverse.tar" ]; then
+    # It holds a private key: never offsite in the clear.
+    send="$(mktemp -d)"
+    for f in "$dest"/*; do [ "$(basename "$f")" = fediverse.tar ] || ln -s "$f" "$send/"; done
+    echo "! fediverse.tar was NOT sent offsite: it holds a private key, and BACKUP_AGE_RECIPIENT is not set"
   fi
-  rclone copy "$send" "$BACKUP_REMOTE/$TODAY" || fail "the offsite copy to $BACKUP_REMOTE did not finish"
+  rclone copy --copy-links "$send" "$BACKUP_REMOTE/$TODAY" || fail "the offsite copy to $BACKUP_REMOTE did not finish"
   [ "$send" = "$dest" ] || rm -rf "$send"
 fi
 

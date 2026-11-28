@@ -33,6 +33,7 @@ health checks under each service were run on 2026-10-30.
 | AI relay | `potyro-ai` | 4204 | `/opt/potyro-ai` ← `packages/ai-relay` | `/var/lib/potyro-ai/ai-ledger.json` | `/etc/potyro/ai.env` | `handle_path /ai/*` |
 | Rooms relay | `potyro-rooms` | 4205 | `/opt/potyro-rooms` ← `packages/rooms` | — (memory) | — (`-e` on the run line) | `handle /rooms/*` |
 | The gallery | — (static files) | — | `/srv/potyro.com` ← `dist/gallery` | — | — | the `potyro.com, www.potyro.com` site |
+| The gallery's fediverse account (**in `deploy/`, not yet on the server**) | `potyro-fediverse` | 4207 | `/opt/potyro-fediverse` ← `packages/fediverse` | `/var/lib/potyro/fediverse` (its key, who follows, its queue); reads `/srv/potyro.com/apps/feed.json` | — (`-e` on the run line) | on potyro.com: `/.well-known/webfinger` and `/fedi/*` |
 
 Around it (the server itself, its DNS and the CI machine are the owner's notes, not part of this guide):
 
@@ -63,7 +64,8 @@ working with the relay down; it just stops reaching other people until it comes 
 Optional services sit beside them: the [request relay](#requests-to-the-potyro-team-263-deployed),
 the [free AI allowance](#ai-for-apps-docs23-deployed) for apps, the [share links](#demo-links-and-their-previews-docs24-deployed)
 and the [rooms relay](#rooms-for-multiplayer-apps-docs26-deployed) for multiplayer apps. All four
-run on potyro.app. Without them requests wait on the device, apps' AI runs on the person's own key,
+run on potyro.app. (A fifth, the [gallery's fediverse account](#the-gallerys-fediverse-account-docs33-built-not-yet-deployed),
+belongs to potyro.com and to no app: nothing in Potyro asks it anything.) Without them requests wait on the device, apps' AI runs on the person's own key,
 links carry the whole app, and multiplayer apps cannot meet.
 
 Everything is on **one origin**. The shell derives its relay (`wss://<host>/sync`) and every service
@@ -581,6 +583,7 @@ What holds state on the server:
 | The relay's database | `/var/lib/potyro/sync.db` | every shared space, encrypted, and every shared file's bytes ([below](#what-the-relay-holds-for-a-shared-apps-files-255)). For anyone who turned on "Back up my apps" it is the only copy off their device. |
 | The share links | `/var/lib/potyro/shares` | each link's sealed package and preview; a lost one answers 404. |
 | The AI ledger | `/var/lib/potyro-ai/ai-ledger.json` | the month's spend; lost, the caps start the month again from zero. |
+| The gallery's fediverse account | `/var/lib/potyro/fediverse` | its private key (`key.pem`), who follows it, what it has posted. The key is the account: lost, every follower has to follow again (docs/33). |
 | The secrets | `/etc/potyro/*.env` | the owner's to keep, apart from the data, never in the repository and never in a backup. |
 
 The Caddyfile, the containers and the code are in the repository and need no backup. The rooms
@@ -590,7 +593,9 @@ relay and the request relay keep nothing on disk.
 
 Each night it writes `/var/backups/potyro/<date>/`: the relay's database through SQLite's online
 backup (a consistent moment of a database that is being written, which a plain `cp` is not), checked
-with `PRAGMA integrity_check`; the share links as one tar; the AI ledger. With `BACKUP_REMOTE` set it
+with `PRAGMA integrity_check`; the share links as one tar; the AI ledger; the fediverse account's
+folder as one tar (`fediverse.tar`, which holds a private key: it goes offsite only encrypted, so
+without `BACKUP_AGE_RECIPIENT` it stays on the server and the run says so). With `BACKUP_REMOTE` set it
 copies the folder offsite with `rclone` (any remote rclone knows: an S3-compatible bucket, a storage
 box over SFTP), encrypted first with `age` when `BACKUP_AGE_RECIPIENT` is set. It keeps the newest
 seven days and the newest four Sundays, here and offsite, and fails when a disk is over 85% full.
@@ -634,7 +639,8 @@ It runs beside the live relay and touches nothing of it.
 
 A real restore is the same, onto the real path: stop the relay (`docker stop potyro-relay`), put the
 checked `sync.db` at `/var/lib/potyro/sync.db` (remove any `sync.db-wal` and `sync.db-shm` left
-beside it), unpack `shares.tar` into `/var/lib/potyro`, copy the ledger back, start the relay.
+beside it), unpack `shares.tar` and `fediverse.tar` into `/var/lib/potyro`, copy the ledger back,
+start the relay.
 Devices send again whatever they hold that the restored copy lacks; what existed only on the server
 after the night of the copy is gone.
 
@@ -1271,6 +1277,84 @@ instead means the shell's route answered first; a `403` means the `Origin` is no
 **Updating it:** `sudo deploy/containers.sh rooms`. A restart closes every
 member with 1001 ("relay restarting"); apps reconnect, and since nothing was kept, nothing is lost
 but the current member ids.
+
+## The gallery's fediverse account (docs/33): built, not yet deployed
+
+`packages/fediverse` gives the gallery an account other people follow from Mastodon and the like,
+**`@apps@potyro.com`**, which posts each app the gallery publishes. What it is, what it keeps and
+how it checks what it is sent: [docs/33](33-fediverse.md). It is optional: without it the gallery is
+the page it always was.
+
+**Before the first start, decide the name.** The account is `@<FEDI_USERNAME>@<host of FEDI_ORIGIN>`
+and every address of it is under `<FEDI_ORIGIN>/fedi/`. Other servers remember the account by
+those addresses and by its key, so **neither can change once anyone follows**, and its data folder
+must never be lost (it is in the backup, [§6](#6-backups-214)).
+
+| | |
+|---|---|
+| Routes | `GET /.well-known/webfinger`, `GET /fedi/actor`, `/fedi/outbox`, `/fedi/followers`, `/fedi/notes/<app>` (and `…/activity`), `/fedi/health`; `POST /fedi/inbox`. Anything else is a 404. |
+| What it holds | `/var/lib/potyro/fediverse`, mode 700: `key.pem` (the account's private key, made on first start), `followers.json` (each follower's address, inbox and public key), `notes.json` (what is posted), `feed.json` (the feed as last taken), `outgoing.json` (deliveries to make). |
+| What it reads | `/srv/potyro.com/apps/feed.json`, which `pnpm site:build` writes, once a minute. A file that is missing or wrong changes nothing. |
+| What it sends | Signed POSTs to the servers its followers are on, and one signed GET to a new follower's server for its key. https only, public addresses only, no redirects (docs/33 "Signed, and checked"). |
+| What it ignores | Replies, mentions, likes, boosts: answered 202, never stored. |
+| Limits | 300 requests a minute per address (IPv6: its /64); 6 account lookups a minute per sending address and 60 in all; 256 kB an activity; 20 000 followers, 5 000 from one server: `FEDI_REQUESTS_PER_ADDRESS_MINUTE`, `FEDI_LOOKUPS_PER_ADDRESS_MINUTE`, `FEDI_LOOKUPS_PER_MINUTE`, `FEDI_MAX_FOLLOWERS`, `FEDI_MAX_FOLLOWERS_PER_HOST`. |
+| Address | `TRUST_PROXY=caddy` (default), as every service: [Addresses](#4-caddy-in-front). |
+| Logs | Its start, each feed taken (counts only), errors by their message. Never an address, an account or a request. |
+
+### 1. Run it
+
+Port **4207**. No dependencies and no secret in its environment, so no env file:
+`sudo deploy/containers.sh fediverse` copies `packages/fediverse` to `/opt/potyro-fediverse` and runs:
+
+```bash
+docker run -d --name potyro-fediverse --restart unless-stopped \
+  -p 127.0.0.1:4207:4207 \
+  -e HOST=0.0.0.0 -e PORT=4207 \
+  -e FEDI_DATA_DIR=/data -e FEDI_FEED=/site/apps/feed.json \
+  -e FEDI_ORIGIN=https://potyro.com -e FEDI_USERNAME=apps \
+  -v /opt/potyro-fediverse:/app:ro -v /var/lib/potyro/fediverse:/data -v /srv/potyro.com:/site:ro -w /app \
+  node:22-bookworm \
+  node --experimental-strip-types src/server.ts
+docker logs potyro-fediverse   # "[fediverse] @apps@potyro.com, kept in /data, feed /site/apps/feed.json, listening on 0.0.0.0:4207, …"
+```
+
+The site must have been built and uploaded since this change (`pnpm site:build`, then the rsync), or
+there is no `apps/feed.json` and the log says `feed not taken`: the account then answers, with no
+posts, until the file is there. The other settings (`FEDI_NAME`, `FEDI_SUMMARY`, `FEDI_ICON`, …) are
+at the top of `src/server.ts`; to change one, add it to the `docker run` line in
+`deploy/containers.sh` and run the script again.
+
+### 2. Route it
+
+In the **potyro.com** block ([`deploy/potyro.app.Caddyfile`](../deploy/potyro.app.Caddyfile)):
+
+```
+@fedi path /.well-known/webfinger /fedi/*
+reverse_proxy @fedi 127.0.0.1:4207
+```
+
+`caddy validate`, then reload. The site's pages load nothing from these addresses, so its policy
+(`connect-src 'self'`) does not change.
+
+### 3. Check it
+
+```bash
+curl -s https://potyro.com/fedi/health                                              # {"ok":true,"posts":N}, N the gallery's published apps
+curl -s 'https://potyro.com/.well-known/webfinger?resource=acct:apps@potyro.com'    # "subject":"acct:apps@potyro.com"
+curl -s -H 'accept: application/activity+json' https://potyro.com/fedi/actor | head -c 300
+curl -sI https://potyro.com/fedi/actor | grep -i location                           # a browser is sent to /apps/
+```
+
+Then, from a fediverse account, search for `@apps@potyro.com` and follow it: the follow should show
+as accepted within a quarter of a minute (the delivery round), and `/fedi/followers` should say
+`"totalItems":1`. The next app published to the gallery arrives in that account's timeline within
+about a minute of the site's upload.
+
+**Updating it:** `sudo deploy/containers.sh fediverse`. Nothing is lost by a restart: the queue is on disk.
+
+**Stopping it for good:** stop the container. Other servers keep the posts they have; the account
+then looks unreachable, and they stop asking after a while. (The posts cannot all be taken down
+through the feed: a feed with no apps, or one that drops most of them, is refused on purpose.)
 
 ## The site on potyro.com (#8): the home, the gallery at /apps/, the legal pages
 

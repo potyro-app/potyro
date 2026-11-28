@@ -84,4 +84,5 @@ changing Potyro, not maintained as user documentation, and not published on the 
 - [App translations](30-app-translations.md) — One language in the source, catalogs beside it: how an app carries its words in other languages.
 - [Security model](31-security-model.md) — What keeps a shared app in its box, what the servers can see, what is not protected, and how to report a hole.
 - [Code map](32-code-map.md) — Where each concern lives in the code — the files and entry points for sync, sharing, storage, the sealed realm, ctx, views, the shell, links, design, i18n, the generator, apps, CI — and a section index of the six biggest files.
+- [The gallery on the fediverse](33-fediverse.md) — The gallery's ActivityPub account: what it posts, what it keeps, what it ignores, how its requests are signed and checked, and why ActivityPub is used here and nowhere else in Potyro.
 - [ADR 0001: Sync engine and identity](adr/0001-sync-engine-and-identity.md) — Why Jazz (cojson), the identity model, spaces, the relay, and the alternatives measured.
