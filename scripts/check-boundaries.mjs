@@ -67,6 +67,13 @@ const rules = [
     note: "rooms depends on no Potyro package",
   },
   {
+    // The gallery's fediverse account (docs/33) runs on the server, alone: the same rule. What it
+    // knows of the gallery is a file the gallery build writes, never an import.
+    pkg: "packages/fediverse/src",
+    forbidden: [/^(?:import|export)\b[^\n]*["']@potyro\//m, /import\(\s*["']@potyro\//, /from\s+["']\.\.\/\.\.\//],
+    note: "fediverse depends on no Potyro package",
+  },
+  {
     // The gate in front of the sync relay (docs/16) runs on the server, alone: the same rule.
     pkg: "packages/sync-gate/src",
     forbidden: [/^(?:import|export)\b[^\n]*["']@potyro\//m, /import\(\s*["']@potyro\//],

@@ -12,6 +12,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { APP_SITE, GALLERY_DIR, hoursCss, imageSize, LOGO_FILES, pageScript, readShot, readStrings, renderPage } from "../gallery/src/build.mjs";
 import { readGallery, shownApps } from "../gallery/src/data.mjs";
+import { galleryFeed } from "../gallery/src/feed.mjs";
 import { legalSite } from "../packages/legal/src/build.mjs";
 import { CODE, highlightCode, lucidePaths, renderHome, tilesCss } from "./src/home.mjs";
 import { renderDocs } from "./src/docs.mjs";
@@ -163,6 +164,8 @@ export async function buildSite(opts = {}) {
   const shots = Object.fromEntries(published.map((a) => [a.screenshot ?? "", sizes[`/${a.screenshot}`]]));
   const apps = renderPage(gallery, strings, { css: v.css, js: v.js, shots, logos: { "wordmark-large": logos["wordmark-large.svg"], tagline: logos["tagline.svg"] }, legal: legal.ready, base: "/" });
   put("apps/index.html", apps);
+  // What the gallery's fediverse account posts from (docs/33); its picture paths are from the site's root.
+  put("apps/feed.json", JSON.stringify(galleryFeed(gallery, strings, (path) => imageSize(readFileSync(join(GALLERY_DIR, path))))));
 
   // ---- the text pages: the docs, the Learn-more pages, /developers ----
   const docs = await renderDocs({ docsDir: join(ROOT, "docs"), w: words, logos, v, legal: legal.ready });

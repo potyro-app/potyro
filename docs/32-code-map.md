@@ -229,6 +229,10 @@ Design: docs/24 (§11 a link to a page, §12 a link to a record, §10 the galler
   and dark, AVIF and WebP, 1x and 2x), `gallery/src/build.mjs` (`pnpm gallery:build`),
   `gallery/src/publish.mjs` (`pnpm gallery:publish`), `gallery/src/shoot.mjs` (`pnpm gallery:shoot`:
   the pictures again from this checkout's build, links untouched), `gallery/test/`.
+- The gallery on the fediverse (docs/33): `gallery/src/feed.mjs` `galleryFeed` (the `feed.json` both
+  builds write); `packages/fediverse/src/` — `feed.ts` (the feed, checked), `objects.ts` (actor, notes,
+  activities), `signature.ts`, `net.ts` (what may be reached), `inbox.ts` (Follow, Undo, Delete),
+  `delivery.ts` (compare, queue, retry), `handler.ts`, `disk.ts`, `server.ts`.
 
 ## Design system, styles, i18n
 

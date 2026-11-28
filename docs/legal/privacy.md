@@ -151,6 +151,19 @@ Some apps, like games, connect people in a room.
 - While the room is live, the relay holds a random id for each person, the display name the app
   gives it (often one you typed), and counts per IP address.
 
+### Following the gallery from the fediverse
+
+The gallery has an account on the fediverse, `@apps@potyro.com`, that posts each new app. You can
+follow it from an account you have on Mastodon or a similar service. Potyro itself does not use it,
+and nothing from your device or your apps goes there.
+
+- If you follow it, our server keeps what it needs to send you its posts: your account's public
+  address, your server's inbox address, your account's public key, and the day you followed.
+- Replies, mentions, likes and boosts sent to the account are not read and not stored.
+- **How long:** until you unfollow or delete your account, or until your server has been
+  unreachable for a week. Then it is removed.
+- Your own fediverse service handles your account under its terms, not ours.
+
 ### Other services your browser may contact
 
 - **Maps** load their pictures from OpenStreetMap's servers, which see your IP address and the area
@@ -229,6 +242,7 @@ Some of these companies may handle data outside the EU, including in the United 
 | Daily counts per device id or per IP address | AI, link and request relays, memory | A day, or until the relay restarts |
 | Counts: one number a month per kind, for everyone together | AI relay, a file | Kept |
 | Rooms: ids, names, counts | Rooms relay, memory | While the room is live |
+| Fediverse followers of the gallery: account address, inbox, public key, day followed | The gallery's fediverse account, a file | Until you unfollow, or your server is gone |
 | Requests and wording suggestions | GitHub, public | Until deleted |
 | Emails you send us | Our mailbox | 12 months after the matter is closed |
 | Everything else | Your device | Until you delete it |

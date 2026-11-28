@@ -129,6 +129,12 @@ potyro.com {
 	}
 	reverse_proxy @count 127.0.0.1:4204
 
+	# The gallery's fediverse account, @apps@potyro.com (docs/33): who it is (webfinger) and its
+	# ActivityPub addresses, all under /fedi/. Other servers ask these, and POST follows to
+	# /fedi/inbox; a person's browser is sent on to /apps/. Nothing a page of the site loads.
+	@fedi path /.well-known/webfinger /fedi/*
+	reverse_proxy @fedi 127.0.0.1:4207
+
 	import site_headers
 	# An address that is not a page: the site's own "this page does not exist", with the 404 status
 	# and the same headers as every other page (an error is answered outside the block above).

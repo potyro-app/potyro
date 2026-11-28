@@ -39,7 +39,8 @@ Potyro is maintained by one person. There is **no bug bounty** and no payment fo
 - **The relays and services we run**: the sync relay's deployment (`docs/16-deployment.md`) and the
   gate in front of it (`packages/sync-gate`), the AI
   relay (`packages/ai-relay`), the rooms relay (`packages/rooms`), the share-link service
-  (`packages/share-links`) and the requests service (`packages/platform-requests`). For example:
+  (`packages/share-links`), the requests service (`packages/platform-requests`) and the gallery's
+  fediverse account (`packages/fediverse`). For example:
   reading another person's data, spending the AI allowance outside its limits, or taking a service
   down with little effort.
 - **Identity and keys**: the seed, the vault (`packages/identity`) and the sync encryption.

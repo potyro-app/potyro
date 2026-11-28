@@ -251,6 +251,9 @@ Behaviour: [Sharing](../concepts/sharing.md).
   `wire.ts`); `packages/share-links/scripts/takedown.mjs`.
 - `gallery/gallery.json` (the page's order), `gallery/shots/`, `gallery/src/build.mjs`
   (`pnpm gallery:build`), `gallery/src/publish.mjs` (`pnpm gallery:publish`), `gallery/test/`.
+- The gallery's fediverse account: `gallery/src/feed.mjs` (the feed both builds write) and
+  `packages/fediverse/src/` (`feed.ts`, `objects.ts`, `signature.ts`, `net.ts`, `inbox.ts`,
+  `delivery.ts`, `handler.ts`, `disk.ts`, `server.ts`).
 
 ## Design system, styles, i18n
 

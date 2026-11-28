@@ -10,7 +10,7 @@
 #
 # (~/potyro-src is a plain clone of https://github.com/potyro-app/potyro; any clone will do.)
 #
-# What it does, for each service named (relay, gate, requests, share-links, ai, rooms; none = all):
+# What it does, for each service named (relay, gate, requests, share-links, ai, rooms, fediverse; none = all):
 #   1. copies the package's code from the checkout into /opt/<container>/ (rsync --delete, never
 #      node_modules), and installs the one service with dependencies of its own (rooms: `ws`) or the
 #      relay's pinned `jazz-run`, in a throwaway node:22 container;
@@ -42,13 +42,14 @@
 #                                 runs on its defaults
 #
 # The requests relay and the AI relay refuse to start without their file (no token, no key).
-# The sync relay and the rooms relay hold no secret and have no env file.
+# The sync relay and the rooms relay hold no secret and have no env file. Nor has the gallery's
+# fediverse account: its one secret is the key it makes for itself, in /var/lib/potyro/fediverse.
 set -euo pipefail
 
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGE="node:22-bookworm"
 ENV_DIR="/etc/potyro"
-ALL=(relay gate requests share-links ai rooms)
+ALL=(relay gate requests share-links ai rooms fediverse)
 
 say() { printf '%s\n' "$*"; }
 die() { printf '✘ %s\n' "$*" >&2; exit 1; }
@@ -190,6 +191,24 @@ rooms() {
     "$IMAGE" node --experimental-strip-types src/server.ts
 }
 
+# The gallery's fediverse account (docs/33): packages/fediverse, no dependencies. It reads the feed
+# the site's build wrote (/srv/potyro.com/apps/feed.json), so it mounts potyro.com's web root
+# read-only, and keeps its key, its followers and its queue in /data. On Docker's bridge, like the
+# others here: what it asks of other servers goes out, and it refuses every private address itself.
+fediverse() {
+  local changed
+  mkdir -p /var/lib/potyro/fediverse
+  chmod 700 /var/lib/potyro/fediverse
+  changed="$(copy "$SRC/packages/fediverse" /opt/potyro-fediverse)"
+  up potyro-fediverse "$changed" \
+    -p 127.0.0.1:4207:4207 \
+    -e HOST=0.0.0.0 -e PORT=4207 \
+    -e FEDI_DATA_DIR=/data -e FEDI_FEED=/site/apps/feed.json \
+    -e FEDI_ORIGIN=https://potyro.com -e FEDI_USERNAME=apps \
+    -v /opt/potyro-fediverse:/app:ro -v /var/lib/potyro/fediverse:/data -v /srv/potyro.com:/site:ro -w /app \
+    "$IMAGE" node --experimental-strip-types src/server.ts
+}
+
 [ "$#" -gt 0 ] || set -- "${ALL[@]}"
 for service in "$@"; do
   case "$service" in
@@ -199,6 +218,7 @@ for service in "$@"; do
     share-links) share_links ;;
     ai) ai ;;
     rooms) rooms ;;
+    fediverse) fediverse ;;
     *) die "unknown service '$service' (one of: ${ALL[*]})" ;;
   esac
 done

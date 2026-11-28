@@ -8,7 +8,8 @@ pass=0; say() { printf '%s\n' "$*"; }
 ok() { pass=$((pass + 1)); say "  ✓ $*"; }
 bad() { say "  ✘ $*"; exit 1; }
 
-mkdir -p "$T/data/shares" "$T/ai" "$T/bin" "$T/remote"
+mkdir -p "$T/data/shares" "$T/data/fediverse" "$T/ai" "$T/bin" "$T/remote"
+echo key > "$T/data/fediverse/key.pem"
 echo '{"month":"2026-11"}' > "$T/ai/ai-ledger.json"
 echo sealed > "$T/data/shares/abc.bin"
 sqlite3 "$T/data/sync.db" "PRAGMA journal_mode=WAL; CREATE TABLE tx(id INTEGER PRIMARY KEY, body TEXT); INSERT INTO tx(body) VALUES ('first');" >/dev/null
@@ -17,7 +18,7 @@ sqlite3 "$T/data/sync.db" "PRAGMA journal_mode=WAL; CREATE TABLE tx(id INTEGER P
 cat > "$T/bin/rclone" <<'STUB'
 #!/usr/bin/env bash
 case "$1" in
-  copy) mkdir -p "$3" && cp -r "$2"/. "$3"/ ;;
+  copy) [ "$2" = --copy-links ] && shift; mkdir -p "$3" && cp -rL "$2"/. "$3"/ ;;
   lsf) ls -1 "$3" | sed 's:$:/:' ;;
   purge) rm -rf "$2" ;;
   *) exit 2 ;;
@@ -39,6 +40,7 @@ n="$(sqlite3 "$T/backups/2026-11-10/sync.db" 'SELECT count(*) FROM tx;')"
 [ "$(sqlite3 "$T/backups/2026-11-10/sync.db" "SELECT body FROM tx WHERE id=1;")" = first ] && ok "and reads back what was written" || bad "content"
 tar -tf "$T/backups/2026-11-10/shares.tar" | grep -q shares/abc.bin && ok "the share links are in it" || bad "shares"
 cmp -s "$T/ai/ai-ledger.json" "$T/backups/2026-11-10/ai-ledger.json" && ok "the AI ledger is in it" || bad "ledger"
+tar -tf "$T/backups/2026-11-10/fediverse.tar" | grep -q fediverse/key.pem && ok "the fediverse account's key is in it" || bad "fediverse"
 grep -q '^✓' "$T/out" && ok "a good run says one line" || bad "no ok line"
 
 say "which days are kept"
@@ -52,6 +54,7 @@ want="2026-11-10 2026-11-09 2026-11-08 2026-11-07 2026-11-06 2026-11-05 2026-11-
 [ "$(ls -1 "$T/remote" | sort -r | tr '\n' ' ')" = "$want" ] && ok "and the same offsite" || bad "remote: $(ls "$T/remote" | tr '\n' ' ')"
 [ -d "$T/backups/not-a-date" ] && ok "a folder that is not a date is left alone" || bad "deleted a stranger"
 [ -f "$T/remote/2026-11-10/sync.db" ] && ok "today's copy went offsite" || bad "no offsite copy"
+[ ! -e "$T/remote/2026-11-10/fediverse.tar" ] && [ -f "$T/backups/2026-11-10/fediverse.tar" ] && ok "the fediverse key stays on the server when the offsite copy is not encrypted" || bad "fediverse.tar went offsite in the clear"
 
 say "failures are loud"
 if run BACKUP_DATE=2026-11-11 DISK_ALERT_PCT=0 > "$T/out" 2>&1; then bad "a full disk passed"; fi

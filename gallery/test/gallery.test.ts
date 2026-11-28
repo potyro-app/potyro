@@ -11,6 +11,8 @@ import sharp from "sharp";
 import { FORMAT, galleryProblems, hasShotSet, isDemoLink, LANGUAGES, publishable, readGallery, remixLink, shotFiles, shotPath, shownApps, SHOT_LOCALES } from "../src/data.mjs";
 import { buildGallery, CONTACT, escapeHtml, imageSize, readShot, readStrings, renderPage, shotPicture } from "../src/build.mjs";
 import { said, writeShot } from "../src/publish.mjs";
+import { FEED_FORMAT, feedImage, galleryFeed } from "../src/feed.mjs";
+import { FEED_FORMAT as SERVICE_FEED_FORMAT, feedProblems } from "../../packages/fediverse/src/feed.ts";
 
 const here = new URL("..", import.meta.url).pathname;
 const real = JSON.parse(readFileSync(join(here, "gallery.json"), "utf8"));
@@ -324,5 +326,52 @@ describe("an app's pictures", () => {
     expect(said("en", "Fetch and open")).toBe("Fetch and open");
     expect(said("pt-BR", "Fetch and open")).toBe("Baixar e abrir");
     expect(said("pt-BR", "words no catalog has")).toBe("words no catalog has");
+  });
+});
+
+describe("the feed the gallery's fediverse account posts from (docs/33)", () => {
+  const sizeOf = (path: string) => imageSize(readFileSync(join(here, path)));
+
+  it("the gallery in the repo makes a feed the service takes: every published app, in six languages", () => {
+    const g = readGallery(clone(real));
+    const made = JSON.parse(JSON.stringify(galleryFeed(g, readStrings(strings), sizeOf)));
+    expect(FEED_FORMAT).toBe(SERVICE_FEED_FORMAT);
+    expect(feedProblems(made)).toEqual([]);
+    expect(made.languages).toEqual([...LANGUAGES]);
+    expect(made.apps.map((a: { id: string }) => a.id)).toEqual(shownApps(g).published.map((a) => a.id));
+  });
+
+  it("an app says its two links, when its link was made, and its widest light WebP with its real size", () => {
+    const g = readGallery(clone(real));
+    const first = shownApps(g).published[0]!;
+    const [app] = galleryFeed(g, readStrings(strings), sizeOf).apps;
+    expect(app).toMatchObject({ id: first.id, link: first.link, remix: remixLink(first.link!), publishedAt: first.publishedAt, name: first.name, line: first.line });
+    expect(app!.image).toMatchObject({ path: `shots/en/${first.id}-light-824.webp`, mediaType: "image/webp", width: 824 });
+    expect(app!.image!.height).toBeGreaterThan(824);
+  });
+
+  it("an app with one picture and no set carries that picture; coming-soon apps are not in the feed", () => {
+    const g = withApp({ link: LINK, screenshot: "shots/groceries.png" });
+    g.apps.push({ id: "later", status: "coming-soon", waitsFor: "#1", category: "home", name: six("Later"), line: six("Soon") });
+    const made = galleryFeed(readGallery(g), readStrings(strings), () => ({ width: 412, height: 860 }));
+    expect(made.apps).toHaveLength(1);
+    expect(made.apps[0]!.image).toEqual({ path: "shots/groceries.png", mediaType: "image/png", width: 412, height: 860 });
+    expect(made.apps[0]).not.toHaveProperty("publishedAt");
+  });
+
+  it("refuses a picture whose size cannot be read, rather than post without saying", () => {
+    expect(() => feedImage({ id: "groceries", screenshot: "shots/groceries.png" }, () => null)).toThrow(/groceries.*feed/);
+  });
+
+  it("the build writes it beside the page", () => {
+    const dir = mkdtempSync(join(tmpdir(), "gallery-feed-"));
+    mkdirSync(join(dir, "shots"));
+    writeFileSync(join(dir, "shots", "groceries.png"), PNG);
+    writeFileSync(join(dir, "gallery.json"), JSON.stringify(withApp({ link: LINK, screenshot: "shots/groceries.png" })));
+    buildGallery({ data: join(dir, "gallery.json"), out: join(dir, "out") });
+    const made = JSON.parse(readFileSync(join(dir, "out", "feed.json"), "utf8"));
+    expect(feedProblems(made)).toEqual([]);
+    expect(made.apps[0].image).toEqual({ path: "shots/groceries.png", mediaType: "image/png", width: 1, height: 1 });
+    rmSync(dir, { recursive: true, force: true });
   });
 });

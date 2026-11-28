@@ -260,7 +260,8 @@ it), WebM otherwise. Saving waits for a tap on "Save the clip", because a browse
 
 ## 9. What this does not do
 
-- No public feed, search or listing of share links: the gallery (§10) is curated, by hand.
+- No public feed, search or listing of share links: the gallery (§10) is curated, by hand. (The
+  gallery's own fediverse account, docs/33, posts the gallery's apps and nothing else.)
 - No records leave the device in a demo; no space is created.
 - No change to trust: a demo runs sealed, Keep and Make it mine install sealed, promotion stays explicit.
 - No server-side rendering of apps: the service never runs app code.
@@ -327,6 +328,11 @@ the same one the demo bar's Report uses; `contact@potyro.com` while the abuse ad
 placeholder), and links to potyro.app. Tests: `gallery/test` (data, words, page, build) and
 `e2e/gallery-trusted.spec.ts` (publish against the local dev server, axe in light and dark, no request
 leaves the page's origin, languages).
+
+**On the fediverse** (docs/33): both builds also write `feed.json` beside the page (`gallery/src/feed.mjs`:
+each published app's words, links and one picture), which the gallery's account, `@apps@potyro.com`
+(`packages/fediverse`), posts from. Publishing an app to the gallery is what posts it; there is nothing
+else to do.
 
 In the app, the gallery is one tap from Add an app ("From the gallery"), the Classic launcher's ＋ menu
 and the Tiles launcher's app bar (`gallery-link.ts`; a build may point elsewhere with
